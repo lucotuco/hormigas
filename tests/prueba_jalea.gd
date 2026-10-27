@@ -43,8 +43,11 @@ func probar_formula() -> void:
 	verificar(Juego.jalea_por_fundar() == 0 and not Juego.puede_fundar(), "una colonia nueva no tiene nada para fundar")
 	Juego.migas_colonia = 100000.0
 	verificar(Juego.detalle_fundar().migas == 1, "100.000 migas en la colonia valen 1 de jalea")
-	Juego.migas_colonia = 8e5
-	verificar(Juego.detalle_fundar().migas == 2, "la jalea por migas crece con la raíz cúbica (800.000 → 2)")
+	Juego.migas_colonia = 1.6e6
+	verificar(Juego.detalle_fundar().migas == 2, "la jalea por migas crece con la raíz cuarta (1,6 M → 2)")
+	Juego.migas_colonia = 1e13
+	verificar(Juego.detalle_fundar().migas == 100, "y se frena con números grandes (10 billones → 100)")
+	Juego.migas_colonia = 1.6e6
 	Juego.coronas = 2
 	verificar(Juego.jalea_por_fundar() == 2 * Juego.JALEA_POR_CORONA + 2, "cada corona vale %d de jalea" % Juego.JALEA_POR_CORONA)
 	Juego.migas_colonia = 0.0

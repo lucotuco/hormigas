@@ -33,9 +33,12 @@ const RUTA_CASTAS := "res://datos/castas.csv"
 const RUTA_JALEA := "res://datos/jalea.csv"
 
 # --- Prestigio (ver docs/DISENO_PROGRESION.md) ---
-## Jalea al fundar = JALEA_POR_CORONA × coronas + ⌊∛(migas de la colonia / DIVISOR_JALEA_MIGAS)⌋
+## Jalea al fundar = JALEA_POR_CORONA × coronas + ⌊(migas de la colonia / DIVISOR_JALEA_MIGAS) ^ EXPONENTE_JALEA_MIGAS⌋
 const JALEA_POR_CORONA := 3
 const DIVISOR_JALEA_MIGAS := 100000.0
+## Raíz cuarta: con la cúbica el prestigio se desbocaba (el bonus pasivo da
+## más migas, las migas dan más jalea): la 4.ª fundación daba 5.000 de jalea.
+const EXPONENTE_JALEA_MIGAS := 0.25
 ## Bonus pasivo de daño y migas por cada punto de jalea ganado en la historia.
 const BONUS_LEGADO := 0.03
 ## Niveles extra de tope por cada nivel de "Cámaras más hondas".
@@ -453,7 +456,7 @@ func completar_destino() -> int:
 ## Desglose de lo que daría fundar ahora: coronas, migas y total de jalea.
 func detalle_fundar() -> Dictionary:
 	var por_coronas := coronas * JALEA_POR_CORONA
-	var por_migas := floori(pow(maxf(0.0, migas_colonia) / DIVISOR_JALEA_MIGAS, 1.0 / 3.0) + 0.000001)
+	var por_migas := floori(pow(maxf(0.0, migas_colonia) / DIVISOR_JALEA_MIGAS, EXPONENTE_JALEA_MIGAS) + 0.000001)
 	return {"coronas": por_coronas, "migas": por_migas, "total": por_coronas + por_migas}
 
 

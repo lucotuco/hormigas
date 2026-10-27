@@ -43,7 +43,7 @@ Fundar una colonia reinicia migas, mejoras y castas, y convierte lo logrado en
 **jalea real**:
 
 ```
-jalea al fundar = 3 × coronas de esta colonia + ⌊ ∛(migas juntadas en la colonia / 100.000) ⌋
+jalea al fundar = 3 × coronas de esta colonia + ⌊ (migas juntadas en la colonia / 100.000) ^ ¼ ⌋
 ```
 
 - Las coronas premian conquistar; las migas premian empujar aunque estés

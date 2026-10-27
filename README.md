@@ -185,7 +185,7 @@ y los requisitos de material siguen vigentes.
 
 **Fundar colonia** (pestaña Jalea real, con confirmación) reinicia migas,
 mejoras y castas y los convierte en **jalea real**: 3 por corona de la colonia
-más ∛(migas juntadas en la colonia / 100.000). La jalea se gasta en el
+más la raíz cuarta de (migas juntadas en la colonia / 100.000). La jalea se gasta en el
 **árbol de la reina** (`datos/jalea.csv`), que es permanente: atajos (nacer con
 las dietas aprendidas, conservar migas o castas), poder (daño, migas, obreras,
 tiempo) y reglas nuevas (pisotón automático, más niveles de tope, corona doble).
