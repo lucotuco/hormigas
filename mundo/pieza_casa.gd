@@ -23,6 +23,10 @@ var _impacto := Vector2.ZERO
 var _tesoro_abierto := false
 var _distancia_nido := 0.0
 var _tiempo_caida := 0.0
+## El gran objetivo es un mueble mucho más resistente (ver balance en README).
+const VIDA_META := 1000.0
+const RECOMPENSA_META := 4.0
+const NIVEL_META := 3
 
 func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 	pieza = datos
@@ -35,8 +39,11 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 	mat.recompensa *= float(Mundos.INFO[Juego.lugar_actual].factor)
 	if datos.get("meta", false):
 		mat.nombre = Mundos.INFO[Juego.lugar_actual].meta
-		mat.vida *= 3
-		mat.recompensa *= 4
+		mat.vida *= VIDA_META
+		mat.recompensa *= RECOMPENSA_META
+		# El gran objetivo cierra el destino: pide la dieta completa aunque sea
+		# de madera. Si no, se comía apenas se desbloqueaba la madera.
+		mat.nivel = maxi(int(mat.nivel), NIVEL_META)
 	configurar(mat, 1)
 	rotation = 0
 	nivel_requerido = mat.nivel

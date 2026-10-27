@@ -84,7 +84,7 @@ func probar_hud() -> void:
 	await get_tree().process_frame
 	Juego.runs_jugadas = 4
 	Juego.niveles = {"mandibulas": 4}
-	Juego.migas = 2000
+	Juego.migas = Juego.costo("mordida_madera") + 100
 	Juego._cache_stats.clear()
 	run = crear_run()
 	await get_tree().process_frame
