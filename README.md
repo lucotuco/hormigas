@@ -294,7 +294,19 @@ Las tareas y quién hace qué están en [`TAREAS.md`](TAREAS.md).
 4. Tu compañero: `git clone https://github.com/TU_USUARIO/hormigas.git` y abre el proyecto en Godot.
 5. Opcional: en la pestaña **Projects** creen un tablero y copien las tareas de `TAREAS.md`.
 
-## Prueba de humo
+## Pruebas
+
+Para correr todas las pruebas lógicas de una vez (en Windows, desde Git Bash):
+
+```bash
+GODOT=/ruta/a/godot tests/correr_todas.sh
+```
+
+GitHub Actions corre lo mismo en cada PR y en cada push a `main` (`.github/workflows/pruebas.yml`);
+si el check queda en rojo, no se mergea. Las instrucciones para agentes de IA
+(Claude Code y similares) están en `CLAUDE.md`.
+
+### Prueba de humo
 
 Verifica que el juego arranca, que una run se juega entera sin errores, que las mejoras funcionan y que la tienda se arma. No toca tu partida guardada.
 
