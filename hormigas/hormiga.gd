@@ -40,7 +40,19 @@ var _reloj_pensar := 0.0
 var _reloj_mordida := 0.0
 var _reloj_vagar := 0.0
 var _ruta := PackedVector2Array()
+var _indice_ruta := 0
+var _espera_ruta := 0.0
+var _ruta_fallida := false
+var _esperando_ruta := false
 var _meta_ruta := Vector2.INF
+var _pedido_ruta := Vector2.INF
+var _version_ruta := -1
+var _cuerpo: Sprite2D
+var _carga_sprite: Sprite2D
+var _reloj_visual := 0.0
+var en_pantalla := true
+var _evolucion := 0
+var _material_carga := -1
 var _siguiendo_llamado := false
 var _comidas_sin_ruta: Dictionary = {}
 var _reloj_vida := 0.0
@@ -68,28 +80,40 @@ func iniciar(r: Run, tipo := "obrera") -> void:
 	_dano = stats.dano
 	_intervalo_mordida = stats.intervalo_mordida
 	_capacidad = stats.capacidad
+	_evolucion = Juego.nivel_visual()
+	if casta == "reina" and Juego.hitos.has("primer_monumento"):
+		_evolucion = 2
 	if casta == "voladora":
 		z_index = 2
 	_reloj_pensar = randf() * INTERVALO_PENSAR
 	_fase = randf() * TAU
 	_elegir_destino_al_azar()
+	if Graficos.listo:
+		_crear_sprite()
+	else:
+		Graficos.preparado.connect(_crear_sprite, CONNECT_ONE_SHOT)
 
 
 func detener() -> void:
 	estado = Estado.QUIETA
+	_esperando_ruta = false
 
 
 func _process(delta: float) -> void:
 	if estado == Estado.QUIETA:
 		return
 	_reloj_vida += delta
+	_espera_ruta = maxf(0, _espera_ruta - delta)
 	if casta == "reina" and run.activa:
 		_reloj_reina += delta
 		while _reloj_reina >= INTERVALO_REINA and _minis_creadas < LIMITE_MINIS_REINA:
 			_reloj_reina -= INTERVALO_REINA
 			_minis_creadas += run.colonia.desplegar_minis(global_position, mini(MINIS_POR_TANDA, LIMITE_MINIS_REINA - _minis_creadas))
 	_fase += delta * _velocidad * 0.24
-	queue_redraw()
+	_reloj_visual -= delta
+	if _reloj_visual <= 0 and en_pantalla:
+		_reloj_visual = 1.0 / 12.0
+		_actualizar_sprite()
 	_reloj_pensar -= delta
 	if _reloj_pensar <= 0.0:
 		_reloj_pensar += INTERVALO_PENSAR
@@ -112,9 +136,10 @@ func _process(delta: float) -> void:
 
 
 func _pensar() -> void:
-	for id in _comidas_sin_ruta.keys():
-		if _comidas_sin_ruta[id] <= _reloj_vida:
-			_comidas_sin_ruta.erase(id)
+	if not _comidas_sin_ruta.is_empty():
+		for id in _comidas_sin_ruta.keys():
+			if _comidas_sin_ruta[id] <= _reloj_vida:
+				_comidas_sin_ruta.erase(id)
 	if estado == Estado.VOLVIENDO:
 		return
 	if carga > 0:
@@ -124,8 +149,13 @@ func _pensar() -> void:
 		return
 	if run.feromonas.llama_a(self):
 		_siguiendo_llamado = true
-		var elegida := run.comidas.comida_en(run.feromonas.posicion, run.radio_actual)
-		if _comida_valida(elegida) and global_position.distance_to(elegida.global_position) <= elegida.radio + 3:
+		# Puede haberse liberado desde el último muestreo compartido del cursor.
+		var elegida = run.feromonas.objetivo_comida
+		if not is_instance_valid(elegida):
+			elegida = null
+		if elegida is FragmentoCasa and elegida.peso > RolesHormiga.peso_maximo(casta):
+			elegida = null
+		if _comida_valida(elegida) and elegida.alcanza_desde(global_position):
 			comida = elegida
 			if estado != Estado.MORDIENDO:
 				_reloj_mordida = _intervalo_mordida * 0.4
@@ -133,7 +163,7 @@ func _pensar() -> void:
 			return
 		comida = null
 		estado = Estado.SIGUIENDO
-		objetivo = run.feromonas.posicion
+		objetivo = elegida.punto_mordida(global_position, run.radio_actual, casta == "voladora") if _comida_valida(elegida) else run.feromonas.destino_para(casta == "voladora")
 		return
 	if _siguiendo_llamado:
 		_siguiendo_llamado = false
@@ -147,10 +177,10 @@ func _pensar() -> void:
 		if carga > 0.0:
 			_volver()
 			return
-		comida = run.comidas.buscar_cercana(global_position, _olfato, run.radio_actual, _comidas_sin_ruta)
+		comida = run.comidas.buscar_cercana(global_position, _olfato, run.radio_actual, _comidas_sin_ruta, casta)
 	if comida != null:
 		estado = Estado.YENDO_A_COMIDA
-		objetivo = comida.global_position
+		objetivo = comida.punto_mordida(global_position, run.radio_actual, casta == "voladora")
 		return
 	if estado != Estado.EXPLORANDO:
 		estado = Estado.EXPLORANDO
@@ -165,13 +195,40 @@ func _caminar(delta: float) -> void:
 
 	# El desplazamiento sigue una ruta; la orientación visual gira suavemente.
 	# Así una hormiga rápida no orbita una miga ni sobrepasa el hormiguero.
-	var meta := run.cocina.ajustar_destino(objetivo, run.radio_actual, casta == "voladora")
-	if meta == Vector2.INF:
+	if objetivo == Vector2.INF:
+		_esperando_ruta = false
+		if estado == Estado.SIGUIENDO:
+			return
+		if _comida_valida(comida):
+			_comidas_sin_ruta[comida.get_instance_id()] = _reloj_vida + 3
+		comida = null
+		estado = Estado.EXPLORANDO
+		_elegir_destino_al_azar()
 		return
-	if _meta_ruta == Vector2.INF or _meta_ruta.distance_squared_to(meta) > 16.0:
+	var umbral := 144.0 if estado == Estado.SIGUIENDO else 16.0
+	var necesita_ruta := _meta_ruta == Vector2.INF or _pedido_ruta.distance_squared_to(objetivo) > umbral
+	if not necesita_ruta:
+		_esperando_ruta = false
+	if _ruta_fallida and _version_ruta != run.cocina.version:
+		_espera_ruta = 0
+	if necesita_ruta and _espera_ruta <= 0 and run.cocina.admitir_ruta(self):
+		var meta := run.cocina.ajustar_destino(objetivo, run.radio_actual, casta == "voladora")
+		if meta == Vector2.INF:
+			_espera_ruta = 0.6
+			return
 		_ruta = run.cocina.ruta(global_position, meta, run.radio_actual, casta == "voladora")
+		_indice_ruta = 0
 		_meta_ruta = meta
-	if _ruta.is_empty():
+		_pedido_ruta = objetivo
+		_version_ruta = run.cocina.version
+		_ruta_fallida = _ruta.is_empty()
+		_espera_ruta = randf_range(0.5, 0.8) if _ruta_fallida else (0.18 if estado == Estado.SIGUIENDO else 0.0)
+	# Seguir avanzando por el recorrido seguro anterior mientras espera turno.
+	if _indice_ruta >= _ruta.size():
+		if necesita_ruta and (_espera_ruta > 0 or _meta_ruta == Vector2.INF):
+			return
+		if estado == Estado.SIGUIENDO and global_position.distance_squared_to(_meta_ruta) < 9:
+			return
 		_meta_ruta = Vector2.INF
 		if estado == Estado.SIGUIENDO:
 			return
@@ -182,16 +239,16 @@ func _caminar(delta: float) -> void:
 			estado = Estado.EXPLORANDO
 			_elegir_destino_al_azar()
 		return
-	var presupuesto := _velocidad * delta
-	while presupuesto > 0.0 and not _ruta.is_empty():
-		var destino := _ruta[0]
+	var presupuesto := _velocidad * run.factor_ritmo() * delta
+	while presupuesto > 0.0 and _indice_ruta < _ruta.size():
+		var destino := _ruta[_indice_ruta]
 		var distancia := global_position.distance_to(destino)
 		if distancia > 0.01:
 			rotation = rotate_toward(rotation, (destino - global_position).angle(), VELOCIDAD_GIRO * delta)
 		if distancia <= presupuesto:
 			global_position = destino
 			presupuesto -= distancia
-			_ruta.remove_at(0)
+			_indice_ruta += 1
 		else:
 			global_position = global_position.move_toward(destino, presupuesto)
 			presupuesto = 0.0
@@ -201,7 +258,7 @@ func _caminar(delta: float) -> void:
 				comida = null
 				estado = Estado.EXPLORANDO
 				_elegir_destino_al_azar()
-			elif global_position.distance_to(comida.global_position) <= comida.radio + 3.0:
+			elif comida.alcanza_desde(global_position):
 				estado = Estado.MORDIENDO
 				_reloj_mordida = _intervalo_mordida * randf_range(0.3, 1.0)
 		Estado.VOLVIENDO:
@@ -210,6 +267,7 @@ func _caminar(delta: float) -> void:
 
 
 func _morder(delta: float) -> void:
+	_esperando_ruta = false
 	if not _comida_valida(comida):
 		comida = null
 		if carga > 0.0:
@@ -218,14 +276,29 @@ func _morder(delta: float) -> void:
 			estado = Estado.EXPLORANDO
 			_elegir_destino_al_azar()
 		return
+	if comida is PiezaCasa and not comida.alcanza_desde(global_position):
+		if carga > 0:
+			_volver()
+		else:
+			estado = Estado.YENDO_A_COMIDA
+			objetivo = comida.punto_mordida(global_position, run.radio_actual, casta == "voladora")
+		return
 	var hacia := (comida.global_position - global_position).angle()
 	rotation = rotate_toward(rotation, hacia, VELOCIDAD_GIRO * delta)
-	_reloj_mordida -= delta
+	_reloj_mordida -= delta * run.factor_ritmo()
 	if _reloj_mordida > 0.0:
 		return
 	_reloj_mordida += _intervalo_mordida
 	var actual := comida
-	carga += actual.morder(_dano)
+	if actual is PiezaCasa:
+		carga += actual.morder_en(_dano * RolesHormiga.dano(casta, actual.nivel_requerido), global_position)
+		_material_carga = actual.nivel_requerido
+	elif actual is FragmentoCasa:
+		carga += actual.morder(_dano)
+		_material_carga = actual.material_id
+	else:
+		carga += actual.morder(_dano)
+		_material_carga = -1
 	if casta == "roja" and not actual.muerta:
 		actual.aplicar_veneno(_dano * 0.8, 3.0, run)
 	bocados += 1
@@ -238,23 +311,29 @@ func _morder(delta: float) -> void:
 
 func _volver() -> void:
 	_siguiendo_llamado = false
+	_esperando_ruta = false
 	_recuerdo = comida
 	comida = null
 	estado = Estado.VOLVIENDO
 	objetivo = Vector2.ZERO
+	_meta_ruta = Vector2.INF
+	_ruta = PackedVector2Array()
+	_indice_ruta = 0
+	_espera_ruta = 0
 	queue_redraw()
 
 
 func _descargar() -> void:
 	run.depositar(carga)
 	carga = 0.0
+	_material_carga = -1
 	bocados = 0
 	queue_redraw()
 	# Vuelve a la misma comida si sigue ahí: así se forman las filas de hormigas.
 	if _comida_valida(_recuerdo) and Comidas.en_territorio(_recuerdo, run.radio_actual):
 		comida = _recuerdo
 		estado = Estado.YENDO_A_COMIDA
-		objetivo = comida.global_position
+		objetivo = comida.punto_mordida(global_position, run.radio_actual, casta == "voladora")
 	else:
 		estado = Estado.EXPLORANDO
 		_elegir_destino_al_azar()
@@ -262,6 +341,7 @@ func _descargar() -> void:
 
 
 func _elegir_destino_al_azar() -> void:
+	_esperando_ruta = false
 	for intento in 12:
 		var direccion := Vector2.from_angle(rotation + randf_range(-1.8, 1.8))
 		var candidato := (global_position + direccion * randf_range(40.0, 110.0)).limit_length(run.radio_actual - 10.0)
@@ -269,6 +349,9 @@ func _elegir_destino_al_azar() -> void:
 			objetivo = candidato
 			break
 	_meta_ruta = Vector2.INF
+	_ruta = PackedVector2Array()
+	_indice_ruta = 0
+	_espera_ruta = 0
 	_reloj_vagar = randf_range(0.8, 2.0)
 
 
@@ -279,4 +362,35 @@ func _comida_valida(c) -> bool:
 
 
 func _draw() -> void:
-	AspectoHormiga.dibujar(self, casta, _color, _fase, carga > 0.0, _color_carga)
+	if not is_instance_valid(_cuerpo):
+		AspectoHormiga.dibujar(self, casta, _color, _fase, carga > 0.0, _color_carga)
+
+func _crear_sprite() -> void:
+	_cuerpo = Sprite2D.new()
+	_cuerpo.texture = Graficos.textura
+	_cuerpo.region_enabled = true
+	_cuerpo.region_filter_clip_enabled = true
+	_cuerpo.scale = Vector2.ONE / 3.0
+	add_child(_cuerpo)
+	_carga_sprite = Sprite2D.new()
+	_carga_sprite.texture = Graficos.textura
+	_carga_sprite.region_enabled = true
+	_carga_sprite.region_filter_clip_enabled = true
+	_carga_sprite.region_rect = Graficos.regiones.carga
+	_carga_sprite.position = Vector2(5, 0)
+	_carga_sprite.scale = Vector2.ONE * 0.16
+	add_child(_carga_sprite)
+	_actualizar_sprite()
+	queue_redraw()
+
+func _actualizar_sprite() -> void:
+	if not is_instance_valid(_cuerpo):
+		if DisplayServer.get_name() != "headless":
+			queue_redraw()
+		return
+	var cuadro := floori(fposmod(_fase, TAU) / TAU * Graficos.CUADROS)
+	_cuerpo.region_rect = Graficos.regiones["hormiga:%s:%d:%d" % [casta, _evolucion, cuadro]]
+	_carga_sprite.visible = carga > 0
+	_carga_sprite.region_rect = Graficos.regiones["resto:%d" % _material_carga] if _material_carga >= 0 else Graficos.regiones.carga
+	_carga_sprite.scale = Vector2.ONE * (0.12 if _material_carga >= 0 else 0.16)
+	_carga_sprite.modulate = Color.WHITE if _material_carga >= 0 else _color_carga

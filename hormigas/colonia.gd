@@ -18,6 +18,7 @@ var _intervalo_cria := 0.0
 var _escala := 1.0
 var _cola_castas: Array[String] = []
 var minis_nacidas := 0
+var _reloj_visibilidad := 0.0
 const LIMITE_MINIS := 120
 
 
@@ -54,7 +55,10 @@ func cantidad() -> int:
 
 
 func _process(delta: float) -> void:
-	_actualizar_escala()
+	_reloj_visibilidad -= delta
+	if _reloj_visibilidad <= 0:
+		_reloj_visibilidad = 0.15
+		_actualizar_escala()
 	if not _activa:
 		return
 	if _por_salir > 0:
@@ -113,8 +117,12 @@ func conteo_castas() -> Dictionary:
 func _actualizar_escala() -> void:
 	var zoom := maxf(get_viewport().get_canvas_transform().get_scale().x, 0.01)
 	var nueva := clampf(0.9 / zoom, 1.0, 5.0)
-	if absf(nueva - _escala) < 0.03:
-		return
+	var cambiar := absf(nueva - _escala) >= 0.03
 	_escala = nueva
+	var inversa := get_viewport().get_canvas_transform().affine_inverse()
+	var vista := Rect2(inversa * Vector2.ZERO, get_viewport_rect().size / zoom).grow(90)
 	for h in hormigas:
-		h.scale = Vector2.ONE * _escala * h.escala_casta
+		if cambiar:
+			h.scale = Vector2.ONE * _escala * h.escala_casta
+		h.en_pantalla = vista.has_point(h.position)
+		h.visible = h.en_pantalla

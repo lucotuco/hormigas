@@ -3,6 +3,7 @@ extends RefCounted
 ## Plano único para dibujo, suelos, comida, límites y navegación.
 const LIMITES := Rect2(-950, -1000, 7900, 5600)
 const BANQUETE := Vector2(3900, 1040)
+const VENTANAS := [Rect2(-650, -1010, 840, 65), Rect2(5000, -1010, 1060, 65), Rect2(-400, 4530, 960, 65), Rect2(5700, 4530, 780, 65)]
 const AMBIENTES := [
 	{"id": "cocina", "nombre": "COCINA", "rect": Rect2(-900, -950, 2600, 2300), "color": Color("e1d9c3"), "patron": 0},
 	{"id": "comedor", "nombre": "COMEDOR", "rect": Rect2(1700, -950, 2600, 2300), "color": Color("c49d72"), "patron": 1},
@@ -62,13 +63,26 @@ const MUEBLES := [
 ]
 
 static func ambiente_en(pos: Vector2) -> String:
-	for a in AMBIENTES:
+	for a in ambientes():
 		if a.rect.has_point(pos):
 			return a.id
 	return ""
 
 static func rect_ambiente(id: String) -> Rect2:
-	for a in AMBIENTES:
+	for a in ambientes():
 		if a.id == id:
 			return a.rect
 	return Rect2()
+
+static func ambientes() -> Array:
+	return Mundos.plano(Juego.lugar_actual).ambientes
+static func muebles() -> Array:
+	return Mundos.plano(Juego.lugar_actual).muebles
+static func paredes() -> Array:
+	return Mundos.plano(Juego.lugar_actual).paredes
+static func ventanas() -> Array:
+	return Mundos.plano(Juego.lugar_actual).ventanas
+static func limites() -> Rect2:
+	return Mundos.plano(Juego.lugar_actual).limites
+static func banquete() -> Vector2:
+	return Mundos.plano(Juego.lugar_actual).banquete

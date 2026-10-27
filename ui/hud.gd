@@ -25,6 +25,17 @@ var _lbl_fin_record: Label
 var _boton_tienda: Button
 var _reloj_descubrimiento := 0.0
 var _lbl_composicion: Label
+var _lbl_etapa: Label
+var _lbl_objetivo: Label
+var _tiempo_inspeccion := 0.0
+var _lbl_lugar: Label
+var _lbl_meta: Label
+var _lbl_frenesi: Label
+var _barra_frenesi: ProgressBar
+var _prioridades: Dictionary = {}
+var _hitos_vistos := 0
+var _tween_aviso: Tween
+var _tween_combo: Tween
 
 var _migas_mostradas := 0.0
 var _volando := 0
@@ -51,6 +62,10 @@ func _ready() -> void:
 	_crear_hormigas(raiz)
 	_crear_avisos(raiz)
 	_crear_panel_fin(raiz)
+	_crear_progresion(raiz)
+	_crear_prioridades(raiz)
+	_hitos_vistos = Juego.hitos.size()
+	Juego.progreso_cambio.connect(_notificar_hito)
 
 
 func _process(delta: float) -> void:
@@ -70,8 +85,19 @@ func _process(delta: float) -> void:
 		_relleno_tiempo.bg_color = Estilo.ROJO.lerp(Color.WHITE, parpadeo * 0.3)
 		_lbl_tiempo.label_settings.font_color = Estilo.ROJO.lerp(Estilo.TEXTO, parpadeo * 0.5)
 	else:
-		_relleno_tiempo.bg_color = Estilo.VERDE
-		_lbl_tiempo.label_settings.font_color = Estilo.TEXTO
+		if _relleno_tiempo.bg_color != Estilo.VERDE:
+			_relleno_tiempo.bg_color = Estilo.VERDE
+			_lbl_tiempo.label_settings.font_color = Estilo.TEXTO
+	_tiempo_inspeccion -= delta
+	if _tiempo_inspeccion <= 0:
+		_tiempo_inspeccion = 0.12
+		_lbl_etapa.text = "DIETA %d/4 · %s" % [int(Juego.stat("materiales")) + 1, MaterialesCasa.NIVELES[clampi(int(Juego.stat("materiales")), 0, 3)]]
+		_lbl_lugar.text = Mundos.INFO[Juego.lugar_actual].nombre + " · %.1f%% consumido" % minf(100, run.resistencia_extraida / run.resistencia_total * 100)
+		_lbl_meta.text = ("✓ Gran objetivo completado" if run.objetivo_completado else "Gran objetivo: " + Mundos.INFO[Juego.lugar_actual].meta) + "  [G]"
+		_lbl_frenesi.text = "¡FRENESÍ! %.1f s" % run.frenesi_restante if run.frenesi_restante > 0 else "Frenesí · depósitos consecutivos"
+		_barra_frenesi.value = run.frenesi_restante / 6.0 * 100 if run.frenesi_restante > 0 else run.frenesi
+		var c := run.comidas.comida_en(run.get_global_mouse_position(), run.radio_actual, true)
+		mostrar_inspeccion(c)
 
 	_lbl_hormigas.text = "Hormigas: %d" % run.colonia.cantidad()
 	_reloj_descubrimiento -= delta
@@ -80,7 +106,7 @@ func _process(delta: float) -> void:
 		var conteo := run.colonia.conteo_castas()
 		var lineas := PackedStringArray()
 		var grupo := PackedStringArray()
-		var nombres := {"obrera": "Obreras", "reina": "Reinas", "roja": "Rojas", "voladora": "Voladoras", "veloz": "Veloces", "cargadora": "Cargadoras", "mini": "Minis"}
+		var nombres := {"obrera": "Obreras", "reina": "Reinas", "roja": "Rojas", "voladora": "Voladoras", "veloz": "Veloces", "cargadora": "Cargadoras", "mini": "Minis", "carpintera": "Carpinteras", "demoledora": "Demoledoras"}
 		for tipo in nombres:
 			if conteo.has(tipo):
 				grupo.append("%s %d" % [nombres[tipo], conteo[tipo]])
@@ -137,16 +163,22 @@ func mostrar_combo(combo: int) -> void:
 	_lbl_combo.pivot_offset = Vector2(0.0, _lbl_combo.size.y / 2.0)
 	_lbl_combo.scale = Vector2.ONE * (1.0 + minf(combo, 50) * 0.008 + 0.25)
 	var tween := _lbl_combo.create_tween()
+	if _tween_combo and _tween_combo.is_running():
+		_tween_combo.kill()
+	_tween_combo = tween
 	tween.tween_property(_lbl_combo, "scale", Vector2.ONE * (1.0 + minf(combo, 50) * 0.008), 0.15)
 
 
 func mostrar_aviso(texto: String) -> void:
+	if _tween_aviso and _tween_aviso.is_running():
+		_tween_aviso.kill()
 	_lbl_aviso.text = texto
 	_lbl_aviso.visible = true
 	_lbl_aviso.modulate.a = 0.0
 	_lbl_aviso.pivot_offset = _lbl_aviso.size / 2.0
 	_lbl_aviso.scale = Vector2.ONE * 0.7
 	var tween := _lbl_aviso.create_tween().set_parallel(true)
+	_tween_aviso = tween
 	tween.tween_property(_lbl_aviso, "modulate:a", 1.0, 0.25)
 	tween.tween_property(_lbl_aviso, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.chain().tween_interval(1.4)
@@ -155,8 +187,8 @@ func mostrar_aviso(texto: String) -> void:
 
 func mostrar_fin() -> void:
 	_lbl_fin_migas.text = "+%s migas" % Juego.formatear(Juego.migas_run)
-	_lbl_fin_detalle.text = "Comidas destruidas: %d\nMejor combo: x%d\nTotal en el hormiguero: %s" % [
-		Juego.comidas_destruidas_run, Juego.mejor_combo_run, Juego.formatear(Juego.migas)]
+	_lbl_fin_detalle.text = "Comidas: %d · Partes de la casa: %d\nMejor combo: x%d\nTotal en el hormiguero: %s" % [
+		Juego.comidas_destruidas_run, Juego.partes_destruidas_run, Juego.mejor_combo_run, Juego.formatear(Juego.migas)]
 	_lbl_fin_record.visible = Juego.ultima_run_fue_record
 	_lbl_ayuda.visible = false
 	_panel_fin.visible = true
@@ -257,7 +289,7 @@ func _crear_avisos(raiz: Control) -> void:
 	_lbl_ayuda.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_lbl_ayuda.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_lbl_ayuda.custom_minimum_size = Vector2(1100, 0)
-	_lbl_ayuda.position = Vector2(-550, -52)
+	_lbl_ayuda.position = Vector2(-550, -106)
 	_lbl_ayuda.visible = Juego.runs_jugadas < RUNS_CON_AYUDA
 	raiz.add_child(_lbl_ayuda)
 	if _lbl_ayuda.visible:
@@ -297,6 +329,91 @@ func _crear_panel_fin(raiz: Control) -> void:
 	_boton_tienda = Estilo.boton("Mejorar el hormiguero  ▸", 22, Color(0.45, 0.3, 0.12), Estilo.ACENTO)
 	_boton_tienda.pressed.connect(run.ir_a_tienda)
 	columna.add_child(_boton_tienda)
+
+func _crear_progresion(raiz: Control) -> void:
+	_lbl_etapa = Estilo.etiqueta("", 13, Color("d4ccaa"), 3)
+	_lbl_etapa.position = Vector2(20, 174)
+	_lbl_etapa.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	raiz.add_child(_lbl_etapa)
+	_lbl_objetivo = Estilo.etiqueta("", 13, Estilo.TEXTO, 3)
+	_lbl_objetivo.position = Vector2(20, 250)
+	_lbl_objetivo.size.x = 430
+	_lbl_objetivo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lbl_objetivo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	raiz.add_child(_lbl_objetivo)
+	_lbl_lugar = Estilo.etiqueta("", 14, Estilo.TEXTO, 3)
+	_lbl_lugar.position = Vector2(20, 150)
+	raiz.add_child(_lbl_lugar)
+	_lbl_meta = Estilo.etiqueta("", 12, Color("c4cfa0"), 3)
+	_lbl_meta.position = Vector2(20, 199)
+	_lbl_meta.size.x = 400
+	_lbl_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	raiz.add_child(_lbl_meta)
+
+func _crear_prioridades(raiz: Control) -> void:
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	panel.offset_left = 16
+	panel.offset_right = -16
+	panel.offset_top = -64
+	panel.offset_bottom = -12
+	panel.add_theme_stylebox_override("panel", Estilo.caja(Color("1f2921"), 12, Color("58664b"), 1, 9))
+	raiz.add_child(panel)
+	var fila := HBoxContainer.new()
+	fila.add_theme_constant_override("separation", 8)
+	panel.add_child(fila)
+	fila.add_child(Estilo.etiqueta("PRIORIDAD", 11, Estilo.TEXTO_SUAVE))
+	for id in ["automatico", "alimentos", "muebles", "estructuras"]:
+		var nombres := {"automatico": "Auto", "alimentos": "Alimentos", "muebles": "Muebles", "estructuras": "Estructuras"}
+		var boton := Estilo.boton(nombres[id], 13, Color("303d2b"), Color("78936a"))
+		boton.toggle_mode = true
+		boton.button_pressed = Juego.prioridad == id
+		boton.tooltip_text = "Prioridad de búsqueda. El llamado manual siempre manda."
+		boton.pressed.connect(_cambiar_prioridad.bind(id))
+		fila.add_child(boton)
+		_prioridades[id] = boton
+	var espacio := Control.new()
+	espacio.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fila.add_child(espacio)
+	var objetivo := Estilo.boton("Gran objetivo [G]", 13, Color("303d2b"), Color("78936a"))
+	objetivo.pressed.connect(func() -> void: run.camara.ver_objetivo())
+	fila.add_child(objetivo)
+	var columna := VBoxContainer.new()
+	columna.custom_minimum_size.x = 210
+	fila.add_child(columna)
+	_lbl_frenesi = Estilo.etiqueta("", 11, Estilo.TEXTO)
+	columna.add_child(_lbl_frenesi)
+	_barra_frenesi = ProgressBar.new()
+	_barra_frenesi.show_percentage = false
+	_barra_frenesi.custom_minimum_size.y = 8
+	_barra_frenesi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_barra_frenesi.add_theme_stylebox_override("fill", Estilo.caja(Color("d9bd72"), 4))
+	_barra_frenesi.add_theme_stylebox_override("background", Estilo.caja(Color("111c15"), 4))
+	columna.add_child(_barra_frenesi)
+
+func _cambiar_prioridad(id: String) -> void:
+	Juego.prioridad = id
+	for clave in _prioridades:
+		_prioridades[clave].set_pressed_no_signal(clave == id)
+	for h in run.colonia.hormigas:
+		if h.carga == 0 and h.estado != Hormiga.Estado.VOLVIENDO:
+			h.comida = null
+			h.estado = Hormiga.Estado.EXPLORANDO
+			# Repartir la búsqueda entre cuadros, incluso al cambiar toda la colonia.
+			h._reloj_pensar = randf() * Hormiga.INTERVALO_PENSAR
+
+func _notificar_hito() -> void:
+	if Juego.hitos.size() > _hitos_vistos:
+		_hitos_vistos = Juego.hitos.size()
+		var id: String = Juego.hitos.keys().back()
+		mostrar_aviso("¡Hito! " + Juego.HITOS[id].nombre)
+
+func mostrar_inspeccion(c: Comida) -> void:
+	_lbl_objetivo.text = ""
+	if c is PiezaCasa:
+		_lbl_objetivo.text = "%s · %s / %s de resistencia\n%s" % [c.nombre, Juego.formatear(c.vida), Juego.formatear(c.vida_max), "Mantené clic para llamar hormigas · recompensa %s" % Juego.formatear(c.recompensa) if c.disponible() else "Requiere: " + MaterialesCasa.NIVELES[c.nivel_requerido]]
+	elif c is FragmentoCasa:
+		_lbl_objetivo.text = "%s · %s migas\nPeso %d · las cargadoras priorizan estos restos" % [c.nombre, Juego.formatear(c.recompensa), c.peso]
 
 
 func _miga_llego(miga: Control) -> void:

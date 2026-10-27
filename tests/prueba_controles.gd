@@ -11,6 +11,7 @@ func _ready() -> void:
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
+	run.cocina.limite_rutas_por_cuadro = 0
 	for c in run.comidas.lista:
 		c.queue_free()
 	run.comidas.lista.clear()

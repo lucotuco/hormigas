@@ -13,10 +13,13 @@ func _ready() -> void:
 	for c in Juego.castas:
 		if c.comprable:
 			comprables += 1
-	verificar(comprables == 5, "hay cinco castas reclutables y dos castas de apoyo")
+	verificar(comprables == 7, "hay siete castas reclutables y dos castas de apoyo")
 	verificar(not Juego.comprar_casta("reina") and Juego.total_especialistas() == 0, "no se compra sin migas")
 	verificar(not Juego.comprar_casta("mini") and not Juego.comprar_casta("inexistente"), "no se compran miniobreras ni IDs inválidos")
 	Juego.migas = 10000
+	verificar(not Juego.comprar_casta("carpintera") and not Juego.comprar_casta("demoledora"), "las especializaciones requieren su material")
+	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
+	Juego._cache_stats.clear()
 	for c in Juego.castas:
 		if not c.comprable:
 			continue
@@ -30,7 +33,7 @@ func _ready() -> void:
 	verificar(not Juego.comprar_casta("reina") and Juego.migas == saldo, "el límite de reinas no consume migas")
 	Juego.reiniciar_estado()
 	Juego.restaurar_partida(guardado)
-	verificar(Juego.total_especialistas() == 5 and Juego.cantidad_casta("reina") == 1, "las unidades sobreviven al roundtrip del guardado JSON")
+	verificar(Juego.total_especialistas() == 7 and Juego.cantidad_casta("reina") == 1, "las unidades sobreviven al roundtrip del guardado JSON")
 	Juego.restaurar_partida({"version": 1, "migas": 123, "niveles": {"mas_obreras": 2}})
 	verificar(Juego.migas == 123 and Juego.nivel_de("mas_obreras") == 2 and Juego.total_especialistas() == 0, "una partida antigua conserva progreso y no inventa castas")
 	Juego.restaurar_partida({"reclutadas": {"reina": 99, "roja": -2, "mini": 80, "inexistente": 5}})
@@ -41,7 +44,7 @@ func _ready() -> void:
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.colonia._process(3.0)
 	var conteo := run.colonia.conteo_castas()
-	verificar(run.colonia.cantidad() == 10 and conteo.get("reina", 0) == 1 and conteo.get("voladora", 0) == 1, "la expedición despliega obreras y todas las unidades compradas")
+	verificar(run.colonia.cantidad() == 12 and conteo.get("reina", 0) == 1 and conteo.get("voladora", 0) == 1, "la expedición despliega obreras y todas las unidades compradas")
 	var reina: Hormiga
 	var roja: Hormiga
 	var voladora: Hormiga
@@ -109,7 +112,7 @@ func _ready() -> void:
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.colonia._process(3)
-	verificar(run.colonia.cantidad() == 10 and run.colonia.minis_nacidas == 0, "las especialistas vuelven en otra expedición y las minis no se guardan")
+	verificar(run.colonia.cantidad() == 12 and run.colonia.minis_nacidas == 0, "las especialistas vuelven en otra expedición y las minis no se guardan")
 	run.queue_free()
 	await get_tree().process_frame
 	var tienda := preload("res://ui/tienda.tscn").instantiate()
@@ -117,7 +120,7 @@ func _ready() -> void:
 	tienda._cambiar_pestana("castas")
 	await get_tree().process_frame
 	var panel: PanelCastas = tienda._panel_castas
-	verificar(panel.visible and panel._filas.size() == 5, "la tienda permite abrir el catálogo de las cinco castas")
+	verificar(panel.visible and panel._filas.size() == 7, "la tienda permite abrir el catálogo de las siete castas")
 	for id in panel._filas:
 		panel._seleccionar(id)
 		verificar(panel._nombre.text == Juego.castas_por_id[id].nombre and not panel._habilidad.text.is_empty(), "la ficha de %s tiene información real" % id)

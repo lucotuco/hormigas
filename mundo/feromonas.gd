@@ -2,15 +2,28 @@ class_name Feromonas
 extends Node2D
 ## Las unidades más cercanas al cursor responden mientras se mantiene el clic.
 const MAX_ATRAIDAS := 24
+const INTERVALO_SELECCION := 0.2
+const INTERVALO_VISUAL := 1.0 / 30.0
 var activa := false
 var posicion := Vector2.ZERO
 var seleccionadas: Dictionary = {}
+var objetivo_comida: Comida
 var _reloj := 0.0
 var _espera := 0.0
 var _desvanecer := 0.0
 var _desde_mouse := false
 var _pantalla := Vector2.ZERO
+var _reloj_visual := 0.0
+var _candidatas: Array[Hormiga] = []
+var _distancias := PackedFloat64Array()
+var _destinos: Dictionary = {}
+var _pos_destinos := Vector2.INF
+var _version_destinos := -1
+var _radio_destinos := -1.0
 @onready var run: Run = get_parent()
+
+func _ready() -> void:
+	set_process(false)
 
 
 func radio_visual() -> float:
@@ -27,40 +40,97 @@ func mantener_en(pos: Vector2, desde_mouse := false) -> void:
 	posicion = pos
 	_desde_mouse = desde_mouse
 	_desvanecer = 1
+	set_process(true)
 	if not era_activa:
+		_espera = INTERVALO_SELECCION
 		_actualizar_cercanas()
-	queue_redraw()
+		queue_redraw()
 
 
 func soltar() -> void:
+	if not activa:
+		return
 	activa = false
 	_desde_mouse = false
 	seleccionadas.clear()
+	objetivo_comida = null
+	_destinos.clear()
+	_pos_destinos = Vector2.INF
 	queue_redraw()
 
 
 func limpiar() -> void:
 	soltar()
 	_desvanecer = 0
+	set_process(false)
+	queue_redraw()
 
 
 func llama_a(hormiga: Hormiga) -> bool:
-	return activa and seleccionadas.has(hormiga.get_instance_id())
+	return activa and posicion.length_squared() <= run.radio_actual * run.radio_actual and seleccionadas.has(hormiga.get_instance_id())
 
 
 func _actualizar_cercanas() -> void:
 	seleccionadas.clear()
+	objetivo_comida = null
 	if not activa or not run.activa or posicion.length() > run.radio_actual:
 		return
-	var candidatas: Array[Dictionary] = []
+	objetivo_comida = run.comidas.comida_en(posicion, run.radio_actual)
+	# Heap máximo de K elementos: no crear un Dictionary por hormiga ni ordenar
+	# toda la colonia diez veces por segundo. Memoria acotada a las elegidas.
+	_candidatas.clear()
+	_distancias.clear()
+	var limite := cantidad_atraidas()
 	for h in run.colonia.hormigas:
 		if h.estado == Hormiga.Estado.QUIETA or h.estado == Hormiga.Estado.VOLVIENDO or h.carga > 0:
 			continue
 		var d := h.global_position.distance_squared_to(posicion)
-		candidatas.append({"id": h.get_instance_id(), "distancia": d})
-	candidatas.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.distancia < b.distancia)
-	for i in mini(cantidad_atraidas(), candidatas.size()):
-		seleccionadas[candidatas[i].id] = true
+		if _candidatas.size() < limite:
+			_candidatas.append(h)
+			_distancias.append(d)
+			var i := _candidatas.size() - 1
+			while i > 0:
+				var padre := (i - 1) / 2 as int
+				if _distancias[padre] >= _distancias[i]:
+					break
+				_intercambiar(i, padre)
+				i = padre
+		elif d < _distancias[0]:
+			_candidatas[0] = h
+			_distancias[0] = d
+			var i := 0
+			while i * 2 + 1 < limite:
+				var hijo := i * 2 + 1
+				if hijo + 1 < limite and _distancias[hijo + 1] > _distancias[hijo]:
+					hijo += 1
+				if _distancias[i] >= _distancias[hijo]:
+					break
+				_intercambiar(i, hijo)
+				i = hijo
+	for h in _candidatas:
+		seleccionadas[h.get_instance_id()] = h
+
+
+func _intercambiar(a: int, b: int) -> void:
+	var hormiga := _candidatas[a]
+	var distancia := _distancias[a]
+	_candidatas[a] = _candidatas[b]
+	_distancias[a] = _distancias[b]
+	_candidatas[b] = hormiga
+	_distancias[b] = distancia
+
+
+func destino_para(volando: bool) -> Vector2:
+	# El cursor sobre un mueble puede requerir cientos de pruebas geométricas.
+	# Resolver una vez por tipo de movimiento, no una vez por hormiga y cuadro.
+	if _version_destinos != run.cocina.version or _pos_destinos.distance_squared_to(posicion) > 144 or absf(_radio_destinos - run.radio_actual) > 6:
+		_destinos.clear()
+		_pos_destinos = posicion
+		_version_destinos = run.cocina.version
+		_radio_destinos = run.radio_actual
+	if not _destinos.has(volando):
+		_destinos[volando] = run.cocina.ajustar_destino(posicion, run.radio_actual, volando)
+	return _destinos[volando]
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -92,11 +162,17 @@ func _process(delta: float) -> void:
 				posicion = get_canvas_transform().affine_inverse() * _pantalla
 			_espera -= delta
 			if _espera <= 0:
-				_espera = 0.1
+				_espera = INTERVALO_SELECCION
 				_actualizar_cercanas()
 	else:
 		_desvanecer = move_toward(_desvanecer, 0, delta * 6)
-	queue_redraw()
+		if _desvanecer <= 0:
+			set_process(false)
+			queue_redraw() # Borrar el último cuadro aunque no toque el tick visual.
+	_reloj_visual -= delta
+	if _reloj_visual <= 0:
+		_reloj_visual = INTERVALO_VISUAL
+		queue_redraw()
 
 
 func _draw() -> void:
@@ -105,17 +181,15 @@ func _draw() -> void:
 	var zoom := maxf(get_canvas_transform().get_scale().x, 0.01)
 	var color := Color("72c4b0") if posicion.length() <= run.radio_actual else Color("bb8c72")
 	var radio := radio_visual()
-	for i in range(8, 0, -1):
-		draw_circle(posicion, radio * i / 8.0, Color(color, 0.012 * _desvanecer))
-	for i in 40:
-		var angulo := TAU * i / 40
-		draw_arc(posicion, radio, angulo, angulo + 0.075, 3, Color(color, 0.35 * _desvanecer), 1 / zoom, true)
+	for i in range(3, 0, -1):
+		draw_circle(posicion, radio * i / 3.0, Color(color, 0.025 * _desvanecer))
+	draw_arc(posicion, radio, 0, TAU, 48, Color(color, 0.35 * _desvanecer), 1 / zoom, true)
 	for i in 3:
 		var t := fposmod(_reloj * 0.55 + i / 3.0, 1.0)
 		draw_arc(posicion, (12 + t * 38) / zoom, 0, TAU, 40, Color(color, (1 - t) * 0.55 * _desvanecer), 1.5 / zoom, true)
 	draw_circle(posicion, 4 / zoom, Color(color, _desvanecer))
 	# Guías tenues hacia las elegidas; nunca queda un camino al soltar.
 	if activa:
-		for h in run.colonia.hormigas:
-			if seleccionadas.has(h.get_instance_id()):
+		for h in seleccionadas.values():
+			if is_instance_valid(h) and h.en_pantalla and h.carga <= 0 and h.estado != Hormiga.Estado.VOLVIENDO:
 				draw_line(h.global_position, posicion, Color(color, 0.12), 1 / zoom, true)

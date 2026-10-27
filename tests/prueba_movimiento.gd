@@ -11,6 +11,7 @@ func _ready() -> void:
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
+	run.cocina.limite_rutas_por_cuadro = 0
 	# La línea recta atraviesa la primera pata de silla.
 	var inicio := Vector2(460, 0)
 	var puntos := run.cocina.ruta(inicio, Vector2.ZERO, run.radio_actual)

@@ -13,10 +13,19 @@ signal mejora_comprada(id: String, nivel: int)
 signal partida_borrada
 signal casta_comprada(id: String, cantidad: int)
 signal modo_compra_cambio
+signal progreso_cambio
+const HITOS := {
+	"primera_silla": {"nombre": "La primera silla", "detalle": "Devorá una silla", "premio": "Carpinteras: daño +20%"},
+	"primer_derrumbe": {"nombre": "Efecto dominó", "detalle": "Provocá un derrumbe al quitar soportes", "premio": "Demoledoras: daño +20%"},
+	"cuatro_sillas": {"nombre": "Sin dónde sentarse", "detalle": "Devorá 4 sillas en una expedición", "premio": "Cargadoras: +2 bocados"},
+	"primer_tesoro": {"nombre": "¿Qué había adentro?", "detalle": "Abrí un mueble con comida escondida", "premio": "Toda la colonia: olfato +10"},
+	"cocina_vacia": {"nombre": "Cocina desmantelada", "detalle": "Devorá los muebles de la cocina en una expedición", "premio": "Migas +10% permanentes"},
+	"primer_monumento": {"nombre": "Una colonia monumental", "detalle": "Devorá tu primer monumento", "premio": "Migas +15% y corona evolucionada"},
+}
 var cantidad_compra := 1 # 0 = máximo que alcanza
 
 const RUTA_PARTIDA := "user://partida.json"
-const VERSION_PARTIDA := 2
+const VERSION_PARTIDA := 3
 const RUTA_STATS := "res://datos/stats_base.csv"
 const RUTA_MEJORAS := "res://datos/mejoras.csv"
 const RUTA_COMIDAS := "res://datos/comidas.csv"
@@ -40,10 +49,18 @@ var reclutadas: Dictionary = {}          # casta -> unidades permanentes por exp
 var runs_jugadas: int = 0
 var mejor_run: float = 0.0
 var radio_visto: float = 0.0             # último radio de territorio que vio el jugador
+var lugar_actual := "casa"
+var lugares_completados: Dictionary = {}
+var hitos: Dictionary = {}
+var legado := 0
+var coronas := 0
+var fundaciones := 0
+var prioridad := "automatico"
 
 # --- Run en curso ---
 var migas_run: float = 0.0
 var comidas_destruidas_run: int = 0
+var partes_destruidas_run: int = 0
 var mejor_combo_run: int = 0
 var ultima_run_fue_record := false
 
@@ -54,6 +71,7 @@ var _cache_stats: Dictionary = {}
 
 
 func _ready() -> void:
+	Engine.max_fps = 60
 	_cargar_datos()
 	cargar()
 
@@ -101,8 +119,17 @@ func stat(nombre: String) -> float:
 			valor += m.valor * nivel
 		else:
 			multiplicador *= pow(m.valor, nivel)
-	var resultado := valor * multiplicador
+	var resultado := _aplicar_legado(nombre, valor * multiplicador)
 	_cache_stats[nombre] = resultado
+	return resultado
+
+func _aplicar_legado(nombre: String, resultado: float) -> float:
+	if nombre in ["dano", "multiplicador_migas"]:
+		resultado *= 1.0 + legado * 0.1
+	if nombre == "olfato" and hitos.has("primer_tesoro"):
+		resultado += 10
+	if nombre == "multiplicador_migas":
+		resultado *= (1.1 if hitos.has("cocina_vacia") else 1.0) * (1.15 if hitos.has("primer_monumento") else 1.0)
 	return resultado
 
 
@@ -123,7 +150,7 @@ func stat_tras_comprar(id: String, cantidad := 1) -> float:
 			valor += m.valor * nivel
 		else:
 			multiplicador *= pow(m.valor, nivel)
-	return valor * multiplicador
+	return _aplicar_legado(nombre, valor * multiplicador)
 
 
 func costo(id: String) -> float:
@@ -207,7 +234,10 @@ func puede_comprar_casta(id: String) -> bool:
 	if not castas_por_id.has(id):
 		return false
 	var c: Dictionary = castas_por_id[id]
-	return c.comprable and cantidad_casta(id) < c.maximo and migas >= costo_casta(id)
+	return c.comprable and casta_desbloqueada(id) and cantidad_casta(id) < c.maximo and migas >= costo_casta(id)
+
+func casta_desbloqueada(id: String) -> bool:
+	return (id != "carpintera" or stat("materiales") >= 1) and (id != "demoledora" or stat("materiales") >= 3)
 
 
 func comprar_casta(id: String) -> bool:
@@ -218,7 +248,7 @@ func cotizar_casta(id: String, cantidad := 1) -> Dictionary:
 	if not castas_por_id.has(id):
 		return {"cantidad": 0, "costo": 0.0, "puede": false}
 	var c: Dictionary = castas_por_id[id]
-	return _cotizar(c.costo_base, c.crecimiento, cantidad_casta(id), c.maximo, cantidad, c.comprable)
+	return _cotizar(c.costo_base, c.crecimiento, cantidad_casta(id), c.maximo, cantidad, c.comprable and casta_desbloqueada(id))
 
 
 func comprar_castas_lote(id: String, cantidad := 1) -> int:
@@ -246,10 +276,56 @@ func stats_casta(id: String) -> Dictionary:
 	return {
 		"velocidad": stat("velocidad") * c.velocidad,
 		"dano": stat("dano") * c.dano,
-		"capacidad": maxi(1, int(stat("capacidad") * c.capacidad)),
+		"capacidad": maxi(1, int(stat("capacidad") * c.capacidad)) + (2 if id == "cargadora" and hitos.has("cuatro_sillas") else 0),
 		"olfato": stat("olfato") * c.olfato,
 		"intervalo_mordida": maxf(0.05, stat("intervalo_mordida")),
 	}
+
+func nivel_visual() -> int:
+	return mini(2, int(nivel_de("mandibulas") >= 4) + int(nivel_de("buche") >= 3 or legado > 0))
+
+func obtener_hito(id: String) -> bool:
+	if hitos.has(id) or not HITOS.has(id):
+		return false
+	hitos[id] = true
+	_cache_stats.clear()
+	guardar()
+	progreso_cambio.emit()
+	return true
+
+func destino_desbloqueado(id: String) -> bool:
+	var indice := Mundos.ORDEN.find(id)
+	return indice == 0 or (indice > 0 and lugares_completados.has(Mundos.ORDEN[indice - 1]))
+
+func elegir_destino(id: String) -> bool:
+	if not destino_desbloqueado(id):
+		return false
+	lugar_actual = id
+	guardar()
+	progreso_cambio.emit()
+	return true
+
+func completar_destino() -> void:
+	lugares_completados[lugar_actual] = true
+	coronas += int(Mundos.INFO[lugar_actual].coronas)
+	guardar()
+	progreso_cambio.emit()
+
+func fundar_colonia() -> bool:
+	if coronas <= 0:
+		return false
+	legado += coronas
+	coronas = 0
+	fundaciones += 1
+	migas = 0
+	niveles.clear()
+	reclutadas.clear()
+	radio_visto = 0
+	_cache_stats.clear()
+	guardar()
+	migas_cambiaron.emit(migas)
+	progreso_cambio.emit()
+	return true
 
 
 # =====================================================================
@@ -259,6 +335,7 @@ func stats_casta(id: String) -> Dictionary:
 func iniciar_run() -> void:
 	migas_run = 0.0
 	comidas_destruidas_run = 0
+	partes_destruidas_run = 0
 	mejor_combo_run = 0
 	ultima_run_fue_record = false
 
@@ -301,6 +378,8 @@ func datos_partida() -> Dictionary:
 		"runs_jugadas": runs_jugadas,
 		"mejor_run": mejor_run,
 		"radio_visto": radio_visto,
+		"lugar": lugar_actual, "destinos": lugares_completados, "hitos": hitos,
+		"legado": legado, "coronas": coronas, "fundaciones": fundaciones, "prioridad": prioridad,
 	}
 
 
@@ -319,6 +398,27 @@ func restaurar_partida(datos: Dictionary) -> void:
 	runs_jugadas = int(datos.get("runs_jugadas", 0))
 	mejor_run = float(datos.get("mejor_run", 0.0))
 	radio_visto = float(datos.get("radio_visto", 0.0))
+	lugares_completados = {}
+	hitos = {}
+	var destinos_guardados = datos.get("destinos", {})
+	if destinos_guardados is Dictionary:
+		for id in destinos_guardados:
+			if Mundos.INFO.has(id) and destinos_guardados[id] == true:
+				lugares_completados[id] = true
+	var hitos_guardados = datos.get("hitos", {})
+	if hitos_guardados is Dictionary:
+		for id in hitos_guardados:
+			if HITOS.has(id) and hitos_guardados[id] == true:
+				hitos[id] = true
+	legado = clampi(int(datos.get("legado", 0)), 0, 1000000)
+	coronas = clampi(int(datos.get("coronas", 0)), 0, 1000000)
+	fundaciones = maxi(0, int(datos.get("fundaciones", 0)))
+	lugar_actual = str(datos.get("lugar", "casa"))
+	if not destino_desbloqueado(lugar_actual):
+		lugar_actual = "casa"
+	prioridad = str(datos.get("prioridad", "automatico"))
+	if prioridad not in ["automatico", "alimentos", "muebles", "estructuras"]:
+		prioridad = "automatico"
 	niveles = {}
 	var guardados = datos.get("niveles", {})
 	if typeof(guardados) == TYPE_DICTIONARY:
@@ -342,6 +442,13 @@ func reiniciar_estado() -> void:
 	runs_jugadas = 0
 	mejor_run = 0.0
 	radio_visto = 0.0
+	lugar_actual = "casa"
+	lugares_completados.clear()
+	hitos.clear()
+	legado = 0
+	coronas = 0
+	fundaciones = 0
+	prioridad = "automatico"
 	_cache_stats.clear()
 
 

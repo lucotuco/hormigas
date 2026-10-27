@@ -10,7 +10,6 @@ extends Node2D
 const ESCENA_TIENDA := "res://ui/tienda.tscn"
 const DURACION_EXPANSION := 1.8   # segundos que tarda en crecer el territorio al empezar
 const VENTANA_COMBO := 1.2        # segundos entre depósitos para que el combo siga
-const PROPORCION_CLIC := 0.5      # el clic da la mitad de migas que una mordida de hormiga
 const BONUS_DESTRUIR := 0.25      # migas extra al destruir una comida (proporción de su recompensa)
 
 @onready var comidas: Comidas = $Comidas
@@ -30,6 +29,15 @@ var duracion_total: float = 0.0
 var activa := false
 var terminada := false
 var combo := 0
+var objetivo_mapa: PiezaCasa
+var objetivo_completado := false
+var resistencia_total := 1.0
+var resistencia_extraida := 0.0
+var frenesi := 0.0
+var frenesi_restante := 0.0
+var _descanso_frenesi := 0.0
+var _sillas_devoradas := 0
+var _ultimo_efecto_deposito := -1000
 
 var _reloj := 0.0
 var _ultimo_deposito := -100.0
@@ -51,6 +59,12 @@ func _ready() -> void:
 	radio_actual = radio_inicio
 
 	comidas.generar()
+	for parte in comidas.partes:
+		resistencia_total += parte.vida_max
+		if parte.pieza.get("meta", false):
+			objetivo_mapa = parte
+	for c in comidas.lista:
+		resistencia_total += c.vida_max
 	comidas.comida_destruida.connect(_on_comida_destruida)
 	niebla.radio = radio_actual
 	camara.ajustar_a_radio(radio_actual, true)
@@ -77,6 +91,8 @@ func _process(delta: float) -> void:
 	camara.ajustar_a_radio(radio_actual)
 	if not activa:
 		return
+	frenesi_restante = maxf(0, frenesi_restante - delta)
+	_descanso_frenesi = maxf(0, _descanso_frenesi - delta)
 	tiempo_restante -= delta
 	var segundos := int(ceil(tiempo_restante))
 	if segundos <= 5 and segundos != _ultimo_tic and segundos > 0:
@@ -90,9 +106,6 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not activa:
 		return
-	var boton := event as InputEventMouseButton
-	if boton and boton.pressed and boton.button_index == MOUSE_BUTTON_LEFT and not camara.arrastrando:
-		_clic_en(get_canvas_transform().affine_inverse() * boton.position)
 	var tecla := event as InputEventKey
 	if tecla and tecla.pressed and not tecla.echo and tecla.keycode == KEY_ESCAPE:
 		tiempo_restante = 0.0  # termina la run en el próximo cuadro
@@ -107,12 +120,23 @@ func depositar(cantidad: float) -> void:
 	if cantidad <= 0.0 or terminada:
 		return
 	Juego.sumar_migas_run(cantidad)
+	if frenesi_restante <= 0 and _descanso_frenesi <= 0:
+		frenesi = minf(100, frenesi + 5)
+		if frenesi >= 100:
+			frenesi = 0
+			frenesi_restante = 6
+			_descanso_frenesi = 18
+			hud.mostrar_aviso("¡FRENESÍ! La colonia trabaja más rápido")
 	if _reloj - _ultimo_deposito <= VENTANA_COMBO:
 		combo += 1
 	else:
 		combo = 1
 	_ultimo_deposito = _reloj
 	Juego.mejor_combo_run = maxi(Juego.mejor_combo_run, combo)
+	var ahora := Time.get_ticks_msec()
+	if ahora - _ultimo_efecto_deposito < 45:
+		return
+	_ultimo_efecto_deposito = ahora
 
 	hormiguero.latir()
 	var pos := hormiguero.global_position + Vector2(randf_range(-14.0, 14.0), -12.0)
@@ -124,23 +148,33 @@ func depositar(cantidad: float) -> void:
 	Sonido.tocar("deposito", notas[(combo - 1) % notas.size()], 0.0)
 
 
-func _clic_en(pos: Vector2) -> void:
-	var comida := comidas.comida_en(pos, radio_actual)
-	if comida == null:
-		return
-	var color := comida.color
-	var migas := comida.morder(Juego.stat("dano_clic")) * PROPORCION_CLIC
-	if migas > 0.0:
-		Juego.sumar_migas_run(migas)
-		efectos.numero(pos, migas, Color(1.0, 0.97, 0.8), 0.9)
-		hud.migas_voladoras(a_pantalla(pos), 1)
-	efectos.chispas(pos, color, 5)
-	camara.sacudir(1.5)
-	Sonido.tocar("clic", randf_range(0.9, 1.15), 0.0)
-
-
 func _on_comida_destruida(comida: Comida) -> void:
-	Juego.comidas_destruidas_run += 1
+	if comida is FragmentoCasa:
+		return
+	if comida is PiezaCasa:
+		Juego.partes_destruidas_run += 1
+		hud.mostrar_aviso("¡La colonia devoró: %s!" % comida.nombre)
+		if comida.pieza.tipo == "silla":
+			_sillas_devoradas += 1
+			Juego.obtener_hito("primera_silla")
+			if _sillas_devoradas >= 4:
+				Juego.obtener_hito("cuatro_sillas")
+		if comida.pieza.get("meta", false) and not objetivo_completado:
+			objetivo_completado = true
+			Juego.completar_destino()
+			if Juego.lugar_actual in ["obelisco", "coliseo", "eiffel"]:
+				Juego.obtener_hito("primer_monumento")
+			hud.mostrar_aviso("¡Gran objetivo! Nuevo destino y coronas")
+		if Juego.lugar_actual == "casa" and PlanoCasa.ambiente_en(comida.position) == "cocina":
+			var queda := false
+			for parte in comidas.partes:
+				if not parte.pieza.pared and PlanoCasa.ambiente_en(parte.position) == "cocina":
+					queda = true
+					break
+			if not queda:
+				Juego.obtener_hito("cocina_vacia")
+	else:
+		Juego.comidas_destruidas_run += 1
 	var bonus := comida.recompensa * BONUS_DESTRUIR * Juego.stat("multiplicador_migas")
 	Juego.sumar_migas_run(bonus)
 
@@ -152,6 +186,15 @@ func _on_comida_destruida(comida: Comida) -> void:
 	hud.migas_voladoras(a_pantalla(pos), int(clampf(comida.radio / 2.5, 2, 16)))
 	camara.sacudir(clampf(comida.radio * 0.35, 2.0, 18.0))
 	Sonido.tocar("romper", clampf(1.7 - comida.radio / 45.0, 0.5, 1.7))
+
+func registrar_extraccion(cantidad: float) -> void:
+	resistencia_extraida += maxf(0, cantidad)
+
+func registrar_derrumbe() -> void:
+	Juego.obtener_hito("primer_derrumbe")
+
+func factor_ritmo() -> float:
+	return 1.5 if frenesi_restante > 0 else 1.0
 
 
 func _terminar() -> void:

@@ -8,6 +8,6 @@ olfato,45,Distancia en píxeles a la que una hormiga detecta comida
 feromona_cantidad,24,Hormigas más cercanas que responden al llamado mientras mantenés el clic
 duracion_run,45,Segundos que dura cada run
 radio_territorio,620,Radio en píxeles del territorio explorable
-dano_clic,1,Daño que hace un clic sobre la comida
 multiplicador_migas,1,Multiplicador de todas las migas recolectadas
 cria,0,Hormigas nuevas que nacen cada 10 segundos durante la run
+materiales,0,Etapa de materiales que la colonia puede devorar

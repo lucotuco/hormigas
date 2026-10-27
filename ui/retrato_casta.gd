@@ -3,6 +3,7 @@ extends Control
 
 var tipo := "reina"
 var reloj := 0.0
+var _proximo := 0.0
 
 
 func _ready() -> void:
@@ -11,7 +12,9 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	reloj += delta
-	queue_redraw()
+	if reloj >= _proximo and is_visible_in_tree():
+		_proximo = reloj + 1.0 / 12
+		queue_redraw()
 
 
 func _draw() -> void:
@@ -24,5 +27,10 @@ func _draw() -> void:
 	draw_arc(centro, radio, 0, TAU, 64, Color(c.color, 0.18), 1, true)
 	var escala := minf(size.x, size.y) / 25.0
 	draw_set_transform(centro, -0.35, Vector2.ONE * escala)
-	AspectoHormiga.dibujar(self, tipo, c.color, reloj * 4)
+	if Graficos.listo:
+		var cuadro := floori(fposmod(reloj * 4, TAU) / TAU * Graficos.CUADROS)
+		var evolucion := 2 if tipo == "reina" and Juego.hitos.has("primer_monumento") else Juego.nivel_visual()
+		Graficos.dibujar(self, "hormiga:%s:%d:%d" % [tipo, evolucion, cuadro])
+	else:
+		AspectoHormiga.dibujar(self, tipo, c.color, reloj * 4, false, Color.WHITE, Juego.nivel_visual())
 	draw_set_transform(Vector2.ZERO)

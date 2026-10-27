@@ -22,7 +22,10 @@ static func alfombra(l: CanvasItem, r: Rect2, color: Color) -> void:
 		l.draw_line(Vector2(x, r.position.y - 13), Vector2(x, r.position.y + 5), color.lightened(0.15), 5)
 		l.draw_line(Vector2(x, r.end.y - 5), Vector2(x, r.end.y + 13), color.lightened(0.15), 5)
 
-static func dibujar(l: CanvasItem) -> void:
+static func dibujar(l: CanvasItem, incluir_piezas := true) -> void:
+	if Juego.lugar_actual != "casa":
+		_destino(l)
+		return
 	# Umbrales y alfombras pertenecen al suelo y no bloquean el paso.
 	alfombra(l, Rect2(2320, -360, 1690, 1460), Color("9b6958"))
 	alfombra(l, Rect2(4730, 70, 1530, 1210), Color("c3b392"))
@@ -36,8 +39,9 @@ static func dibujar(l: CanvasItem) -> void:
 	for a in PlanoCasa.AMBIENTES:
 		var r: Rect2 = a.rect
 		l.draw_string(ThemeDB.fallback_font, r.position + Vector2(120, r.size.y - 110), a.nombre, HORIZONTAL_ALIGNMENT_LEFT, -1, 68, Color(0.25, 0.24, 0.21, 0.38))
-	for m in PlanoCasa.MUEBLES:
-		mueble(l, m)
+	if incluir_piezas:
+		for m in PlanoCasa.MUEBLES:
+			mueble(l, m)
 	# El gran banquete está caído junto a la mesa del comedor.
 	var plato := PlanoCasa.BANQUETE
 	l.draw_circle(plato + Vector2(14, 21), 154, Color(0.15, 0.1, 0.05, 0.18))
@@ -50,13 +54,11 @@ static func dibujar(l: CanvasItem) -> void:
 	for i in 4:
 		l.draw_line(plato + Vector2(-257 + i * 11, -150), plato + Vector2(-257 + i * 11, -205), Color("a6b3b2"), 5, true)
 	# Bordes elevados y sombra sur: paredes continuas salvo las puertas.
-	for pared in PlanoCasa.PAREDES:
-		l.draw_rect(Rect2(pared.position + Vector2(12, 22), pared.size + Vector2(5, 8)), Color(0.12, 0.12, 0.1, 0.18))
-		l.draw_rect(pared, Color("857e6f"))
-		l.draw_rect(pared.grow(-7), Color("ede7d6"))
-		l.draw_line(pared.position + Vector2(4, 4), Vector2(pared.end.x - 4, pared.position.y + 4), Color("faf6e9"), 5)
+	if incluir_piezas:
+		for rect in PlanoCasa.PAREDES:
+			pared(l, rect)
 	# Ventanas en los muros exteriores.
-	for r in [Rect2(-650, -1010, 840, 65), Rect2(5000, -1010, 1060, 65), Rect2(-400, 4530, 960, 65), Rect2(5700, 4530, 780, 65)]:
+	for r in (PlanoCasa.VENTANAS if incluir_piezas else []):
 		l.draw_rect(r.grow(8), Color("6f8889"))
 		l.draw_rect(r, Color("bad8d7"))
 		for i in 4:
@@ -68,11 +70,20 @@ static func dibujar(l: CanvasItem) -> void:
 	l.draw_arc(Vector2(200, 2050), 460, 0, PI * 0.5, 40, Color(0.37, 0.29, 0.2, 0.22), 4, true)
 	l.draw_line(Vector2(200, 2050), Vector2(200, 2500), Color("b49371"), 18, true)
 
+static func pared(l: CanvasItem, rect: Rect2) -> void:
+	l.draw_rect(Rect2(rect.position + Vector2(12, 22), rect.size + Vector2(5, 8)), Color(0.12, 0.12, 0.1, 0.18))
+	l.draw_rect(rect, Color("857e6f"))
+	l.draw_rect(rect.grow(-7), Color("ede7d6"))
+	l.draw_line(rect.position + Vector2(4, 4), Vector2(rect.end.x - 4, rect.position.y + 4), Color("faf6e9"), 5)
+
 static func mueble(l: CanvasItem, m: Dictionary) -> void:
 	var r: Rect2 = m.rect
 	var c: Color = m.color
 	var p := r.position
 	var s := r.size
+	if m.tipo in ["obelisco", "torre", "arco", "escultura", "vitrina"]:
+		_monumento(l, m)
+		return
 	caja(l, Rect2(p + Vector2(14, 23), s), Color(0.15, 0.1, 0.06, 0.23), Color.TRANSPARENT, 20)
 	caja(l, r, c.darkened(0.25), c.darkened(0.4), 18)
 	var tapa := Rect2(p - Vector2(0, 10), s)
@@ -195,3 +206,77 @@ static func mueble(l: CanvasItem, m: Dictionary) -> void:
 				var centro := r.get_center() + Vector2.from_angle(i * TAU / 8) * s.x * 0.23
 				ovalo(l, Rect2(centro - Vector2(48, 65), Vector2(96, 130)), c.lightened((i % 3) * 0.06))
 			l.draw_circle(r.get_center(), 45, c.darkened(0.25))
+
+static func _destino(l: CanvasItem) -> void:
+	for a in PlanoCasa.ambientes():
+		var r: Rect2 = a.rect
+		l.draw_string(ThemeDB.fallback_font, r.position + Vector2(120, r.size.y - 120), a.nombre, HORIZONTAL_ALIGNMENT_LEFT, -1, 72, Color(0.2, 0.2, 0.17, 0.35))
+	if Juego.lugar_actual == "obelisco":
+		for y in [-250, 2850]:
+			l.draw_rect(Rect2(1750, y, 3200, 300), Color("8b8e82"))
+			for x in range(1850, 4800, 310):
+				l.draw_rect(Rect2(x, y + 35, 145, 230), Color("e8e2cb"))
+		l.draw_arc(Vector2(3225, 1775), 1300, 0, TAU, 72, Color("ded7bf"), 35, true)
+	elif Juego.lugar_actual == "coliseo":
+		l.draw_set_transform(Vector2(3700, 1700), 0, Vector2(1.15, 1))
+		for i in 4:
+			l.draw_arc(Vector2.ZERO, 2050 - i * 160, 0, TAU, 96, Color("b59b75").lightened(i * 0.035), 58, true)
+		l.draw_set_transform(Vector2.ZERO)
+	elif Juego.lugar_actual == "eiffel":
+		for x in [-650, 4700]:
+			for y in [-600, 1700]:
+				caja(l, Rect2(x, y, 1800, 1700), Color("77926c"), Color("c9c8ab"), 80)
+		for y in [-300, 3400]:
+			l.draw_rect(Rect2(1900, y, 2700, 180), Color("dfd4ba"))
+	else:
+		for a in PlanoCasa.ambientes():
+			var r: Rect2 = a.rect
+			l.draw_rect(r.grow(-70), Color(0.3, 0.24, 0.16, 0.12), false, 8)
+
+static func _monumento(l: CanvasItem, m: Dictionary) -> void:
+	var r: Rect2 = m.rect
+	var p := r.position
+	var s := r.size
+	var c: Color = m.color
+	caja(l, Rect2(p + Vector2(24, 34), s), Color(0.1, 0.09, 0.07, 0.2), Color.TRANSPARENT, 14)
+	match m.tipo:
+		"obelisco":
+			caja(l, r, c.darkened(0.22), c.lightened(0.2), 8)
+			var cuerpo := r.grow(-s.x * 0.18)
+			l.draw_rect(cuerpo, c)
+			l.draw_colored_polygon(PackedVector2Array([cuerpo.position, Vector2(cuerpo.get_center().x, p.y + 40), Vector2(cuerpo.end.x, cuerpo.position.y)]), c.lightened(0.25))
+			l.draw_rect(Rect2(cuerpo.position.x + cuerpo.size.x * 0.5, cuerpo.position.y, cuerpo.size.x * 0.5, cuerpo.size.y), c.darkened(0.12))
+			l.draw_rect(Rect2(p + s * Vector2(0.38, 0.65), s * Vector2(0.24, 0.12)), Color("a99877"))
+		"torre":
+			caja(l, r, Color("a99c80"), Color("d1c4a6"), 30)
+			var cima := p + Vector2(s.x * 0.5, 35)
+			for lado in [-1, 1]:
+				var pie := p + Vector2(s.x * (0.5 + lado * 0.42), s.y - 70)
+				l.draw_line(pie, cima, c.darkened(0.35), 95, true)
+				l.draw_line(pie + Vector2(-lado * 70, 0), cima, c.lightened(0.1), 25, true)
+			for i in range(1, 10):
+				var t := i / 10.0
+				var y := p.y + s.y * t
+				var ancho := s.x * t * 0.42
+				l.draw_line(Vector2(cima.x - ancho, y), Vector2(cima.x + ancho, y), c.darkened(0.3), 22, true)
+				if i < 9:
+					l.draw_line(Vector2(cima.x - ancho, y), Vector2(cima.x + ancho + 30, y + s.y * 0.1), c.darkened(0.3), 13, true)
+			for t in [0.40, 0.72]:
+				l.draw_rect(Rect2(p.x + s.x * (0.5 - t * 0.5), p.y + s.y * t, s.x * t, 65), c.lightened(0.2))
+		"arco":
+			caja(l, r, c, c.lightened(0.25), 18)
+			for x in [0.22, 0.68]:
+				caja(l, Rect2(p + Vector2(s.x * x, s.y * 0.32), Vector2(s.x * 0.18, s.y * 0.68)), c.darkened(0.5), Color.TRANSPARENT, 70)
+			for i in 7:
+				l.draw_line(p + Vector2(s.x * i / 7, 20), p + Vector2(s.x * i / 7, s.y * 0.3), c.darkened(0.2), 6)
+		"escultura":
+			caja(l, r, c.darkened(0.25), c.lightened(0.2), 25)
+			caja(l, r.grow(-s.x * 0.12), c, c.lightened(0.2), 25)
+			ovalo(l, Rect2(p + s * Vector2(0.3, 0.12), s * Vector2(0.4, 0.32)), c.lightened(0.2))
+			l.draw_colored_polygon(PackedVector2Array([p + s * Vector2(0.32, 0.40), p + s * Vector2(0.7, 0.4), p + s * Vector2(0.82, 0.85), p + s * Vector2(0.18, 0.85)]), c.lightened(0.05))
+		"vitrina":
+			caja(l, r, c.darkened(0.3), c.lightened(0.3), 18)
+			caja(l, r.grow(-35), c, Color("dbe9dc"), 12)
+			for i in 3:
+				l.draw_circle(p + Vector2(s.x * (i + 1) / 4, s.y * 0.5), s.y * 0.2, Color("cdbb89"))
+			l.draw_line(p + Vector2(45, 45), r.end - Vector2(45, 45), Color(1, 1, 1, 0.35), 10, true)

@@ -46,6 +46,7 @@ func _ready() -> void:
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
+	run.cocina.limite_rutas_por_cuadro = 0
 	var casa := run.cocina
 	verificar(PlanoCasa.AMBIENTES.size() == 7 and PlanoCasa.LIMITES.size.x >= 7500, "la casa tiene siete ambientes y un plano mayor")
 	var destinos := {"cocina": Vector2(-200, 500), "comedor": Vector2(2100, 1000), "living": Vector2(4600, 600), "pasillo": Vector2(500, 1800), "dormitorio": Vector2(1300, 3300), "estudio": Vector2(2600, 3600), "bano": Vector2(5800, 4200)}

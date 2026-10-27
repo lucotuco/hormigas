@@ -3,8 +3,9 @@ extends Node2D
 ## Partículas, ondas y números flotantes, todo dibujado desde un solo nodo
 ## (mucho más barato que crear un nodo por partícula).
 
-const MAX_PARTICULAS := 1500
-const MAX_TEXTOS := 70
+const MAX_PARTICULAS := 600
+const MAX_TEXTOS := 40
+const MAX_ONDAS := 24
 const COLOR_SOMBRA_TEXTO := Color(0.12, 0.07, 0.03)
 
 
@@ -32,6 +33,7 @@ class TextoFlotante:
 	var escala: float
 	var vida: float
 	var vida_max: float
+	var ancho := 0.0
 
 
 var _particulas: Array[Particula] = []
@@ -39,22 +41,28 @@ var _ondas: Array[Onda] = []
 var _textos: Array[TextoFlotante] = []
 
 
-## Chispitas rápidas (mordidas, clics).
+## Chispitas rápidas de las mordidas. No generar efectos fuera de cámara.
 func chispas(pos: Vector2, color: Color, cantidad: int) -> void:
-	for i in cantidad:
+	if not _en_vista(pos):
+		return
+	for i in mini(cantidad, MAX_PARTICULAS - _particulas.size()):
 		_agregar_particula(pos, Vector2.from_angle(randf() * TAU) * randf_range(30.0, 90.0),
 			randf_range(0.2, 0.4), color.lightened(randf_range(0.0, 0.3)), randf_range(1.0, 1.8))
 
 
 ## Explosión al destruir una comida: pedazos + onda expansiva.
 func explosion(pos: Vector2, color: Color, radio: float) -> void:
+	if not _en_vista(pos, radio * 2.5 + 100):
+		return
 	var cantidad := int(clampf(radio * 1.8, 10.0, 90.0))
 	var fuerza := clampf(radio * 6.0, 60.0, 320.0)
-	for i in cantidad:
+	for i in mini(cantidad, MAX_PARTICULAS - _particulas.size()):
 		var dir := Vector2.from_angle(randf() * TAU)
 		_agregar_particula(pos + dir * randf() * radio * 0.6, dir * randf_range(0.3, 1.0) * fuerza,
 			randf_range(0.45, 0.9), color.lerp(Color.WHITE, randf_range(0.0, 0.35)),
 			randf_range(1.2, 2.0) + radio * 0.08)
+	if _ondas.size() >= MAX_ONDAS:
+		return
 	var onda := Onda.new()
 	onda.pos = pos
 	onda.radio_max = radio * 2.5 + 12.0
@@ -70,11 +78,14 @@ func numero(pos: Vector2, cantidad: float, color: Color, escala := 1.0) -> void:
 
 
 func texto(pos: Vector2, contenido: String, color: Color, escala := 1.0) -> void:
+	if not _en_vista(pos):
+		return
 	if _textos.size() >= MAX_TEXTOS:
 		_textos.pop_front()
 	var t := TextoFlotante.new()
 	t.pos = pos
 	t.texto = contenido
+	t.ancho = ThemeDB.fallback_font.get_string_size(contenido, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
 	t.color = color
 	t.escala = escala
 	t.vida_max = 0.9
@@ -104,7 +115,9 @@ func _process(delta: float) -> void:
 		var p := _particulas[i]
 		p.vida -= delta
 		if p.vida <= 0.0:
-			_particulas.remove_at(i)
+			# El orden no afecta a estos cuadrados; no desplazar hasta 600 referencias.
+			_particulas[i] = _particulas.back()
+			_particulas.pop_back()
 			continue
 		p.pos += p.vel * delta
 		p.vel *= friccion
@@ -137,14 +150,22 @@ func _draw() -> void:
 	for t in _textos:
 		var progreso := 1.0 - t.vida / t.vida_max
 		var pop := 1.0 + 0.5 * maxf(0.0, 1.0 - progreso * 6.0)   # aparece grande y se acomoda
-		var tamano_fuente := maxi(6, int(15.0 * t.escala * pop / zoom))
+		# Tamaño fijo de fuente: no rasterizar cientos de glifos nuevos al hacer zoom.
+		var tamano_fuente := 18
+		var escala := 15.0 * t.escala * pop / (zoom * tamano_fuente)
+		draw_set_transform(t.pos, 0, Vector2.ONE * escala)
 		var alfa := clampf(t.vida / (t.vida_max * 0.4), 0.0, 1.0)
-		var ancho := fuente.get_string_size(t.texto, HORIZONTAL_ALIGNMENT_LEFT, -1, tamano_fuente).x
-		var origen := t.pos - Vector2(ancho * 0.5, 0.0)
+		var origen := -Vector2(t.ancho * 0.5, 0.0)
 		draw_string_outline(fuente, origen, t.texto, HORIZONTAL_ALIGNMENT_LEFT, -1, tamano_fuente,
 			maxi(2, int(tamano_fuente / 4.0)), Color(COLOR_SOMBRA_TEXTO, alfa))
 		draw_string(fuente, origen, t.texto, HORIZONTAL_ALIGNMENT_LEFT, -1, tamano_fuente, Color(t.color, alfa))
+	draw_set_transform(Vector2.ZERO)
 
 
 func _zoom() -> float:
 	return maxf(get_viewport().get_canvas_transform().get_scale().x, 0.01)
+
+
+func _en_vista(pos: Vector2, margen_mundo := 100.0) -> bool:
+	var transformacion := get_canvas_transform()
+	return get_viewport_rect().grow(80 + margen_mundo * transformacion.get_scale().x).has_point(transformacion * pos)

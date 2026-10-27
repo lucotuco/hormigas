@@ -25,6 +25,7 @@ func _ready() -> void:
 	Juego.mejora_comprada.connect(_cambio_mejora)
 	Juego.partida_borrada.connect(_refrescar)
 	Juego.modo_compra_cambio.connect(_refrescar)
+	Juego.progreso_cambio.connect(_refrescar)
 	_refrescar()
 
 
@@ -192,11 +193,15 @@ func _refrescar() -> void:
 	_boton.add_theme_stylebox_override("disabled", Estilo.caja(Color("30372e"), 10, Color("4e5848"), 1, 14))
 	_aviso.text = "Compra permanente: esta unidad saldrá en cada expedición."
 	if not disponible and not maximo:
-		_aviso.text = "Faltan %s migas para este lote. Las unidades son permanentes." % Juego.formatear(oferta.costo - Juego.migas)
+		_aviso.text = "Faltan %s migas para este lote. Las unidades son permanentes." % Juego.formatear(maxf(0, oferta.costo - Juego.migas))
+	if not Juego.casta_desbloqueada(seleccion):
+		_aviso.text = "Requiere aprender a devorar " + ("madera y telas." if seleccion == "carpintera" else "paredes.")
 	for id in _filas:
 		var fila: Dictionary = _filas[id]
 		var datos: Dictionary = Juego.castas_por_id[id]
 		fila.cantidad.text = "%d en la colonia · desde %s migas" % [Juego.cantidad_casta(id), Juego.formatear(Juego.costo_casta(id))]
+		if not Juego.casta_desbloqueada(id):
+			fila.cantidad.text = "Bloqueada · requiere nueva dieta"
 		var color: Color = datos.color
 		fila.boton.add_theme_stylebox_override("normal", Estilo.caja(Color(color, 0.12) if id == seleccion else Color("28271f"), 12, Color(color, 0.8 if id == seleccion else 0.14), 1, 0))
 		fila.boton.add_theme_stylebox_override("hover", Estilo.caja(Color(color, 0.15), 12, color, 1, 0))

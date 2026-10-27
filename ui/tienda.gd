@@ -3,7 +3,7 @@ extends Control
 const ESCENA_RUN := "res://mundo/run.tscn"
 const SALAS := {
 	"Colonia": {"titulo": "El criadero", "detalle": "Una familia cada vez más grande.", "color": Color("b8cd91"), "pos": Vector2(0.25, 0.28)},
-	"Mandíbulas": {"titulo": "El taller", "detalle": "Hasta la última miguita.", "color": Color("e7ac7d"), "pos": Vector2(0.74, 0.28)},
+	"Mandíbulas": {"titulo": "El taller", "detalle": "Comida → madera y telas → materiales resistentes → paredes.", "color": Color("e7ac7d"), "pos": Vector2(0.74, 0.28)},
 	"Recolección": {"titulo": "La despensa", "detalle": "Pequeños viajes, grandes tesoros.", "color": Color("e8cc86"), "pos": Vector2(0.23, 0.58)},
 	"Feromonas": {"titulo": "El observatorio", "detalle": "Todos los caminos llevan a casa.", "color": Color("8dc3bc"), "pos": Vector2(0.77, 0.58)},
 	"Tiempo": {"titulo": "El refugio", "detalle": "Siempre hay tiempo para otro bocado.", "color": Color("c3add4"), "pos": Vector2(0.31, 0.85)},
@@ -26,6 +26,8 @@ var _cuerpo_mejoras: Control
 var _panel_castas: PanelCastas
 var _pestanas: Dictionary = {}
 var _cantidades: Dictionary = {}
+var _panel_viajes: PanelCampana
+var _panel_legado: PanelCampana
 
 
 class IconoSala extends Control:
@@ -93,10 +95,13 @@ class IconoSala extends Control:
 
 class CorteTierra extends Control:
 	var reloj := 0.0
+	var proximo_dibujo := 0.0
 
 	func _process(delta: float) -> void:
 		reloj += delta
-		queue_redraw()
+		if reloj >= proximo_dibujo:
+			proximo_dibujo = reloj + 0.1
+			queue_redraw()
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color("211e19"))
@@ -151,10 +156,19 @@ func _ready() -> void:
 	_panel_castas = PanelCastas.new()
 	_panel_castas.visible = false
 	columna.add_child(_panel_castas)
+	_panel_viajes = PanelCampana.new()
+	_panel_viajes.modo = "viajes"
+	_panel_viajes.visible = false
+	columna.add_child(_panel_viajes)
+	_panel_legado = PanelCampana.new()
+	_panel_legado.modo = "legado"
+	_panel_legado.visible = false
+	columna.add_child(_panel_legado)
 	columna.add_child(_pie())
 	Juego.migas_cambiaron.connect(_on_migas_cambiaron)
 	Juego.partida_borrada.connect(_refrescar)
 	Juego.modo_compra_cambio.connect(_refrescar)
+	Juego.progreso_cambio.connect(_refrescar)
 	_migas_mostradas = Juego.migas
 	_refrescar()
 	_cambiar_pestana("hogar")
@@ -247,8 +261,9 @@ func _crear_mapa() -> Control:
 func _crear_pestanas() -> Control:
 	var fila := HBoxContainer.new()
 	fila.add_theme_constant_override("separation", 10)
-	for id in ["hogar", "castas"]:
-		var boton := Estilo.boton("Mejoras del hogar" if id == "hogar" else "Castas y reclutamiento", 15, Color("282f26"), Color("52634a"))
+	for id in ["hogar", "castas", "viajes", "legado"]:
+		var nombres := {"hogar": "Mejoras", "castas": "Castas", "viajes": "Viajes", "legado": "Hitos y legado"}
+		var boton := Estilo.boton(nombres[id], 15, Color("282f26"), Color("52634a"))
 		boton.pressed.connect(_cambiar_pestana.bind(id))
 		fila.add_child(boton)
 		_pestanas[id] = boton
@@ -271,6 +286,12 @@ func _crear_pestanas() -> Control:
 func _cambiar_pestana(id: String) -> void:
 	_cuerpo_mejoras.visible = id == "hogar"
 	_panel_castas.visible = id == "castas"
+	_panel_viajes.visible = id == "viajes"
+	_panel_legado.visible = id == "legado"
+	if id == "viajes":
+		_panel_viajes.refrescar()
+	elif id == "legado":
+		_panel_legado.refrescar()
 	for clave in _pestanas:
 		var color := Color("536649") if clave == id else Color("282f26")
 		_pestanas[clave].add_theme_stylebox_override("normal", Estilo.caja(color, 10, Color("94b47e") if clave == id else Color("46503f"), 1, 10))
@@ -288,6 +309,7 @@ func _crear_detalles() -> Control:
 	_lbl_sala = Estilo.etiqueta("", 27)
 	columna.add_child(_lbl_sala)
 	_lbl_detalle = Estilo.etiqueta("", 13, Estilo.TEXTO_SUAVE)
+	_lbl_detalle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	columna.add_child(_lbl_detalle)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -325,6 +347,7 @@ func _crear_tarjeta(m: Dictionary) -> void:
 	contenido.add_child(fila)
 	var nombre := Estilo.etiqueta(m.nombre, 16)
 	nombre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nombre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	fila.add_child(nombre)
 	var nivel := Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
 	fila.add_child(nivel)
@@ -373,6 +396,8 @@ func _on_migas_cambiaron(_total: float) -> void:
 
 
 func _refrescar() -> void:
+	_boton_run.text = "Explorar  →"
+	_boton_run.tooltip_text = "Destino: " + Mundos.INFO[Juego.lugar_actual].nombre
 	for cantidad in _cantidades:
 		_cantidades[cantidad].add_theme_stylebox_override("normal", Estilo.caja(Color("536649") if cantidad == Juego.cantidad_compra else Color("282f26"), 10, Color("94b47e") if cantidad == Juego.cantidad_compra else Color("46503f"), 1, 10))
 	_lbl_sala.text = SALAS[_rama].titulo
@@ -408,7 +433,10 @@ func _refrescar() -> void:
 		elif maxima:
 			t.cambio.text = "Tu colonia domina esta habilidad."
 		else:
-			t.cambio.text = "%s  →  %s" % [_valor_stat(m.stat, Juego.stat(m.stat)), _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))]
+			if m.stat == "materiales":
+				t.cambio.text = "Nueva dieta: " + _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))
+			else:
+				t.cambio.text = "%s  →  %s" % [_valor_stat(m.stat, Juego.stat(m.stat)), _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))]
 		t.cambio.label_settings.font_color = color if abierta else Estilo.TEXTO_SUAVE
 		t.costo.text = "COMPLETA" if maxima else ("Comprar ×%d · %s migas" % [oferta.cantidad, Juego.formatear(oferta.costo)] if disponible else "Faltan %s migas" % Juego.formatear(maxf(0, oferta.costo - Juego.migas)))
 		if not abierta:
@@ -427,6 +455,7 @@ func _valor_stat(stat: String, valor: float) -> String:
 		"duracion_run": return "%.0f s" % valor
 		"intervalo_mordida": return "%.2f s entre mordidas" % valor
 		"feromona_cantidad": return "%d hormigas" % int(valor)
+		"materiales": return MaterialesCasa.NIVELES[clampi(int(valor), 0, 3)]
 		"velocidad": return "%.0f de velocidad" % valor
 		"radio_territorio": return "%.0f cm" % (valor / 10.0)
 		"multiplicador_migas": return "×%.2f migas" % valor

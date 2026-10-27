@@ -23,7 +23,7 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 
 - [x] Temporizador por run
 - [x] Panel de fin de run
-- [x] Tienda con árbol de mejoras (15 mejoras en 6 ramas, las bloqueadas en sombra)
+- [x] Tienda con árbol de mejoras (18 mejoras en 6 ramas, las bloqueadas en sombra)
 - [x] Comprar mejoras y castas en cantidades ×1, ×10 o Máx, con indicadores de disponibilidad por rama
 - [x] Guardado y carga automáticos
 - [ ] **B:** pantalla de título
@@ -52,13 +52,23 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] **B:** gran banquete fijo sobre un plato para descubrir al explorar
 - [x] **B:** zoom con rueda, desplazamiento libre, retorno al hormiguero y vista de la casa completa
 - [x] **A:** atracción al punto mantenido, selección por cercanía y cancelación al soltar
+- [x] **A:** clic sólo para dar órdenes; antiguo Pisotón convertido a Coordinación sin perder niveles
+- [x] **B:** progresión por materiales: alimentos → madera/telas → resistentes → paredes
+- [x] **A+B:** devorar muebles y muros desde sus bordes; destrucción que libera colisiones y abre atajos
+- [x] **A+B:** recortes localizados, soportes y derrumbes por etapas, con fragmentos agrupados y transportables
+- [x] **B:** comida escondida en muebles y frenesí por depósitos
 
 ## Paso 5 — Contenido
 
-- [x] **A:** castas reclutables con fichas: reina con minis, roja con veneno, voladora, veloz y cargadora
+- [x] **A:** siete castas con roles, carpintera y demoledora, corrosión compartida y prioridades de trabajo
+- [x] **A:** evolución visual de mandíbulas, abdomen y corona de la reina
 - [ ] **A:** castas de combate y vuelo hacia superficies elevadas
 - [ ] **A:** enemigos: araña que caza hormigas sueltas, humano con insecticida
-- [ ] **A:** rendimiento: probar con 500 hormigas; si se pone lento, dibujarlas todas desde un solo nodo o con MultiMesh
-- [ ] **B:** prestigio con la reina (fundar nueva colonia → bonus permanentes)
+- [x] **A:** atlas compartido, búsqueda espacial, navegación incremental y benchmark gráfico con 5/150/500 hormigas
+- [x] **A:** cola justa de rutas con prioridad manual, caché de fallos, giros comprimidos y prueba de cursor móvil con 500 hormigas
+- [ ] **Los dos:** probar rendimiento en otras PCs y balancear los tiempos de desbloqueo y resistencia de materiales
+- [x] **B:** prestigio con confirmación (fundar colonia → legado; conserva destinos e hitos)
+- [x] **B:** hitos opcionales con premios permanentes explícitos
+- [x] **B:** seis destinos con objetivos: casa, restaurante, museo, Obelisco, Coliseo y Torre Eiffel
 - [x] **B:** árbol de mejoras como hormiguero en corte con seis cámaras interactivas
 - [ ] **B:** pasar los CSV a una planilla compartida y balancear la primera hora de juego

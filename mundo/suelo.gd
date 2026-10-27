@@ -9,11 +9,15 @@ func _ready() -> void:
 	var rectangulos: Array[Vector4] = []
 	var colores: Array[Color] = []
 	var patrones: Array[int] = []
-	for a in PlanoCasa.AMBIENTES:
+	for a in PlanoCasa.ambientes():
 		var r: Rect2 = a.rect
 		rectangulos.append(Vector4(r.position.x, r.position.y, r.size.x, r.size.y))
 		colores.append(a.color)
 		patrones.append(a.patron)
+	while rectangulos.size() < 7:
+		rectangulos.append(Vector4(0, 0, 0, 0))
+		colores.append(Color.TRANSPARENT)
+		patrones.append(0)
 	piso.set_shader_parameter("ambientes", rectangulos)
 	piso.set_shader_parameter("tonos", colores)
 	piso.set_shader_parameter("patrones", patrones)

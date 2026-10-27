@@ -64,15 +64,17 @@ func centrar() -> void:
 
 
 func _limitar_posicion() -> void:
-	position = position.clamp(PlanoCasa.LIMITES.position, PlanoCasa.LIMITES.end)
+	var limites := PlanoCasa.limites()
+	position = position.clamp(limites.position, limites.end)
 
 
 func ver_casa() -> void:
 	_manual = true
 	arrastrando = false
-	position = PlanoCasa.LIMITES.get_center()
+	var limites := PlanoCasa.limites()
+	position = limites.get_center()
 	var pantalla := get_viewport_rect().size
-	_zoom_objetivo = clampf(minf(pantalla.x / PlanoCasa.LIMITES.size.x, pantalla.y / PlanoCasa.LIMITES.size.y) * 0.9, ZOOM_MINIMO, ZOOM_MAXIMO)
+	_zoom_objetivo = clampf(minf(pantalla.x / limites.size.x, pantalla.y / limites.size.y) * 0.9, ZOOM_MINIMO, ZOOM_MAXIMO)
 	zoom = Vector2.ONE * _zoom_objetivo
 	offset = Vector2.ZERO
 	force_update_scroll()
@@ -106,6 +108,21 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_H:
 		ver_casa()
 		get_viewport().set_input_as_handled()
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G:
+		ver_objetivo()
+		get_viewport().set_input_as_handled()
+
+func ver_objetivo() -> void:
+	_manual = true
+	var plano := Mundos.plano(Juego.lugar_actual)
+	var indice := int(str(plano.meta).get_slice(":", 1))
+	var r: Rect2 = plano.muebles[indice].rect
+	position = r.get_center()
+	var pantalla := get_viewport_rect().size
+	_zoom_objetivo = clampf(minf(pantalla.x / (r.size.x + 1000), pantalla.y / (r.size.y + 1000)), ZOOM_MINIMO, 0.7)
+	zoom = Vector2.ONE * _zoom_objetivo
+	force_update_scroll()
+	vista_cambiada.emit()
 
 
 func _notification(what: int) -> void:

@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 
 Juego="*res://global/juego.gd"
 Sonido="*res://global/sonido.gd"
+Graficos="*res://global/graficos.gd"
 
 [display]
 

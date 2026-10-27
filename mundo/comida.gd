@@ -27,6 +27,7 @@ var veneno_restante := 0.0
 var _veneno_dps := 0.0
 var _veneno_acumulado := 0.0
 var _run_veneno: Run
+var _usar_cache := true
 
 
 func configurar(tipo: Dictionary, semilla: int) -> void:
@@ -66,6 +67,26 @@ func configurar(tipo: Dictionary, semilla: int) -> void:
 				_detalles.append(Vector3(p.x, p.y, 0.1))
 	set_process(false)
 	queue_redraw()
+	if _usar_cache and not Graficos.listo:
+		Graficos.preparado.connect(queue_redraw, CONNECT_ONE_SHOT)
+
+func disponible() -> bool:
+	return not muerta
+
+func distancia_a(pos: Vector2) -> float:
+	return maxf(0, pos.distance_to(global_position) - radio)
+
+func contiene_punto(pos: Vector2, margen := 0.0) -> bool:
+	return pos.distance_squared_to(global_position) <= pow(radio + margen, 2)
+
+func en_territorio(radio_territorio: float) -> bool:
+	return position.length() - radio * 0.5 <= radio_territorio
+
+func alcanza_desde(pos: Vector2) -> bool:
+	return distancia_a(pos) <= 3
+
+func punto_mordida(_desde: Vector2, territorio: float, _volando := false) -> Vector2:
+	return global_position.limit_length(territorio - 6)
 
 
 ## Aplica daño y devuelve las migas que corresponden a ese daño.
@@ -74,6 +95,8 @@ func morder(dano: float) -> float:
 		return 0.0
 	var real := minf(dano, vida)
 	vida -= real
+	if get_parent() is Comidas:
+		get_parent().get_parent().registrar_extraccion(real)
 	_sacudida = minf(_sacudida + 1.2, 3.0)
 	_destello = 0.07
 	set_process(true)
@@ -131,6 +154,10 @@ func _draw() -> void:
 	var c := color.lerp(Color.WHITE, 0.65) if _destello > 0.0 else color
 	var oscuro := c.darkened(0.3)
 	var r := radio
+	if _usar_cache and Graficos.listo and Graficos.regiones.has("comida:" + id):
+		Graficos.dibujar(self, "comida:" + id, Vector2.ZERO, Color(1.3, 1.3, 1.3) if _destello > 0 else Color.WHITE)
+		_dibujar_dano(desplazamiento)
+		return
 	if veneno_restante > 0:
 		draw_circle(Vector2.ZERO, r + 4, Color(0.57, 0.76, 0.32, 0.2))
 		draw_arc(Vector2.ZERO, r + 3, 0, TAU, 32, Color(0.67, 0.85, 0.43, 0.75), 1.5, true)
@@ -199,6 +226,10 @@ func _draw() -> void:
 		_:
 			draw_circle(Vector2.ZERO, r, c)
 
+	_dibujar_dano(desplazamiento)
+
+func _dibujar_dano(desplazamiento: Vector2) -> void:
+	var r := radio
 	# Grietas: aparecen a medida que pierde vida.
 	var dano := 1.0 - vida / vida_max
 	if dano > 0.0:

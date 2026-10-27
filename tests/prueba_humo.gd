@@ -84,7 +84,7 @@ func _probar_compras() -> void:
 	for c in Juego.castas:
 		if c.comprable:
 			Juego.comprar_casta(c.id)
-	_verificar(Juego.total_especialistas() == 5, "se reclutó una unidad de cada casta para la run mejorada")
+	_verificar(Juego.total_especialistas() == 7, "se reclutó una unidad de cada casta para la run mejorada")
 	_verificar(Juego.stat("hormigas_iniciales") > antes, "comprar mejoras cambia las stats")
 	_verificar(not Juego.comprar("mandibulas_acero") or Juego.nivel_de("mandibulas") >= 10,
 		"no se puede comprar una mejora bloqueada")
