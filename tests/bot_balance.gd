@@ -110,12 +110,22 @@ func jugar_run() -> float:
 	minutos += run.duracion_total / 60.0
 	var ganado := Juego.migas_run
 	var partes := Juego.partes_destruidas_run
+	# Daño hecho al gran objetivo en esta run (para calibrar vida_meta).
+	var meta := run.objetivo_mapa
+	var dano_meta := 0.0
+	var vida_meta := 0.0
+	if is_instance_valid(meta):
+		vida_meta = meta.vida_max
+		dano_meta = meta.vida_max - meta.vida
+	elif run.objetivo_completado:
+		dano_meta = INF
 	run.queue_free()
 	await get_tree().process_frame
-	anotar("run %3d  min %6.1f  %-11s +%-8s banco %-8s obreras %3d  dieta %d  terr %4d  partes %3d  especialistas %d" % [
+	anotar("run %3d  min %6.1f  %-11s +%-8s banco %-8s obreras %3d  dieta %d  terr %4d  partes %3d  especialistas %d  jalea %d  meta %s/%s" % [
 		Juego.runs_jugadas, minutos, Juego.lugar_actual, Juego.formatear(ganado), Juego.formatear(Juego.migas),
 		int(Juego.stat("hormigas_iniciales")), int(Juego.stat("materiales")), int(Juego.stat("radio_territorio")),
-		partes, Juego.total_especialistas()])
+		partes, Juego.total_especialistas(), Juego.legado,
+		"conquistado" if dano_meta == INF else Juego.formatear(dano_meta), Juego.formatear(vida_meta)])
 	return ganado
 
 
@@ -207,13 +217,18 @@ func registrar() -> void:
 	for clave in logros:
 		if logros[clave] and not vistos.has(clave):
 			vistos[clave] = minutos
-			anotar(">> %s en el minuto %.1f (run %d)" % [clave, minutos, Juego.runs_jugadas])
+			anotar(">> %s en el minuto %.1f (run %d, %d fundaciones)" % [clave, minutos, Juego.runs_jugadas, Juego.fundaciones])
+			# Copia del estado al conquistar: permite recalibrar desde acá.
+			if estado_ruta != "" and Mundos.INFO.has(clave):
+				guardar_estado(estado_ruta.get_basename() + "_" + clave + ".json")
 
 
-func guardar_estado() -> void:
-	if estado_ruta == "":
+func guardar_estado(ruta := "") -> void:
+	if ruta == "":
+		ruta = estado_ruta
+	if ruta == "":
 		return
-	var f := FileAccess.open(estado_ruta, FileAccess.WRITE)
+	var f := FileAccess.open(ruta, FileAccess.WRITE)
 	f.store_string(JSON.stringify({"partida": Juego.datos_partida(), "minutos": minutos, "vistos": vistos, "trabado": trabado, "mejor_run_colonia": mejor_run_colonia}))
 
 
