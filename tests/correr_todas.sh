@@ -9,18 +9,14 @@
 set -u
 
 GODOT="${GODOT:-godot}"
-SUITES=(
-	prueba_humo
-	prueba_movimiento
-	prueba_castas
-	prueba_controles
-	prueba_feromonas
-	prueba_casa_lotes
-	prueba_materiales
-	prueba_campana
-)
 
 cd "$(dirname "$0")/.."
+
+# Toda escena tests/prueba_*.tscn es una suite: una prueba nueva corre sola.
+SUITES=()
+for escena in tests/prueba_*.tscn; do
+	SUITES+=("$(basename "$escena" .tscn)")
+done
 
 echo "Importando recursos..."
 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true

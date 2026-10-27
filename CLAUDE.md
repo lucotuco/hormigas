@@ -46,6 +46,8 @@ GODOT=/ruta/a/godot tests/correr_todas.sh
 
 Una sola suite: `godot --headless --fixed-fps 60 --path . res://tests/prueba_campana.tscn`.
 Cada suite imprime `OK` o `FALLA` por verificación y sale con código 1 si algo falla.
+Toda escena `tests/prueba_*.tscn` se corre sola: una suite nueva sólo necesita
+ese nombre, terminar con `get_tree().quit(0 o 1)` e imprimir `FALLA` cuando algo falla.
 CI corre lo mismo en cada PR (`.github/workflows/pruebas.yml`).
 
 Revisión visual con el renderer real (no headless): `tests/revision_*.tscn`
