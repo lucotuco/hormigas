@@ -501,8 +501,8 @@ func _valor_stat(stat: String, valor: float) -> String:
 		"cria": return "%d crías / 10 s" % int(valor)
 		"olfato": return "%.0f de alcance" % valor
 		"capacidad": return "%d bocados" % int(valor)
-		"dano_clic": return "%.0f de daño por pisotón" % valor
-	return "%.1f de daño" % valor
+		"dano_clic": return Juego.formatear(valor) + " de daño por pisotón"
+	return ("%.1f" % valor if valor < 1000.0 else Juego.formatear(valor)) + " de daño"
 
 
 func _comprar(id: String) -> void:

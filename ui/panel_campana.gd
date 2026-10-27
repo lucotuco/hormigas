@@ -140,7 +140,7 @@ func _nodo_jalea(n: Dictionary) -> Control:
 	var puede := Juego.puede_comprar_jalea(n.id)
 	var color := Color("f0d277")
 	var boton := Button.new()
-	boton.custom_minimum_size = Vector2(0, 118)
+	boton.custom_minimum_size = Vector2(0, 100)
 	boton.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var fondo := Color("3a3a26") if puede else (Color("2b3326") if nivel > 0 else Color("232822"))
 	boton.add_theme_stylebox_override("normal", Estilo.caja(fondo, 12, Color(color, 0.6 if puede else 0.15), 1, 0))
@@ -164,7 +164,8 @@ func _nodo_jalea(n: Dictionary) -> Control:
 	var nombre := _texto(n.nombre, 15, Estilo.TEXTO)
 	nombre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fila.add_child(nombre)
-	fila.add_child(_texto("%d / %d" % [nivel, n.nivel_max], 12, Estilo.TEXTO_SUAVE))
+	# Sin ajuste de línea: con autowrap y sin ancho propio se partía letra por letra.
+	fila.add_child(Estilo.etiqueta("%d / %d" % [nivel, n.nivel_max], 12, Estilo.TEXTO_SUAVE))
 	columna.add_child(_texto(n.descripcion, 12, Estilo.TEXTO_SUAVE))
 	var pie := "COMPLETO" if completo else ("Cuesta %d jalea" % Juego.costo_jalea(n.id))
 	if not abierto:
