@@ -1,109 +1,121 @@
 class_name Feromonas
 extends Node2D
-## El rastro de feromonas que dibuja el jugador manteniendo apretado el clic.
-## Las hormigas que lo huelen lo siguen hacia la punta más nueva.
-## Cada punto se borra cuando pasa más tiempo que la stat "feromona_duracion".
-
-const DISTANCIA_ENTRE_PUNTOS := 10.0
-const ADELANTO := 3                      # cuántos puntos adelante apunta una hormiga
-const COLOR_RASTRO := Color(0.28, 0.72, 0.95)
-
-
-class Trazo:
-	var puntos: Array[Vector2] = []
-	var tiempos: Array[float] = []
-
-
-var trazos: Array[Trazo] = []
-
-var _trazo_actual: Trazo = null
+## Las unidades más cercanas al cursor responden mientras se mantiene el clic.
+const MAX_ATRAIDAS := 24
+var activa := false
+var posicion := Vector2.ZERO
+var seleccionadas: Dictionary = {}
 var _reloj := 0.0
-var _mouse_apretado := false
-
+var _espera := 0.0
+var _desvanecer := 0.0
+var _desde_mouse := false
+var _pantalla := Vector2.ZERO
 @onready var run: Run = get_parent()
+
+
+func radio_visual() -> float:
+	return 80.0 / maxf(get_canvas_transform().get_scale().x, 0.01)
+
+
+func cantidad_atraidas() -> int:
+	return clampi(int(Juego.stat("feromona_cantidad")), 1, 64)
+
+
+func mantener_en(pos: Vector2, desde_mouse := false) -> void:
+	var era_activa := activa
+	activa = true
+	posicion = pos
+	_desde_mouse = desde_mouse
+	_desvanecer = 1
+	if not era_activa:
+		_actualizar_cercanas()
+	queue_redraw()
+
+
+func soltar() -> void:
+	activa = false
+	_desde_mouse = false
+	seleccionadas.clear()
+	queue_redraw()
+
+
+func limpiar() -> void:
+	soltar()
+	_desvanecer = 0
+
+
+func llama_a(hormiga: Hormiga) -> bool:
+	return activa and seleccionadas.has(hormiga.get_instance_id())
+
+
+func _actualizar_cercanas() -> void:
+	seleccionadas.clear()
+	if not activa or not run.activa or posicion.length() > run.radio_actual:
+		return
+	var candidatas: Array[Dictionary] = []
+	for h in run.colonia.hormigas:
+		if h.estado == Hormiga.Estado.QUIETA or h.estado == Hormiga.Estado.VOLVIENDO or h.carga > 0:
+			continue
+		var d := h.global_position.distance_squared_to(posicion)
+		candidatas.append({"id": h.get_instance_id(), "distancia": d})
+	candidatas.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.distancia < b.distancia)
+	for i in mini(cantidad_atraidas(), candidatas.size()):
+		seleccionadas[candidatas[i].id] = true
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not run.activa or run.camara.arrastrando:
+		return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_pantalla = event.position
+			mantener_en(get_canvas_transform().affine_inverse() * _pantalla, true)
+		else:
+			soltar()
+	if event is InputEventMouseMotion and activa and _desde_mouse:
+		_pantalla = event.position
+		posicion = get_canvas_transform().affine_inverse() * _pantalla
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		soltar()
 
 
 func _process(delta: float) -> void:
 	_reloj += delta
-	var dibujando := run.activa and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
-	if dibujando:
-		agregar_punto(get_global_mouse_position())
-		_mouse_apretado = true
-	elif _mouse_apretado:
-		_mouse_apretado = false
-		terminar_trazo()  # al soltar el clic, el próximo rastro es uno nuevo
-	_caducar(Juego.stat("feromona_duracion"))
+	if activa:
+		if not run.activa or run.camara.arrastrando or (_desde_mouse and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
+			soltar()
+		else:
+			if _desde_mouse:
+				posicion = get_canvas_transform().affine_inverse() * _pantalla
+			_espera -= delta
+			if _espera <= 0:
+				_espera = 0.1
+				_actualizar_cercanas()
+	else:
+		_desvanecer = move_toward(_desvanecer, 0, delta * 6)
 	queue_redraw()
 
 
-## Agrega un punto al trazo actual (o empieza uno nuevo). Público para poder
-## probarlo sin mouse.
-func agregar_punto(pos: Vector2) -> void:
-	pos = pos.limit_length(run.radio_actual)
-	if _trazo_actual == null:
-		_trazo_actual = Trazo.new()
-		trazos.append(_trazo_actual)
-	var puntos := _trazo_actual.puntos
-	if puntos.is_empty() or puntos.back().distance_to(pos) >= DISTANCIA_ENTRE_PUNTOS:
-		puntos.append(pos)
-		_trazo_actual.tiempos.append(_reloj)
-
-
-func terminar_trazo() -> void:
-	_trazo_actual = null
-
-
-func limpiar() -> void:
-	trazos.clear()
-	_trazo_actual = null
-
-
-## Punto del rastro hacia el que tiene que caminar una hormiga en `pos`,
-## o Vector2.INF si no hay rastro a menos de `alcance`.
-func siguiente_punto(pos: Vector2, alcance: float) -> Vector2:
-	var mejor_distancia := alcance * alcance
-	var mejor_trazo: Trazo = null
-	var mejor_indice := -1
-	for trazo in trazos:
-		var puntos := trazo.puntos
-		for i in puntos.size():
-			var d := pos.distance_squared_to(puntos[i])
-			if d < mejor_distancia:
-				mejor_distancia = d
-				mejor_trazo = trazo
-				mejor_indice = i
-	if mejor_trazo == null:
-		return Vector2.INF
-	var indice := mini(mejor_indice + ADELANTO, mejor_trazo.puntos.size() - 1)
-	return mejor_trazo.puntos[indice]
-
-
-func _caducar(duracion: float) -> void:
-	for i in range(trazos.size() - 1, -1, -1):
-		var trazo := trazos[i]
-		var quitar := 0
-		while quitar < trazo.tiempos.size() and _reloj - trazo.tiempos[quitar] > duracion:
-			quitar += 1
-		if quitar > 0:
-			trazo.puntos = trazo.puntos.slice(quitar)
-			trazo.tiempos = trazo.tiempos.slice(quitar)
-		if trazo.puntos.is_empty() and trazo != _trazo_actual:
-			trazos.remove_at(i)
-
-
 func _draw() -> void:
-	var zoom := maxf(get_viewport().get_canvas_transform().get_scale().x, 0.01)
-	var duracion := maxf(Juego.stat("feromona_duracion"), 0.01)
-	for trazo in trazos:
-		var cantidad := trazo.puntos.size()
-		if cantidad < 2:
-			continue
-		var puntos := PackedVector2Array(trazo.puntos)
-		var colores_brillo := PackedColorArray()
-		var colores := PackedColorArray()
-		for i in cantidad:
-			var vida := clampf(1.0 - (_reloj - trazo.tiempos[i]) / duracion, 0.0, 1.0)
-			colores_brillo.append(Color(COLOR_RASTRO, 0.22 * vida))
-			colores.append(Color(COLOR_RASTRO.lightened(0.35), 0.9 * vida))
-		draw_polyline_colors(puntos, colores_brillo, 9.0 / zoom, true)
-		draw_polyline_colors(puntos, colores, 2.5 / zoom, true)
+	if _desvanecer <= 0:
+		return
+	var zoom := maxf(get_canvas_transform().get_scale().x, 0.01)
+	var color := Color("72c4b0") if posicion.length() <= run.radio_actual else Color("bb8c72")
+	var radio := radio_visual()
+	for i in range(8, 0, -1):
+		draw_circle(posicion, radio * i / 8.0, Color(color, 0.012 * _desvanecer))
+	for i in 40:
+		var angulo := TAU * i / 40
+		draw_arc(posicion, radio, angulo, angulo + 0.075, 3, Color(color, 0.35 * _desvanecer), 1 / zoom, true)
+	for i in 3:
+		var t := fposmod(_reloj * 0.55 + i / 3.0, 1.0)
+		draw_arc(posicion, (12 + t * 38) / zoom, 0, TAU, 40, Color(color, (1 - t) * 0.55 * _desvanecer), 1.5 / zoom, true)
+	draw_circle(posicion, 4 / zoom, Color(color, _desvanecer))
+	# Guías tenues hacia las elegidas; nunca queda un camino al soltar.
+	if activa:
+		for h in run.colonia.hormigas:
+			if seleccionadas.has(h.get_instance_id()):
+				draw_line(h.global_position, posicion, Color(color, 0.12), 1 / zoom, true)

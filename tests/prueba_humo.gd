@@ -50,12 +50,9 @@ func _probar_run(nombre: String, con_feromonas: bool) -> float:
 	var cuadros := 0
 	var comida_lejana := _comida_mas_lejana_alcanzable(run)
 	while not run.terminada and cuadros < 20000:
-		if con_feromonas and comida_lejana and is_instance_valid(comida_lejana) and cuadros % 3 == 0:
-			# Simula al jugador arrastrando el mouse desde el hormiguero hacia la comida.
-			var t := float(cuadros % 240) / 240.0
-			run.feromonas.agregar_punto(comida_lejana.position * t)
-			if cuadros % 240 == 0:
-				run.feromonas.terminar_trazo()
+		if con_feromonas and is_instance_valid(comida_lejana):
+			var t := clampf((run.duracion_total - run.tiempo_restante) / 14, 0, 1)
+			run.feromonas.mantener_en(comida_lejana.position * t)
 		await get_tree().process_frame
 		cuadros += 1
 	Engine.time_scale = 1.0
@@ -84,6 +81,10 @@ func _probar_compras() -> void:
 	for _vuelta in 6:
 		for m in Juego.mejoras:
 			Juego.comprar(m.id)
+	for c in Juego.castas:
+		if c.comprable:
+			Juego.comprar_casta(c.id)
+	_verificar(Juego.total_especialistas() == 5, "se reclutó una unidad de cada casta para la run mejorada")
 	_verificar(Juego.stat("hormigas_iniciales") > antes, "comprar mejoras cambia las stats")
 	_verificar(not Juego.comprar("mandibulas_acero") or Juego.nivel_de("mandibulas") >= 10,
 		"no se puede comprar una mejora bloqueada")
@@ -100,6 +101,16 @@ func _probar_tienda() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_verificar(tienda._tarjetas.size() == Juego.mejoras.size(), "la tienda muestra %d tarjetas" % tienda._tarjetas.size())
+	for rama in tienda.SALAS:
+		tienda._seleccionar(rama)
+		var visibles := 0
+		var esperadas := 0
+		for m in Juego.mejoras:
+			if m.rama == rama:
+				esperadas += 1
+			if tienda._tarjetas[m.id].boton.visible:
+				visibles += 1
+		_verificar(visibles == esperadas, "%s muestra sus %d mejoras" % [rama, esperadas])
 	tienda.queue_free()
 	await get_tree().process_frame
 

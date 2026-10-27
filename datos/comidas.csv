@@ -1,7 +1,13 @@
-id,nombre,forma,color,vida,recompensa,radio,distancia_min,distancia_max,cantidad
-miga,Miga,miga,#d8b47a,3,2,4,30,320,70
-azucar,Terrón de azúcar,cuadrado,#f4f1ea,15,12,7,140,620,34
-galletita,Galletita,galletita,#c98a4b,60,60,14,300,900,30
-queso,Queso,queso,#f2c94c,200,250,19,520,1250,22
-sandwich,Sándwich,sandwich,#e3c08d,600,900,28,800,1650,16
-torta,Torta,torta,#f2a7c3,3000,5000,48,1200,2150,7
+id,nombre,forma,color,vida,recompensa,radio,distancia_min,distancia_max,cantidad,zonas
+miga,Miga,miga,#d8b47a,3,2,5,35,1300,120,cocina
+azucar,Terrón de azúcar,cuadrado,#f4f1ea,15,12,8,140,2500,55,cocina|comedor
+galletita,Galletita,galletita,#c98a4b,60,60,16,400,6200,70,cocina|comedor|living|dormitorio|estudio
+queso,Queso,queso,#f2c94c,200,250,22,700,4200,35,cocina|comedor
+sandwich,Sándwich,sandwich,#e3c08d,600,900,32,1800,7600,35,comedor|living|dormitorio|estudio
+torta,Torta,torta,#f2a7c3,3000,5000,54,2600,7800,18,comedor|living|estudio
+cereal,Arito de cereal,aro,#e6ba70,8,6,7,70,2200,50,cocina|comedor
+fideo,Fideo,fideo,#edce83,22,20,12,180,2600,35,cocina|comedor
+frutilla,Frutilla,frutilla,#d96558,95,110,18,360,3400,35,cocina|comedor
+dona,Dona,aro,#e7a6ac,320,420,27,1500,7300,28,comedor|living|dormitorio|estudio
+pizza,Porción de pizza,pizza,#edbe69,1400,2100,42,2400,7800,24,comedor|living|estudio
+banquete,El gran banquete,torta,#f2a7c3,16000,30000,88,0,9000,0,comedor

@@ -23,6 +23,10 @@ var _destello := 0.0
 var _grietas: Array[Vector3] = []          # ángulo, largo (0-1), quiebre
 var _detalles: Array[Vector3] = []         # x, y, tamaño (en unidades de radio)
 var _contorno := PackedVector2Array()      # para formas irregulares
+var veneno_restante := 0.0
+var _veneno_dps := 0.0
+var _veneno_acumulado := 0.0
+var _run_veneno: Run
 
 
 func configurar(tipo: Dictionary, semilla: int) -> void:
@@ -82,10 +86,41 @@ func morder(dano: float) -> float:
 	return migas
 
 
+## Conserva el efecto más fuerte y renueva su duración; no suma DPS sin límite.
+func aplicar_veneno(dano_por_segundo: float, duracion: float, run: Run) -> void:
+	if muerta or not run.activa or dano_por_segundo <= 0:
+		return
+	_veneno_dps = maxf(_veneno_dps, dano_por_segundo)
+	veneno_restante = maxf(veneno_restante, duracion)
+	_run_veneno = run
+	set_process(true)
+	queue_redraw()
+
+
 func _process(delta: float) -> void:
+	if muerta:
+		return
+	if veneno_restante > 0:
+		if not is_instance_valid(_run_veneno) or not _run_veneno.activa:
+			veneno_restante = 0
+			_veneno_acumulado = 0
+			_veneno_dps = 0
+		else:
+			var tiempo := minf(delta, veneno_restante)
+			veneno_restante = maxf(0, veneno_restante - tiempo)
+			_veneno_acumulado += tiempo
+			if _veneno_acumulado >= 0.5 or veneno_restante <= 0:
+				var migas := morder(_veneno_dps * _veneno_acumulado)
+				_veneno_acumulado = 0
+				Juego.sumar_migas_run(migas)
+				_run_veneno.efectos.numero(global_position + Vector2(0, -radio), migas, Color("b7d68b"), 0.7)
+				if veneno_restante <= 0:
+					_veneno_dps = 0
+				if muerta:
+					return
 	_sacudida = move_toward(_sacudida, 0.0, delta * 18.0)
 	_destello = maxf(0.0, _destello - delta)
-	if _sacudida <= 0.0 and _destello <= 0.0:
+	if _sacudida <= 0.0 and _destello <= 0.0 and veneno_restante <= 0:
 		set_process(false)
 	queue_redraw()
 
@@ -96,7 +131,38 @@ func _draw() -> void:
 	var c := color.lerp(Color.WHITE, 0.65) if _destello > 0.0 else color
 	var oscuro := c.darkened(0.3)
 	var r := radio
+	if veneno_restante > 0:
+		draw_circle(Vector2.ZERO, r + 4, Color(0.57, 0.76, 0.32, 0.2))
+		draw_arc(Vector2.ZERO, r + 3, 0, TAU, 32, Color(0.67, 0.85, 0.43, 0.75), 1.5, true)
+	# Sombra consistente, también para las formas pequeñas.
+	draw_circle(Vector2(1.5, 2.5), r * 0.93, Color(0.18, 0.12, 0.08, 0.14))
 	match forma:
+		"aro":
+			draw_circle(Vector2.ZERO, r, oscuro)
+			draw_circle(Vector2(0, -1), r * 0.87, c)
+			draw_circle(Vector2.ZERO, r * 0.32, Color("ac9878"))
+			draw_arc(Vector2.ZERO, r * 0.64, -2.8, -0.7, 20, c.lightened(0.3), maxf(1.0, r * 0.12), true)
+			if r > 12:
+				for i in 12:
+					var p := Vector2.from_angle(i * TAU / 12) * r * 0.65
+					draw_line(p, p + Vector2(2, 2), Color("fff0cf") if i % 2 == 0 else Color("af687b"), 2, true)
+		"fideo":
+			draw_arc(Vector2.ZERO, r * 0.65, -2.8, 1.8, 24, oscuro, r * 0.65, true)
+			draw_arc(Vector2(0, -1), r * 0.65, -2.8, 1.8, 24, c, r * 0.43, true)
+		"frutilla":
+			draw_colored_polygon(PackedVector2Array([Vector2(-r, -r * 0.3), Vector2(-r * 0.6, -r * 0.8), Vector2(r * 0.65, -r * 0.8), Vector2(r, -r * 0.3), Vector2(0, r)]), c)
+			for i in 7:
+				var p := Vector2(sin(i * 2.4) * r * 0.48, -r * 0.4 + i * r * 0.17)
+				draw_line(p, p + Vector2(0, 2), Color("f6dd9d"), 1.2, true)
+			for i in 3:
+				var p := Vector2((i - 1) * r * 0.45, -r * 0.9)
+				draw_colored_polygon(PackedVector2Array([Vector2(0, -r * 0.6), p - Vector2(3, 4), p + Vector2(3, -3)]), Color("6b9153"))
+		"pizza":
+			var triangulo := PackedVector2Array([Vector2(-r, -r * 0.75), Vector2(r, 0), Vector2(-r, r * 0.75)])
+			draw_colored_polygon(triangulo, Color("bb7850"))
+			draw_colored_polygon(PackedVector2Array([Vector2(-r * 0.78, -r * 0.58), Vector2(r * 0.86, 0), Vector2(-r * 0.78, r * 0.58)]), c)
+			for p in [Vector2(-0.4, -0.25), Vector2(0.25, 0), Vector2(-0.4, 0.28)]:
+				draw_circle(p * r, r * 0.15, Color("b85443"))
 		"miga":
 			draw_colored_polygon(_contorno, c)
 			draw_polyline(_contorno + PackedVector2Array([_contorno[0]]), COLOR_CONTORNO, 0.6)
@@ -152,4 +218,8 @@ func _draw() -> void:
 		var origen := Vector2(-ancho_barra / 2, -r - alto - 4.0)
 		draw_rect(Rect2(origen, Vector2(ancho_barra, alto)), Color(0, 0, 0, 0.55))
 		draw_rect(Rect2(origen, Vector2(ancho_barra * (1.0 - dano), alto)), Color(0.55, 0.95, 0.4))
+	if veneno_restante > 0:
+		for i in 3:
+			var p := Vector2((i - 1) * r * 0.5, -r - 5 - sin(veneno_restante * 4 + i) * 3)
+			draw_circle(p, 1.5, Color("b7d68b"))
 	draw_set_transform(Vector2.ZERO)

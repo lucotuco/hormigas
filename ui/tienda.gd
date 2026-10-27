@@ -1,179 +1,371 @@
 extends Control
-## Tienda entre runs: el árbol de mejoras, armado como cámaras del hormiguero
-## conectadas por túneles. Cada columna es una "rama" de datos/mejoras.csv.
-## Las mejoras bloqueadas se ven en sombra para que el jugador sepa que existen.
-
+## Cámaras del hormiguero: navegación a la izquierda y mejoras a la derecha.
 const ESCENA_RUN := "res://mundo/run.tscn"
-const TAMANO_TARJETA := Vector2(196, 128)
-
-const COLOR_DISPONIBLE := Color(0.42, 0.29, 0.17)
-const COLOR_CARA := Color(0.27, 0.19, 0.13)
-const COLOR_BLOQUEADA := Color(0.12, 0.085, 0.06)
-const COLOR_MAXIMA := Color(0.24, 0.33, 0.18)
-
-var _tarjetas: Dictionary = {}   # id -> {boton, nombre, nivel, descripcion, costo}
+const SALAS := {
+	"Colonia": {"titulo": "El criadero", "detalle": "Una familia cada vez más grande.", "color": Color("b8cd91"), "pos": Vector2(0.25, 0.28)},
+	"Mandíbulas": {"titulo": "El taller", "detalle": "Hasta la última miguita.", "color": Color("e7ac7d"), "pos": Vector2(0.74, 0.28)},
+	"Recolección": {"titulo": "La despensa", "detalle": "Pequeños viajes, grandes tesoros.", "color": Color("e8cc86"), "pos": Vector2(0.23, 0.58)},
+	"Feromonas": {"titulo": "El observatorio", "detalle": "Todos los caminos llevan a casa.", "color": Color("8dc3bc"), "pos": Vector2(0.77, 0.58)},
+	"Tiempo": {"titulo": "El refugio", "detalle": "Siempre hay tiempo para otro bocado.", "color": Color("c3add4"), "pos": Vector2(0.31, 0.85)},
+	"Territorio": {"titulo": "La excavación", "detalle": "La cocina es solo el comienzo.", "color": Color("c9b48c"), "pos": Vector2(0.69, 0.85)},
+}
+var _tarjetas: Dictionary = {}
+var _salas: Dictionary = {}
+var _rama := "Colonia"
 var _lbl_migas: Label
 var _lbl_proxima: Label
+var _lbl_sala: Label
+var _lbl_detalle: Label
+var _lbl_estado: Label
+var _lista: VBoxContainer
 var _boton_run: Button
 var _migas_mostradas := 0.0
+var _tween_compra: Tween
+var _audio: CheckButton
+var _cuerpo_mejoras: Control
+var _panel_castas: PanelCastas
+var _pestanas: Dictionary = {}
+var _cantidades: Dictionary = {}
 
 
-class FondoTierra extends Control:
+class IconoSala extends Control:
+	var rama := "Colonia"
+	var color := Color.WHITE
+	var nivel := 0
+	var seleccionada := false
+	var disponibles := 0
+	var reloj := 0.0
+
+	func _process(delta: float) -> void:
+		reloj += delta
+		if seleccionada:
+			queue_redraw()
+
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Estilo.TIERRA_OSCURA)
+		var c := size * 0.5
+		# La cámara excavada se ensancha a medida que se desarrolla su rama.
+		var crecimiento := minf(nivel, 15) * 0.6
+		draw_set_transform(c, 0, Vector2(1.55, 0.84))
+		draw_circle(Vector2(0, 3), 34 + crecimiento, Color(0, 0, 0, 0.25))
+		draw_circle(Vector2.ZERO, 33 + crecimiento, Color("514332"))
+		draw_circle(Vector2.ZERO, 30 + crecimiento, Color("2b261d"))
+		for i in mini(nivel, 10):
+			var p := Vector2.from_angle(i * 2.4) * (25 + crecimiento)
+			draw_circle(p, 2, Color(color, 0.3))
+		draw_set_transform(Vector2.ZERO)
+		if seleccionada:
+			draw_circle(c, 39 + sin(reloj * 2) * 2, Color(color, 0.07))
+		draw_circle(c + Vector2(0, 3), 31, Color(0, 0, 0, 0.2))
+		draw_circle(c, 30, Color("302a22"))
+		draw_arc(c, 30, 0, TAU, 60, Color(color, 0.9 if seleccionada else 0.35), 2, true)
+		var tinta := color if nivel > 0 or seleccionada else color.darkened(0.3)
+		draw_set_transform(c)
+		match rama:
+			"Colonia":
+				for p in [Vector2(-10, 3), Vector2(9, 4), Vector2(0, -10)]:
+					draw_set_transform(c + p, -0.3, Vector2(0.8, 1.1))
+					draw_circle(Vector2.ZERO, 7, tinta)
+					draw_arc(Vector2.ZERO, 4, -2.8, -1.3, 12, tinta.lightened(0.4), 1.5, true)
+			"Mandíbulas":
+				for lado in [-1, 1]:
+					draw_colored_polygon(PackedVector2Array([Vector2(lado * 14, 12), Vector2(lado * 18, -4), Vector2(lado * 8, -15), Vector2(lado * 3, -7), Vector2(lado * 10, -5), Vector2(lado * 6, 8)]), tinta)
+			"Recolección":
+				for i in 3:
+					draw_circle(Vector2(-10 + i * 10, 9 - (i % 2) * 12), 7, tinta.darkened(i * 0.06))
+				draw_line(Vector2(-19, 20), Vector2(19, 20), tinta, 2, true)
+			"Feromonas":
+				for i in 6:
+					draw_circle(Vector2(-17 + i * 7, sin(i * 0.9) * 11), 2 + i * 0.35, Color(tinta, 0.35 + i * 0.12))
+			"Tiempo":
+				draw_arc(Vector2.ZERO, 18, 0, TAU, 40, tinta, 2, true)
+				draw_polyline(PackedVector2Array([Vector2(0, -12), Vector2.ZERO, Vector2(9, 5)]), tinta, 2.5, true)
+				draw_circle(Vector2.ZERO, 3, tinta)
+			"Territorio":
+				for i in 3:
+					draw_arc(Vector2(-12, 12), 10 + i * 10, -PI * 0.5, 0, 24, Color(tinta, 1.0 - i * 0.2), 2, true)
+		draw_set_transform(Vector2.ZERO)
+		for i in mini(nivel, 8):
+			draw_circle(c + Vector2.from_angle(PI * 0.2 + i * PI * 0.085) * 36, 2, color)
+		if disponibles > 0:
+			draw_circle(c + Vector2(27, -23), 7, Color("b8d891"))
+			draw_circle(c + Vector2(27, -23), 10, Color(0.7, 0.9, 0.5, 0.12))
+
+
+class CorteTierra extends Control:
+	var reloj := 0.0
+
+	func _process(delta: float) -> void:
+		reloj += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color("211e19"))
+		for i in 8:
+			var y := 24.0 + i * size.y / 8.0
+			draw_line(Vector2(0, y), Vector2(size.x, y + 20), Color(0.76, 0.6, 0.4, 0.025), 14, true)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 7
-		for i in 900:
-			var p := Vector2(rng.randf() * size.x, rng.randf() * size.y)
-			var c := Estilo.TIERRA if rng.randf() < 0.7 else Estilo.TIERRA_CLARA
-			draw_circle(p, rng.randf_range(0.8, 2.6), Color(c, rng.randf_range(0.3, 0.8)))
+		for i in 210:
+			draw_circle(Vector2(rng.randf() * size.x, rng.randf() * size.y), rng.randf_range(0.6, 2), Color(0.75, 0.61, 0.43, 0.08))
+		var centro := Vector2(size.x * 0.5, size.y * 0.44)
+		draw_line(Vector2(size.x * 0.5, 0), centro, Color("171612"), 22, true)
+		for sala in SALAS.values():
+			var p: Vector2 = sala.pos * size
+			var camino := PackedVector2Array([centro, Vector2(centro.x, p.y), p])
+			draw_polyline(camino, Color("151511"), 20, true)
+			draw_polyline(camino, Color(0.65, 0.52, 0.35, 0.09), 2, true)
+			for i in 2:
+				var avance := fposmod(reloj * 0.1 + i * 0.5 + sala.pos.x, 1.0)
+				var trabajador := centro.lerp(camino[1], avance * 2) if avance < 0.5 else camino[1].lerp(p, (avance - 0.5) * 2)
+				draw_circle(trabajador, 1.7, Color("9b8d69"))
+				draw_circle(trabajador + Vector2(3, 0), 1.1, Color("9b8d69"))
+		draw_circle(centro, 24, Color("161612"))
+		draw_circle(centro, 17, Color("675b40"))
+		for i in 3:
+			draw_circle(centro + Vector2(-7 + i * 7, 0), 5 - i, Color("e6ca86"))
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	var fondo := FondoTierra.new()
+	var fondo := ColorRect.new()
+	fondo.color = Color("171b18")
 	fondo.set_anchors_preset(Control.PRESET_FULL_RECT)
-	fondo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fondo.resized.connect(fondo.queue_redraw)
 	add_child(fondo)
-
 	var margen := MarginContainer.new()
 	margen.set_anchors_preset(Control.PRESET_FULL_RECT)
 	for lado in ["left", "right", "top", "bottom"]:
 		margen.add_theme_constant_override("margin_" + lado, 24)
 	add_child(margen)
 	var columna := VBoxContainer.new()
-	columna.add_theme_constant_override("separation", 16)
+	columna.add_theme_constant_override("separation", 18)
 	margen.add_child(columna)
-
-	columna.add_child(_crear_encabezado())
-	columna.add_child(_crear_arbol())
-	if OS.is_debug_build():
-		var ayuda := Estilo.etiqueta("Desarrollo  —  F1: +1000 migas  ·  F2: migas x10  ·  F9: borrar partida  ·  M: silenciar", 13, Estilo.TEXTO_SUAVE)
-		ayuda.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		columna.add_child(ayuda)
-
+	columna.add_child(_encabezado())
+	columna.add_child(_crear_pestanas())
+	var cuerpo := HBoxContainer.new()
+	_cuerpo_mejoras = cuerpo
+	cuerpo.add_theme_constant_override("separation", 20)
+	cuerpo.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	columna.add_child(cuerpo)
+	cuerpo.add_child(_crear_mapa())
+	cuerpo.add_child(_crear_detalles())
+	_panel_castas = PanelCastas.new()
+	_panel_castas.visible = false
+	columna.add_child(_panel_castas)
+	columna.add_child(_pie())
 	Juego.migas_cambiaron.connect(_on_migas_cambiaron)
 	Juego.partida_borrada.connect(_refrescar)
+	Juego.modo_compra_cambio.connect(_refrescar)
 	_migas_mostradas = Juego.migas
 	_refrescar()
+	_cambiar_pestana("hogar")
 	_boton_run.grab_focus()
 
 
 func _process(delta: float) -> void:
 	_migas_mostradas = lerpf(_migas_mostradas, Juego.migas, 1.0 - exp(-10.0 * delta))
-	if absf(Juego.migas - _migas_mostradas) < 0.5:
-		_migas_mostradas = Juego.migas
-	_lbl_migas.text = Juego.formatear(_migas_mostradas)
+	_lbl_migas.text = Juego.formatear(_migas_mostradas) + " migas"
+	_audio.set_pressed_no_signal(not Sonido.silenciado)
 
 
-func _crear_encabezado() -> Control:
+func _encabezado() -> Control:
 	var fila := HBoxContainer.new()
-	fila.add_theme_constant_override("separation", 18)
+	fila.add_theme_constant_override("separation", 24)
 	var titulos := VBoxContainer.new()
 	titulos.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	titulos.add_child(Estilo.etiqueta("El hormiguero", 36, Estilo.ACENTO, 5))
-	_lbl_proxima = Estilo.etiqueta("", 15, Estilo.TEXTO_SUAVE)
+	titulos.add_child(Estilo.etiqueta("ENTRE RAÍCES Y MIGAS", 11, Color("9db196")))
+	titulos.add_child(Estilo.etiqueta("Un hogar que crece", 32, Estilo.TEXTO))
+	_lbl_proxima = Estilo.etiqueta("", 13, Estilo.TEXTO_SUAVE)
 	titulos.add_child(_lbl_proxima)
 	fila.add_child(titulos)
-
-	var caja := PanelContainer.new()
-	caja.add_theme_stylebox_override("panel", Estilo.caja(Estilo.PANEL, 12, Color(1, 1, 1, 0.08), 1, 14))
-	var columna := VBoxContainer.new()
-	columna.add_theme_constant_override("separation", 0)
-	columna.add_child(Estilo.etiqueta("MIGAS", 11, Estilo.TEXTO_SUAVE))
-	_lbl_migas = Estilo.etiqueta("0", 30, Estilo.ACENTO, 4)
-	columna.add_child(_lbl_migas)
-	caja.add_child(columna)
-	caja.custom_minimum_size = Vector2(170, 0)
+	var caja := VBoxContainer.new()
+	caja.alignment = BoxContainer.ALIGNMENT_CENTER
+	caja.add_child(Estilo.etiqueta("EN LA DESPENSA", 11, Estilo.TEXTO_SUAVE))
+	_lbl_migas = Estilo.etiqueta("", 26, Estilo.ACENTO)
+	caja.add_child(_lbl_migas)
 	fila.add_child(caja)
-
-	_boton_run = Estilo.boton("¡Nueva run!  ▸", 24, Color(0.45, 0.3, 0.12), Estilo.ACENTO)
-	_boton_run.custom_minimum_size = Vector2(220, 0)
+	_boton_run = Estilo.boton("Explorar la casa  →", 18, Color("46593e"), Color("94b47e"))
+	_boton_run.custom_minimum_size = Vector2(235, 56)
 	_boton_run.pressed.connect(_nueva_run)
 	fila.add_child(_boton_run)
 	return fila
 
 
-func _crear_arbol() -> Control:
+func _crear_mapa() -> Control:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.custom_minimum_size = Vector2(500, 0)
+	panel.add_theme_stylebox_override("panel", Estilo.caja(Color("211e19"), 20, Color("494333"), 1, 0))
+	var base := Control.new()
+	panel.add_child(base)
+	var mapa := CorteTierra.new()
+	mapa.set_anchors_preset(Control.PRESET_FULL_RECT)
+	mapa.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	base.add_child(mapa)
+	mapa.resized.connect(mapa.queue_redraw)
+	var ayuda := Estilo.etiqueta("EL HORMIGUERO  /  Elegí una cámara", 12, Color("b9ad94"))
+	ayuda.position = Vector2(18, 15)
+	base.add_child(ayuda)
+	for rama in SALAS:
+		var datos: Dictionary = SALAS[rama]
+		var boton := Button.new()
+		boton.anchor_left = datos.pos.x
+		boton.anchor_right = datos.pos.x
+		boton.anchor_top = datos.pos.y
+		boton.anchor_bottom = datos.pos.y
+		boton.offset_left = -85
+		boton.offset_right = 85
+		boton.offset_top = -44
+		boton.offset_bottom = 54
+		boton.tooltip_text = datos.titulo + ": " + datos.detalle
+		boton.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		boton.add_theme_stylebox_override("hover", Estilo.caja(Color(datos.color, 0.06), 16, Color(datos.color, 0.2), 1, 0))
+		boton.add_theme_stylebox_override("pressed", Estilo.caja(Color(datos.color, 0.1), 16, Color(datos.color, 0.4), 1, 0))
+		boton.add_theme_stylebox_override("focus", Estilo.caja(Color.TRANSPARENT, 16, datos.color, 1, 0))
+		boton.pressed.connect(_seleccionar.bind(rama))
+		base.add_child(boton)
+		var icono := IconoSala.new()
+		icono.rama = rama
+		icono.color = datos.color
+		icono.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icono.position = Vector2(45, 0)
+		icono.size = Vector2(80, 80)
+		boton.add_child(icono)
+		var etiqueta := Estilo.etiqueta(datos.titulo, 13, datos.color)
+		etiqueta.position = Vector2(0, 77)
+		etiqueta.size.x = 170
+		etiqueta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		boton.add_child(etiqueta)
+		var aviso := Estilo.etiqueta("", 10, Color("b8d891"))
+		aviso.position = Vector2(0, 94)
+		aviso.size.x = 170
+		aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		boton.add_child(aviso)
+		_salas[rama] = {"boton": boton, "icono": icono, "aviso": aviso}
+	return panel
+
+
+func _crear_pestanas() -> Control:
+	var fila := HBoxContainer.new()
+	fila.add_theme_constant_override("separation", 10)
+	for id in ["hogar", "castas"]:
+		var boton := Estilo.boton("Mejoras del hogar" if id == "hogar" else "Castas y reclutamiento", 15, Color("282f26"), Color("52634a"))
+		boton.pressed.connect(_cambiar_pestana.bind(id))
+		fila.add_child(boton)
+		_pestanas[id] = boton
+	var espacio := Control.new()
+	espacio.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fila.add_child(espacio)
+	var texto := Estilo.etiqueta("COMPRAR", 11, Estilo.TEXTO_SUAVE)
+	texto.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	fila.add_child(texto)
+	for cantidad in [1, 10, 0]:
+		var boton := Estilo.boton("Máx" if cantidad == 0 else "×%d" % cantidad, 15, Color("282f26"), Color("52634a"))
+		boton.custom_minimum_size.x = 64
+		boton.pressed.connect(Juego.cambiar_cantidad_compra.bind(cantidad))
+		boton.tooltip_text = "Todo lo que alcance" if cantidad == 0 else "Compra hasta el límite de nivel; requiere pagar el lote completo."
+		fila.add_child(boton)
+		_cantidades[cantidad] = boton
+	return fila
+
+
+func _cambiar_pestana(id: String) -> void:
+	_cuerpo_mejoras.visible = id == "hogar"
+	_panel_castas.visible = id == "castas"
+	for clave in _pestanas:
+		var color := Color("536649") if clave == id else Color("282f26")
+		_pestanas[clave].add_theme_stylebox_override("normal", Estilo.caja(color, 10, Color("94b47e") if clave == id else Color("46503f"), 1, 10))
+
+
+func _crear_detalles() -> Control:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(390, 0)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", Estilo.caja(Color("222923"), 20, Color("3e493d"), 1, 20))
+	var columna := VBoxContainer.new()
+	columna.add_theme_constant_override("separation", 10)
+	panel.add_child(columna)
+	columna.add_child(Estilo.etiqueta("CUIDÁ TU COLONIA", 11, Color("9db196")))
+	_lbl_sala = Estilo.etiqueta("", 27)
+	columna.add_child(_lbl_sala)
+	_lbl_detalle = Estilo.etiqueta("", 13, Estilo.TEXTO_SUAVE)
+	columna.add_child(_lbl_detalle)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var centro := CenterContainer.new()
-	centro.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(centro)
-	var columnas := HBoxContainer.new()
-	columnas.add_theme_constant_override("separation", 10)
-	centro.add_child(columnas)
-	for rama in Juego.ramas:
-		var columna := VBoxContainer.new()
-		columna.add_theme_constant_override("separation", 0)
-		var titulo := Estilo.etiqueta(rama.to_upper(), 15, Estilo.ACENTO.darkened(0.1), 3)
-		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		titulo.custom_minimum_size = Vector2(0, 30)
-		columna.add_child(titulo)
-		var primera := true
-		for m in Juego.mejoras:
-			if m.rama != rama:
-				continue
-			if not primera:
-				columna.add_child(_crear_tunel())
-			primera = false
-			columna.add_child(_crear_tarjeta(m))
-		columnas.add_child(columna)
-	return scroll
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	columna.add_child(scroll)
+	_lista = VBoxContainer.new()
+	_lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lista.add_theme_constant_override("separation", 10)
+	scroll.add_child(_lista)
+	for m in Juego.mejoras:
+		_crear_tarjeta(m)
+	_lbl_estado = Estilo.etiqueta("Las mejoras se guardan al comprar.", 12, Estilo.TEXTO_SUAVE)
+	_lbl_estado.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	columna.add_child(_lbl_estado)
+	return panel
 
 
-func _crear_tunel() -> Control:
-	var centro := CenterContainer.new()
-	var tunel := ColorRect.new()
-	tunel.color = Color(0.06, 0.04, 0.025)
-	tunel.custom_minimum_size = Vector2(14, 18)
-	tunel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	centro.add_child(tunel)
-	return centro
-
-
-func _crear_tarjeta(m: Dictionary) -> Control:
+func _crear_tarjeta(m: Dictionary) -> void:
 	var boton := Button.new()
-	boton.custom_minimum_size = TAMANO_TARJETA
-	boton.focus_mode = Control.FOCUS_NONE
+	boton.custom_minimum_size.y = 128
 	boton.pressed.connect(_comprar.bind(m.id))
-
+	_lista.add_child(boton)
 	var margen := MarginContainer.new()
 	margen.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margen.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for lado in ["left", "right"]:
-		margen.add_theme_constant_override("margin_" + lado, 14)
-	for lado in ["top", "bottom"]:
-		margen.add_theme_constant_override("margin_" + lado, 10)
+	for lado in ["left", "right", "top", "bottom"]:
+		margen.add_theme_constant_override("margin_" + lado, 13)
 	boton.add_child(margen)
-	var columna := VBoxContainer.new()
-	columna.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	columna.add_theme_constant_override("separation", 2)
-	margen.add_child(columna)
-
-	var nombre := Estilo.etiqueta("", 15, Estilo.TEXTO, 3)
-	nombre.clip_text = true
-	columna.add_child(nombre)
-
-	var descripcion := Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
+	var contenido := VBoxContainer.new()
+	contenido.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	contenido.add_theme_constant_override("separation", 5)
+	margen.add_child(contenido)
+	var fila := HBoxContainer.new()
+	fila.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	contenido.add_child(fila)
+	var nombre := Estilo.etiqueta(m.nombre, 16)
+	nombre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fila.add_child(nombre)
+	var nivel := Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
+	fila.add_child(nivel)
+	var descripcion := Estilo.etiqueta(m.descripcion, 12, Estilo.TEXTO_SUAVE)
 	descripcion.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	descripcion.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columna.add_child(descripcion)
+	contenido.add_child(descripcion)
+	var cambio := Estilo.etiqueta("", 14, Estilo.VERDE)
+	cambio.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	contenido.add_child(cambio)
+	var costo := Estilo.etiqueta("", 13, Estilo.ACENTO)
+	contenido.add_child(costo)
+	_tarjetas[m.id] = {"boton": boton, "nivel": nivel, "cambio": cambio, "costo": costo}
 
-	var pie := HBoxContainer.new()
-	pie.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var nivel := Estilo.etiqueta("", 13, Estilo.TEXTO_SUAVE)
-	nivel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	nivel.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var costo := Estilo.etiqueta("", 15, Estilo.ACENTO, 3)
-	costo.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	pie.add_child(nivel)
-	pie.add_child(costo)
-	columna.add_child(pie)
 
-	_tarjetas[m.id] = {"boton": boton, "nombre": nombre, "nivel": nivel, "descripcion": descripcion, "costo": costo}
-	return boton
+func _pie() -> Control:
+	var fila := HBoxContainer.new()
+	fila.add_theme_constant_override("separation", 12)
+	var nota := Estilo.etiqueta("Cada miga construye algo más grande.", 13, Estilo.TEXTO_SUAVE)
+	nota.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fila.add_child(nota)
+	var audio := CheckButton.new()
+	_audio = audio
+	audio.text = "Sonido"
+	audio.button_pressed = not Sonido.silenciado
+	audio.toggled.connect(func(valor: bool) -> void: Sonido.silenciado = not valor)
+	fila.add_child(audio)
+	var volumen := HSlider.new()
+	volumen.custom_minimum_size.x = 110
+	volumen.max_value = 1
+	volumen.step = 0.05
+	volumen.value = Sonido.volumen
+	volumen.tooltip_text = "Volumen de los efectos"
+	volumen.value_changed.connect(func(valor: float) -> void: Sonido.volumen = valor)
+	fila.add_child(volumen)
+	return fila
+
+
+func _seleccionar(rama: String) -> void:
+	_rama = rama
+	Sonido.tocar("clic", 0.85)
+	_refrescar()
 
 
 func _on_migas_cambiaron(_total: float) -> void:
@@ -181,68 +373,85 @@ func _on_migas_cambiaron(_total: float) -> void:
 
 
 func _refrescar() -> void:
+	for cantidad in _cantidades:
+		_cantidades[cantidad].add_theme_stylebox_override("normal", Estilo.caja(Color("536649") if cantidad == Juego.cantidad_compra else Color("282f26"), 10, Color("94b47e") if cantidad == Juego.cantidad_compra else Color("46503f"), 1, 10))
+	_lbl_sala.text = SALAS[_rama].titulo
+	_lbl_sala.label_settings.font_color = SALAS[_rama].color
+	_lbl_detalle.text = SALAS[_rama].detalle
+	_lbl_proxima.text = "%d obreras + %d especialistas  ·  %d s  ·  %d cm" % [int(Juego.stat("hormigas_iniciales")), Juego.total_especialistas(), int(Juego.stat("duracion_run")), int(Juego.stat("radio_territorio") / 10.0)]
+	for rama in _salas:
+		var total := 0
+		var disponibles := 0
+		for m in Juego.mejoras:
+			if m.rama == rama:
+				total += Juego.nivel_de(m.id)
+				if Juego.cotizar_mejora(m.id, Juego.cantidad_compra).puede:
+					disponibles += 1
+		_salas[rama].icono.disponibles = disponibles
+		_salas[rama].aviso.text = "%d disponible%s" % [disponibles, "s" if disponibles != 1 else ""] if disponibles > 0 else ""
+		_salas[rama].icono.nivel = total
+		_salas[rama].icono.seleccionada = rama == _rama
+		_salas[rama].icono.queue_redraw()
 	for id in _tarjetas:
-		_actualizar_tarjeta(id)
-	_lbl_proxima.text = "Próxima run:  %d hormigas  ·  %d s  ·  daño %s  ·  territorio %d px" % [
-		int(Juego.stat("hormigas_iniciales")), int(Juego.stat("duracion_run")),
-		Juego.formatear_corto(Juego.stat("dano")), int(Juego.stat("radio_territorio"))]
-
-
-func _actualizar_tarjeta(id: String) -> void:
-	var t: Dictionary = _tarjetas[id]
-	var m: Dictionary = Juego.mejoras_por_id[id]
-	var boton: Button = t.boton
-	var fondo: Color
-	var borde: Color
-	if not Juego.esta_desbloqueada(id):
-		var requisito: Dictionary = Juego.mejoras_por_id[m.requiere_id]
-		var nombre_requisito: String = requisito.nombre if Juego.esta_desbloqueada(requisito.id) else "???"
-		t.nombre.text = "???"
-		t.nivel.text = ""
-		t.descripcion.text = "Requiere %s nivel %d" % [nombre_requisito, m.requiere_nivel]
-		t.costo.text = ""
-		fondo = COLOR_BLOQUEADA
-		borde = Color(1, 1, 1, 0.05)
-	else:
-		t.nombre.text = m.nombre
-		t.nivel.text = "Nv %d/%d" % [Juego.nivel_de(id), m.nivel_max]
-		t.descripcion.text = m.descripcion
-		if Juego.esta_al_maximo(id):
-			t.costo.text = "MÁXIMO"
-			t.costo.label_settings.font_color = Estilo.VERDE
-			fondo = COLOR_MAXIMA
-			borde = Estilo.VERDE.darkened(0.3)
-		elif Juego.puede_comprar(id):
-			t.costo.text = "%s migas" % Juego.formatear(Juego.costo(id))
-			t.costo.label_settings.font_color = Estilo.ACENTO
-			fondo = COLOR_DISPONIBLE
-			borde = Estilo.ACENTO
+		var t: Dictionary = _tarjetas[id]
+		var m: Dictionary = Juego.mejoras_por_id[id]
+		var boton: Button = t.boton
+		boton.visible = m.rama == _rama
+		var abierta := Juego.esta_desbloqueada(id)
+		var maxima := Juego.esta_al_maximo(id)
+		var oferta := Juego.cotizar_mejora(id, Juego.cantidad_compra)
+		var disponible: bool = oferta.puede
+		var color: Color = SALAS[m.rama].color
+		t.nivel.text = "%d / %d" % [Juego.nivel_de(id), m.nivel_max]
+		if not abierta:
+			t.cambio.text = "Requiere %s · nivel %d" % [Juego.mejoras_por_id[m.requiere_id].nombre, m.requiere_nivel]
+		elif maxima:
+			t.cambio.text = "Tu colonia domina esta habilidad."
 		else:
-			t.costo.text = "%s migas" % Juego.formatear(Juego.costo(id))
-			t.costo.label_settings.font_color = Estilo.ROJO.lightened(0.2)
-			fondo = COLOR_CARA
-			borde = Color(1, 1, 1, 0.1)
-	boton.add_theme_stylebox_override("normal", Estilo.caja(fondo, 18, borde, 2, 0))
-	boton.add_theme_stylebox_override("hover", Estilo.caja(fondo.lightened(0.1), 18, borde.lightened(0.2), 2, 0))
-	boton.add_theme_stylebox_override("pressed", Estilo.caja(fondo.darkened(0.1), 18, borde, 2, 0))
-	boton.add_theme_stylebox_override("disabled", Estilo.caja(fondo, 18, borde, 2, 0))
+			t.cambio.text = "%s  →  %s" % [_valor_stat(m.stat, Juego.stat(m.stat)), _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))]
+		t.cambio.label_settings.font_color = color if abierta else Estilo.TEXTO_SUAVE
+		t.costo.text = "COMPLETA" if maxima else ("Comprar ×%d · %s migas" % [oferta.cantidad, Juego.formatear(oferta.costo)] if disponible else "Faltan %s migas" % Juego.formatear(maxf(0, oferta.costo - Juego.migas)))
+		if not abierta:
+			t.costo.text = "Cámara por desarrollar"
+		t.costo.label_settings.font_color = color if disponible else Estilo.TEXTO_SUAVE
+		var fondo := Color("333c2d") if disponible else Color("252b24")
+		boton.add_theme_stylebox_override("normal", Estilo.caja(fondo, 12, Color(color, 0.55 if disponible else 0.12), 1, 0))
+		boton.add_theme_stylebox_override("hover", Estilo.caja(fondo.lightened(0.06), 12, color, 1, 0))
+		boton.add_theme_stylebox_override("pressed", Estilo.caja(fondo.darkened(0.08), 12, color, 2, 0))
+		boton.add_theme_stylebox_override("focus", Estilo.caja(Color.TRANSPARENT, 12, color, 2, 0))
+		boton.modulate.a = 1.0 if abierta else 0.6
+
+
+func _valor_stat(stat: String, valor: float) -> String:
+	match stat:
+		"duracion_run": return "%.0f s" % valor
+		"intervalo_mordida": return "%.2f s entre mordidas" % valor
+		"feromona_cantidad": return "%d hormigas" % int(valor)
+		"velocidad": return "%.0f de velocidad" % valor
+		"radio_territorio": return "%.0f cm" % (valor / 10.0)
+		"multiplicador_migas": return "×%.2f migas" % valor
+		"hormigas_iniciales": return "%d obreras" % int(valor)
+		"cria": return "%d crías / 10 s" % int(valor)
+		"olfato": return "%.0f de alcance" % valor
+		"capacidad": return "%d bocados" % int(valor)
+	return "%.1f de daño" % valor
 
 
 func _comprar(id: String) -> void:
-	var boton: Button = _tarjetas[id].boton
-	boton.pivot_offset = boton.size / 2.0
-	if Juego.comprar(id):
-		Sonido.tocar("comprar", 1.0 + minf(Juego.nivel_de(id), 20) * 0.03, 0.0)
-		boton.scale = Vector2.ONE * 1.08
-		var tween := boton.create_tween()
-		tween.tween_property(boton, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	else:
+	var compradas := Juego.comprar_lote(id, Juego.cantidad_compra)
+	if compradas == 0:
 		Sonido.tocar("no")
-		var tween := boton.create_tween()
-		for i in 3:
-			tween.tween_property(boton, "rotation", 0.03, 0.04)
-			tween.tween_property(boton, "rotation", -0.03, 0.04)
-		tween.tween_property(boton, "rotation", 0.0, 0.04)
+		_lbl_estado.text = "Te faltan migas o una mejora previa. ¡Otra expedición!"
+		return
+	Sonido.tocar("comprar", 1.0, 0.01)
+	_lbl_estado.text = "¡%s +%d niveles!" % [Juego.mejoras_por_id[id].nombre, compradas]
+	var icono: Control = _salas[_rama].icono
+	if _tween_compra and _tween_compra.is_running():
+		_tween_compra.kill()
+	icono.pivot_offset = icono.size * 0.5
+	icono.scale = Vector2.ONE * 1.22
+	_tween_compra = icono.create_tween()
+	_tween_compra.tween_property(icono, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _nueva_run() -> void:

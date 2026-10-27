@@ -11,12 +11,16 @@ extends Node
 signal migas_cambiaron(total: float)
 signal mejora_comprada(id: String, nivel: int)
 signal partida_borrada
+signal casta_comprada(id: String, cantidad: int)
+signal modo_compra_cambio
+var cantidad_compra := 1 # 0 = máximo que alcanza
 
 const RUTA_PARTIDA := "user://partida.json"
-const VERSION_PARTIDA := 1
+const VERSION_PARTIDA := 2
 const RUTA_STATS := "res://datos/stats_base.csv"
 const RUTA_MEJORAS := "res://datos/mejoras.csv"
 const RUTA_COMIDAS := "res://datos/comidas.csv"
+const RUTA_CASTAS := "res://datos/castas.csv"
 
 const SUFIJOS: Array[String] = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"]
 
@@ -26,10 +30,13 @@ var mejoras: Array[Dictionary] = []      # en el orden del CSV
 var mejoras_por_id: Dictionary = {}
 var comidas: Array[Dictionary] = []
 var ramas: Array[String] = []            # ramas del árbol en orden de aparición
+var castas: Array[Dictionary] = []
+var castas_por_id: Dictionary = {}
 
 # --- Partida guardada ---
 var migas: float = 0.0
 var niveles: Dictionary = {}             # id de mejora -> nivel
+var reclutadas: Dictionary = {}          # casta -> unidades permanentes por expedición
 var runs_jugadas: int = 0
 var mejor_run: float = 0.0
 var radio_visto: float = 0.0             # último radio de territorio que vio el jugador
@@ -103,6 +110,22 @@ func nivel_de(id: String) -> int:
 	return int(niveles.get(id, 0))
 
 
+## Vista previa exacta sin modificar niveles, caché ni partida.
+func stat_tras_comprar(id: String, cantidad := 1) -> float:
+	var nombre: String = mejoras_por_id[id].stat
+	var valor: float = stats_base[nombre]
+	var multiplicador := 1.0
+	for m in mejoras:
+		if m.stat != nombre:
+			continue
+		var nivel := nivel_de(m.id) + (mini(cantidad, int(m.nivel_max) - nivel_de(id)) if m.id == id else 0)
+		if m.tipo == "suma":
+			valor += m.valor * nivel
+		else:
+			multiplicador *= pow(m.valor, nivel)
+	return valor * multiplicador
+
+
 func costo(id: String) -> float:
 	var m: Dictionary = mejoras_por_id[id]
 	return floor(m.costo_base * pow(m.crecimiento, nivel_de(id)))
@@ -124,15 +147,109 @@ func puede_comprar(id: String) -> bool:
 
 
 func comprar(id: String) -> bool:
-	if not puede_comprar(id):
-		return false
-	migas -= costo(id)
-	niveles[id] = nivel_de(id) + 1
+	return comprar_lote(id, 1) > 0
+
+
+func cambiar_cantidad_compra(cantidad: int) -> void:
+	if cantidad not in [0, 1, 10]:
+		return
+	cantidad_compra = cantidad
+	modo_compra_cambio.emit()
+
+
+func _cotizar(base: float, crecimiento: float, nivel: int, maximo: int, cantidad: int, habilitada: bool) -> Dictionary:
+	var disponibles := maxi(0, maximo - nivel)
+	var objetivo := disponibles if cantidad == 0 else mini(maxi(1, cantidad), disponibles)
+	var total := 0.0
+	var unidades := 0
+	for i in objetivo:
+		var precio := floorf(base * pow(crecimiento, nivel + i))
+		if cantidad == 0 and total + precio > migas:
+			break
+		total += precio
+		unidades += 1
+	var puede := habilitada and unidades > 0 and migas >= total
+	if unidades == 0 and disponibles > 0:
+		total = floor(base * pow(crecimiento, nivel))
+	return {"cantidad": unidades, "costo": total, "puede": puede}
+
+
+func cotizar_mejora(id: String, cantidad := 1) -> Dictionary:
+	var m: Dictionary = mejoras_por_id[id]
+	return _cotizar(m.costo_base, m.crecimiento, nivel_de(id), m.nivel_max, cantidad, esta_desbloqueada(id))
+
+
+func comprar_lote(id: String, cantidad := 1) -> int:
+	var oferta := cotizar_mejora(id, cantidad)
+	if not oferta.puede:
+		return 0
+	migas -= oferta.costo
+	niveles[id] = nivel_de(id) + int(oferta.cantidad)
 	_cache_stats.clear()
 	guardar()
 	migas_cambiaron.emit(migas)
 	mejora_comprada.emit(id, niveles[id])
-	return true
+	return oferta.cantidad
+
+
+func cantidad_casta(id: String) -> int:
+	return int(reclutadas.get(id, 0))
+
+
+func costo_casta(id: String) -> float:
+	if not castas_por_id.has(id):
+		return INF
+	var c: Dictionary = castas_por_id[id]
+	return floor(c.costo_base * pow(c.crecimiento, cantidad_casta(id)))
+
+
+func puede_comprar_casta(id: String) -> bool:
+	if not castas_por_id.has(id):
+		return false
+	var c: Dictionary = castas_por_id[id]
+	return c.comprable and cantidad_casta(id) < c.maximo and migas >= costo_casta(id)
+
+
+func comprar_casta(id: String) -> bool:
+	return comprar_castas_lote(id, 1) > 0
+
+
+func cotizar_casta(id: String, cantidad := 1) -> Dictionary:
+	if not castas_por_id.has(id):
+		return {"cantidad": 0, "costo": 0.0, "puede": false}
+	var c: Dictionary = castas_por_id[id]
+	return _cotizar(c.costo_base, c.crecimiento, cantidad_casta(id), c.maximo, cantidad, c.comprable)
+
+
+func comprar_castas_lote(id: String, cantidad := 1) -> int:
+	var oferta := cotizar_casta(id, cantidad)
+	if not oferta.puede:
+		return 0
+	migas -= oferta.costo
+	reclutadas[id] = cantidad_casta(id) + int(oferta.cantidad)
+	guardar()
+	migas_cambiaron.emit(migas)
+	casta_comprada.emit(id, cantidad_casta(id))
+	return oferta.cantidad
+
+
+func total_especialistas() -> int:
+	var total := 0
+	for id in reclutadas:
+		total += cantidad_casta(id)
+	return total
+
+
+## Estadísticas reales: las mejoras generales también benefician a las castas.
+func stats_casta(id: String) -> Dictionary:
+	var c: Dictionary = castas_por_id[id]
+	return {
+		"velocidad": stat("velocidad") * c.velocidad,
+		"dano": stat("dano") * c.dano,
+		"capacidad": maxi(1, int(stat("capacidad") * c.capacidad)),
+		"olfato": stat("olfato") * c.olfato,
+		"intervalo_mordida": maxf(0.05, stat("intervalo_mordida")),
+	}
 
 
 # =====================================================================
@@ -168,19 +285,23 @@ func terminar_run() -> void:
 func guardar() -> void:
 	if not guardado_habilitado:
 		return
-	var datos := {
-		"version": VERSION_PARTIDA,
-		"migas": migas,
-		"niveles": niveles,
-		"runs_jugadas": runs_jugadas,
-		"mejor_run": mejor_run,
-		"radio_visto": radio_visto,
-	}
 	var archivo := FileAccess.open(RUTA_PARTIDA, FileAccess.WRITE)
 	if archivo == null:
 		push_error("No se pudo guardar la partida (error %d)" % FileAccess.get_open_error())
 		return
-	archivo.store_string(JSON.stringify(datos, "\t"))
+	archivo.store_string(JSON.stringify(datos_partida(), "\t"))
+
+
+func datos_partida() -> Dictionary:
+	return {
+		"version": VERSION_PARTIDA,
+		"migas": migas,
+		"niveles": niveles,
+		"reclutadas": reclutadas,
+		"runs_jugadas": runs_jugadas,
+		"mejor_run": mejor_run,
+		"radio_visto": radio_visto,
+	}
 
 
 func cargar() -> void:
@@ -190,6 +311,10 @@ func cargar() -> void:
 	if typeof(datos) != TYPE_DICTIONARY:
 		push_warning("La partida guardada está dañada; se empieza de cero.")
 		return
+	restaurar_partida(datos)
+
+
+func restaurar_partida(datos: Dictionary) -> void:
 	migas = float(datos.get("migas", 0.0))
 	runs_jugadas = int(datos.get("runs_jugadas", 0))
 	mejor_run = float(datos.get("mejor_run", 0.0))
@@ -199,13 +324,21 @@ func cargar() -> void:
 	if typeof(guardados) == TYPE_DICTIONARY:
 		for id in guardados:
 			if mejoras_por_id.has(id):
-				niveles[id] = mini(int(guardados[id]), int(mejoras_por_id[id].nivel_max))
+				niveles[id] = clampi(int(guardados[id]), 0, int(mejoras_por_id[id].nivel_max))
+	# Las partidas v1 no tienen castas: conservan sus mejoras y empiezan sin reclutas.
+	reclutadas = {}
+	var castas_guardadas = datos.get("reclutadas", {})
+	if typeof(castas_guardadas) == TYPE_DICTIONARY:
+		for id in castas_guardadas:
+			if castas_por_id.has(id) and castas_por_id[id].comprable:
+				reclutadas[id] = clampi(int(castas_guardadas[id]), 0, int(castas_por_id[id].maximo))
 	_cache_stats.clear()
 
 
 func reiniciar_estado() -> void:
 	migas = 0.0
 	niveles = {}
+	reclutadas = {}
 	runs_jugadas = 0
 	mejor_run = 0.0
 	radio_visto = 0.0
@@ -259,6 +392,19 @@ func formatear_corto(n: float) -> String:
 # =====================================================================
 
 func _cargar_datos() -> void:
+	castas.clear()
+	castas_por_id.clear()
+	for fila in _leer_csv(RUTA_CASTAS):
+		var c := {
+			"id": fila.id, "nombre": fila.nombre, "rol": fila.rol,
+			"descripcion": fila.descripcion, "habilidad": fila.habilidad,
+			"color": Color.from_string(fila.color, Color.WHITE),
+			"comprable": fila.comprable == "1",
+		}
+		for campo in ["velocidad", "dano", "capacidad", "olfato", "escala", "costo_base", "crecimiento", "maximo"]:
+			c[campo] = _num(fila[campo])
+		castas.append(c)
+		castas_por_id[c.id] = c
 	stats_base.clear()
 	for fila in _leer_csv(RUTA_STATS):
 		stats_base[fila.stat] = _num(fila.valor)
@@ -312,6 +458,7 @@ func _cargar_datos() -> void:
 			"distancia_min": _num(fila.distancia_min),
 			"distancia_max": _num(fila.distancia_max),
 			"cantidad": int(_num(fila.cantidad)),
+			"zonas": fila.get("zonas", ""),
 		})
 	_cache_stats.clear()
 

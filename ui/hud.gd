@@ -23,6 +23,8 @@ var _lbl_fin_migas: Label
 var _lbl_fin_detalle: Label
 var _lbl_fin_record: Label
 var _boton_tienda: Button
+var _reloj_descubrimiento := 0.0
+var _lbl_composicion: Label
 
 var _migas_mostradas := 0.0
 var _volando := 0
@@ -72,6 +74,22 @@ func _process(delta: float) -> void:
 		_lbl_tiempo.label_settings.font_color = Estilo.TEXTO
 
 	_lbl_hormigas.text = "Hormigas: %d" % run.colonia.cantidad()
+	_reloj_descubrimiento -= delta
+	if _reloj_descubrimiento <= 0:
+		_reloj_descubrimiento = 0.5
+		var conteo := run.colonia.conteo_castas()
+		var lineas := PackedStringArray()
+		var grupo := PackedStringArray()
+		var nombres := {"obrera": "Obreras", "reina": "Reinas", "roja": "Rojas", "voladora": "Voladoras", "veloz": "Veloces", "cargadora": "Cargadoras", "mini": "Minis"}
+		for tipo in nombres:
+			if conteo.has(tipo):
+				grupo.append("%s %d" % [nombres[tipo], conteo[tipo]])
+				if grupo.size() == 3:
+					lineas.append(" · ".join(grupo))
+					grupo.clear()
+		if not grupo.is_empty():
+			lineas.append(" · ".join(grupo))
+		_lbl_composicion.text = "\n".join(lineas)
 
 	if _lbl_combo.visible and _reloj - _tiempo_combo > DURACION_COMBO_VISIBLE:
 		_lbl_combo.modulate.a = move_toward(_lbl_combo.modulate.a, 0.0, delta * 3.0)
@@ -192,7 +210,7 @@ func _crear_tiempo(raiz: Control) -> void:
 	caja.position = Vector2(-190, 14)
 	caja.add_theme_constant_override("separation", 4)
 	raiz.add_child(caja)
-	_lbl_tiempo = Estilo.etiqueta("30 s", 22, Estilo.TEXTO, 5)
+	_lbl_tiempo = Estilo.etiqueta("%d s" % int(Juego.stat("duracion_run")), 22, Estilo.TEXTO, 5)
 	_lbl_tiempo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	caja.add_child(_lbl_tiempo)
 	_barra_tiempo = ProgressBar.new()
@@ -216,6 +234,12 @@ func _crear_hormigas(raiz: Control) -> void:
 	raiz.add_child(caja)
 	_lbl_hormigas = Estilo.etiqueta("Hormigas: 0", 18, Estilo.TEXTO)
 	caja.add_child(_lbl_hormigas)
+	_lbl_composicion = Estilo.etiqueta("", 12, Estilo.TEXTO, 3)
+	_lbl_composicion.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_lbl_composicion.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_lbl_composicion.position = Vector2(-356, 78)
+	_lbl_composicion.custom_minimum_size.x = 340
+	raiz.add_child(_lbl_composicion)
 
 
 func _crear_avisos(raiz: Control) -> void:
@@ -228,12 +252,12 @@ func _crear_avisos(raiz: Control) -> void:
 	raiz.add_child(_lbl_aviso)
 
 	_lbl_ayuda = Estilo.etiqueta(
-		"Mantené apretado el clic para dejar un rastro de feromonas  ·  Clic sobre la comida para morderla  ·  Esc: terminar",
-		15, Estilo.TEXTO, 4)
+		"Mantené clic izquierdo: atraer hormigas cercanas hacia el cursor\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: ver la casa · Esc: terminar",
+		13, Estilo.TEXTO, 4)
 	_lbl_ayuda.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_lbl_ayuda.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_lbl_ayuda.custom_minimum_size = Vector2(1100, 0)
-	_lbl_ayuda.position = Vector2(-550, -44)
+	_lbl_ayuda.position = Vector2(-550, -52)
 	_lbl_ayuda.visible = Juego.runs_jugadas < RUNS_CON_AYUDA
 	raiz.add_child(_lbl_ayuda)
 	if _lbl_ayuda.visible:

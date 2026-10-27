@@ -25,6 +25,8 @@ Sonido="*res://global/sonido.gd"
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
+window/size/min_width=1000
+window/size/min_height=620
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 

@@ -6,10 +6,10 @@ extends Node
 ## a la vez no saturen el audio. M silencia / activa el sonido.
 
 const SONIDOS := {
-	"mordida":   {"volumen": -16.0, "intervalo": 0.045},
+	"mordida":   {"volumen": -22.0, "intervalo": 0.13},
 	"clic":      {"volumen": -8.0,  "intervalo": 0.02},
-	"deposito":  {"volumen": -11.0, "intervalo": 0.035},
-	"romper":    {"volumen": -3.0,  "intervalo": 0.06},
+	"deposito":  {"volumen": -12.0, "intervalo": 0.09},
+	"romper":    {"volumen": -8.0,  "intervalo": 0.1},
 	"comprar":   {"volumen": -6.0,  "intervalo": 0.04},
 	"no":        {"volumen": -9.0,  "intervalo": 0.15},
 	"crecer":    {"volumen": -5.0,  "intervalo": 0.5},
@@ -18,7 +18,13 @@ const SONIDOS := {
 }
 const TAMANO_POOL := 16
 
-var silenciado := false
+var silenciado := false:
+	set(valor):
+		silenciado = valor
+		if valor:
+			for reproductor in _reproductores:
+				reproductor.stop()
+var volumen := 0.8
 
 var _reproductores: Array[AudioStreamPlayer] = []
 var _streams: Dictionary = {}
@@ -29,11 +35,7 @@ var _siguiente := 0
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	for nombre in SONIDOS:
-		var ruta := "res://sonidos/%s.wav" % nombre
-		if ResourceLoader.exists(ruta):
-			_streams[nombre] = load(ruta)
-		else:
-			push_warning("Falta el sonido %s" % ruta)
+		_streams[nombre] = AudioSuave.crear(nombre)
 	for i in TAMANO_POOL:
 		var reproductor := AudioStreamPlayer.new()
 		add_child(reproductor)
@@ -54,7 +56,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## tono: 1.0 es normal, 2.0 una octava arriba. variacion: aleatoriedad del tono.
 func tocar(nombre: String, tono: float = 1.0, variacion: float = 0.05) -> void:
-	if silenciado or not _streams.has(nombre):
+	if silenciado or volumen <= 0.001 or not _streams.has(nombre):
 		return
 	var ahora := Time.get_ticks_msec() / 1000.0
 	var configuracion: Dictionary = SONIDOS[nombre]
@@ -64,6 +66,6 @@ func tocar(nombre: String, tono: float = 1.0, variacion: float = 0.05) -> void:
 	var reproductor := _reproductores[_siguiente]
 	_siguiente = (_siguiente + 1) % TAMANO_POOL
 	reproductor.stream = _streams[nombre]
-	reproductor.volume_db = configuracion.volumen
-	reproductor.pitch_scale = maxf(0.1, tono * randf_range(1.0 - variacion, 1.0 + variacion))
+	reproductor.volume_db = configuracion.volumen + linear_to_db(volumen)
+	reproductor.pitch_scale = clampf(tono * randf_range(1.0 - variacion, 1.0 + variacion), 0.65, 1.6)
 	reproductor.play()

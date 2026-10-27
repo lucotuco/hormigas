@@ -34,14 +34,27 @@ func generar() -> void:
 				# sqrt para que la densidad sea pareja en todo el anillo
 				var distancia := sqrt(rng.randf_range(dmin * dmin, dmax * dmax))
 				var pos := Vector2.from_angle(angulo) * distancia
+				var zonas: String = tipo.get("zonas", "")
+				if zonas != "":
+					var opciones := zonas.split("|")
+					var zona := PlanoCasa.rect_ambiente(opciones[rng.randi_range(0, opciones.size() - 1)]).grow(-60)
+					pos = Vector2(rng.randf_range(zona.position.x, zona.end.x), rng.randf_range(zona.position.y, zona.end.y))
+					if pos.length() < dmin or pos.length() > dmax:
+						continue
 				if _hay_lugar(pos, radio, ocupados):
 					ocupados.append(Vector3(pos.x, pos.y, radio))
 					_crear(tipo, pos, rng.randi())
 					break
+	# Meta fija sobre el plato: siempre existe y puede descubrirse desde la niebla.
+	for tipo in Juego.comidas:
+		if tipo.id == "banquete":
+			_crear(tipo, PlanoCasa.BANQUETE, 101)
 
 
 func _hay_lugar(pos: Vector2, radio: float, ocupados: Array[Vector3]) -> bool:
 	if pos.length() < 30.0 + radio:  # no tapar el hormiguero
+		return false
+	if not get_parent().cocina.libre(pos, radio + 12.0):
 		return false
 	for o in ocupados:
 		var minimo := radio + o.z + SEPARACION
@@ -70,11 +83,11 @@ static func en_territorio(comida: Comida, radio_territorio: float) -> bool:
 
 
 ## La comida viva más cercana a `pos` dentro de `alcance`, o null.
-func buscar_cercana(pos: Vector2, alcance: float, radio_territorio: float) -> Comida:
+func buscar_cercana(pos: Vector2, alcance: float, radio_territorio: float, excluidas: Dictionary = {}) -> Comida:
 	var mejor: Comida = null
 	var mejor_distancia := INF
 	for c in lista:
-		if c.muerta:
+		if c.muerta or excluidas.has(c.get_instance_id()):
 			continue
 		var limite := alcance + c.radio
 		var d := pos.distance_squared_to(c.position)

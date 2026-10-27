@@ -1,13 +1,13 @@
 stat,valor,descripcion
 hormigas_iniciales,5,Hormigas que salen al empezar la run
-velocidad,60,Píxeles por segundo que camina una hormiga
+velocidad,95,Píxeles por segundo que camina una hormiga
 dano,1,Daño de cada mordida
 intervalo_mordida,0.6,Segundos entre mordidas
 capacidad,1,Mordidas que junta una hormiga antes de volver al hormiguero
 olfato,45,Distancia en píxeles a la que una hormiga detecta comida
-feromona_duracion,1.5,Segundos que dura el rastro de feromonas
-duracion_run,30,Segundos que dura cada run
-radio_territorio,230,Radio en píxeles del territorio explorable
+feromona_cantidad,24,Hormigas más cercanas que responden al llamado mientras mantenés el clic
+duracion_run,45,Segundos que dura cada run
+radio_territorio,620,Radio en píxeles del territorio explorable
 dano_clic,1,Daño que hace un clic sobre la comida
 multiplicador_migas,1,Multiplicador de todas las migas recolectadas
 cria,0,Hormigas nuevas que nacen cada 10 segundos durante la run

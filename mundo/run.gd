@@ -14,6 +14,7 @@ const PROPORCION_CLIC := 0.5      # el clic da la mitad de migas que una mordida
 const BONUS_DESTRUIR := 0.25      # migas extra al destruir una comida (proporción de su recompensa)
 
 @onready var comidas: Comidas = $Comidas
+@onready var cocina: Cocina = $Cocina
 @onready var feromonas: Feromonas = $Feromonas
 @onready var hormiguero: Hormiguero = $Hormiguero
 @onready var colonia: Colonia = $Hormigas
@@ -40,6 +41,8 @@ func _ready() -> void:
 	Juego.iniciar_run()
 	duracion_total = Juego.stat("duracion_run")
 	tiempo_restante = duracion_total
+	camara.vista_cambiada.connect(feromonas.queue_redraw)
+	camara.vista_cambiada.connect(niebla.queue_redraw)
 
 	var radio_objetivo := Juego.stat("radio_territorio")
 	var radio_inicio := radio_objetivo
@@ -88,8 +91,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not activa:
 		return
 	var boton := event as InputEventMouseButton
-	if boton and boton.pressed and boton.button_index == MOUSE_BUTTON_LEFT:
-		_clic_en(get_global_mouse_position())
+	if boton and boton.pressed and boton.button_index == MOUSE_BUTTON_LEFT and not camara.arrastrando:
+		_clic_en(get_canvas_transform().affine_inverse() * boton.position)
 	var tecla := event as InputEventKey
 	if tecla and tecla.pressed and not tecla.echo and tecla.keycode == KEY_ESCAPE:
 		tiempo_restante = 0.0  # termina la run en el próximo cuadro
@@ -116,7 +119,9 @@ func depositar(cantidad: float) -> void:
 	efectos.numero(pos, cantidad, Color(1.0, 0.93, 0.6))
 	hud.migas_voladoras(a_pantalla(hormiguero.global_position), 1)
 	hud.mostrar_combo(combo)
-	Sonido.tocar("deposito", 1.0 + minf(combo, 40) * 0.025, 0.0)
+	# Pentatónica: los depósitos progresan musicalmente sin volverse agudos.
+	var notas := [1.0, 1.125, 1.25, 1.5, 1.3333]
+	Sonido.tocar("deposito", notas[(combo - 1) % notas.size()], 0.0)
 
 
 func _clic_en(pos: Vector2) -> void:
@@ -151,6 +156,7 @@ func _on_comida_destruida(comida: Comida) -> void:
 
 func _terminar() -> void:
 	activa = false
+	feromonas.soltar()
 	terminada = true
 	colonia.detener()
 	Juego.terminar_run()

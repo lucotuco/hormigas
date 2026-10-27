@@ -16,11 +16,27 @@ var _reloj_salida := 0.0
 var _reloj_cria := 0.0
 var _intervalo_cria := 0.0
 var _escala := 1.0
+var _cola_castas: Array[String] = []
+var minis_nacidas := 0
+const LIMITE_MINIS := 120
 
 
 func iniciar(r: Run) -> void:
 	run = r
-	_por_salir = maxi(1, int(Juego.stat("hormigas_iniciales")))
+	_cola_castas.clear()
+	var obreras := maxi(1, int(Juego.stat("hormigas_iniciales")))
+	var tandas := obreras
+	for c in Juego.castas:
+		if c.comprable:
+			tandas = maxi(tandas, Juego.cantidad_casta(c.id))
+	# Salida intercalada: las especialistas participan desde el comienzo.
+	for i in tandas:
+		for c in Juego.castas:
+			if c.comprable and i < Juego.cantidad_casta(c.id):
+				_cola_castas.append(c.id)
+		if i < obreras:
+			_cola_castas.append("obrera")
+	_por_salir = _cola_castas.size()
 	_pausa_salida = clampf(TIEMPO_SALIDA / _por_salir, 0.01, 0.08)
 	var cria := Juego.stat("cria")
 	_intervalo_cria = 10.0 / cria if cria > 0.0 else 0.0
@@ -44,7 +60,7 @@ func _process(delta: float) -> void:
 	if _por_salir > 0:
 		_reloj_salida -= delta
 		while _reloj_salida <= 0.0 and _por_salir > 0:
-			_nacer()
+			_nacer(_cola_castas.pop_front())
 			_por_salir -= 1
 			_reloj_salida += _pausa_salida
 	if _intervalo_cria > 0.0:
@@ -55,14 +71,42 @@ func _process(delta: float) -> void:
 			run.efectos.chispas(Vector2.ZERO, Color(1.0, 0.95, 0.7), 6)
 
 
-func _nacer() -> void:
+func _nacer(tipo := "obrera", donde := Vector2.INF) -> Hormiga:
 	var h: Hormiga = ESCENA_HORMIGA.instantiate()
-	h.position = Vector2.from_angle(randf() * TAU) * 5.0
+	h.position = Vector2.from_angle(randf() * TAU) * 5.0 if donde == Vector2.INF else donde
 	h.rotation = h.position.angle()
 	h.scale = Vector2.ONE * _escala
 	add_child(h)
-	h.iniciar(run)
+	h.iniciar(run, tipo)
+	h.scale = Vector2.ONE * _escala * h.escala_casta
 	hormigas.append(h)
+	return h
+
+
+func desplegar_minis(pos: Vector2, cantidad_solicitada: int) -> int:
+	if not _activa or not run.activa:
+		return 0
+	var cantidad_real := mini(cantidad_solicitada, LIMITE_MINIS - minis_nacidas)
+	for i in cantidad_real:
+		var lugar := pos
+		for intento in 8:
+			var candidato := (pos + Vector2.from_angle(randf() * TAU) * randf_range(3, 12)).limit_length(run.radio_actual - 6)
+			if run.cocina.libre(candidato, Cocina.MARGEN):
+				lugar = candidato
+				break
+		_nacer("mini", lugar)
+	minis_nacidas += cantidad_real
+	if cantidad_real > 0:
+		run.efectos.chispas(pos, Color("c9a7df"), 6)
+		run.efectos.texto(pos + Vector2(0, -12), "+%d miniobreras" % cantidad_real, Color("e1c1f3"), 0.8)
+	return cantidad_real
+
+
+func conteo_castas() -> Dictionary:
+	var conteo := {}
+	for h in hormigas:
+		conteo[h.casta] = int(conteo.get(h.casta, 0)) + 1
+	return conteo
 
 
 ## Cuando la cámara se aleja, las hormigas se agrandan un poco para seguir viéndose.
@@ -73,4 +117,4 @@ func _actualizar_escala() -> void:
 		return
 	_escala = nueva
 	for h in hormigas:
-		h.scale = Vector2.ONE * _escala
+		h.scale = Vector2.ONE * _escala * h.escala_casta
