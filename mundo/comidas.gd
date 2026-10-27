@@ -182,10 +182,19 @@ func revelar_tesoro(pos: Vector2, nivel: int) -> void:
 	for i in 3:
 		var lugar := run.cocina.ajustar_destino(pos + Vector2.from_angle(i * TAU / 3) * 65, run.radio_actual)
 		if lugar != Vector2.INF:
-			_crear(Juego.comidas[2 if nivel == 1 else 4], lugar, 405 + i)
+			_crear(_tipo_comida("galletita" if nivel == 1 else "sandwich"), lugar, 405 + i)
 			_tesoros += 1
 	if Juego.obtener_hito("primer_tesoro"):
 		run.hud.mostrar_aviso("¡Hallazgo! Olfato +10 permanente")
+
+
+## Busca un tipo de comida por id (no por posición en el CSV, que puede reordenarse).
+func _tipo_comida(id: String) -> Dictionary:
+	for tipo in Juego.comidas:
+		if tipo.id == id:
+			return tipo
+	push_error("No existe la comida '%s' en datos/comidas.csv" % id)
+	return Juego.comidas[0]
 
 
 ## ¿La comida está (al menos en parte) dentro del territorio?
