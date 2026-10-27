@@ -36,6 +36,22 @@ func _ready() -> void:
 	Juego.reiniciar_estado()
 	Juego.restaurar_partida(guardado)
 	verificar(Juego.lugar_actual == "eiffel" and Juego.lugares_completados.size() == 6 and Juego.coronas == 21, "la campaña completa y las coronas sobreviven al guardado")
+	# Repetir un destino ya cobrado no vuelve a dar coronas (antes se podían farmear).
+	verificar(Juego.elegir_destino("casa"), "se puede volver a un destino conquistado")
+	var repetida := crear_run()
+	repetida.objetivo_mapa.morder(repetida.objetivo_mapa.vida + 1)
+	verificar(repetida.objetivo_completado and Juego.coronas == 21, "repetir un destino ya cobrado no da coronas otra vez")
+	repetida.queue_free()
+	await get_tree().process_frame
+	Juego.elegir_destino("eiffel")
+	# Una partida anterior a coronas_cobradas no puede volver a cobrar lo ya completado.
+	var vieja: Dictionary = guardado.duplicate(true)
+	vieja.erase("coronas_cobradas")
+	Juego.reiniciar_estado()
+	Juego.restaurar_partida(vieja)
+	verificar(Juego.coronas_cobradas.size() == 6 and Juego.coronas == 21, "las partidas anteriores toman lo completado como ya cobrado")
+	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
+	Juego._cache_stats.clear()
 	Juego.migas = 9999
 	Juego.reclutadas.carpintera = 3
 	var previas := Juego.coronas
@@ -46,6 +62,17 @@ func _ready() -> void:
 	var previa := Juego.stat_tras_comprar("mandibulas")
 	Juego.comprar("mandibulas")
 	verificar(is_equal_approx(previa, Juego.stat("dano")), "la vista previa incorpora el legado correctamente")
+	# Después de fundar, cada gran objetivo vuelve a pagar sus coronas una vez.
+	Juego.niveles["mordida_madera"] = 1
+	Juego.niveles["mordida_resistente"] = 1
+	Juego.niveles["mordida_muros"] = 1
+	Juego._cache_stats.clear()
+	Juego.elegir_destino("casa")
+	var nueva := crear_run()
+	nueva.objetivo_mapa.morder(nueva.objetivo_mapa.vida + 1)
+	verificar(Juego.coronas == 1, "una colonia nueva vuelve a cobrar las coronas de la casa")
+	nueva.queue_free()
+	await get_tree().process_frame
 	Juego.reiniciar_estado()
 	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
 	Juego._cache_stats.clear()

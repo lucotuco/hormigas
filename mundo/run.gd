@@ -161,10 +161,13 @@ func _on_comida_destruida(comida: Comida) -> void:
 				Juego.obtener_hito("cuatro_sillas")
 		if comida.pieza.get("meta", false) and not objetivo_completado:
 			objetivo_completado = true
-			Juego.completar_destino()
+			var entregadas := Juego.completar_destino()
 			if Juego.lugar_actual in ["obelisco", "coliseo", "eiffel"]:
 				Juego.obtener_hito("primer_monumento")
-			hud.mostrar_aviso("¡Gran objetivo! Nuevo destino y coronas")
+			if entregadas > 0:
+				hud.mostrar_aviso("¡Gran objetivo! +%d %s" % [entregadas, "corona" if entregadas == 1 else "coronas"])
+			else:
+				hud.mostrar_aviso("¡Gran objetivo! (las coronas de este destino ya se cobraron en esta colonia)")
 		if Juego.lugar_actual == "casa" and PlanoCasa.ambiente_en(comida.position) == "cocina":
 			var queda := false
 			for parte in comidas.partes:

@@ -154,13 +154,14 @@ func _draw() -> void:
 	var c := color.lerp(Color.WHITE, 0.65) if _destello > 0.0 else color
 	var oscuro := c.darkened(0.3)
 	var r := radio
+	# El veneno va antes del atajo del atlas para que se vea en toda la comida.
+	if veneno_restante > 0:
+		draw_circle(Vector2.ZERO, r + 4, Color(0.57, 0.76, 0.32, 0.2))
+		draw_arc(Vector2.ZERO, r + 3, 0, TAU, 32, Color(0.67, 0.85, 0.43, 0.75), 1.5, true)
 	if _usar_cache and Graficos.listo and Graficos.regiones.has("comida:" + id):
 		Graficos.dibujar(self, "comida:" + id, Vector2.ZERO, Color(1.3, 1.3, 1.3) if _destello > 0 else Color.WHITE)
 		_dibujar_dano(desplazamiento)
 		return
-	if veneno_restante > 0:
-		draw_circle(Vector2.ZERO, r + 4, Color(0.57, 0.76, 0.32, 0.2))
-		draw_arc(Vector2.ZERO, r + 3, 0, TAU, 32, Color(0.67, 0.85, 0.43, 0.75), 1.5, true)
 	# Sombra consistente, también para las formas pequeñas.
 	draw_circle(Vector2(1.5, 2.5), r * 0.93, Color(0.18, 0.12, 0.08, 0.14))
 	match forma:
