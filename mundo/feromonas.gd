@@ -139,7 +139,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_pantalla = event.position
-			mantener_en(get_canvas_transform().affine_inverse() * _pantalla, true)
+			var punto := get_canvas_transform().affine_inverse() * _pantalla
+			run.pisar(punto)  # el clic pega al instante; mantenerlo llama hormigas
+			mantener_en(punto, true)
 		else:
 			soltar()
 	if event is InputEventMouseMotion and activa and _desde_mouse:

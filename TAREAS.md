@@ -26,6 +26,10 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] Tienda con árbol de mejoras (18 mejoras en 6 ramas, las bloqueadas en sombra)
 - [x] Comprar mejoras y castas en cantidades ×1, ×10 o Máx, con indicadores de disponibilidad por rama
 - [x] Guardado y carga automáticos
+- [x] Pisotón: el clic sobre comida pega al instante; mantenerlo sigue llamando hormigas
+- [x] Mecánicas que aparecen de a una (frenesí, castas, prioridades, viajes, legado)
+- [x] Próxima meta siempre visible en el HUD, con barra y aviso cuando alcanza
+- [x] Hormigas más grandes en pantalla y 8 obreras iniciales
 - [ ] **B:** pantalla de título
 - [ ] **B:** menú de pausa con volumen
 
@@ -71,4 +75,6 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] **B:** hitos opcionales con premios permanentes explícitos
 - [x] **B:** seis destinos con objetivos: casa, restaurante, museo, Obelisco, Coliseo y Torre Eiffel
 - [x] **B:** árbol de mejoras como hormiguero en corte con seis cámaras interactivas
-- [ ] **B:** pasar los CSV a una planilla compartida y balancear la primera hora de juego
+- [x] Bot de balance (tests/bot_balance.tscn) y primera hora calibrada: madera ~10 min, paredes ~42, casa ~50
+- [ ] **Los dos:** decidir cómo progresan los destinos 2 a 6: hoy todo se maximiza antes del minuto 60 y cada destino cae en una run
+- [ ] **B:** pasar los CSV a una planilla compartida

@@ -11,6 +11,7 @@ const ESCENA_TIENDA := "res://ui/tienda.tscn"
 const DURACION_EXPANSION := 1.8   # segundos que tarda en crecer el territorio al empezar
 const VENTANA_COMBO := 1.2        # segundos entre depósitos para que el combo siga
 const BONUS_DESTRUIR := 0.25      # migas extra al destruir una comida (proporción de su recompensa)
+const PROPORCION_PISOTON := 0.5   # el pisotón da la mitad de migas que una mordida de hormiga
 
 @onready var comidas: Comidas = $Comidas
 @onready var cocina: Cocina = $Cocina
@@ -120,7 +121,8 @@ func depositar(cantidad: float) -> void:
 	if cantidad <= 0.0 or terminada:
 		return
 	Juego.sumar_migas_run(cantidad)
-	if frenesi_restante <= 0 and _descanso_frenesi <= 0:
+	# El frenesí aparece desde la segunda run (ver Juego.REVELABLES).
+	if frenesi_restante <= 0 and _descanso_frenesi <= 0 and Juego.revelado("frenesi"):
 		frenesi = minf(100, frenesi + 5)
 		if frenesi >= 100:
 			frenesi = 0
@@ -189,6 +191,29 @@ func _on_comida_destruida(comida: Comida) -> void:
 	hud.migas_voladoras(a_pantalla(pos), int(clampf(comida.radio / 2.5, 2, 16)))
 	camara.sacudir(clampf(comida.radio * 0.35, 2.0, 18.0))
 	Sonido.tocar("romper", clampf(1.7 - comida.radio / 45.0, 0.5, 1.7))
+
+## Pisotón: un clic sobre comida la daña al instante y da la mitad de migas
+## que una mordida. Sólo afecta alimentos; muebles, muros y restos son trabajo
+## de las hormigas. Mantener el clic sigue siendo el llamado (ver Feromonas).
+## Devuelve las migas obtenidas.
+func pisar(pos: Vector2) -> float:
+	if not activa:
+		return 0.0
+	var comida := comidas.comida_en(pos, radio_actual)
+	if comida == null or comida is PiezaCasa or comida is FragmentoCasa:
+		return 0.0
+	var color := comida.color
+	var lugar := comida.global_position
+	var migas := comida.morder(Juego.stat("dano_clic")) * PROPORCION_PISOTON
+	if migas > 0.0:
+		Juego.sumar_migas_run(migas)
+		efectos.numero(lugar + Vector2(0, -comida.radio), migas, Color(1.0, 0.97, 0.8), 0.9)
+		hud.migas_voladoras(a_pantalla(lugar), 1)
+	efectos.chispas(lugar, color, 6)
+	camara.sacudir(1.5)
+	Sonido.tocar("clic", randf_range(0.9, 1.15), 0.0)
+	return migas
+
 
 func registrar_extraccion(cantidad: float) -> void:
 	resistencia_extraida += maxf(0, cantidad)

@@ -3,7 +3,7 @@ extends RefCounted
 ## Planos acotados: viajar cambia el escenario, no multiplica el mundo en memoria.
 const ORDEN := ["casa", "restaurante", "museo", "obelisco", "coliseo", "eiffel"]
 const INFO := {
-	"casa": {"nombre": "La casa", "subtitulo": "De las migas a los muebles", "meta": "La gran mesa familiar", "factor": 1.0, "coronas": 1},
+	"casa": {"nombre": "La casa", "subtitulo": "De las migas a los muebles", "meta": "La gran mesa familiar", "factor": 1.0, "coronas": 1, "vida_meta": 1000.0},
 	"restaurante": {"nombre": "El restaurante", "subtitulo": "Salón, barra y cocina industrial", "meta": "La barra del chef", "factor": 1.7, "coronas": 2},
 	"museo": {"nombre": "El museo", "subtitulo": "Galerías, vitrinas y una estatua monumental", "meta": "La gran escultura", "factor": 2.8, "coronas": 3},
 	"obelisco": {"nombre": "Obelisco · Buenos Aires", "subtitulo": "La colonia conquista la avenida", "meta": "El Obelisco", "factor": 4.5, "coronas": 4},

@@ -20,6 +20,7 @@ var _cola_castas: Array[String] = []
 var minis_nacidas := 0
 var _reloj_visibilidad := 0.0
 const LIMITE_MINIS := 120
+const ESCALA_EN_PANTALLA := 1.5
 
 
 func iniciar(r: Run) -> void:
@@ -116,7 +117,9 @@ func conteo_castas() -> Dictionary:
 ## Cuando la cámara se aleja, las hormigas se agrandan un poco para seguir viéndose.
 func _actualizar_escala() -> void:
 	var zoom := maxf(get_viewport().get_canvas_transform().get_scale().x, 0.01)
-	var nueva := clampf(0.9 / zoom, 1.0, 5.0)
+	# 1.5: con la cámara alejada del arranque, las hormigas quedan de unos
+	# 16 px en pantalla (antes ~10 px), suficiente para leer qué hacen.
+	var nueva := clampf(ESCALA_EN_PANTALLA / zoom, 1.0, 5.0)
 	var cambiar := absf(nueva - _escala) >= 0.03
 	_escala = nueva
 	var inversa := get_viewport().get_canvas_transform().affine_inverse()

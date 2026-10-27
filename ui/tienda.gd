@@ -28,6 +28,8 @@ var _pestanas: Dictionary = {}
 var _cantidades: Dictionary = {}
 var _panel_viajes: PanelCampana
 var _panel_legado: PanelCampana
+var _lbl_comprar: Label
+const NOMBRES_PESTANAS := {"hogar": "Mejoras", "castas": "Castas", "viajes": "Viajes", "legado": "Hitos y legado"}
 
 
 class IconoSala extends Control:
@@ -262,8 +264,7 @@ func _crear_pestanas() -> Control:
 	var fila := HBoxContainer.new()
 	fila.add_theme_constant_override("separation", 10)
 	for id in ["hogar", "castas", "viajes", "legado"]:
-		var nombres := {"hogar": "Mejoras", "castas": "Castas", "viajes": "Viajes", "legado": "Hitos y legado"}
-		var boton := Estilo.boton(nombres[id], 15, Color("282f26"), Color("52634a"))
+		var boton := Estilo.boton(NOMBRES_PESTANAS[id], 15, Color("282f26"), Color("52634a"))
 		boton.pressed.connect(_cambiar_pestana.bind(id))
 		fila.add_child(boton)
 		_pestanas[id] = boton
@@ -273,6 +274,7 @@ func _crear_pestanas() -> Control:
 	var texto := Estilo.etiqueta("COMPRAR", 11, Estilo.TEXTO_SUAVE)
 	texto.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	fila.add_child(texto)
+	_lbl_comprar = texto
 	for cantidad in [1, 10, 0]:
 		var boton := Estilo.boton("Máx" if cantidad == 0 else "×%d" % cantidad, 15, Color("282f26"), Color("52634a"))
 		boton.custom_minimum_size.x = 64
@@ -284,6 +286,7 @@ func _crear_pestanas() -> Control:
 
 
 func _cambiar_pestana(id: String) -> void:
+	Juego.marcar_visto(id)
 	_cuerpo_mejoras.visible = id == "hogar"
 	_panel_castas.visible = id == "castas"
 	_panel_viajes.visible = id == "viajes"
@@ -397,6 +400,7 @@ func _on_migas_cambiaron(_total: float) -> void:
 
 func _refrescar() -> void:
 	_boton_run.text = "Explorar  →"
+	_actualizar_revelados()
 	_boton_run.tooltip_text = "Destino: " + Mundos.INFO[Juego.lugar_actual].nombre
 	for cantidad in _cantidades:
 		_cantidades[cantidad].add_theme_stylebox_override("normal", Estilo.caja(Color("536649") if cantidad == Juego.cantidad_compra else Color("282f26"), 10, Color("94b47e") if cantidad == Juego.cantidad_compra else Color("46503f"), 1, 10))
@@ -450,6 +454,19 @@ func _refrescar() -> void:
 		boton.modulate.a = 1.0 if abierta else 0.6
 
 
+## Pestañas y compra por lote aparecen recién cuando sirven; las nuevas
+## llevan un punto hasta que el jugador las abre.
+func _actualizar_revelados() -> void:
+	for id in ["castas", "viajes", "legado"]:
+		var boton: Button = _pestanas[id]
+		boton.visible = Juego.revelado(id)
+		boton.text = NOMBRES_PESTANAS[id] + ("  ● ¡Nuevo!" if Juego.es_nuevo(id) else "")
+	var lotes := Juego.revelado("compra_lote")
+	_lbl_comprar.visible = lotes
+	for cantidad in _cantidades:
+		_cantidades[cantidad].visible = lotes
+
+
 func _valor_stat(stat: String, valor: float) -> String:
 	match stat:
 		"duracion_run": return "%.0f s" % valor
@@ -463,6 +480,7 @@ func _valor_stat(stat: String, valor: float) -> String:
 		"cria": return "%d crías / 10 s" % int(valor)
 		"olfato": return "%.0f de alcance" % valor
 		"capacidad": return "%d bocados" % int(valor)
+		"dano_clic": return "%.0f de daño por pisotón" % valor
 	return "%.1f de daño" % valor
 
 

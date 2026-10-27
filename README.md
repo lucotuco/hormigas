@@ -13,6 +13,7 @@ Incremental para PC hecho en **Godot 4.7.2**. Guiás a tu colonia manteniendo el
 
 | Acción | Cómo |
 |---|---|
+| Pisotón | Clic sobre la comida: la daña al instante y da la mitad de migas que una mordida |
 | Atraer las hormigas más cercanas | Mantener clic izquierdo en el destino; moverlo cambia el punto, soltar termina la orden |
 | Acercar o alejar el mapa | Rueda del mouse; el zoom apunta al cursor |
 | Moverse por el mapa | Arrastrar con botón derecho o central; también WASD o flechas |
@@ -103,7 +104,10 @@ Las feromonas son un **llamado al punto actual del cursor**, no un camino.
 Al mantener el clic, las 24 hormigas disponibles más cercanas se aproximan;
 la mejora Llamado potente aumenta esa cantidad de a tres y Coordinación de a una
 (máximo 64 a la vez). El antiguo Pisotón se convirtió en Coordinación conservando
-sus niveles y costos: **el clic ya no aplica daño ni entrega migas**. Si movés el cursor,
+sus niveles y costos. Además, **el clic sobre comida es un pisotón**: la daña al
+instante (stat `dano_clic`, mejora Pisotón en el taller) y da la mitad de migas
+que una mordida. Sólo afecta alimentos; muebles, muros y restos son trabajo de
+las hormigas. Así los primeros minutos, con pocas hormigas, tienen acción directa. Si movés el cursor,
 se actualizan el destino y la selección. Al soltar, termina la atracción sin
 dejar rastros anteriores. Sobre comida, las hormigas que llegan recolectan.
 Las que ya transportan una carga terminan su regreso antes de responder.
@@ -114,6 +118,28 @@ mapa, conserva tu encuadre; `R` recupera la vista automática del hormiguero
 y `H` encuadra la casa entera.
 Los controles de cámara no dibujan feromonas. El piso usa juntas filtradas para
 mantener un patrón estable al cambiar el zoom.
+
+### Los primeros minutos
+
+Las mecánicas aparecen de a una para no abrumar (`Juego.REVELABLES`). Una vez
+reveladas quedan visibles para siempre, y lo nuevo se marca con "¡Nuevo!":
+
+| Mecánica | Aparece |
+|---|---|
+| Compra ×10 / Máx y frenesí | Desde la segunda run |
+| Botón y texto del gran objetivo | Desde la tercera run |
+| Pestaña Castas | Desde la cuarta run (o al tener una especialista) |
+| Barra de prioridades | Al desbloquear la dieta de madera |
+| Pestaña Viajes | Al conquistar el primer destino |
+| Pestaña Hitos y legado | Con el primer hito o la primera corona |
+
+El HUD muestra siempre la **próxima meta** con una barra (`Juego.proxima_meta()`):
+primero subir Mandíbulas fuertes a nivel 4, después juntar las migas de cada
+dieta, después el gran objetivo y por último el próximo viaje. Las migas de la
+run en curso ya cuentan, y avisa cuando alcanza para comprar.
+
+La colonia arranca con 8 obreras y, con la cámara alejada, las hormigas se
+dibujan más grandes (`Colonia.ESCALA_EN_PANTALLA`) para que se lea qué hacen.
 
 ### De comer migas a devorar la casa
 
@@ -128,8 +154,8 @@ El taller (rama **Mandíbulas**) tiene tres desbloqueos permanentes, en orden:
 
 Mantené el clic sobre la pieza: las hormigas se acercan a su **borde accesible**,
 la muerden, transportan las migas y vuelven. Los materiales bloqueados no
-reciben daño. Sólo las hormigas y su corrosión extraen material; el cursor da
-órdenes, nunca rompe objetos. Al señalar una pieza, el HUD muestra
+reciben daño. Sólo las hormigas y su corrosión extraen material de muebles y
+muros; el pisotón sólo afecta alimentos. Al señalar una pieza, el HUD muestra
 su resistencia y la dieta requerida. El daño recorta la silueta junto a la mordida:
 cada objeto tiene como máximo 16 celdas lógicas y una máscara de dibujo. Las
 celdas agotadas dejan huecos transitables. Al perder soportes, los restos caen
@@ -269,6 +295,43 @@ Los intervalos de las habilidades especiales están junto a su implementación.
 - Una mejora tipo `multiplica` con valor `1.12` y nivel 3 multiplica la stat por `1.12³`.
 - Para agregar una mejora nueva alcanza con agregar una fila; aparece sola en la tienda. Si afecta una stat nueva, agregala también a `stats_base.csv` y usala en el código con `Juego.stat("nombre")`.
 
+### Medir el ritmo con el bot
+
+`tests/bot_balance.tscn` juega solo, como un jugador activo (3 pisotones por
+segundo, llamado sobre el gran objetivo, compra lo más barato y ahorra para
+cada dieta), y anota el minuto de juego de cada desbloqueo y de cada destino:
+
+```bash
+godot --headless --fixed-fps 60 --path . res://tests/bot_balance.tscn
+```
+
+Juega a velocidad ×8, así que una hora de juego tarda un par de minutos. Con
+`BOT_ESTADO=archivo.json` se puede cortar y retomar por tandas; con `BOT_LOG`
+también escribe el registro en un archivo. No corre en CI.
+
+Medición actual (27/10, dos corridas):
+
+| Desbloqueo | Minuto de juego |
+|---|---|
+| Mandíbulas fuertes 4 | 1,5–2,5 |
+| Primera casta | 3,5 |
+| Madera y telas (8.000 migas) | ~9,5 |
+| Materiales resistentes (150.000) | 24–27 |
+| Paredes (4.000.000) | 40–43 |
+| Casa conquistada | 46–61 |
+| Restaurante a Torre Eiffel | ~2 min cada uno |
+
+El gran objetivo pide la dieta completa (`PiezaCasa.NIVEL_META`) y su
+resistencia se multiplica por `vida_meta` de cada destino en `mundo/mundos.gd`
+(la casa usa 1000; el resto, 3). Como la casa se reconstruye en cada
+expedición, es un chequeo de daño dentro de una sola run.
+
+**Pendiente de diseño:** el bot compra todas las mejoras y castas antes del
+minuto 60. Después de la casa no queda en qué gastar, y los cinco destinos
+siguientes caen en una run cada uno. Hay que decidir cómo progresa esa
+parte (topes de mejoras más altos, mejoras nuevas por destino, o exigir
+fundar colonia antes de viajar) y medirlo con el bot.
+
 ## Trabajar de a dos con Git
 
 **Reglas:**
@@ -385,6 +448,13 @@ godot --headless --fixed-fps 60 --path . res://tests/prueba_campana.tscn
 
 `tests/revision_campana.tscn` captura los seis escenarios, los nuevos menús y la
 confirmación de legado, también en 1000×620. Todas las revisiones desactivan el guardado.
+
+Primeros minutos: mecánicas que aparecen de a una, próxima meta, pisotón y
+tamaño de las hormigas en pantalla:
+
+```bash
+godot --headless --fixed-fps 60 --path . res://tests/prueba_progresion.tscn
+```
 
 ## Exportar
 

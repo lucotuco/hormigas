@@ -44,7 +44,7 @@ func _ready() -> void:
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.colonia._process(3.0)
 	var conteo := run.colonia.conteo_castas()
-	verificar(run.colonia.cantidad() == 12 and conteo.get("reina", 0) == 1 and conteo.get("voladora", 0) == 1, "la expedición despliega obreras y todas las unidades compradas")
+	verificar(run.colonia.cantidad() == int(Juego.stat("hormigas_iniciales")) + Juego.total_especialistas() and conteo.get("reina", 0) == 1 and conteo.get("voladora", 0) == 1, "la expedición despliega obreras y todas las unidades compradas")
 	var reina: Hormiga
 	var roja: Hormiga
 	var voladora: Hormiga
@@ -112,7 +112,7 @@ func _ready() -> void:
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.colonia._process(3)
-	verificar(run.colonia.cantidad() == 12 and run.colonia.minis_nacidas == 0, "las especialistas vuelven en otra expedición y las minis no se guardan")
+	verificar(run.colonia.cantidad() == int(Juego.stat("hormigas_iniciales")) + Juego.total_especialistas() and run.colonia.minis_nacidas == 0, "las especialistas vuelven en otra expedición y las minis no se guardan")
 	run.queue_free()
 	await get_tree().process_frame
 	var tienda := preload("res://ui/tienda.tscn").instantiate()
