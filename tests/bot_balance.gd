@@ -49,6 +49,13 @@ func _ready() -> void:
 	Juego.guardado_habilitado = false
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()
+	# Para calibrar: un vida_meta.json junto al estado fuerza resistencias.
+	var forzada := estado_ruta.get_base_dir().path_join("vida_meta.json") if estado_ruta != "" else ""
+	if forzada != "" and FileAccess.file_exists(forzada):
+		var valores = JSON.parse_string(FileAccess.get_file_as_string(forzada))
+		if valores is Dictionary:
+			Mundos.vida_meta_forzada = valores
+			anotar("(vida_meta forzada: %s)" % str(valores))
 	if estado_ruta != "" and FileAccess.file_exists(estado_ruta):
 		var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(estado_ruta))
 		Juego.restaurar_partida(d.partida)

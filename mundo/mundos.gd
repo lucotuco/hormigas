@@ -11,6 +11,16 @@ const INFO := {
 	"eiffel": {"nombre": "Torre Eiffel · París", "subtitulo": "Jardines y una estructura de hierro", "meta": "La Torre Eiffel", "factor": 11.0, "coronas": 6, "vida_meta": 600.0},
 }
 static var _cache: Dictionary = {}
+## Multiplicador de resistencia del gran objetivo cuando el destino no define
+## "vida_meta".
+const VIDA_META_BASE := 3.0
+## Sólo para el bot de balance: fuerza la resistencia de un destino sin tocar INFO.
+static var vida_meta_forzada: Dictionary = {}
+
+
+static func vida_meta(id: String) -> float:
+	return float(vida_meta_forzada.get(id, INFO[id].get("vida_meta", VIDA_META_BASE)))
+
 const ESPECIALES := [
 	{"tipo": "vitrina", "rect": Rect2(0, 0, 700, 350), "color": Color("8faeaa")},
 	{"tipo": "escultura", "rect": Rect2(0, 0, 950, 1150), "color": Color("d4c9b0")},
