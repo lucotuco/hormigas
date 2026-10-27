@@ -75,4 +75,6 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] **B:** hitos opcionales con premios permanentes explícitos
 - [x] **B:** seis destinos con objetivos: casa, restaurante, museo, Obelisco, Coliseo y Torre Eiffel
 - [x] **B:** árbol de mejoras como hormiguero en corte con seis cámaras interactivas
-- [ ] **B:** pasar los CSV a una planilla compartida y balancear la primera hora de juego
+- [x] Bot de balance (tests/bot_balance.tscn) y primera hora calibrada: madera ~10 min, paredes ~42, casa ~50
+- [ ] **Los dos:** decidir cómo progresan los destinos 2 a 6: hoy todo se maximiza antes del minuto 60 y cada destino cae en una run
+- [ ] **B:** pasar los CSV a una planilla compartida

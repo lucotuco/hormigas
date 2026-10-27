@@ -295,6 +295,43 @@ Los intervalos de las habilidades especiales están junto a su implementación.
 - Una mejora tipo `multiplica` con valor `1.12` y nivel 3 multiplica la stat por `1.12³`.
 - Para agregar una mejora nueva alcanza con agregar una fila; aparece sola en la tienda. Si afecta una stat nueva, agregala también a `stats_base.csv` y usala en el código con `Juego.stat("nombre")`.
 
+### Medir el ritmo con el bot
+
+`tests/bot_balance.tscn` juega solo, como un jugador activo (3 pisotones por
+segundo, llamado sobre el gran objetivo, compra lo más barato y ahorra para
+cada dieta), y anota el minuto de juego de cada desbloqueo y de cada destino:
+
+```bash
+godot --headless --fixed-fps 60 --path . res://tests/bot_balance.tscn
+```
+
+Juega a velocidad ×8, así que una hora de juego tarda un par de minutos. Con
+`BOT_ESTADO=archivo.json` se puede cortar y retomar por tandas; con `BOT_LOG`
+también escribe el registro en un archivo. No corre en CI.
+
+Medición actual (27/10, dos corridas):
+
+| Desbloqueo | Minuto de juego |
+|---|---|
+| Mandíbulas fuertes 4 | 1,5–2,5 |
+| Primera casta | 3,5 |
+| Madera y telas (8.000 migas) | ~9,5 |
+| Materiales resistentes (150.000) | 24–27 |
+| Paredes (4.000.000) | 40–43 |
+| Casa conquistada | 46–61 |
+| Restaurante a Torre Eiffel | ~2 min cada uno |
+
+El gran objetivo pide la dieta completa (`PiezaCasa.NIVEL_META`) y su
+resistencia se multiplica por `vida_meta` de cada destino en `mundo/mundos.gd`
+(la casa usa 1000; el resto, 3). Como la casa se reconstruye en cada
+expedición, es un chequeo de daño dentro de una sola run.
+
+**Pendiente de diseño:** el bot compra todas las mejoras y castas antes del
+minuto 60. Después de la casa no queda en qué gastar, y los cinco destinos
+siguientes caen en una run cada uno. Hay que decidir cómo progresa esa
+parte (topes de mejoras más altos, mejoras nuevas por destino, o exigir
+fundar colonia antes de viajar) y medirlo con el bot.
+
 ## Trabajar de a dos con Git
 
 **Reglas:**

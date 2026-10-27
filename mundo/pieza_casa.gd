@@ -23,8 +23,10 @@ var _impacto := Vector2.ZERO
 var _tesoro_abierto := false
 var _distancia_nido := 0.0
 var _tiempo_caida := 0.0
-## El gran objetivo es un mueble mucho más resistente (ver balance en README).
-const VIDA_META := 1000.0
+## El gran objetivo es un mueble mucho más resistente. Su multiplicador de vida
+## sale de Mundos.INFO[destino].vida_meta (por defecto VIDA_META_BASE).
+## Sólo la casa está medida con tests/bot_balance; ver README.
+const VIDA_META_BASE := 3.0
 const RECOMPENSA_META := 4.0
 const NIVEL_META := 3
 
@@ -39,7 +41,7 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 	mat.recompensa *= float(Mundos.INFO[Juego.lugar_actual].factor)
 	if datos.get("meta", false):
 		mat.nombre = Mundos.INFO[Juego.lugar_actual].meta
-		mat.vida *= VIDA_META
+		mat.vida *= float(Mundos.INFO[Juego.lugar_actual].get("vida_meta", VIDA_META_BASE))
 		mat.recompensa *= RECOMPENSA_META
 		# El gran objetivo cierra el destino: pide la dieta completa aunque sea
 		# de madera. Si no, se comía apenas se desbloqueaba la madera.
