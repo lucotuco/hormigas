@@ -42,7 +42,7 @@ func _ready() -> void:
 	Juego.reiniciar_estado()
 	Juego.restaurar_partida(guardado)
 	verificar(Juego.nivel_de("pisoton") == 25 and Juego.mejoras_por_id.pisoton.stat == "feromona_cantidad", "el antiguo Pisotón conserva sus compras como Coordinación")
-	verificar(not Juego.stats_base.has("dano_clic") and not run.has_method("_clic_en"), "se eliminó el daño por clic del código y de las estadísticas")
+	verificar(Juego.mejoras_por_id.has("pisada") and Juego.mejoras_por_id.pisada.stat == "dano_clic" and run.has_method("pisar"), "el pisotón nuevo es una mejora aparte y no toca los niveles de Coordinación")
 	f._notification(NOTIFICATION_WM_WINDOW_FOCUS_OUT)
 	verificar(not f.activa and f.seleccionadas.is_empty(), "perder foco cancela el llamado sin dejar hormigas seleccionadas")
 	run.queue_free()
@@ -75,8 +75,10 @@ func probar_clic_real() -> void:
 			alimentos.append(c)
 			break
 	alimentos.append(silla)
-	var sin_dano := true
-	var sin_premio := true
+	var pisa_comida := false
+	var paga_comida := false
+	var mueble_intacto := true
+	var llama := true
 	for c in alimentos:
 		var vida := c.vida
 		var migas := Juego.migas_run
@@ -86,14 +88,19 @@ func probar_clic_real() -> void:
 		boton.position = get_viewport().get_final_transform() * (get_viewport().get_canvas_transform() * c.position)
 		Input.parse_input_event(boton)
 		await get_tree().process_frame
-		sin_dano = sin_dano and c.vida == vida and run.feromonas.activa
-		sin_premio = sin_premio and Juego.migas_run == migas
+		llama = llama and run.feromonas.activa
+		if c is PiezaCasa:
+			mueble_intacto = mueble_intacto and c.vida == vida and Juego.migas_run == migas
+		else:
+			pisa_comida = c.vida < vida or c.muerta
+			paga_comida = Juego.migas_run > migas
 		boton = boton.duplicate()
 		boton.pressed = false
 		Input.parse_input_event(boton)
 		await get_tree().process_frame
-	verificar(sin_dano, "el clic real llama hormigas pero no daña comida ni muebles desbloqueados")
-	verificar(sin_premio, "el clic no entrega migas ni recompensas sin recolección")
+	verificar(llama, "el clic real activa el llamado de hormigas")
+	verificar(pisa_comida and paga_comida, "el clic real pisa la comida y da migas al instante")
+	verificar(mueble_intacto, "el pisotón no rompe muebles: eso es trabajo de las hormigas")
 	run.queue_free()
 	await get_tree().process_frame
 

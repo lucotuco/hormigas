@@ -56,6 +56,24 @@ var legado := 0
 var coronas := 0
 var fundaciones := 0
 var prioridad := "automatico"
+## Mecánicas de la interfaz que ya se revelaron: id -> true si el jugador ya
+## las vio, false si son nuevas. Ver REVELABLES.
+var descubiertos: Dictionary = {}
+
+## Las mecánicas aparecen de a una para no abrumar al empezar.
+## Cada una se revela cuando se cumple su condición (ver _condicion_revelar)
+## y queda visible para siempre, incluso después de fundar una colonia.
+const REVELABLES := {
+	"compra_lote": "Comprar de a 10 o el máximo",
+	"frenesi": "Frenesí: 20 depósitos seguidos aceleran a la colonia",
+	"gran_objetivo": "Gran objetivo: buscalo con G",
+	"castas": "Castas: hormigas especialistas",
+	"prioridades": "Prioridades: elegí qué come la colonia",
+	"viajes": "Viajes: nuevos destinos",
+	"legado": "Hitos y legado",
+}
+## Desbloqueos clave que marcan la progresión; el HUD muestra el próximo.
+const DIETAS := ["mordida_madera", "mordida_resistente", "mordida_muros"]
 
 # --- Run en curso ---
 var migas_run: float = 0.0
@@ -281,6 +299,67 @@ func stats_casta(id: String) -> Dictionary:
 		"intervalo_mordida": maxf(0.05, stat("intervalo_mordida")),
 	}
 
+## ¿La mecánica ya se le mostró al jugador? Si recién se cumple su condición,
+## queda registrada como nueva (para marcarla con "¡Nuevo!").
+func revelado(id: String) -> bool:
+	if descubiertos.has(id):
+		return true
+	if not _condicion_revelar(id):
+		return false
+	descubiertos[id] = false
+	guardar()
+	return true
+
+
+func es_nuevo(id: String) -> bool:
+	return descubiertos.get(id, true) == false
+
+
+func marcar_visto(id: String) -> void:
+	if descubiertos.get(id, true) == false:
+		descubiertos[id] = true
+		guardar()
+
+
+func _condicion_revelar(id: String) -> bool:
+	match id:
+		"compra_lote", "frenesi":
+			return runs_jugadas >= 2
+		"gran_objetivo":
+			return runs_jugadas >= 3
+		"castas":
+			return runs_jugadas >= 4 or total_especialistas() > 0
+		"prioridades":
+			return stat("materiales") >= 1
+		"viajes":
+			return not lugares_completados.is_empty()
+		"legado":
+			return not hitos.is_empty() or coronas > 0 or legado > 0
+	return true
+
+
+## La próxima meta concreta para mostrar siempre en pantalla.
+## tipo "migas": juntar migas para comprar una dieta; "nivel": subir la mejora
+## que la habilita; "objetivo": comer el gran objetivo; "viaje": ir al próximo destino.
+func proxima_meta() -> Dictionary:
+	for id in DIETAS:
+		if nivel_de(id) >= 1:
+			continue
+		var m: Dictionary = mejoras_por_id[id]
+		if not esta_desbloqueada(id):
+			var previa: Dictionary = mejoras_por_id[m.requiere_id]
+			return {"tipo": "nivel", "nombre": "%s nivel %d" % [previa.nombre, m.requiere_nivel],
+				"detalle": "habilita: " + m.nombre, "actual": float(nivel_de(previa.id)), "objetivo": float(m.requiere_nivel)}
+		return {"tipo": "migas", "nombre": m.nombre, "detalle": m.descripcion,
+			"actual": migas + migas_run, "objetivo": costo(id)}
+	if not lugares_completados.has(lugar_actual):
+		return {"tipo": "objetivo", "nombre": Mundos.INFO[lugar_actual].meta, "detalle": "gran objetivo · %d coronas" % int(Mundos.INFO[lugar_actual].coronas)}
+	var indice := Mundos.ORDEN.find(lugar_actual)
+	if indice + 1 < Mundos.ORDEN.size():
+		return {"tipo": "viaje", "nombre": "Viajar a " + Mundos.INFO[Mundos.ORDEN[indice + 1]].nombre, "detalle": "desde la pestaña Viajes"}
+	return {"tipo": "viaje", "nombre": "Fundar una colonia nueva", "detalle": "convertí tus coronas en legado"}
+
+
 func nivel_visual() -> int:
 	return mini(2, int(nivel_de("mandibulas") >= 4) + int(nivel_de("buche") >= 3 or legado > 0))
 
@@ -380,6 +459,7 @@ func datos_partida() -> Dictionary:
 		"radio_visto": radio_visto,
 		"lugar": lugar_actual, "destinos": lugares_completados, "hitos": hitos,
 		"legado": legado, "coronas": coronas, "fundaciones": fundaciones, "prioridad": prioridad,
+		"descubiertos": descubiertos,
 	}
 
 
@@ -433,6 +513,18 @@ func restaurar_partida(datos: Dictionary) -> void:
 			if castas_por_id.has(id) and castas_por_id[id].comprable:
 				reclutadas[id] = clampi(int(castas_guardadas[id]), 0, int(castas_por_id[id].maximo))
 	_cache_stats.clear()
+	descubiertos = {}
+	var vistos = datos.get("descubiertos", null)
+	if vistos is Dictionary:
+		for id in vistos:
+			if REVELABLES.has(id):
+				descubiertos[id] = vistos[id] == true
+	else:
+		# Partida anterior a la interfaz progresiva: lo que ya correspondía
+		# mostrar queda visible sin marcarse como nuevo.
+		for id in REVELABLES:
+			if _condicion_revelar(id):
+				descubiertos[id] = true
 
 
 func reiniciar_estado() -> void:
@@ -449,6 +541,7 @@ func reiniciar_estado() -> void:
 	coronas = 0
 	fundaciones = 0
 	prioridad = "automatico"
+	descubiertos = {}
 	_cache_stats.clear()
 
 

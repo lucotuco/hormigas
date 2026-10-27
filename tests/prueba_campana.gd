@@ -83,6 +83,8 @@ func _ready() -> void:
 	var tesoros := run.comidas.lista.size()
 	run.comidas.revelar_tesoro(Vector2(-100, 100), 1)
 	verificar(run.comidas.lista.size() == tesoros + 3 and Juego.hitos.has("primer_tesoro"), "abrir un mueble revela alimentos y un hito de olfato")
+	verificar(not Juego.revelado("frenesi"), "el frenesí todavía no aparece en la primera run")
+	Juego.runs_jugadas = 2  # el frenesí se revela desde la segunda run
 	for i in 20:
 		run.depositar(1)
 	verificar(run.frenesi_restante == 6 and run.factor_ritmo() == 1.5, "los depósitos activan seis segundos de frenesí")

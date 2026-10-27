@@ -1,7 +1,8 @@
 stat,valor,descripcion
-hormigas_iniciales,5,Hormigas que salen al empezar la run
+hormigas_iniciales,8,Hormigas que salen al empezar la run
 velocidad,95,Píxeles por segundo que camina una hormiga
 dano,1,Daño de cada mordida
+dano_clic,2,Daño del pisotón: clic sobre la comida (da la mitad de migas que una mordida)
 intervalo_mordida,0.6,Segundos entre mordidas
 capacidad,1,Mordidas que junta una hormiga antes de volver al hormiguero
 olfato,45,Distancia en píxeles a la que una hormiga detecta comida

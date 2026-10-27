@@ -25,7 +25,7 @@ func _ready() -> void:
 	verificar(Juego.stat("materiales") == 0 and not silla.disponible() and not heladera.disponible() and not muro.disponible(), "la colonia inicial sólo puede comer alimentos")
 	var vida := silla.vida
 	verificar(silla.morder(10000) == 0 and silla.vida == vida, "el daño no permite saltarse un material bloqueado")
-	verificar(not run.has_method("_clic_en"), "no existe el daño directo por clic")
+	verificar(run.pisar(silla.position) == 0.0 and silla.vida == vida, "el pisotón no daña muebles")
 	Juego.migas = 1e8
 	verificar(not Juego.comprar("mordida_madera"), "madera requiere primero mejorar las mandíbulas")
 	Juego.comprar_lote("mandibulas", 4)

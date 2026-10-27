@@ -36,6 +36,17 @@ var _prioridades: Dictionary = {}
 var _hitos_vistos := 0
 var _tween_aviso: Tween
 var _tween_combo: Tween
+var _panel_inferior: PanelContainer
+var _nodos_prioridad: Array[Control] = []
+var _boton_objetivo: Button
+var _columna_frenesi: VBoxContainer
+var _panel_meta: PanelContainer
+var _lbl_meta_titulo: Label
+var _lbl_meta_nombre: Label
+var _lbl_meta_progreso: Label
+var _barra_meta: ProgressBar
+var _relleno_meta: StyleBoxFlat
+var _meta_lista := false
 
 var _migas_mostradas := 0.0
 var _volando := 0
@@ -63,9 +74,12 @@ func _ready() -> void:
 	_crear_avisos(raiz)
 	_crear_panel_fin(raiz)
 	_crear_progresion(raiz)
+	_crear_proxima_meta(raiz)
 	_crear_prioridades(raiz)
 	_hitos_vistos = Juego.hitos.size()
 	Juego.progreso_cambio.connect(_notificar_hito)
+	_actualizar_revelados()
+	_anunciar_novedades()
 
 
 func _process(delta: float) -> void:
@@ -92,7 +106,8 @@ func _process(delta: float) -> void:
 	if _tiempo_inspeccion <= 0:
 		_tiempo_inspeccion = 0.12
 		_lbl_etapa.text = "DIETA %d/4 · %s" % [int(Juego.stat("materiales")) + 1, MaterialesCasa.NIVELES[clampi(int(Juego.stat("materiales")), 0, 3)]]
-		_lbl_lugar.text = Mundos.INFO[Juego.lugar_actual].nombre + " · %.1f%% consumido" % minf(100, run.resistencia_extraida / run.resistencia_total * 100)
+		_lbl_lugar.text = Mundos.INFO[Juego.lugar_actual].nombre
+		_actualizar_meta()
 		_lbl_meta.text = ("✓ Gran objetivo completado" if run.objetivo_completado else "Gran objetivo: " + Mundos.INFO[Juego.lugar_actual].meta) + "  [G]"
 		_lbl_frenesi.text = "¡FRENESÍ! %.1f s" % run.frenesi_restante if run.frenesi_restante > 0 else "Frenesí · depósitos consecutivos"
 		_barra_frenesi.value = run.frenesi_restante / 6.0 * 100 if run.frenesi_restante > 0 else run.frenesi
@@ -284,7 +299,7 @@ func _crear_avisos(raiz: Control) -> void:
 	raiz.add_child(_lbl_aviso)
 
 	_lbl_ayuda = Estilo.etiqueta(
-		"Mantené clic izquierdo: atraer hormigas cercanas hacia el cursor\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: ver la casa · Esc: terminar",
+		"Clic sobre la comida: pisotón · Mantené el clic: llamar a las hormigas cercanas\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: ver la casa · Esc: terminar",
 		13, Estilo.TEXTO, 4)
 	_lbl_ayuda.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_lbl_ayuda.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -332,20 +347,20 @@ func _crear_panel_fin(raiz: Control) -> void:
 
 func _crear_progresion(raiz: Control) -> void:
 	_lbl_etapa = Estilo.etiqueta("", 13, Color("d4ccaa"), 3)
-	_lbl_etapa.position = Vector2(20, 174)
+	_lbl_etapa.position = Vector2(20, 274)
 	_lbl_etapa.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	raiz.add_child(_lbl_etapa)
 	_lbl_objetivo = Estilo.etiqueta("", 13, Estilo.TEXTO, 3)
-	_lbl_objetivo.position = Vector2(20, 250)
+	_lbl_objetivo.position = Vector2(20, 350)
 	_lbl_objetivo.size.x = 430
 	_lbl_objetivo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_lbl_objetivo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	raiz.add_child(_lbl_objetivo)
 	_lbl_lugar = Estilo.etiqueta("", 14, Estilo.TEXTO, 3)
-	_lbl_lugar.position = Vector2(20, 150)
+	_lbl_lugar.position = Vector2(20, 250)
 	raiz.add_child(_lbl_lugar)
 	_lbl_meta = Estilo.etiqueta("", 12, Color("c4cfa0"), 3)
-	_lbl_meta.position = Vector2(20, 199)
+	_lbl_meta.position = Vector2(20, 299)
 	_lbl_meta.size.x = 400
 	_lbl_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	raiz.add_child(_lbl_meta)
@@ -359,10 +374,13 @@ func _crear_prioridades(raiz: Control) -> void:
 	panel.offset_bottom = -12
 	panel.add_theme_stylebox_override("panel", Estilo.caja(Color("1f2921"), 12, Color("58664b"), 1, 9))
 	raiz.add_child(panel)
+	_panel_inferior = panel
 	var fila := HBoxContainer.new()
 	fila.add_theme_constant_override("separation", 8)
 	panel.add_child(fila)
-	fila.add_child(Estilo.etiqueta("PRIORIDAD", 11, Estilo.TEXTO_SUAVE))
+	var titulo := Estilo.etiqueta("PRIORIDAD", 11, Estilo.TEXTO_SUAVE)
+	fila.add_child(titulo)
+	_nodos_prioridad.append(titulo)
 	for id in ["automatico", "alimentos", "muebles", "estructuras"]:
 		var nombres := {"automatico": "Auto", "alimentos": "Alimentos", "muebles": "Muebles", "estructuras": "Estructuras"}
 		var boton := Estilo.boton(nombres[id], 13, Color("303d2b"), Color("78936a"))
@@ -372,15 +390,18 @@ func _crear_prioridades(raiz: Control) -> void:
 		boton.pressed.connect(_cambiar_prioridad.bind(id))
 		fila.add_child(boton)
 		_prioridades[id] = boton
+		_nodos_prioridad.append(boton)
 	var espacio := Control.new()
 	espacio.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fila.add_child(espacio)
 	var objetivo := Estilo.boton("Gran objetivo [G]", 13, Color("303d2b"), Color("78936a"))
 	objetivo.pressed.connect(func() -> void: run.camara.ver_objetivo())
 	fila.add_child(objetivo)
+	_boton_objetivo = objetivo
 	var columna := VBoxContainer.new()
 	columna.custom_minimum_size.x = 210
 	fila.add_child(columna)
+	_columna_frenesi = columna
 	_lbl_frenesi = Estilo.etiqueta("", 11, Estilo.TEXTO)
 	columna.add_child(_lbl_frenesi)
 	_barra_frenesi = ProgressBar.new()
@@ -390,6 +411,104 @@ func _crear_prioridades(raiz: Control) -> void:
 	_barra_frenesi.add_theme_stylebox_override("fill", Estilo.caja(Color("d9bd72"), 4))
 	_barra_frenesi.add_theme_stylebox_override("background", Estilo.caja(Color("111c15"), 4))
 	columna.add_child(_barra_frenesi)
+
+## Panel "PRÓXIMO DESBLOQUEO": la meta cercana siempre a la vista.
+func _crear_proxima_meta(raiz: Control) -> void:
+	_panel_meta = PanelContainer.new()
+	_panel_meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel_meta.add_theme_stylebox_override("panel", Estilo.caja(Estilo.PANEL, 12, Color(1, 1, 1, 0.08), 1, 12))
+	_panel_meta.position = Vector2(16, 140)
+	_panel_meta.custom_minimum_size = Vector2(300, 0)
+	raiz.add_child(_panel_meta)
+	var columna := VBoxContainer.new()
+	columna.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	columna.add_theme_constant_override("separation", 3)
+	_panel_meta.add_child(columna)
+	_lbl_meta_titulo = Estilo.etiqueta("PRÓXIMO DESBLOQUEO", 11, Estilo.TEXTO_SUAVE)
+	columna.add_child(_lbl_meta_titulo)
+	_lbl_meta_nombre = Estilo.etiqueta("", 15, Estilo.TEXTO, 3)
+	_lbl_meta_nombre.custom_minimum_size.x = 276
+	_lbl_meta_nombre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	columna.add_child(_lbl_meta_nombre)
+	_barra_meta = ProgressBar.new()
+	_barra_meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_barra_meta.show_percentage = false
+	_barra_meta.custom_minimum_size = Vector2(276, 10)
+	_barra_meta.add_theme_stylebox_override("background", Estilo.caja(Color(0, 0, 0, 0.5), 5, Color(1, 1, 1, 0.1), 1, 0))
+	_relleno_meta = Estilo.caja(Estilo.ACENTO, 5, Color.TRANSPARENT, 0, 0)
+	_barra_meta.add_theme_stylebox_override("fill", _relleno_meta)
+	columna.add_child(_barra_meta)
+	_lbl_meta_progreso = Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
+	columna.add_child(_lbl_meta_progreso)
+	_actualizar_meta()
+
+
+func _actualizar_meta() -> void:
+	var meta := Juego.proxima_meta()
+	var actual := 0.0
+	var objetivo := 1.0
+	var texto := ""
+	match meta.tipo:
+		"migas":
+			actual = meta.actual
+			objetivo = maxf(1.0, meta.objetivo)
+			texto = "%s / %s migas" % [Juego.formatear(actual), Juego.formatear(objetivo)]
+		"nivel":
+			actual = meta.actual
+			objetivo = maxf(1.0, meta.objetivo)
+			texto = "nivel %d / %d · %s" % [int(actual), int(objetivo), meta.detalle]
+		"objetivo":
+			var gran := run.objetivo_mapa
+			if is_instance_valid(gran) and not gran.muerta:
+				objetivo = maxf(1.0, gran.vida_max)
+				actual = objetivo - gran.vida
+			else:
+				actual = objetivo
+			texto = "%d%% devorado · %s" % [int(actual / objetivo * 100.0), meta.detalle]
+		_:
+			actual = 1.0
+			texto = meta.detalle
+	_lbl_meta_titulo.text = "GRAN OBJETIVO" if meta.tipo == "objetivo" else ("SIGUIENTE PASO" if meta.tipo == "viaje" else "PRÓXIMO DESBLOQUEO")
+	_lbl_meta_nombre.text = meta.nombre
+	_barra_meta.value = clampf(actual / objetivo, 0.0, 1.0) * 100.0
+	var lista: bool = meta.tipo == "migas" and actual >= objetivo
+	if lista:
+		texto = "¡Ya te alcanza! Compralo en el taller al terminar"
+	_lbl_meta_progreso.text = texto
+	_relleno_meta.bg_color = Estilo.VERDE if lista else Estilo.ACENTO
+	if lista and not _meta_lista:
+		Sonido.tocar("comprar", 1.2, 0.0)
+		mostrar_aviso("¡Ya podés comprar: %s!" % meta.nombre)
+	_meta_lista = lista
+
+
+## Muestra sólo las mecánicas que el jugador ya desbloqueó.
+func _actualizar_revelados() -> void:
+	var prioridades := Juego.revelado("prioridades")
+	for nodo in _nodos_prioridad:
+		nodo.visible = prioridades
+	_boton_objetivo.visible = Juego.revelado("gran_objetivo")
+	_lbl_meta.visible = _boton_objetivo.visible
+	_columna_frenesi.visible = Juego.revelado("frenesi")
+	_panel_inferior.visible = prioridades or _boton_objetivo.visible or _columna_frenesi.visible
+	# Sin prioridades, la barra se achica a la derecha en vez de quedar vacía.
+	_panel_inferior.anchor_left = 0.0 if prioridades else 1.0
+	_panel_inferior.offset_left = 16 if prioridades else -490
+
+
+## Al empezar la run, avisa qué mecánicas aparecieron desde la última vez.
+func _anunciar_novedades() -> void:
+	var nuevas := PackedStringArray()
+	for id in ["frenesi", "gran_objetivo", "prioridades"]:
+		if Juego.revelado(id) and Juego.es_nuevo(id):
+			nuevas.append(Juego.REVELABLES[id])
+			Juego.marcar_visto(id)
+	if nuevas.is_empty():
+		return
+	await get_tree().create_timer(2.6).timeout  # después del aviso de territorio
+	if is_inside_tree():
+		mostrar_aviso("Nuevo · " + "\n".join(nuevas))
+
 
 func _cambiar_prioridad(id: String) -> void:
 	Juego.prioridad = id
