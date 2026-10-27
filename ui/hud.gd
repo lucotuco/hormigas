@@ -204,6 +204,9 @@ func mostrar_fin() -> void:
 	_lbl_fin_migas.text = "+%s migas" % Juego.formatear(Juego.migas_run)
 	_lbl_fin_detalle.text = "Comidas: %d · Partes de la casa: %d\nMejor combo: x%d\nTotal en el hormiguero: %s" % [
 		Juego.comidas_destruidas_run, Juego.partes_destruidas_run, Juego.mejor_combo_run, Juego.formatear(Juego.migas)]
+	# El prestigio a la vista: cuánto daría fundar ahora (ver pestaña Jalea real).
+	if Juego.revelado("legado") and Juego.puede_fundar():
+		_lbl_fin_detalle.text += "\nFundar ahora daría +%d de jalea real" % Juego.jalea_por_fundar()
 	_lbl_fin_record.visible = Juego.ultima_run_fue_record
 	_lbl_ayuda.visible = false
 	_panel_fin.visible = true

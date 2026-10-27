@@ -131,7 +131,7 @@ reveladas quedan visibles para siempre, y lo nuevo se marca con "¡Nuevo!":
 | Pestaña Castas | Desde la cuarta run (o al tener una especialista) |
 | Barra de prioridades | Al desbloquear la dieta de madera |
 | Pestaña Viajes | Al conquistar el primer destino |
-| Pestaña Hitos y legado | Con el primer hito o la primera corona |
+| Pestaña Jalea real (árbol de la reina e hitos) | Con el primer hito o la primera corona |
 
 El HUD muestra siempre la **próxima meta** con una barra (`Juego.proxima_meta()`):
 primero subir Mandíbulas fuertes a nivel 4, después juntar las migas de cada
@@ -174,19 +174,29 @@ carga y recolección siguen teniendo efecto sobre estos objetivos. Cada nueva
 expedición reconstruye la casa, igual que repone los alimentos; **los desbloqueos
 y mejoras sí se guardan**. No se borra el progreso de partidas anteriores.
 
-### Viajes, grandes objetivos y legado
+### Viajes, grandes objetivos y jalea real
 
-La tienda tiene pestañas **Mejoras**, **Castas**, **Viajes** e **Hitos y legado**.
+La tienda tiene pestañas **Mejoras**, **Castas**, **Viajes** y **Jalea real**.
 Los destinos son casa, restaurante, museo, Obelisco, Coliseo y Torre Eiffel.
 Cada uno tiene su propio plano y un gran objetivo: mesa familiar, barra del
 chef, escultura, Obelisco, arco imperial y torre. Devorar ese objetivo abre el
 destino siguiente y entrega de 1 a 6 coronas. `G` permite localizarlo; la niebla
 y los requisitos de material siguen vigentes.
 
-Las coronas se convierten en legado mediante **Fundar colonia**, con confirmación:
-se reinician migas, niveles de mejoras y reclutas; se conservan hitos, destinos
-y legado. Cada punto de legado da +10% permanente a daño y migas. Nunca se
-conservan muebles destruidos entre expediciones.
+**Fundar colonia** (pestaña Jalea real, con confirmación) reinicia migas,
+mejoras y castas y los convierte en **jalea real**: 3 por corona de la colonia
+más ∛(migas juntadas en la colonia / 100.000). La jalea se gasta en el
+**árbol de la reina** (`datos/jalea.csv`), que es permanente: atajos (nacer con
+las dietas aprendidas, conservar migas o castas), poder (daño, migas, obreras,
+tiempo) y reglas nuevas (pisotón automático, más niveles de tope, corona doble).
+Toda la jalea ganada en la historia da además +3% de daño y migas por punto,
+aunque se gaste. Se conservan destinos, hitos y el árbol. Cada gran objetivo
+paga sus coronas una vez por colonia.
+
+Cada destino conquistado **sube el tope** de las mejoras (`tope_por_destino` en
+`mejoras.csv`) y trae **mejoras propias** (marcadas con ✦, columna `destino`).
+Mandíbulas fuertes y Pisotón duplican su efecto cada 25 niveles. El diseño
+completo y sus razones están en [`docs/DISENO_PROGRESION.md`](docs/DISENO_PROGRESION.md).
 
 Los seis hitos son opcionales y tienen premios visibles en la tienda: primera
 silla (+20% daño de carpinteras), primer derrumbe (+20% daño de demoledoras),

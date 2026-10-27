@@ -16,11 +16,24 @@ extends Node
 ## Cómo juega: 3 pisotones por segundo sobre la comida más cercana al
 ## hormiguero; cuando el gran objetivo se puede comer, mantiene el llamado
 ## sobre él. Entre runs ahorra para la próxima dieta si ya tiene la mitad;
-## si no, compra lo más barato (mejoras o castas). Al conquistar un destino
-## viaja al siguiente. No funda colonias.
+## si no, compra lo más barato (mejoras o castas).
+##
+## Ciclo de prestigio: cada colonia recorre los destinos en orden, cobrando
+## las coronas de cada uno. Está "trabada" cuando pasan runs sin conquistar
+## nada y sin mejorar al menos MEJORA_MINIMA su mejor run (una meseta real).
+## Tras RUNS_TRABADO runs así, si fundar le daría bastante jalea (o tras
+## RUNS_TRABADO_MAXIMO, aunque dé poca), funda y gasta la jalea en el nodo
+## más barato del árbol de la reina.
 const RUN := preload("res://mundo/run.tscn")
 const VELOCIDAD := 8.0
 const CLICS_POR_SEGUNDO := 3.0
+const RUNS_TRABADO := 5          # runs sin conquistar antes de pensar en fundar
+const RUNS_TRABADO_MAXIMO := 20  # funda igual, aunque dé poca jalea
+const FRACCION_LEGADO := 0.25    # fundar si da al menos este % de la jalea histórica
+const MEJORA_MINIMA := 1.10      # una run que supera la mejor en 10% cuenta como progreso
+
+var trabado := 0
+var mejor_run_colonia := 0.0
 
 var estado_ruta := ""
 var log_ruta := ""
@@ -41,18 +54,27 @@ func _ready() -> void:
 		Juego.restaurar_partida(d.partida)
 		minutos = d.minutos
 		vistos = d.vistos
+		trabado = int(d.get("trabado", 0))
+		mejor_run_colonia = float(d.get("mejor_run_colonia", 0.0))
 	for n in runs:
-		await jugar_run()
-		comprar()
+		elegir_destino()
+		var cobradas := Juego.coronas_cobradas.size()
+		var ganado: float = await jugar_run()
+		if Juego.coronas_cobradas.size() > cobradas or ganado > mejor_run_colonia * MEJORA_MINIMA:
+			trabado = 0
+		else:
+			trabado += 1
+		mejor_run_colonia = maxf(mejor_run_colonia, ganado)
 		registrar()
+		if Juego.lugares_completados.size() == Mundos.ORDEN.size() and not vistos.has("FIN"):
+			vistos["FIN"] = minutos
+			anotar("FIN campaña completa en el minuto %.1f con %d fundaciones" % [minutos, Juego.fundaciones])
+			guardar_estado()
+			break
+		if conviene_fundar():
+			fundar()
+		comprar()
 		guardar_estado()
-		if Juego.lugares_completados.has(Juego.lugar_actual):
-			var i := Mundos.ORDEN.find(Juego.lugar_actual)
-			if i + 1 >= Mundos.ORDEN.size():
-				anotar("FIN campaña completa")
-				break
-			Juego.elegir_destino(Mundos.ORDEN[i + 1])
-			anotar("-> viaja a %s" % Juego.lugar_actual)
 		if minutos > max_min:
 			anotar("FIN se alcanzaron %d minutos" % int(max_min))
 			break
@@ -60,7 +82,7 @@ func _ready() -> void:
 	get_tree().quit()
 
 
-func jugar_run() -> void:
+func jugar_run() -> float:
 	var run: Run = RUN.instantiate()
 	add_child(run)
 	Engine.max_fps = 0
@@ -94,6 +116,46 @@ func jugar_run() -> void:
 		Juego.runs_jugadas, minutos, Juego.lugar_actual, Juego.formatear(ganado), Juego.formatear(Juego.migas),
 		int(Juego.stat("hormigas_iniciales")), int(Juego.stat("materiales")), int(Juego.stat("radio_territorio")),
 		partes, Juego.total_especialistas()])
+	return ganado
+
+
+## Cada colonia recorre los destinos en orden: juega en el primero cuyas
+## coronas todavía no cobró. Si ya cobró todo, juega en el último.
+func elegir_destino() -> void:
+	for id in Mundos.ORDEN:
+		if not Juego.coronas_cobradas.has(id) and Juego.destino_desbloqueado(id):
+			if Juego.lugar_actual != id:
+				Juego.elegir_destino(id)
+			return
+	Juego.elegir_destino(Mundos.ORDEN.back())
+
+
+func conviene_fundar() -> bool:
+	if not Juego.puede_fundar() or trabado < RUNS_TRABADO:
+		return false
+	var minimo := maxi(2, ceili(Juego.legado * FRACCION_LEGADO))
+	return Juego.jalea_por_fundar() >= minimo or trabado >= RUNS_TRABADO_MAXIMO
+
+
+func fundar() -> void:
+	var ganada := Juego.jalea_por_fundar()
+	var donde := Juego.lugar_actual
+	Juego.fundar_colonia()
+	trabado = 0
+	mejor_run_colonia = 0.0
+	var compras := PackedStringArray()
+	while true:
+		var mejor := ""
+		var precio := 1 << 62
+		for nodo in Juego.nodos_jalea:
+			if Juego.puede_comprar_jalea(nodo.id) and Juego.costo_jalea(nodo.id) < precio:
+				precio = Juego.costo_jalea(nodo.id)
+				mejor = nodo.id
+		if mejor == "":
+			break
+		Juego.comprar_jalea(mejor)
+		compras.append(mejor)
+	anotar("<< fundación %d en el minuto %.1f (trabado en %s): +%d jalea, legado %d · compró %s" % [Juego.fundaciones, minutos, donde, ganada, Juego.legado, ", ".join(compras)])
 
 
 func comprar() -> void:
@@ -152,7 +214,7 @@ func guardar_estado() -> void:
 	if estado_ruta == "":
 		return
 	var f := FileAccess.open(estado_ruta, FileAccess.WRITE)
-	f.store_string(JSON.stringify({"partida": Juego.datos_partida(), "minutos": minutos, "vistos": vistos}))
+	f.store_string(JSON.stringify({"partida": Juego.datos_partida(), "minutos": minutos, "vistos": vistos, "trabado": trabado, "mejor_run_colonia": mejor_run_colonia}))
 
 
 func anotar(texto: String) -> void:

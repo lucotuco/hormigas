@@ -29,7 +29,7 @@ var _cantidades: Dictionary = {}
 var _panel_viajes: PanelCampana
 var _panel_legado: PanelCampana
 var _lbl_comprar: Label
-const NOMBRES_PESTANAS := {"hogar": "Mejoras", "castas": "Castas", "viajes": "Viajes", "legado": "Hitos y legado"}
+const NOMBRES_PESTANAS := {"hogar": "Mejoras", "castas": "Castas", "viajes": "Viajes", "legado": "Jalea real"}
 
 
 class IconoSala extends Control:
@@ -332,7 +332,7 @@ func _crear_detalles() -> Control:
 
 func _crear_tarjeta(m: Dictionary) -> void:
 	var boton := Button.new()
-	boton.custom_minimum_size.y = 128
+	boton.custom_minimum_size.y = 142
 	boton.pressed.connect(_comprar.bind(m.id))
 	_lista.add_child(boton)
 	var margen := MarginContainer.new()
@@ -348,7 +348,8 @@ func _crear_tarjeta(m: Dictionary) -> void:
 	var fila := HBoxContainer.new()
 	fila.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	contenido.add_child(fila)
-	var nombre := Estilo.etiqueta(m.nombre, 16)
+	# Las mejoras de destino llevan una estrella: se traen de un viaje.
+	var nombre := Estilo.etiqueta(("✦ " if m.destino != "" else "") + m.nombre, 16)
 	nombre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	nombre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	fila.add_child(nombre)
@@ -412,7 +413,7 @@ func _refrescar() -> void:
 		var total := 0
 		var disponibles := 0
 		for m in Juego.mejoras:
-			if m.rama == rama:
+			if m.rama == rama and _mejora_visible(m):
 				total += Juego.nivel_de(m.id)
 				if Juego.cotizar_mejora(m.id, Juego.cantidad_compra).puede:
 					disponibles += 1
@@ -425,22 +426,33 @@ func _refrescar() -> void:
 		var t: Dictionary = _tarjetas[id]
 		var m: Dictionary = Juego.mejoras_por_id[id]
 		var boton: Button = t.boton
-		boton.visible = m.rama == _rama
+		boton.visible = m.rama == _rama and _mejora_visible(m)
 		var abierta := Juego.esta_desbloqueada(id)
 		var maxima := Juego.esta_al_maximo(id)
 		var oferta := Juego.cotizar_mejora(id, Juego.cantidad_compra)
 		var disponible: bool = oferta.puede
 		var color: Color = SALAS[m.rama].color
-		t.nivel.text = "%d / %d" % [Juego.nivel_de(id), m.nivel_max]
+		t.nivel.text = "%d / %d" % [Juego.nivel_de(id), Juego.nivel_maximo(id)]
 		if not abierta:
-			t.cambio.text = "Requiere %s · nivel %d" % [Juego.mejoras_por_id[m.requiere_id].nombre, m.requiere_nivel]
+			if m.destino != "" and not Juego.destino_desbloqueado(m.destino):
+				t.cambio.text = "Se descubre al llegar a %s" % Mundos.INFO[m.destino].nombre
+			else:
+				t.cambio.text = "Requiere %s · nivel %d" % [Juego.mejoras_por_id[m.requiere_id].nombre, m.requiere_nivel]
 		elif maxima:
-			t.cambio.text = "Tu colonia domina esta habilidad."
+			if m.tope_por_destino > 0 and Juego.lugares_completados.size() < Mundos.ORDEN.size():
+				t.cambio.text = "Tope alcanzado: cada destino conquistado suma %d niveles." % m.tope_por_destino
+			elif m.elevable and not Juego.jalea_al_maximo("techo"):
+				t.cambio.text = "Tope alcanzado: las Cámaras más hondas de la reina suman niveles."
+			else:
+				t.cambio.text = "Tu colonia domina esta habilidad."
 		else:
 			if m.stat == "materiales":
 				t.cambio.text = "Nueva dieta: " + _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))
 			else:
 				t.cambio.text = "%s  →  %s" % [_valor_stat(m.stat, Juego.stat(m.stat)), _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))]
+			var hito := Juego.proximo_hito_nivel(id)
+			if hito > 0:
+				t.cambio.text += "\nHito en nivel %d: %s ×%s" % [hito, "daño" if m.stat.begins_with("dano") else m.stat, _numero_corto(m.bonus_mult)]
 		t.cambio.label_settings.font_color = color if abierta else Estilo.TEXTO_SUAVE
 		t.costo.text = "COMPLETA" if maxima else ("Comprar ×%d · %s migas" % [oferta.cantidad, Juego.formatear(oferta.costo)] if disponible else "Faltan %s migas" % Juego.formatear(maxf(0, oferta.costo - Juego.migas)))
 		if not abierta:
@@ -452,6 +464,15 @@ func _refrescar() -> void:
 		boton.add_theme_stylebox_override("pressed", Estilo.caja(fondo.darkened(0.08), 12, color, 2, 0))
 		boton.add_theme_stylebox_override("focus", Estilo.caja(Color.TRANSPARENT, 12, color, 2, 0))
 		boton.modulate.a = 1.0 if abierta else 0.6
+
+
+## Las mejoras de destino se muestran (bloqueadas) recién cuando aparecen los viajes.
+func _mejora_visible(m: Dictionary) -> bool:
+	return m.destino == "" or Juego.revelado("viajes")
+
+
+func _numero_corto(n: float) -> String:
+	return str(int(n)) if is_equal_approx(n, roundf(n)) else "%.2f" % n
 
 
 ## Pestañas y compra por lote aparecen recién cuando sirven; las nuevas
