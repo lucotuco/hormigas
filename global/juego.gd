@@ -51,6 +51,7 @@ var mejor_run: float = 0.0
 var radio_visto: float = 0.0             # último radio de territorio que vio el jugador
 var lugar_actual := "casa"
 var lugares_completados: Dictionary = {}
+var coronas_cobradas: Dictionary = {}    # destinos que ya pagaron coronas en esta colonia
 var hitos: Dictionary = {}
 var legado := 0
 var coronas := 0
@@ -305,17 +306,26 @@ func elegir_destino(id: String) -> bool:
 	progreso_cambio.emit()
 	return true
 
-func completar_destino() -> void:
+## Las coronas de un destino se cobran una vez por colonia: repetir el mismo
+## destino no las vuelve a dar hasta fundar una colonia nueva.
+## Devuelve las coronas entregadas (0 si ya se habían cobrado).
+func completar_destino() -> int:
 	lugares_completados[lugar_actual] = true
-	coronas += int(Mundos.INFO[lugar_actual].coronas)
+	var entregadas := 0
+	if not coronas_cobradas.has(lugar_actual):
+		coronas_cobradas[lugar_actual] = true
+		entregadas = int(Mundos.INFO[lugar_actual].coronas)
+		coronas += entregadas
 	guardar()
 	progreso_cambio.emit()
+	return entregadas
 
 func fundar_colonia() -> bool:
 	if coronas <= 0:
 		return false
 	legado += coronas
 	coronas = 0
+	coronas_cobradas.clear()
 	fundaciones += 1
 	migas = 0
 	niveles.clear()
@@ -378,7 +388,7 @@ func datos_partida() -> Dictionary:
 		"runs_jugadas": runs_jugadas,
 		"mejor_run": mejor_run,
 		"radio_visto": radio_visto,
-		"lugar": lugar_actual, "destinos": lugares_completados, "hitos": hitos,
+		"lugar": lugar_actual, "destinos": lugares_completados, "coronas_cobradas": coronas_cobradas, "hitos": hitos,
 		"legado": legado, "coronas": coronas, "fundaciones": fundaciones, "prioridad": prioridad,
 	}
 
@@ -405,6 +415,14 @@ func restaurar_partida(datos: Dictionary) -> void:
 		for id in destinos_guardados:
 			if Mundos.INFO.has(id) and destinos_guardados[id] == true:
 				lugares_completados[id] = true
+	# Partidas anteriores a este campo: se toma lo ya completado como cobrado
+	# en la colonia actual, así no se puede volver a cobrar lo mismo.
+	coronas_cobradas = {}
+	var cobradas_guardadas = datos.get("coronas_cobradas", lugares_completados)
+	if cobradas_guardadas is Dictionary:
+		for id in cobradas_guardadas:
+			if Mundos.INFO.has(id) and cobradas_guardadas[id] == true:
+				coronas_cobradas[id] = true
 	var hitos_guardados = datos.get("hitos", {})
 	if hitos_guardados is Dictionary:
 		for id in hitos_guardados:
@@ -444,6 +462,7 @@ func reiniciar_estado() -> void:
 	radio_visto = 0.0
 	lugar_actual = "casa"
 	lugares_completados.clear()
+	coronas_cobradas.clear()
 	hitos.clear()
 	legado = 0
 	coronas = 0

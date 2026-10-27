@@ -74,8 +74,10 @@ func _viajes() -> void:
 		if not abierto:
 			var anterior: String = Mundos.ORDEN[Mundos.ORDEN.find(id) - 1]
 			detalle = "Requiere devorar: " + Mundos.INFO[anterior].meta
+		elif Juego.coronas_cobradas.has(id):
+			detalle = "CONQUISTADO · Gran objetivo: %s · coronas ya cobradas en esta colonia" % datos.meta
 		elif Juego.lugares_completados.has(id):
-			detalle = "CONQUISTADO · " + detalle
+			detalle = "CONQUISTADO · " + detalle + " disponibles otra vez"
 		columna.add_child(_texto(detalle, 12, Color("d1c490")))
 
 func _legado() -> void:
@@ -109,5 +111,5 @@ func _legado() -> void:
 func _pedir_fundacion() -> void:
 	if Juego.coronas <= 0:
 		return
-	_confirmar.dialog_text = "Convertir %d coronas en legado.\nDaño y migas: +%d%% → +%d%% permanentes.\n\nSe reinician tus migas, niveles de mejoras y reclutas.\nSe conservan tus destinos desbloqueados e hitos.\nLa casa y los otros escenarios vuelven a estar completos." % [Juego.coronas, Juego.legado * 10, (Juego.legado + Juego.coronas) * 10]
+	_confirmar.dialog_text = "Convertir %d coronas en legado.\nDaño y migas: +%d%% → +%d%% permanentes.\n\nSe reinician tus migas, niveles de mejoras y reclutas.\nSe conservan tus destinos desbloqueados e hitos.\nCada gran objetivo vuelve a dar sus coronas una vez.\nLa casa y los otros escenarios vuelven a estar completos." % [Juego.coronas, Juego.legado * 10, (Juego.legado + Juego.coronas) * 10]
 	_confirmar.popup_centered(Vector2i(610, 290))
