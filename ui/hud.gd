@@ -114,7 +114,7 @@ func _process(delta: float) -> void:
 		var c := run.comidas.comida_en(run.get_global_mouse_position(), run.radio_actual, true)
 		mostrar_inspeccion(c)
 
-	_lbl_hormigas.text = "Hormigas: %d" % run.colonia.cantidad()
+	_lbl_hormigas.text = "Hormigas: %d%s" % [run.colonia.cantidad(), " · colonia llena" if run.colonia.colonia_llena() else ""]
 	_reloj_descubrimiento -= delta
 	if _reloj_descubrimiento <= 0:
 		_reloj_descubrimiento = 0.5

@@ -164,6 +164,10 @@ func probar_guardia() -> void:
 	for i in 30:
 		run._pisotones_guardia(0.1)
 	verificar(Juego.migas_run > antes, "la guardia pisa comida sola y da migas")
+	for i in Colonia.MAX_HORMIGAS + 50:
+		run.colonia._nacer()
+	verificar(run.colonia.cantidad() == Colonia.MAX_HORMIGAS and run.colonia.colonia_llena(), "la colonia no pasa de %d hormigas (rendimiento)" % Colonia.MAX_HORMIGAS)
+	verificar(run.colonia.desplegar_minis(Vector2.ZERO, 2) == 0, "con la colonia llena tampoco nacen miniobreras")
 	run.queue_free()
 	await get_tree().process_frame
 

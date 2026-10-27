@@ -21,6 +21,9 @@ var minis_nacidas := 0
 var _reloj_visibilidad := 0.0
 const LIMITE_MINIS := 120
 const ESCALA_EN_PANTALLA := 1.5
+## Tope de hormigas vivas en una run (Rocco midió el rendimiento hasta 500).
+## La cría y las miniobreras dejan de nacer al llegar; ver colonia_llena().
+const MAX_HORMIGAS := 500
 
 
 func iniciar(r: Run) -> void:
@@ -72,11 +75,17 @@ func _process(delta: float) -> void:
 		_reloj_cria += delta
 		while _reloj_cria >= _intervalo_cria:
 			_reloj_cria -= _intervalo_cria
-			_nacer()
-			run.efectos.chispas(Vector2.ZERO, Color(1.0, 0.95, 0.7), 6)
+			if _nacer() != null:
+				run.efectos.chispas(Vector2.ZERO, Color(1.0, 0.95, 0.7), 6)
+
+
+func colonia_llena() -> bool:
+	return hormigas.size() >= MAX_HORMIGAS
 
 
 func _nacer(tipo := "obrera", donde := Vector2.INF) -> Hormiga:
+	if colonia_llena():
+		return null
 	var h: Hormiga = ESCENA_HORMIGA.instantiate()
 	h.position = Vector2.from_angle(randf() * TAU) * 5.0 if donde == Vector2.INF else donde
 	h.rotation = h.position.angle()
@@ -92,6 +101,7 @@ func desplegar_minis(pos: Vector2, cantidad_solicitada: int) -> int:
 	if not _activa or not run.activa:
 		return 0
 	var cantidad_real := mini(cantidad_solicitada, LIMITE_MINIS - minis_nacidas)
+	cantidad_real = mini(cantidad_real, MAX_HORMIGAS - hormigas.size())
 	for i in cantidad_real:
 		var lugar := pos
 		for intento in 8:
