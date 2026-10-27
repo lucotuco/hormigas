@@ -1,0 +1,16 @@
+id,nombre,rama,descripcion,stat,tipo,valor,costo_base,crecimiento,nivel_max,requiere
+mas_obreras,Más obreras,Colonia,+2 hormigas al empezar cada run.,hormigas_iniciales,suma,2,8,1.55,30,
+patas_largas,Patas largas,Colonia,Las hormigas caminan un 12% más rápido.,velocidad,multiplica,1.12,15,1.7,15,mas_obreras:1
+cria_acelerada,Cría acelerada,Colonia,Nace 1 hormiga más cada 10 segundos durante la run.,cria,suma,1,150,2.0,10,mas_obreras:4
+mandibulas,Mandíbulas fuertes,Mandíbulas,+1 de daño por mordida.,dano,suma,1,12,1.6,25,
+pisoton,Pisotón,Mandíbulas,+3 de daño al hacer clic sobre la comida.,dano_clic,suma,3,10,1.5,25,
+mordida_rapida,Mordida rápida,Mandíbulas,Muerden un 12% más seguido.,intervalo_mordida,multiplica,0.88,40,1.8,12,mandibulas:2
+mandibulas_acero,Mandíbulas de acero,Mandíbulas,Daño de mordida x1.5.,dano,multiplica,1.5,2000,3.0,5,mandibulas:10
+buche,Buche grande,Recolección,Cada hormiga junta 1 mordida más antes de volver.,capacidad,suma,1,30,1.75,10,mandibulas:1
+recoleccion_eficiente,Recolección eficiente,Recolección,Todas las migas x1.15.,multiplicador_migas,multiplica,1.15,100,1.9,20,buche:2
+huevos_dorados,Huevos dorados,Recolección,Todas las migas x1.5.,multiplicador_migas,multiplica,1.5,5000,3.0,5,recoleccion_eficiente:5
+rastro_persistente,Rastro persistente,Feromonas,El rastro de feromonas dura 0.75 segundos más.,feromona_duracion,suma,0.75,10,1.6,10,
+antenas,Antenas sensibles,Feromonas,Detectan comida y rastros 15 píxeles más lejos.,olfato,suma,15,20,1.65,10,rastro_persistente:1
+reservas,Reservas de energía,Tiempo,+5 segundos por run.,duracion_run,suma,5,20,1.7,12,
+segundo_aire,Segundo aire,Tiempo,+10 segundos por run.,duracion_run,suma,10,1500,2.5,5,reservas:5
+excavar,Excavar túneles,Territorio,El territorio crece y aparece comida nueva.,radio_territorio,suma,110,25,2.1,18,mas_obreras:1

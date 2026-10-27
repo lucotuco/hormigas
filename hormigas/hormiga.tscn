@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://clanf5gbvswtt"]
+
+[ext_resource type="Script" uid="uid://b4hqvnvurg3gf" path="res://hormigas/hormiga.gd" id="1_hormiga"]
+
+[node name="Hormiga" type="Node2D"]
+script = ExtResource("1_hormiga")

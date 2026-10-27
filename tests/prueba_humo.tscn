@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://c85a6xemy83qk"]
+
+[ext_resource type="Script" uid="uid://ctayd8qn04618" path="res://tests/prueba_humo.gd" id="1_prueba"]
+
+[node name="PruebaHumo" type="Node"]
+script = ExtResource("1_prueba")

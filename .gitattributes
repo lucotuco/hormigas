@@ -1,0 +1,11 @@
+# Todos los archivos de texto con fin de línea LF (evita conflictos Windows/Linux/Mac)
+* text=auto eol=lf
+
+# Binarios
+*.png binary
+*.jpg binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.ttf binary
+*.otf binary

@@ -1,0 +1,7 @@
+id,nombre,forma,color,vida,recompensa,radio,distancia_min,distancia_max,cantidad
+miga,Miga,miga,#d8b47a,3,2,4,30,320,70
+azucar,Terrón de azúcar,cuadrado,#f4f1ea,15,12,7,140,620,34
+galletita,Galletita,galletita,#c98a4b,60,60,14,300,900,30
+queso,Queso,queso,#f2c94c,200,250,19,520,1250,22
+sandwich,Sándwich,sandwich,#e3c08d,600,900,28,800,1650,16
+torta,Torta,torta,#f2a7c3,3000,5000,48,1200,2150,7

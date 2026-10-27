@@ -1,0 +1,17 @@
+# Godot 4: caché del editor y archivos importados (se regeneran solos)
+.godot/
+/android/
+
+# Exportaciones
+/build/
+/export/
+*.exe
+*.pck
+*.zip
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.tmp
