@@ -22,7 +22,8 @@ extends Node
 ## las coronas de cada uno. Está "trabada" cuando pasan runs sin conquistar
 ## nada y sin mejorar al menos MEJORA_MINIMA su mejor run (una meseta real).
 ## Tras RUNS_TRABADO runs así, si fundar le daría bastante jalea (o tras
-## RUNS_TRABADO_MAXIMO, aunque dé poca), funda y gasta la jalea en el nodo
+## RUNS_TRABADO_MAXIMO, aunque dé poca), funda. También funda, aunque siga
+## creciendo, cuando fundar duplicaría su jalea. Gasta la jalea en el nodo
 ## más barato del árbol de la reina.
 const RUN := preload("res://mundo/run.tscn")
 const VELOCIDAD := 8.0
@@ -31,9 +32,14 @@ const RUNS_TRABADO := 5          # runs sin conquistar antes de pensar en fundar
 const RUNS_TRABADO_MAXIMO := 20  # funda igual, aunque dé poca jalea
 const FRACCION_LEGADO := 0.25    # fundar si da al menos este % de la jalea histórica
 const MEJORA_MINIMA := 1.10      # una run que supera la mejor en 10% cuenta como progreso
+## Regla clásica de prestigio: fundar cuando duplica la jalea acumulada
+## (con la colonia madura y una ganancia mínima, para no fundar al empezar).
+const RUNS_COLONIA_MADURA := 10
+const GANANCIA_MINIMA_DOBLE := 20
 
 var trabado := 0
 var mejor_run_colonia := 0.0
+var runs_colonia := 0
 
 var estado_ruta := ""
 var log_ruta := ""
@@ -63,6 +69,7 @@ func _ready() -> void:
 		vistos = d.vistos
 		trabado = int(d.get("trabado", 0))
 		mejor_run_colonia = float(d.get("mejor_run_colonia", 0.0))
+		runs_colonia = int(d.get("runs_colonia", 0))
 	for n in runs:
 		elegir_destino()
 		var cobradas := Juego.coronas_cobradas.size()
@@ -72,6 +79,7 @@ func _ready() -> void:
 		else:
 			trabado += 1
 		mejor_run_colonia = maxf(mejor_run_colonia, ganado)
+		runs_colonia += 1
 		registrar()
 		if Juego.lugares_completados.size() == Mundos.ORDEN.size() and not vistos.has("FIN"):
 			vistos["FIN"] = minutos
@@ -148,7 +156,12 @@ func elegir_destino() -> void:
 
 
 func conviene_fundar() -> bool:
-	if not Juego.puede_fundar() or trabado < RUNS_TRABADO:
+	if not Juego.puede_fundar():
+		return false
+	var ganada := Juego.jalea_por_fundar()
+	if runs_colonia >= RUNS_COLONIA_MADURA and ganada >= maxi(GANANCIA_MINIMA_DOBLE, 2 * Juego.legado):
+		return true
+	if trabado < RUNS_TRABADO:
 		return false
 	var minimo := maxi(2, ceili(Juego.legado * FRACCION_LEGADO))
 	return Juego.jalea_por_fundar() >= minimo or trabado >= RUNS_TRABADO_MAXIMO
@@ -160,6 +173,7 @@ func fundar() -> void:
 	Juego.fundar_colonia()
 	trabado = 0
 	mejor_run_colonia = 0.0
+	runs_colonia = 0
 	var compras := PackedStringArray()
 	while true:
 		var mejor := ""
@@ -236,7 +250,7 @@ func guardar_estado(ruta := "") -> void:
 	if ruta == "":
 		return
 	var f := FileAccess.open(ruta, FileAccess.WRITE)
-	f.store_string(JSON.stringify({"partida": Juego.datos_partida(), "minutos": minutos, "vistos": vistos, "trabado": trabado, "mejor_run_colonia": mejor_run_colonia}))
+	f.store_string(JSON.stringify({"partida": Juego.datos_partida(), "minutos": minutos, "vistos": vistos, "trabado": trabado, "mejor_run_colonia": mejor_run_colonia, "runs_colonia": runs_colonia}))
 
 
 func anotar(texto: String) -> void:
