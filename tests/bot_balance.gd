@@ -118,7 +118,7 @@ func _ready() -> void:
 			if calibrar and donde != "casa" and not calibrado.has(donde) and max_dano_destino > 0.0 and _base_meta > 0.0:
 				calibrado[donde] = FACTOR_CALIBRACION * max_dano_destino / _base_meta
 				Mundos.vida_meta_forzada[donde] = calibrado[donde]
-				anotar("== calibrado %s: vida_meta %.3e (máximo daño de la colonia %s)" % [donde, calibrado[donde], Juego.formatear(max_dano_destino)])
+				anotar("== calibrado %s: vida_meta %s (máximo daño de la colonia %s)" % [donde, str(calibrado[donde]), Juego.formatear(max_dano_destino)])
 			fundar()
 			max_dano_destino = 0.0
 		comprar()
