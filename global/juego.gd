@@ -25,7 +25,9 @@ const HITOS := {
 var cantidad_compra := 1 # 0 = máximo que alcanza
 
 const RUTA_PARTIDA := "user://partida.json"
-const VERSION_PARTIDA := 6
+const VERSION_PARTIDA := 7
+const MAX_ARCHIVO_EXPEDICIONES := 128
+const MAX_RECORDS_LIMPIEZA := 1024
 const RUTA_STATS := "res://datos/stats_base.csv"
 const RUTA_MEJORAS := "res://datos/mejoras.csv"
 const RUTA_COMIDAS := "res://datos/comidas.csv"
@@ -93,6 +95,8 @@ var descubiertos: Dictionary = {}
 var evoluciones_desbloqueadas: Dictionary = {}
 var evoluciones_equipadas: Array[String] = []
 var records_destino: Dictionary = {}
+var archivo_expediciones: Array[Dictionary] = []
+var records_limpieza: Dictionary = {}
 var adaptaciones: Array[Dictionary] = []
 
 func registrar_record(produccion: float, objetivo: float) -> void:
@@ -101,6 +105,99 @@ func registrar_record(produccion: float, objetivo: float) -> void:
 		"produccion": maxf(float(anterior.get("produccion", 0)), produccion),
 		"objetivo": maxf(float(anterior.get("objetivo", 0)), objetivo),
 	}
+
+
+## Las marcas sólo compiten en el mismo mapa, dieta y alcance. El historial se
+## acota y nunca participa en la IA ni se recorre durante la expedición.
+func clave_limpieza(registro: Dictionary) -> String:
+	return "%s:v%d:d%d:r%d:%d" % [registro.destino, registro.version_mapa, registro.dieta,
+		roundi(float(registro.territorio)), int(registro.completa)]
+
+
+func _validar_limpieza(datos) -> Dictionary:
+	if not datos is Dictionary or not Mundos.INFO.has(str(datos.get("destino", ""))):
+		return {}
+	for campo in ["dieta", "territorio", "version_mapa", "tiempo_limpieza", "tiempo_total", "migas", "produccion", "pendiente"]:
+		if typeof(datos.get(campo)) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(datos[campo])):
+			return {}
+	if not datos.get("completa") is bool:
+		return {}
+	for campo in ["colonia", "expedicion"]:
+		var numero = datos.get(campo, 0)
+		if typeof(numero) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(numero)):
+			return {}
+	var tiempo := float(datos.tiempo_limpieza)
+	var total := float(datos.tiempo_total)
+	if tiempo <= 0 or total < tiempo or total > 86400 or float(datos.territorio) <= 0 or float(datos.territorio) > 50000:
+		return {}
+	if int(datos.dieta) < 0 or int(datos.dieta) > 3 or int(datos.version_mapa) < 1:
+		return {}
+	var registro := {"destino": str(datos.destino), "version_mapa": int(datos.version_mapa), "dieta": int(datos.dieta),
+		"territorio": float(roundi(float(datos.territorio))), "completa": bool(datos.completa),
+		"tiempo_limpieza": tiempo, "tiempo_total": total, "migas": maxf(0, float(datos.migas)),
+		"produccion": maxf(0, float(datos.produccion)), "pendiente": maxf(0, float(datos.pendiente)),
+		"colonia": maxi(0, int(datos.get("colonia", 0))), "expedicion": maxi(0, int(datos.get("expedicion", 0))),
+		"fecha": str(datos.get("fecha", "")).left(32)}
+	return registro
+
+
+## Devuelve true si es la mejor marca de su categoría. No cobra ni modifica
+## la expedición: se llama después de terminar_run(), una sola vez al cerrar.
+func registrar_limpieza(datos: Dictionary) -> bool:
+	var registro := _validar_limpieza(datos)
+	if registro.is_empty():
+		return false
+	registro.colonia = fundaciones
+	registro.expedicion = runs_jugadas
+	registro.fecha = Time.get_datetime_string_from_system()
+	for anterior in archivo_expediciones:
+		if anterior.colonia == registro.colonia and anterior.expedicion == registro.expedicion:
+			return false
+	archivo_expediciones.append(registro)
+	if archivo_expediciones.size() > MAX_ARCHIVO_EXPEDICIONES:
+		archivo_expediciones.pop_front()
+	var clave := clave_limpieza(registro)
+	var es_record: bool = not records_limpieza.has(clave) or float(registro.tiempo_limpieza) < float(records_limpieza[clave].tiempo_limpieza)
+	if es_record:
+		if not records_limpieza.has(clave) and records_limpieza.size() >= MAX_RECORDS_LIMPIEZA:
+			records_limpieza.erase(records_limpieza.keys()[0])
+		records_limpieza[clave] = registro.duplicate(true)
+	guardar()
+	return es_record
+
+
+func datos_archivo_expediciones() -> Dictionary:
+	return {"formato": "hormigas_expediciones", "version": 1, "generado": Time.get_datetime_string_from_system(),
+		"expediciones": archivo_expediciones.duplicate(true), "marcas_personales": records_limpieza.duplicate(true)}
+
+
+func _restaurar_archivo(datos: Dictionary) -> void:
+	archivo_expediciones.clear()
+	records_limpieza.clear()
+	var historial = datos.get("archivo_expediciones", [])
+	if historial is Array:
+		for i in range(maxi(0, historial.size() - MAX_ARCHIVO_EXPEDICIONES), historial.size()):
+			var registro := _validar_limpieza(historial[i])
+			if not registro.is_empty():
+				archivo_expediciones.append(registro)
+	var marcas = datos.get("records_limpieza", {})
+	if marcas is Dictionary:
+		for valor in marcas.values():
+			if records_limpieza.size() >= MAX_RECORDS_LIMPIEZA:
+				break
+			var registro := _validar_limpieza(valor)
+			if registro.is_empty():
+				continue
+			var clave := clave_limpieza(registro)
+			if not records_limpieza.has(clave) or float(registro.tiempo_limpieza) < float(records_limpieza[clave].tiempo_limpieza):
+				records_limpieza[clave] = registro
+	# Tolerar un archivo de una versión que sólo guardaba el historial.
+	for registro in archivo_expediciones:
+		var clave := clave_limpieza(registro)
+		if not records_limpieza.has(clave) and records_limpieza.size() >= MAX_RECORDS_LIMPIEZA:
+			continue
+		if not records_limpieza.has(clave) or float(registro.tiempo_limpieza) < float(records_limpieza[clave].tiempo_limpieza):
+			records_limpieza[clave] = registro.duplicate(true)
 
 ## Vista previa de compras independientes; no implica que alcance para todas.
 func oportunidades_jalea() -> String:
@@ -246,14 +343,15 @@ func stat(nombre: String) -> float:
 	return resultado
 
 
-## Cálculo de una stat. Con `id_extra` suma `niveles_extra` a esa mejora (vista previa).
-func _calcular(nombre: String, id_extra := "", niveles_extra := 0) -> float:
+## El contexto permite mostrar otra colonia sin mutar la partida ni su caché.
+func _calcular(nombre: String, id_extra := "", niveles_extra := 0, contexto: Dictionary = {}) -> float:
 	var valor: float = stats_base[nombre]
 	var multiplicador := 1.0
+	var niveles_calculo: Dictionary = contexto.get("niveles", niveles)
 	for m in mejoras:
 		if m.stat != nombre:
 			continue
-		var nivel := nivel_de(m.id) + (niveles_extra if m.id == id_extra else 0)
+		var nivel := int(niveles_calculo.get(m.id, 0)) + (niveles_extra if m.id == id_extra else 0)
 		if nivel <= 0:
 			continue
 		if m.tipo == "suma":
@@ -272,8 +370,9 @@ func _calcular(nombre: String, id_extra := "", niveles_extra := 0) -> float:
 			valor += n.valor * nivel
 		else:
 			multiplicador *= pow(n.valor, nivel)
-	if decretos_por_id.has(decreto):
-		for efecto in decretos_por_id[decreto].efectos:
+	var decreto_calculo: String = contexto.get("decreto", decreto)
+	if decretos_por_id.has(decreto_calculo):
+		for efecto in decretos_por_id[decreto_calculo].efectos:
 			if efecto.stat == nombre:
 				if efecto.tipo == "suma":
 					valor += efecto.valor
@@ -282,14 +381,14 @@ func _calcular(nombre: String, id_extra := "", niveles_extra := 0) -> float:
 	var resultado := valor * multiplicador
 	if nombre == "duracion_run":
 		resultado = maxf(resultado, DURACION_MINIMA)
-	return _aplicar_legado(nombre, resultado)
+	return _aplicar_legado(nombre, resultado, int(contexto.get("legado", legado)))
 
-func _aplicar_legado(nombre: String, resultado: float) -> float:
+func _aplicar_legado(nombre: String, resultado: float, legado_calculo := -1) -> float:
 	for adaptacion in adaptaciones:
 		if adaptacion.stat == nombre and lugares_completados.has(adaptacion.destino):
 			resultado += float(adaptacion.valor)
 	if nombre in ["dano", "multiplicador_migas"]:
-		resultado *= 1.0 + legado * BONUS_LEGADO
+		resultado *= 1.0 + (legado if legado_calculo < 0 else legado_calculo) * BONUS_LEGADO
 	if nombre == "olfato" and hitos.has("primer_tesoro"):
 		resultado += 10
 	if nombre == "multiplicador_migas":
@@ -540,7 +639,14 @@ func obtener_hito(id: String) -> bool:
 
 func destino_desbloqueado(id: String) -> bool:
 	var indice := Mundos.ORDEN.find(id)
-	return indice == 0 or (indice > 0 and lugares_completados.has(Mundos.ORDEN[indice - 1]))
+	if indice < 0:
+		return false
+	# El historial conserva premios/topes; los viajes se abren de nuevo en cada
+	# colonia. Ver todos los requisitos también valida guardados incompletos.
+	for i in indice:
+		if not coronas_cobradas.has(Mundos.ORDEN[i]):
+			return false
+	return true
 
 func elegir_destino(id: String) -> bool:
 	if not destino_desbloqueado(id):
@@ -586,6 +692,23 @@ func puede_fundar() -> bool:
 	return jalea_por_fundar() >= 1
 
 
+## Arranque real con las mejoras permanentes YA compradas. No presupone gastar
+## la jalea futura. Usa el mismo cálculo que stat() y no modifica ningún estado.
+func vista_previa_fundar(decreto_nuevo := "") -> Dictionary:
+	var contexto := {"niveles": _niveles_heredados(), "legado": legado + jalea_por_fundar(),
+		"decreto": decreto_nuevo if decretos_por_id.has(decreto_nuevo) else ""}
+	var stats: Dictionary = {}
+	for nombre in ["hormigas_iniciales", "duracion_run", "materiales", "dano", "multiplicador_migas", "entradas"]:
+		stats[nombre] = _calcular(nombre, "", 0, contexto)
+	var castas: Dictionary = {}
+	for id in reclutadas:
+		var quedan := floori(int(reclutadas[id]) * 0.25 * nivel_jalea("linaje"))
+		if quedan > 0:
+			castas[id] = quedan
+	return {"stats": stats, "castas": castas, "migas": migas * 0.1 * nivel_jalea("despensa"), "destino": "casa",
+		"jalea": jalea + jalea_por_fundar()}
+
+
 ## Reinicia la economía de la colonia y la convierte en jalea real.
 ## Se conservan destinos, hitos, jalea, el árbol de la reina y lo revelado.
 ## `decreto_nuevo` rige la colonia que nace ("" = sin decreto).
@@ -600,6 +723,7 @@ func fundar_colonia(decreto_nuevo := "") -> bool:
 	jalea += ganada
 	coronas = 0
 	coronas_cobradas.clear()
+	lugar_actual = "casa"
 	fundaciones += 1
 	migas = conservar_migas
 	migas_colonia = 0.0
@@ -621,11 +745,19 @@ func fundar_colonia(decreto_nuevo := "") -> bool:
 
 ## Las "Memorias" del árbol hacen nacer cada colonia con las dietas aprendidas.
 func _aplicar_herencias() -> void:
+	for id in _niveles_heredados():
+		if nivel_de(id) == 0:
+			niveles[id] = 1
+	_cache_stats.clear()
+
+
+func _niveles_heredados() -> Dictionary:
+	var heredados: Dictionary = {}
 	var dietas := {"herencia_madera": "mordida_madera", "herencia_resistente": "mordida_resistente", "herencia_muros": "mordida_muros"}
 	for nodo in dietas:
-		if nivel_jalea(nodo) > 0 and nivel_de(dietas[nodo]) == 0:
-			niveles[dietas[nodo]] = 1
-	_cache_stats.clear()
+		if nivel_jalea(nodo) > 0:
+			heredados[dietas[nodo]] = 1
+	return heredados
 
 
 func nivel_jalea(id: String) -> int:
@@ -745,6 +877,7 @@ func datos_partida() -> Dictionary:
 		"jalea": jalea, "niveles_jalea": niveles_jalea, "migas_colonia": migas_colonia,
 		"evoluciones": evoluciones_desbloqueadas, "equipadas": evoluciones_equipadas,
 		"records_destino": records_destino,
+		"archivo_expediciones": archivo_expediciones, "records_limpieza": records_limpieza,
 		"estadisticas": estadisticas, "decreto": decreto,
 	}
 
@@ -760,6 +893,7 @@ func cargar() -> void:
 
 
 func restaurar_partida(datos: Dictionary) -> void:
+	_restaurar_archivo(datos)
 	records_destino = {}
 	var records = datos.get("records_destino", {})
 	if records is Dictionary:
@@ -872,6 +1006,8 @@ func restaurar_partida(datos: Dictionary) -> void:
 
 func reiniciar_estado() -> void:
 	records_destino.clear()
+	archivo_expediciones.clear()
+	records_limpieza.clear()
 	migas = 0.0
 	niveles = {}
 	reclutadas = {}

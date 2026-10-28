@@ -11,7 +11,16 @@ var vidas := PackedFloat64Array()
 var vivas: Array[int] = []
 var derrumbando := false
 var corrosion := 0.0
-var _vida_celda := 1.0
+var _vidas_iniciales := PackedFloat64Array()
+var _formas_originales: Array[Rect2] = []
+var _formas: Array[Rect2] = []
+var _zonas_trabajo: Array[Rect2] = []
+var _formas_por_celda: Array = []
+var _limites_celda: Array[Rect2] = []
+var _soportes: Array[int] = []
+var _rectangular := true
+var _celdas_ocupadas := 0
+var version_forma := 0
 var _cortes: Array[Vector4] = []
 var _accesos: Dictionary = {}
 var _version_accesos := -1
@@ -44,6 +53,11 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 	var mat := MaterialesCasa.definir(datos.tipo, rect_mundo, datos.color)
 	mat.vida *= float(Mundos.INFO[Juego.lugar_actual].factor)
 	mat.recompensa *= float(Mundos.INFO[Juego.lugar_actual].factor)
+	if datos.get("perfil", "") == "silla_inicial":
+		# Una silla cercana muestra el material nuevo en una expedición corta.
+		# Su valor baja en la misma proporción: no agrega una fuente de migas.
+		mat.vida = Juego.stat("vida_silla_inicial")
+		mat.recompensa = Juego.stat("recompensa_silla_inicial")
 	if datos.get("meta", false):
 		mat.nombre = Mundos.INFO[Juego.lugar_actual].meta
 		mat.vida *= Mundos.vida_meta(Juego.lugar_actual)
@@ -66,17 +80,57 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 		grilla = Vector2i(4, 2)
 	elif datos.get("meta", false):
 		grilla = Vector2i(4, 4)
-	_vida_celda = vida_max / (grilla.x * grilla.y)
+	_formas_originales.assign(datos.get("recortes", [rect_mundo]))
+	_rectangular = _formas_originales.size() == 1 and _formas_originales[0] == rect_mundo
 	var tam := rect_mundo.size / Vector2(grilla)
 	for y in grilla.y:
 		for x in grilla.x:
 			celdas.append(Rect2(rect_mundo.position + Vector2(x, y) * tam, tam))
-			vidas.append(_vida_celda)
-			vivas.append(vivas.size())
-			_cortes.append(Vector4(1, 0.5, 0.5, 0))
+			var partes: Array[Rect2] = []
+			var ocupado := Rect2()
+			for forma in _formas_originales:
+				var interseccion := forma.intersection(celdas.back())
+				if interseccion.has_area():
+					partes.append(interseccion)
+					ocupado = interseccion if not ocupado.has_area() else ocupado.merge(interseccion)
+			_formas_por_celda.append(partes)
+			_limites_celda.append(ocupado)
+			vidas.append(0)
+			_vidas_iniciales.append(0)
+			_cortes.append(Vector4(0, 0.5, 0.5, 0))
+	# El aire no recibe resistencia. Se conserva la vida total y, en la torre,
+	# el mismo cuarto de resistencia por piso aunque varíe su cantidad de apoyos.
+	var filas_ocupadas := 0
+	for y in grilla.y:
+		for x in grilla.x:
+			if not _formas_por_celda[y * grilla.x + x].is_empty():
+				filas_ocupadas += 1
+				break
+	for y in grilla.y:
+		var ocupadas: Array[int] = []
+		for x in grilla.x:
+			var i := y * grilla.x + x
+			if not _formas_por_celda[i].is_empty():
+				ocupadas.append(i)
+		for i in ocupadas:
+			vidas[i] = vida_max / maxi(1, filas_ocupadas) / ocupadas.size()
+			_vidas_iniciales[i] = vidas[i]
+			vivas.append(i)
+			_cortes[i].x = 1
 	while _cortes.size() < 16:
 		_cortes.append(Vector4(0, 0, 0, 0))
-	_fila_activa = grilla.y - 1
+	_celdas_ocupadas = vivas.size()
+	_reconstruir_formas()
+	for esquina in [rect_mundo.position, Vector2(rect_mundo.end.x, rect_mundo.position.y), Vector2(rect_mundo.position.x, rect_mundo.end.y), rect_mundo.end]:
+		var mas_cerca := -1
+		var menor := INF
+		for i in vivas:
+			var d := _distancia_celda(i, esquina)
+			if d < menor:
+				menor = d
+				mas_cerca = i
+		if mas_cerca >= 0 and not _soportes.has(mas_cerca):
+			_soportes.append(mas_cerca)
 	_distancia_nido = distancia_a(Vector2.ZERO)
 	_mascara = ShaderMaterial.new()
 	_mascara.shader = preload("res://mundo/recorte_pieza.gdshader")
@@ -84,6 +138,14 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 	_mascara.set_shader_parameter("grilla", grilla)
 	_mascara.set_shader_parameter("material_id", nivel_requerido)
 	_mascara.set_shader_parameter("cortes", _cortes)
+	var zonas: Array[Vector4] = []
+	for limite in _limites_celda:
+		var origen := (limite.position - rect_mundo.position) / rect_mundo.size
+		var escala := limite.size / rect_mundo.size
+		zonas.append(Vector4(origen.x, origen.y, escala.x, escala.y))
+	while zonas.size() < 16:
+		zonas.append(Vector4.ZERO)
+	_mascara.set_shader_parameter("zonas", zonas)
 	material = _mascara
 	set_process(false)
 
@@ -91,21 +153,67 @@ func disponible() -> bool:
 	return not muerta and not derrumbando and Juego.stat("materiales") >= nivel_requerido
 
 func distancia_a(pos: Vector2) -> float:
-	if not _por_pisos and vivas.size() == celdas.size():
+	if _rectangular and not _por_pisos and vivas.size() == celdas.size():
 		return pos.distance_to(pos.clamp(rect_mundo.position, rect_mundo.end))
 	var menor := INF
-	for i in vivas:
-		if _por_pisos and int(i / grilla.x) != _fila_activa:
-			continue
-		var r := celdas[i]
+	for r in _zonas_trabajo:
 		menor = minf(menor, pos.distance_to(pos.clamp(r.position, r.end)))
 	return menor
 
 func contiene_punto(pos: Vector2, margen := 0.0) -> bool:
-	for i in vivas:
-		if celdas[i].grow(margen).has_point(pos):
+	for forma in _formas:
+		if forma.grow(margen).has_point(pos):
 			return true
 	return false
+
+func dentro_silueta(pos: Vector2, margen := 0.0) -> bool:
+	for forma in _formas_originales:
+		if forma.grow(margen).has_point(pos):
+			return true
+	return false
+
+func material_cercano(pos: Vector2) -> Vector2:
+	var mejor := position
+	var distancia := INF
+	for forma in _zonas_trabajo:
+		var punto := pos.clamp(forma.position, forma.end)
+		var d := pos.distance_squared_to(punto)
+		if d < distancia:
+			distancia = d
+			mejor = punto
+	return mejor
+
+func _distancia_celda(i: int, pos: Vector2) -> float:
+	var distancia := INF
+	for forma: Rect2 in _formas_por_celda[i]:
+		distancia = minf(distancia, pos.distance_squared_to(pos.clamp(forma.position, forma.end)))
+	return distancia
+
+func _reconstruir_formas() -> void:
+	version_forma += 1
+	_formas.clear()
+	_zonas_trabajo.clear()
+	_fila_activa = 0
+	for i in vivas:
+		_fila_activa = maxi(_fila_activa, int(i / grilla.x))
+		var bordes := 0
+		var vecinos := [i - 1 if i % grilla.x > 0 else -1, i + 1 if i % grilla.x < grilla.x - 1 else -1, i - grilla.x, i + grilla.x]
+		for lado in 4:
+			var vecino: int = vecinos[lado]
+			if vecino >= 0 and vecino < vidas.size() and _vidas_iniciales[vecino] > 0 and vidas[vecino] <= 0:
+				bordes |= 1 << lado
+		_cortes[i].w = bordes
+	if vivas.size() == _celdas_ocupadas:
+		_formas.assign(_formas_originales)
+	else:
+		for i in vivas:
+			_formas.append_array(_formas_por_celda[i])
+	if not _por_pisos:
+		_zonas_trabajo.assign(_formas)
+	else:
+		for i in vivas:
+			if int(i / grilla.x) == _fila_activa:
+				_zonas_trabajo.append_array(_formas_por_celda[i])
 
 func en_territorio(territorio: float) -> bool:
 	return _distancia_nido <= territorio - 10
@@ -120,7 +228,7 @@ func punto_trabajo(desde: Vector2, territorio: float, volando: bool, puesto: int
 	var base := punto_mordida(desde, territorio, volando)
 	if base == Vector2.INF:
 		return base
-	var normal := base - base.clamp(rect_mundo.position, rect_mundo.end)
+	var normal := base - material_cercano(base)
 	var tangente := Vector2(0, 1) if absf(normal.x) > absf(normal.y) else Vector2(1, 0)
 	var distribuido := base + tangente * ((puesto % 7) - 3) * 16
 	if distribuido.length_squared() < pow(territorio - 6, 2) and alcanza_desde(distribuido) and casa.libre(distribuido, Cocina.MARGEN, volando):
@@ -140,8 +248,7 @@ func siguiente_seccion(pos: Vector2) -> Vector2:
 	var primera := -1
 	var menor := INF
 	for i in vivas:
-		var r := celdas[i]
-		var d := pos.distance_squared_to(pos.clamp(r.position, r.end))
+		var d := _distancia_celda(i, pos)
 		if d < menor:
 			primera = i
 			menor = d
@@ -154,7 +261,7 @@ func siguiente_seccion(pos: Vector2) -> Vector2:
 			continue
 		var d := celdas[i].get_center().distance_squared_to(celdas[primera].get_center())
 		if d < menor:
-			punto = celdas[i].get_center()
+			punto = _formas_por_celda[i][0].get_center()
 			menor = d
 	return punto
 
@@ -167,13 +274,11 @@ func punto_mordida(desde: Vector2, territorio: float, volando := false) -> Vecto
 		return _accesos[clave]
 	var mejor := Vector2.INF
 	var distancia := INF
-	for i in vivas:
-		if _por_pisos and int(i / grilla.x) != _fila_activa:
-			continue
-		var r := celdas[i].grow(Cocina.MARGEN + 3)
+	for forma in _zonas_trabajo:
+		var r := forma.grow(Cocina.MARGEN + 3)
 		# Proyectar sobre el material real; expandir también los extremos dejaba
 		# un destino diagonal a 15.6 unidades de una mordida que alcanza 13.
-		var p := desde.clamp(celdas[i].position, celdas[i].end)
+		var p := desde.clamp(forma.position, forma.end)
 		for punto in [Vector2(r.position.x, p.y), Vector2(r.end.x, p.y), Vector2(p.x, r.position.y), Vector2(p.x, r.end.y)]:
 			var d := desde.distance_squared_to(punto)
 			if d < distancia and punto.length_squared() < pow(maxf(0, territorio - 6), 2) and casa.libre(punto, Cocina.MARGEN, volando):
@@ -209,8 +314,7 @@ func morder_en(dano: float, pos: Vector2) -> float:
 			if _por_pisos:
 				if int(i / grilla.x) != fila:
 					continue
-			var r := celdas[i]
-			var d := pos.distance_squared_to(pos.clamp(r.position, r.end))
+			var d := _distancia_celda(i, pos)
 			if d < distancia:
 				distancia = d
 				elegida = i
@@ -219,8 +323,9 @@ func morder_en(dano: float, pos: Vector2) -> float:
 		presupuesto -= real
 		vida = maxf(0, vida - real)
 		var r := celdas[elegida]
-		var mordida := ((pos - r.position) / r.size).clamp(Vector2.ZERO, Vector2.ONE)
-		_cortes[elegida] = Vector4(vidas[elegida] / _vida_celda, mordida.x, mordida.y, 0)
+		var ocupado := _limites_celda[elegida]
+		var mordida := ((pos - ocupado.position) / ocupado.size).clamp(Vector2.ZERO, Vector2.ONE)
+		_cortes[elegida] = Vector4(vidas[elegida] / _vidas_iniciales[elegida], mordida.x, mordida.y, _cortes[elegida].w)
 		if vidas[elegida] <= 0.001:
 			vivas.erase(elegida)
 			agujero = true
@@ -258,26 +363,22 @@ func morder_en(dano: float, pos: Vector2) -> float:
 
 func _pierde_soportes() -> bool:
 	if pieza.get("meta", false) and Juego.lugar_actual == "eiffel":
-		return vivas.size() <= grilla.x
+		return _fila_activa == 0
 	if vivas.size() <= maxi(1, int(celdas.size() * 0.3)):
 		return true
 	if pieza.pared:
 		return false
 	var rotas := 0
-	for i in [0, grilla.x - 1, (grilla.y - 1) * grilla.x, celdas.size() - 1]:
+	for i in _soportes:
 		if vidas[i] <= 0:
 			rotas += 1
 	return rotas >= 2 and vida < vida_max * 0.55
 
 func _actualizar_colision(zona := Rect2()) -> void:
-	var rects: Array[Rect2] = []
-	_fila_activa = 0
-	for i in vivas:
-		rects.append(celdas[i])
-		_fila_activa = maxi(_fila_activa, int(i / grilla.x))
+	_reconstruir_formas()
 	_accesos.clear()
 	_distancia_nido = distancia_a(Vector2.ZERO)
-	casa.recortar_pieza(pieza.clave, rects, zona)
+	casa.recortar_pieza(pieza.clave, _formas.duplicate(), zona)
 
 func _process(delta: float) -> void:
 	if muerta:

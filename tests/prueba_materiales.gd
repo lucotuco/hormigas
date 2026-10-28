@@ -41,6 +41,12 @@ func _ready() -> void:
 	var h := run.colonia._nacer()
 	h._dano = 100
 	h._capacidad = 100
+	h.position = punto
+	h.comida = silla
+	h._reloj_mordida = 1000
+	h._morder(1.0)
+	verificar(absf(angle_difference(h.rotation, (silla.material_cercano(punto) - punto).angle())) < 0.001, "la hormiga mira el material que muerde, no el centro transparente del dibujo")
+	h._reloj_mordida = 0
 	run.feromonas.mantener_en(silla.position)
 	for paso in 800:
 		run.feromonas._process(0.1)
@@ -101,8 +107,51 @@ func _ready() -> void:
 	verificar(reconstruida, "cada expedición reconstruye la casa y conserva la dieta desbloqueada")
 	otra.queue_free()
 	await get_tree().process_frame
+	await probar_siluetas()
 	print("Materiales y destrucción: %d verificaciones; %d fallas." % [total, fallas])
 	get_tree().quit(0 if fallas == 0 else 1)
+
+func probar_siluetas() -> void:
+	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
+	Juego._cache_stats.clear()
+	for destino in ["obelisco", "coliseo", "eiffel"]:
+		Juego.lugar_actual = destino
+		var run: Run = preload("res://mundo/run.tscn").instantiate()
+		add_child(run)
+		run.process_mode = Node.PROCESS_MODE_DISABLED
+		run.radio_actual = 12000
+		var meta := run.objetivo_mapa
+		var vacio := meta.rect_mundo.position + meta.rect_mundo.size * Vector2(0.02, 0.02)
+		verificar(run.cocina.libre(vacio, Cocina.MARGEN) and not meta.dentro_silueta(vacio), destino + ": la esquina transparente no bloquea ni selecciona el objeto")
+		var suma := 0.0
+		var sin_aire := true
+		for i in meta.vidas.size():
+			suma += meta.vidas[i]
+			sin_aire = sin_aire and (meta.vidas[i] > 0) == meta.vivas.has(i)
+		verificar(is_equal_approx(suma, meta.vida_max) and sin_aire and meta.celdas.size() <= 16, destino + ": se conserva la resistencia total sin celdas de aire comestibles")
+		var alcanzables := true
+		for i in 12:
+			var desde := meta.position + Vector2.from_angle(i * TAU / 12) * meta.rect_mundo.size.length()
+			var punto := meta.punto_mordida(desde, 12000)
+			alcanzables = alcanzables and punto != Vector2.INF and run.cocina.libre(punto, Cocina.MARGEN) and meta.alcanza_desde(punto)
+		verificar(alcanzables, destino + ": los puntos de trabajo quedan junto al material y fuera de la colisión")
+		if destino != "obelisco":
+			var uv := Vector2(0.35, 0.80) if destino == "coliseo" else Vector2(0.50, 0.90)
+			var hueco := meta.rect_mundo.position + meta.rect_mundo.size * uv
+			verificar(not meta.contiene_punto(hueco) and run.cocina.libre(hueco, Cocina.MARGEN), destino + ": el vano visible permite pasar")
+		var punto := meta.punto_mordida(Vector2.ZERO, 12000)
+		meta.morder_en(meta.vida_max * 0.18, punto)
+		verificar(meta.vivas.size() < meta._celdas_ocupadas and not meta.muerta and run.cocina.libre(vacio, Cocina.MARGEN), destino + ": una rotura quita material sin reponer colisión en la transparencia")
+		for paso in 100:
+			if meta.muerta:
+				break
+			if meta.derrumbando:
+				meta._process(0.1)
+			else:
+				meta.morder(meta.vida_max * 0.1)
+		verificar(meta.muerta, destino + ": no quedan celdas transparentes imposibles de terminar")
+		run.queue_free()
+		await get_tree().process_frame
 
 func verificar(ok: bool, mensaje: String) -> void:
 	total += 1

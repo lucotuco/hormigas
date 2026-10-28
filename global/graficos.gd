@@ -1,5 +1,5 @@
 extends Node
-## Un atlas compartido: el arte procedural se dibuja una vez, no por hormiga/cuadro.
+## Un atlas compartido: sprites preiluminados y arte procedural horneados una vez.
 signal preparado
 const CUADROS := 8
 var listo := false
@@ -36,6 +36,8 @@ class Pintura extends Node2D:
 			AspectoHormiga.dibujar(self, datos.id, datos.color, fase, false, Color.WHITE, evolucion)
 		elif tipo == "mueble":
 			DibujoCasa.mueble(self, datos)
+		elif tipo == "reposteria":
+			_dulce()
 		elif tipo == "resto":
 			var c: Color = datos.color
 			for i in 3:
@@ -43,6 +45,31 @@ class Pintura extends Node2D:
 				draw_colored_polygon(PackedVector2Array([p + Vector2(-3, 0), p + Vector2(0, -5), p + Vector2(5, -2), p + Vector2(2, 4)]), c.lightened(i * 0.1))
 		else:
 			draw_circle(Vector2.ZERO, 3, Color.WHITE)
+	func _dulce() -> void:
+		var r: float = datos.radio
+		var c: Color = datos.color
+		if datos.forma == "aro":
+			draw_arc(Vector2(1.5, 2.5), r * 0.65, 0, TAU, 48, Color(0.22, 0.16, 0.09, 0.18), r * 0.66, true)
+			draw_arc(Vector2.ZERO, r * 0.65, 0, TAU, 48, Color("b88b59"), r * 0.68, true)
+			draw_arc(Vector2(0, -r * 0.035), r * 0.65, 0, TAU, 48, c, r * 0.48, true)
+			for i in 8:
+				var a := i * TAU / 8 + 0.2
+				var punto := Vector2.from_angle(a) * r * 0.65
+				draw_line(punto, punto + Vector2.from_angle(a + 0.7) * r * 0.08, Color("e8d9b8") if i % 2 else Color("a77262"), maxf(1, r * 0.035), true)
+		else:
+			draw_circle(Vector2(1.5, 2.5), r * 0.98, Color(0.22, 0.16, 0.09, 0.18))
+			var pisos := 3 if datos.forma == "torta_pisos" else 1
+			for piso in pisos:
+				var radio := r * (1.0 - piso * 0.28)
+				var centro := Vector2(0, -piso * r * 0.045)
+				draw_circle(centro, radio, c.darkened(0.22))
+				draw_circle(centro - Vector2(0, radio * 0.04), radio * 0.93, c)
+				draw_arc(centro, radio * 0.80, 0, TAU, 40, Color("ebdfc8"), maxf(1, radio * 0.065), true)
+				for i in 6:
+					var punto := centro + Vector2.from_angle(TAU * i / 6 + 0.2) * radio * 0.68
+					draw_circle(punto, radio * 0.09, Color("f1e8d3"))
+					draw_circle(punto + Vector2(0, -radio * 0.02), radio * 0.055, Color("b06f59"))
+				draw_arc(centro, radio * 0.88, -2.8, -1.0, 16, c.lightened(0.16), maxf(1, radio * 0.035), true)
 
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
@@ -66,11 +93,23 @@ func _ready() -> void:
 	for tipo in Juego.comidas:
 		var comida := Comida.new()
 		comida._usar_cache = false
-		comida.configurar(tipo, 123)
+		var ilustracion: Dictionary = tipo.duplicate()
+		var tono: Color = tipo.color
+		# Colores de pastel/pan y acentos de fruta comparten la misma paleta
+		# mate del mobiliario. Sólo cambia la copia usada para hornear el arte.
+		ilustracion.color = Color.from_hsv(tono.h, tono.s * 0.82, minf(tono.v, 0.92)).lerp(Color("ead8b0"), 0.025)
+		comida.configurar(ilustracion, 123)
 		comida.rotation = 0
 		var r: float = tipo.radio + 5
-		_agregar("comida:" + tipo.id, comida, Rect2(-r, -r, r * 2, r * 2), 2)
-	var catalogo := PlanoCasa.MUEBLES + Mundos.ESPECIALES
+		if tipo.forma in ["torta", "torta_pisos"] or (tipo.forma == "aro" and tipo.radio > 12):
+			var dulce := Pintura.new()
+			dulce.tipo = "reposteria"
+			dulce.datos = ilustracion
+			_agregar("comida:" + tipo.id, dulce, Rect2(-r, -r, r * 2, r * 2), 2)
+			comida.free()
+		else:
+			_agregar("comida:" + tipo.id, comida, Rect2(-r, -r, r * 2, r * 2), 2)
+	var catalogo := catalogo_muebles()
 	for i in catalogo.size():
 		var id := clave_mueble(catalogo[i])
 		if _mueble_claves.has(id):
@@ -80,14 +119,17 @@ func _ready() -> void:
 		p.datos = catalogo[i].duplicate()
 		var r: Rect2 = p.datos.rect
 		p.datos.rect = Rect2(Vector2.ZERO, r.size)
-		var escala := minf(0.8, 512.0 / maxf(r.size.x + 75, r.size.y + 150))
+		# El dibujo mate conserva líneas amplias a448px; los monumentos guardan
+		# su resolución anterior. Más tipos no implican otra textura por pieza.
+		var resolucion := 448.0 if p.datos.tipo in ArteCasa.ILUSTRADOS else 512.0
+		var escala := minf(0.8, resolucion / maxf(r.size.x + 75, r.size.y + 150))
 		_agregar("mueble:%d" % i, p, Rect2(-35, -100, r.size.x + 75, r.size.y + 150), escala)
 		_mueble_claves[id] = "mueble:%d" % i
 		_mueble_medidas[id] = r.size
 	for material_id in 4:
 		var resto := Pintura.new()
 		resto.tipo = "resto"
-		resto.datos = {"color": [Color("e7c77d"), Color("bc9364"), Color("9cb5ac"), Color("c8bba2")][material_id]}
+		resto.datos = {"color": [Color("d9bb80"), Color("b58d61"), Color("95afa0"), Color("c8bba2")][material_id]}
 		_agregar("resto:%d" % material_id, resto, Rect2(-12, -12, 24, 24), 3)
 	var carga := Pintura.new()
 	_agregar("carga", carga, Rect2(-4, -4, 8, 8), 4)
@@ -142,9 +184,18 @@ func dibujar(lienzo: CanvasItem, clave: String, desplazamiento := Vector2.ZERO, 
 		rect.position += desplazamiento
 		lienzo.draw_texture_rect_region(textura, rect, regiones[clave], color)
 
+func catalogo_muebles() -> Array:
+	# Incluir las orientaciones/acabados efectivamente usados en cada destino.
+	# El deduplicado del horneado sigue produciendo una sola región por clave.
+	var catalogo := PlanoCasa.MUEBLES + Mundos.ESPECIALES
+	for destino in Mundos.ORDEN:
+		catalogo.append_array(Mundos.plano(destino).muebles)
+	return catalogo
+
 func clave_mueble(datos: Dictionary) -> String:
 	var color: Color = datos.color
-	return "%s:%s:%s:%s" % [datos.tipo, datos.get("frente", "sur"), color.to_html(), datos.get("acabado", "normal")]
+	var eje := "vertical" if datos.tipo == "biblioteca" and datos.rect.size.y > datos.rect.size.x else "horizontal"
+	return "%s:%s:%s:%s:%s" % [datos.tipo, datos.get("frente", "sur"), color.to_html(), datos.get("acabado", "normal"), eje]
 
 func dibujar_mueble(lienzo: CanvasItem, datos: Dictionary) -> void:
 	var id := clave_mueble(datos)

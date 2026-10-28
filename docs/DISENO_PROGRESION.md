@@ -180,6 +180,38 @@ se conservan hasta cambiar de recurso o geometría, reduciendo cambios de ruta.
 
 Las pruebas y mediciones gráficas están en `tests/RENDIMIENTO.md`.
 
+### Primera demostración de madera y claridad de decisiones (28/10)
+
+El piloto anterior no daba órdenes hacia madera: después del cartón dirigía a
+comida hasta poder atacar el gran objetivo. Por eso la separación entre comprar
+madera (7,3 min) y registrar una segunda pieza (~20 min) no demuestra por sí sola
+que una persona tarde eso en desmontar un mueble.
+
+Se ajusta sólo la silla cercana `mueble:6` de la casa, perfil `silla_inicial`:
+140 de resistencia y 420 de valor en `stats_base.csv`, frente a 700/2100. Mantiene
+la proporción de tres migas por daño, dieta, geometría, secciones y transporte.
+El resto del mobiliario y las resistencias tardías no cambian. El HUD ofrece
+ver esa silla tras comprar madera. El cartón no concede los hitos de sillas de
+madera; las partidas anteriores conservan los hitos ya ganados.
+
+`tests/prueba_primera_madera.tscn` compara ambas resistencias con semilla 417,
+ocho obreras, Mandíbulas 4, madera aprendida y el mismo llamado. Muestra el
+primer recorte antes de los 15 segundos y desmontaje dentro de una expedición.
+Última medición integrada local: primera sección ~14,1 → ~2,4 s; desmontaje
+~41,7 → ~8,2 s. El presupuesto temporal de rutas puede variar las trayectorias.
+La primera entrega sigue alrededor de 3,6 s: se acorta el desmontaje, no se
+inventa una mejora de transporte. El valor potencial es 525 de madera contando
+el bonus de destrucción de 25%; la extracción debe transportarse para cobrarla.
+En esa ejecución se entregaron 312,6 dentro de la expedición. No es un tiempo
+previsto para una persona ni una garantía de cobrar todo el recurso.
+
+Las fichas explican las parejas existentes (extracción/carga, corrosión/daño,
+alcance/atajos). Es una ayuda para experimentar, no prueba de balance de todas
+las castas. La vista previa de fundación muestra el arranque exacto con cada
+decreto, herencias compradas y legado nuevo, sin asumir compras de jalea. Se
+verifica contra una fundación real para los cuatro decretos y sin mutaciones.
+La sensación de avance tras el primer reinicio sigue pendiente de playtest.
+
 ### Especialistas que cambian el trabajo
 
 Corte aserrado reparte el mismo daño entre dos secciones de madera, pero ahora
@@ -227,6 +259,48 @@ con su propia regla. Las amenazas cumplen dos funciones:
 
 La miga dorada es el estímulo corto clásico de los incrementales (la galleta
 dorada de Cookie Clicker): aparece cerca de lo que se mira y dura 9 s.
+
+## Reconquista, limpieza y hormiguero completo (28/10)
+
+Se separan dos progresos de viaje. `lugares_completados` es histórico y sigue
+otorgando adaptaciones y topes. `coronas_cobradas` pertenece a la colonia actual:
+para viajar se necesita haber conquistado todos los destinos anteriores en esa
+colonia. Fundar borra sólo este segundo recorrido y vuelve a casa. Los campos
+antiguos se cargan con sus valores conocidos, sin borrar descubrimientos ni
+inventar limpiezas. Las mejoras que requieren un destino se habilitan al reabrirlo.
+
+Los planos conservan límites, metas, resistencia y tutorial, pero pasan a tener
+55/49/29/33/39/37 muebles (casa a París). Se agregan objetos característicos,
+no nuevas simulaciones ni mapas inactivos. Sólo diez alimentos chicos aumentan
+entre 11% y 15%; el catálogo pasa de 1347 a 1438 unidades (+6,8%), que no es
+el conteo final de cada escenario. No se aumenta el valor ni la vida de los
+grandes objetivos. El piloto corto actual, 13,4 minutos simulados desde cero,
+llega a Mandíbulas 4 a los 4,4 min y madera a los 7,5 min. No alcanza fundación
+ni valida la duración de la campaña, especialmente tras la reconquista nueva.
+
+Cada 0,5 s se comprueba si queda comida, fragmentos o material permitido dentro
+del territorio. La salida inicial, expansión del alcance, derrumbes, cadenas y
+botín recuperable no se toman como limpieza. Tampoco se confunde un recurso
+sin ruta o con sus puestos ocupados con un recurso inexistente. Al agotarse lo
+disponible se inicia la retirada normal. La marca fecha el último cambio
+relevante (o el fin del botín), no el siguiente chequeo ni el regreso al nido.
+Cambios fuera de alcance o sobre materiales bloqueados no mueven ese reloj.
+Se guarda sólo cuando el cierre normal termina; salir antes no crea una marca.
+
+“Zona despejada” permite que queden materiales todavía bloqueados o recursos
+lejanos; “Mapa despejado” exige que no quede nada en el escenario. Ambos tienen
+categorías separadas por destino, dieta, alcance redondeado a una unidad y
+versión del contenido (actualmente 2). No se pretende una tabla competitiva:
+las compras y el poder de la colonia pueden diferir. Se conservan 128 registros
+recientes y 1024 mejores contextos; la interfaz construye como máximo ocho
+tarjetas a la vez. El JSON exportado contiene sólo ese archivo, no la partida.
+Los datos se validan al cargar, y el guardado sube a versión 7.
+
+El hormiguero representa las mejoras existentes, no agrega multiplicadores:
+31 cámaras agrupadas en seis ramas con conexiones de requisito reales. Al
+comprar crecen cámaras/túneles y aparece decoración acotada. Las cuatro secciones
+se mantienen en un corte completo; la ficha de compra es flotante y cerrable.
+Fondo retenido, hormigas decorativas compartidas y sin IA de expedición.
 
 ## Qué se puede tocar sin programar
 

@@ -169,7 +169,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+	if what in [NOTIFICATION_WM_WINDOW_FOCUS_OUT, NOTIFICATION_APPLICATION_FOCUS_OUT]:
 		soltar()
 
 
@@ -202,19 +202,17 @@ func _draw() -> void:
 	var zoom := maxf(get_canvas_transform().get_scale().x, 0.01)
 	var color := Color("72c4b0") if posicion.length() <= run.radio_actual else Color("bb8c72")
 	var radio := radio_visual()
-	for i in range(3, 0, -1):
-		draw_circle(posicion, radio * i / 3.0, Color(color, 0.025 * _desvanecer))
-	draw_arc(posicion, radio, 0, TAU, 48, Color(color, 0.35 * _desvanecer), 1 / zoom, true)
-	for i in 3:
-		var t := fposmod(_reloj * 0.55 + i / 3.0, 1.0)
-		draw_arc(posicion, (12 + t * 38) / zoom, 0, TAU, 40, Color(color, (1 - t) * 0.55 * _desvanecer), 1.5 / zoom, true)
-	draw_circle(posicion, 4 / zoom, Color(color, _desvanecer))
+	draw_circle(posicion, radio, Color(color, 0.022 * _desvanecer))
+	draw_arc(posicion, radio, 0, TAU, 48, Color(color, 0.18 * _desvanecer), 1 / zoom, true)
+	var pulso := fposmod(_reloj * 0.55, 1.0)
+	draw_arc(posicion, (12 + pulso * 38) / zoom, 0, TAU, 40, Color(color, (1 - pulso) * 0.3 * _desvanecer), 1 / zoom, true)
+	draw_circle(posicion, 3 / zoom, Color(color, _desvanecer * 0.85))
 	# Guías tenues hacia las elegidas; nunca queda un camino al soltar.
 	if activa:
 		var guias := 0
 		for h in seleccionadas.values():
 			if is_instance_valid(h) and h.en_pantalla and h.carga <= 0 and h.estado != Hormiga.Estado.VOLVIENDO:
-				draw_line(h.global_position, posicion, Color(color, 0.12), 1 / zoom, true)
+				draw_line(h.global_position, posicion, Color(color, 0.055), 1 / zoom, true)
 				guias += 1
 				if guias >= 16:
 					break

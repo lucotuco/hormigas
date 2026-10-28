@@ -135,7 +135,7 @@ func probar_topes_y_destinos() -> void:
 	Juego.reiniciar_estado()
 	Juego.migas = 1e15
 	verificar(not Juego.esta_desbloqueada("titanio") and not Juego.comprar("titanio"), "una mejora de destino no se compra antes de llegar")
-	Juego.lugares_completados["casa"] = true
+	Juego.completar_destino() # Conquista actual, no sólo historial de otra colonia.
 	verificar(Juego.esta_desbloqueada("titanio") and Juego.comprar("titanio"), "al abrir el restaurante se puede comprar Mandíbulas de titanio")
 	verificar(not Juego.esta_desbloqueada("curadora"), "las del museo siguen esperando")
 

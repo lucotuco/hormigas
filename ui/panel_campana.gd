@@ -38,7 +38,7 @@ func _texto(texto: String, tamano := 14, color := Color("b8baa9")) -> Label:
 
 func _viajes() -> void:
 	_contenido.add_child(_texto(tr("El mundo es un banquete"), 28, Estilo.TEXTO))
-	_contenido.add_child(_texto(tr("Devorá el gran objetivo de un destino para abrir el siguiente. Cada expedición empieza con el escenario completo; tu colonia y sus descubrimientos se conservan.")))
+	_contenido.add_child(_texto(tr("Devorá el gran objetivo para abrir el siguiente destino. Al fundar volvés a la casa y reconquistás los viajes; las adaptaciones y el historial se conservan.")))
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 14)
@@ -68,7 +68,9 @@ func _viajes() -> void:
 		var detalle := tr("Gran objetivo: %s · %d coronas") % [tr(datos.meta), datos.coronas]
 		if not abierto:
 			var anterior: String = Mundos.ORDEN[Mundos.ORDEN.find(id) - 1]
-			detalle = tr("Requiere devorar: %s") % tr(Mundos.INFO[anterior].meta)
+			detalle = tr("Requiere devorar: %s en esta colonia") % tr(Mundos.INFO[anterior].meta)
+			if Juego.lugares_completados.has(id):
+				detalle = tr("VISITADO · ") + detalle
 		elif Juego.coronas_cobradas.has(id):
 			detalle = tr("CONQUISTADO · Gran objetivo: %s · coronas ya cobradas en esta colonia") % tr(datos.meta)
 		elif Juego.lugares_completados.has(id):
@@ -86,7 +88,7 @@ func _viajes() -> void:
 ## Pestaña Jalea real: resumen, fundar con vista previa, árbol de la reina e hitos.
 func _legado() -> void:
 	_contenido.add_child(_texto(tr("La reina y la jalea real"), 28, Estilo.TEXTO))
-	_contenido.add_child(_texto(tr("Fundar una colonia reinicia migas, mejoras y castas, y convierte lo logrado en jalea real. La jalea se gasta en el árbol de la reina, que es permanente, y toda la jalea que ganes da +%d%% de daño y migas por punto aunque la gastes.") % roundi(Juego.BONUS_LEGADO * 100)))
+	_contenido.add_child(_texto(tr("Fundar reinicia migas, mejoras, castas y viajes de esta colonia: volvés a la casa. Conservás los descubrimientos y sus premios. La jalea compra mejoras permanentes y toda la ganada da +%d%% de daño y migas por punto, incluso al gastarla.") % roundi(Juego.BONUS_LEGADO * 100)))
 	_contenido.add_child(_resumen())
 	_contenido.add_child(_texto(tr("EL ÁRBOL DE LA REINA"), 12, Color("c9b779")))
 	var grid := GridContainer.new()

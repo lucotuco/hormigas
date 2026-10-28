@@ -6,6 +6,90 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: en\n"
 
+msgid "Araña · Ver"
+msgstr "Spider · Find"
+
+msgid "Mozo · Ver"
+msgstr "Waiter · Find"
+
+msgid "Aspiradora · Ver"
+msgstr "Vacuum · Find"
+
+msgid "Palomas · Ver"
+msgstr "Pigeons · Find"
+
+msgid "Gato · Ver"
+msgstr "Cat · Find"
+
+msgid "Rata · Ver"
+msgstr "Rat · Find"
+
+msgid "Miga dorada · Ver"
+msgstr "Golden crumb · Find"
+
+msgid "Protegé a tus hormigas"
+msgstr "Protect your ants"
+
+msgid "Hacé clic en su sombra"
+msgstr "Click on his shadow"
+
+msgid "Recuperá lo que se llevó"
+msgstr "Recover what it took"
+
+msgid "Espantalas para proteger la comida"
+msgstr "Scare them away to protect food"
+
+msgid "Está sobre tu comida"
+msgstr "It's on your food"
+
+msgid "Está robando comida"
+msgstr "It's stealing food"
+
+msgid "Recogela antes de que desaparezca"
+msgstr "Collect it before it disappears"
+
+msgid "Ver en el mapa"
+msgstr "Find on the map"
+
+msgid "Tu primera silla de madera"
+msgstr "Your first wooden chair"
+
+msgid "Ya comen madera: llamalas sobre la silla y mirá cómo la desarman."
+msgstr "They can eat wood now: call them onto the chair and watch them dismantle it."
+
+msgid "TRABAJO EN EQUIPO"
+msgstr "TEAMWORK"
+
+msgid "Carpinteras + cargadoras: unas desprenden madera; las otras retiran los restos pesados. Corte aserrado permite seguir cortando mientras el resto transporta."
+msgstr "Carpenters + haulers: one cuts wood loose, the other collects heavy debris. Sawing cut lets them keep cutting while the others haul."
+
+msgid "Cargadoras + carpinteras o demoledoras: las especialistas abren piezas y ellas priorizan los fragmentos. Más capacidad rinde mejor si la vuelta al nido es corta."
+msgstr "Haulers + carpenters or demolishers: specialists break pieces open while haulers prioritize debris. Extra capacity works best with a short trip back to the nest."
+
+msgid "Rojas + demoledoras: la corrosión ablanda una pieza para todas las que la muerden. Una roja puede apoyar a varias trabajadoras sobre el mismo material resistente."
+msgstr "Reds + demolishers: corrosion softens a piece for every ant biting it. One red ant can support several workers on the same tough material."
+
+msgid "Demoledoras + rojas: concentran el trabajo sobre materiales duros. Las cargadoras ayudan a retirar los restos que dejan al abrir muros y soportes."
+msgstr "Demolishers + reds: focus work on tough materials. Haulers help collect the debris left behind when opening walls and supports."
+
+msgid "Veloces + entradas secundarias: menos tiempo viajando para recoger comida dispersa. Su mordida débil no es la mejor opción para demoler muebles."
+msgstr "Fast explorers + secondary entrances: less travel time when collecting scattered food. Their weak bite is not ideal for dismantling furniture."
+
+msgid "Voladoras + olfato: encuentran recursos lejos y cruzan muebles para entregar cargas livianas. Las paredes siguen requiriendo una puerta o un paso abierto."
+msgstr "Flyers + smell range: find distant resources and cross furniture to deliver light loads. Walls still require a doorway or an open passage."
+
+msgid "Reinas + tiempo: las expediciones largas dan margen para criar más miniobreras. La colonia tiene un límite compartido de 500 hormigas."
+msgstr "Queens + time: longer expeditions give them time to raise more mini-workers. The colony shares a limit of 500 ants."
+
+msgid "ASÍ NACE TU PRÓXIMA COLONIA"
+msgstr "HOW YOUR NEXT COLONY STARTS"
+
+msgid "Con tus mejoras permanentes actuales y el decreto elegido, antes de gastar la nueva jalea."
+msgstr "With your current permanent upgrades and selected decree, before spending the new jelly."
+
+msgid "%d obreras · %d especialistas · %d s por expedición\nDieta inicial: %s\nMordida: %s · Migas: ×%.2f\nReservas: %s migas · Jalea disponible: %d"
+msgstr "%d workers · %d specialists · %d s per expedition\nStarting diet: %s\nBite: %s · Crumbs: ×%.2f\nReserves: %s crumbs · Available jelly: %d"
+
 msgid "Mejoras"
 msgstr "Upgrades"
 
@@ -207,14 +291,14 @@ msgstr "Keep growing"
 msgid "El mundo es un banquete"
 msgstr "The world is a feast"
 
-msgid "Devorá el gran objetivo de un destino para abrir el siguiente. Cada expedición empieza con el escenario completo; tu colonia y sus descubrimientos se conservan."
-msgstr "Devour a destination's grand target to open the next one. Every expedition starts with the whole place rebuilt; your colony and its discoveries are kept."
+msgid "Devorá el gran objetivo para abrir el siguiente destino. Al fundar volvés a la casa y reconquistás los viajes; las adaptaciones y el historial se conservan."
+msgstr "Devour the grand target to unlock the next destination. Founding returns you to the house to reconquer your travels; adaptations and history are kept."
 
 msgid "Gran objetivo: %s · %d coronas"
 msgstr "Grand target: %s · %d crowns"
 
-msgid "Requiere devorar: %s"
-msgstr "Requires devouring: %s"
+msgid "Requiere devorar: %s en esta colonia"
+msgstr "Requires devouring: %s in this colony"
 
 msgid "CONQUISTADO · Gran objetivo: %s · coronas ya cobradas en esta colonia"
 msgstr "CONQUERED · Grand target: %s · crowns already claimed by this colony"
@@ -225,8 +309,8 @@ msgstr "CONQUERED · Grand target: %s · %d crowns available again"
 msgid "La reina y la jalea real"
 msgstr "The queen and the royal jelly"
 
-msgid "Fundar una colonia reinicia migas, mejoras y castas, y convierte lo logrado en jalea real. La jalea se gasta en el árbol de la reina, que es permanente, y toda la jalea que ganes da +%d%% de daño y migas por punto aunque la gastes."
-msgstr "Founding a colony resets crumbs, upgrades and castes, and turns your progress into royal jelly. Jelly is spent on the queen's tree, which is permanent, and every point of jelly you ever earn gives +%d%% damage and crumbs, even after you spend it."
+msgid "Fundar reinicia migas, mejoras, castas y viajes de esta colonia: volvés a la casa. Conservás los descubrimientos y sus premios. La jalea compra mejoras permanentes y toda la ganada da +%d%% de daño y migas por punto, incluso al gastarla."
+msgstr "Founding resets this colony's crumbs, upgrades, castes and travels: you return to the house. Discoveries and their rewards are kept. Jelly buys permanent upgrades and every point ever earned gives +%d%% damage and crumbs, even after spending it."
 
 msgid "EL ÁRBOL DE LA REINA"
 msgstr "THE QUEEN'S TREE"
@@ -282,8 +366,8 @@ msgstr "Reset: crumbs%s, upgrades and castes%s."
 msgid " (conservás el %d%%)"
 msgstr " (you keep %d%%)"
 
-msgid "Se conservan: destinos, hitos, el árbol de la reina y lo descubierto."
-msgstr "Kept: destinations, milestones, the queen's tree and everything discovered."
+msgid "Se conservan: destinos visitados, hitos, el árbol de la reina y lo descubierto."
+msgstr "Kept: visited destinations, milestones, the queen's tree and everything discovered."
 
 msgid "Cada gran objetivo vuelve a dar sus coronas una vez."
 msgstr "Each grand target gives its crowns once again."
@@ -366,9 +450,6 @@ msgstr "IN THE PANTRY"
 msgid "Explorar"
 msgstr "Explore"
 
-msgid "EL HORMIGUERO  /  Elegí una cámara"
-msgstr "THE NEST  /  Pick a chamber"
-
 msgid "COMPRAR"
 msgstr "BUY"
 
@@ -381,14 +462,8 @@ msgstr "As many as you can afford"
 msgid "Compra hasta el límite de nivel; requiere pagar el lote completo."
 msgstr "Buys up to the level cap; you must afford the whole batch."
 
-msgid "CUIDÁ TU COLONIA"
-msgstr "TEND YOUR COLONY"
-
 msgid "Las mejoras se guardan al comprar."
 msgstr "Upgrades are saved when you buy them."
-
-msgid "Cada miga construye algo más grande."
-msgstr "Every crumb builds something bigger."
 
 msgid "Sonido"
 msgstr "Sound"
@@ -1729,3 +1804,135 @@ msgstr "Floor-by-floor dismantling · clear the base before moving up"
 
 msgid "Banco de plaza"
 msgstr "Park bench"
+
+msgid "LIBROS"
+msgstr "BOOKS"
+
+msgid "DIARIOS"
+msgstr "NEWS"
+
+msgid "TAXI"
+msgstr "TAXI"
+
+msgid "9 DE JULIO"
+msgstr "9 DE JULIO"
+
+msgid "¡Mapa despejado!"
+msgstr "Map cleared!"
+
+msgid "¡Zona despejada!"
+msgstr "Area cleared!"
+
+msgid "\nLimpieza: %.1f s · Total con entregas: %.1f s"
+msgstr "\nClear time: %.1f s · Total with deliveries: %.1f s"
+
+msgid "Se agotó todo lo comestible dentro del territorio."
+msgstr "Everything edible within your territory has been consumed."
+
+msgid "Récord de limpieza para esta dieta y alcance"
+msgstr "New clear record for this diet and range"
+
+msgid "Marca de limpieza guardada en el archivo"
+msgstr "Clear time saved in the archive"
+
+msgid "\nTiempo de expedición: %.1f s"
+msgstr "\nExpedition time: %.1f s"
+
+msgid "Archivo de expediciones"
+msgstr "Expedition archive"
+
+msgid "Tus tiempos de limpieza. Las marcas se comparan sólo con la misma dieta, alcance y versión del mapa; las mejoras de la colonia pueden cambiar."
+msgstr "Your clear times. Records are compared only with the same diet, range and map version; colony upgrades may differ."
+
+msgid "Marcas personales"
+msgstr "Personal records"
+
+msgid "Últimas expediciones"
+msgstr "Recent expeditions"
+
+msgid "Todos los destinos"
+msgstr "All destinations"
+
+msgid "Anterior"
+msgstr "Previous"
+
+msgid "Siguiente"
+msgstr "Next"
+
+msgid "Exportar archivo JSON"
+msgstr "Export JSON archive"
+
+msgid "Página %d / %d · %d registros"
+msgstr "Page %d / %d · %d records"
+
+msgid "Todavía no hay marcas. Devorá todo lo disponible en una expedición para archivar tu primer tiempo."
+msgstr "No records yet. Devour everything available in an expedition to archive your first clear time."
+
+msgid "%.1f s de limpieza"
+msgstr "%.1f s clear time"
+
+msgid "Mapa completo"
+msgstr "Full map"
+
+msgid "Zona disponible"
+msgstr "Available area"
+
+msgid "%s · %s · alcance %.0f cm · mapa v%d"
+msgstr "%s · %s · range %.0f cm · map v%d"
+
+msgid "Total con entregas: %.1f s · %s migas · %s migas/s\nColonia %d · expedición %d · %s"
+msgstr "Total with deliveries: %.1f s · %s crumbs · %s crumbs/s\nColony %d · expedition %d · %s"
+
+msgid "Guardar archivo de expediciones"
+msgstr "Save expedition archive"
+
+msgid "No se pudo exportar el archivo. Elegí otra carpeta."
+msgstr "Could not export the archive. Choose another folder."
+
+msgid "Archivo exportado: %s"
+msgstr "Archive exported: %s"
+
+msgid "VISITADO · "
+msgstr "VISITED · "
+
+msgid "Volver al hormiguero"
+msgstr "Back to the nest"
+
+msgid "Elegí una mejora para ver qué cambia."
+msgstr "Select an upgrade to see what changes."
+
+msgid "Volvés a la casa. Los viajes se desbloquean otra vez al conquistar cada destino."
+msgstr "You return to the house. Travels unlock again as you conquer each destination."
+
+msgid "Canasto"
+msgstr "Basket"
+
+msgid "Carrito de servicio"
+msgstr "Service cart"
+
+msgid "Kiosco"
+msgstr "Kiosk"
+
+msgid "Colectivo porteño"
+msgstr "Buenos Aires bus"
+
+msgid "Taxi porteño"
+msgstr "Buenos Aires taxi"
+
+msgid "Farol"
+msgstr "Street lamp"
+
+msgid "Papelera"
+msgstr "Litter bin"
+
+msgid "Cartel de la avenida"
+msgstr "Avenue sign"
+
+msgid "Columna de piedra"
+msgstr "Stone column"
+
+msgid "Ánfora"
+msgstr "Amphora"
+
+msgid "Fuente"
+msgstr "Fountain"

@@ -35,8 +35,15 @@ var busquedas_astar := 0
 var aciertos_cache := 0
 
 func _ready() -> void:
+	# Las alfombras conservan el detalle cercano sin vibrar en la vista del mapa.
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	piezas = MaterialesCasa.piezas()
 	for pieza in piezas:
+		# La navegación usa el material visible, no el margen transparente del
+		# sprite. Los perfiles son compartidos y se preparan una sola vez.
+		var formas := SiluetaMueble.rectangulos(pieza)
+		if formas.size() != 1 or formas[0] != pieza.rect:
+			pieza.recortes = formas
 		_obstaculos[pieza.clave] = pieza
 		var r: Rect2 = pieza.rect
 		for x in range(floori(r.position.x / SECTOR), floori(r.end.x / SECTOR) + 1):

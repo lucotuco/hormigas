@@ -7,10 +7,9 @@ void vertex() { mundo = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy; }
 void fragment() {
 	float d = length(mundo);
 	float pixel = max(fwidth(d), 0.5);
-	float sombra = smoothstep(radio - 30.0, radio + 8.0, d);
-	float linea = 1.0 - smoothstep(pixel * 0.3, pixel * 1.5, abs(d - radio));
-	vec4 color = vec4(tono.rgb, tono.a * sombra);
-	color.rgb = mix(color.rgb, vec3(0.85, 0.9, 0.68), linea * 0.3);
-	color.a = max(color.a, linea * 0.22);
-	COLOR = color;
+	// El territorio sigue teniendo su radio exacto; el borde se desvanece
+	// sobre el suelo, sin una circunferencia luminosa que corte el escenario.
+	float ancho = max(62.0, pixel * 10.0);
+	float sombra = smoothstep(radio - ancho, radio + ancho, d);
+	COLOR = vec4(tono.rgb, tono.a * sombra);
 }

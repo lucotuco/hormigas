@@ -7,8 +7,26 @@ func _ready() -> void:
 	Juego.guardado_habilitado = false
 	Juego.usar_idioma("es")
 	Juego.reiniciar_estado()
+	var limites_arte := Rect2(0, 0, 1254, 1254)
+	var recortes_validos := true
+	for recorte in ArteCasa.RECORTES.values() + ArteCasa.OTROS.values():
+		recortes_validos = recortes_validos and limites_arte.encloses(recorte) and recorte.has_area()
+	verificar(recortes_validos, "todos los recortes están dentro de las imágenes originales")
+	verificar(ArteCasa.MUEBLES.get_width() == 1254 and ArteCasa.DESTINOS.get_height() == 1254, "dimensiones reales de los atlas fuente")
+	var cubiertos := true
+	for m in PlanoCasa.MUEBLES:
+		cubiertos = cubiertos and ArteCasa.tiene(m.tipo)
+	verificar(cubiertos, "todos los tipos de muebles de la casa tienen acabado ilustrado")
+	var vertical: Dictionary = PlanoCasa.MUEBLES[21].duplicate()
+	var horizontal: Dictionary = vertical.duplicate()
+	horizontal.rect = Rect2(0, 0, 1800, 300)
+	verificar(Graficos.clave_mueble(vertical) != Graficos.clave_mueble(horizontal), "las bibliotecas no estiran un dibujo vertical para hacerlo horizontal")
+	var indicador := HUD.IndicadorEventos.new()
+	verificar(indicador.nombre("arana") == "Araña · Ver", "la señal roja identifica la amenaza y ofrece encontrarla")
+	verificar(indicador.nombre("dorada") == "Miga dorada · Ver", "el premio tiene una señal distinta")
+	indicador.free()
 	var claves: Dictionary = {}
-	for m in PlanoCasa.MUEBLES + Mundos.ESPECIALES:
+	for m in Graficos.catalogo_muebles():
 		claves[Graficos.clave_mueble(m)] = true
 	for id in Mundos.ORDEN:
 		var faltantes := 0

@@ -6,13 +6,13 @@ extends Node
 ## a la vez no saturen el audio. M silencia / activa el sonido (ver Ajustes).
 
 const SONIDOS := {
-	"mordida":   {"volumen": -22.0, "intervalo": 0.13},
-	"mordida_madera": {"volumen": -24.0, "intervalo": 0.13},
-	"mordida_metal": {"volumen": -26.0, "intervalo": 0.13},
-	"mordida_piedra": {"volumen": -24.0, "intervalo": 0.13},
+	"mordida":   {"volumen": -24.0, "intervalo": 0.14},
+	"mordida_madera": {"volumen": -25.0, "intervalo": 0.14},
+	"mordida_metal": {"volumen": -28.0, "intervalo": 0.14},
+	"mordida_piedra": {"volumen": -25.0, "intervalo": 0.14},
 	"clic":      {"volumen": -8.0,  "intervalo": 0.02},
-	"deposito":  {"volumen": -12.0, "intervalo": 0.09},
-	"romper":    {"volumen": -8.0,  "intervalo": 0.1},
+	"deposito":  {"volumen": -17.0, "intervalo": 0.11},
+	"romper":    {"volumen": -13.0, "intervalo": 0.12},
 	"comprar":   {"volumen": -6.0,  "intervalo": 0.04},
 	"no":        {"volumen": -9.0,  "intervalo": 0.15},
 	"crecer":    {"volumen": -5.0,  "intervalo": 0.5},

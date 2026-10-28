@@ -6,6 +6,8 @@ const RADIO_MUNDO := 2600.0
 func _ready() -> void:
 	var piso := ShaderMaterial.new()
 	piso.shader = preload("res://mundo/suelo.gdshader")
+	piso.set_shader_parameter("materiales", preload("res://arte/realista/materiales.png"))
+	piso.set_shader_parameter("exterior", Juego.lugar_actual in ["obelisco", "coliseo", "eiffel"])
 	var rectangulos: Array[Vector4] = []
 	var colores: Array[Color] = []
 	var patrones: Array[int] = []

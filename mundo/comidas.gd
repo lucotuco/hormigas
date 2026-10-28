@@ -22,6 +22,10 @@ var _tesoros := 0
 const MAX_FRAGMENTOS := 64
 var _indice: Dictionary = {}
 const CELDA_BUSQUEDA := 192.0
+## Instante del último cambio de recursos; permite fechar el vaciado aunque
+## su comprobación central se reparta cada medio segundo.
+var ultimo_cambio := 0.0
+var _distancias_limpieza: Dictionary = {}
 
 
 func generar() -> void:
@@ -37,6 +41,7 @@ func generar() -> void:
 	_pilas.clear()
 	_tesoros = 0
 	_indice.clear()
+	_distancias_limpieza.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = SEMILLA_MAPA
 	var ocupados: Array[Vector3] = []  # x, y, radio
@@ -130,6 +135,9 @@ func _celdas(rect: Rect2) -> Array[Vector2i]:
 	return celdas
 
 func _indexar(c: Comida) -> void:
+	if c is PiezaCasa:
+		_distancias_limpieza[c.get_instance_id()] = c.distancia_a(Vector2.ZERO)
+	_registrar_cambio(c)
 	for celda in _celdas(_rect_objetivo(c)):
 		if not _indice.has(celda):
 			_indice[celda] = []
@@ -147,6 +155,8 @@ func _candidatas(pos: Vector2, alcance: float) -> Array[Comida]:
 
 
 func _on_destruida(comida: Comida) -> void:
+	_registrar_cambio(comida)
+	_distancias_limpieza.erase(comida.get_instance_id())
 	lista.erase(comida)
 	for celda in _celdas(_rect_objetivo(comida)):
 		if _indice.has(celda):
@@ -165,6 +175,7 @@ func soltar_fragmento(pos: Vector2, valor: float, material_tipo: int) -> void:
 	var clave := "%s:%d" % [Vector2i(pos / 96), material_tipo]
 	if _pilas.has(clave) and is_instance_valid(_pilas[clave]) and not _pilas[clave].muerta:
 		_pilas[clave].sumar(valor)
+		_registrar_cambio(_pilas[clave])
 		return
 	if fragmentos.size() >= MAX_FRAGMENTOS:
 		var mejor := fragmentos[0]
@@ -176,6 +187,7 @@ func soltar_fragmento(pos: Vector2, valor: float, material_tipo: int) -> void:
 			elif (not mismo_material or f.material_id == material_tipo) and f.position.distance_squared_to(pos) < mejor.position.distance_squared_to(pos):
 				mejor = f
 		mejor.sumar(valor, material_tipo)
+		_registrar_cambio(mejor)
 		return
 	var run: Run = get_parent()
 	pos = run.cocina.ajustar_destino(pos, run.radio_actual)
@@ -291,7 +303,7 @@ func comida_en(pos: Vector2, radio_territorio: float, incluir_bloqueadas := fals
 		var d := c.distancia_a(pos)
 		# El cursor puede quedar sobre un hueco recién devorado. La orden sigue
 		# apuntando al mueble mientras quede material dentro de su silueta original.
-		var bajo_cursor: bool = c.rect_mundo.grow(margen).has_point(pos) if c is PiezaCasa else c.contiene_punto(pos, margen)
+		var bajo_cursor: bool = c.dentro_silueta(pos, margen) if c is PiezaCasa else c.contiene_punto(pos, margen)
 		if bajo_cursor and d < mejor_distancia:
 			mejor = c
 			mejor_distancia = d
@@ -304,3 +316,42 @@ func cantidad_en_territorio(radio_territorio: float) -> int:
 		if not c.muerta and en_territorio(c, radio_territorio):
 			total += 1
 	return total
+
+
+## Consulta central, nunca por hormiga. Una ruta fallida o un puesto ocupado
+## NO convierten un recurso vivo en limpieza: sólo dieta, material y alcance.
+func estado_limpieza(radio_territorio: float) -> Dictionary:
+	var restantes := false
+	for grupo in [lista, fragmentos]:
+		for c: Comida in grupo:
+			if not is_instance_valid(c) or c.muerta:
+				continue
+			restantes = true
+			if c.disponible() and c.en_territorio(radio_territorio):
+				return {"pendientes": true, "completa": false}
+	for parte in partes:
+		if not is_instance_valid(parte) or parte.muerta:
+			continue
+		restantes = true
+		# El derrumbe y sus tesoros pueden crear más recursos antes de terminar.
+		if parte.derrumbando or (parte.disponible() and parte.en_territorio(radio_territorio)):
+			return {"pendientes": true, "completa": false}
+	return {"pendientes": false, "completa": not restantes}
+
+
+## El reloj de una categoría no se mueve porque cambió comida fuera de su
+## alcance o material bloqueado. Al destruirse una pieza su distancia puede
+## ser INF: se conserva sólo para ese instante el alcance original cacheado.
+func _registrar_cambio(c: Comida) -> void:
+	var run: Run = get_parent()
+	if c is PiezaCasa:
+		if c.nivel_requerido > Juego.stat("materiales"):
+			return
+		var distancia := c.distancia_a(Vector2.ZERO)
+		if not is_finite(distancia):
+			distancia = float(_distancias_limpieza.get(c.get_instance_id(), INF))
+		if distancia > run.radio_actual - 10:
+			return
+	elif not c.en_territorio(run.radio_actual):
+		return
+	ultimo_cambio = run.tiempo_jugado

@@ -5,6 +5,7 @@ extends Node2D
 
 const MAX_PARTICULAS := 600
 const MAX_TEXTOS := 40
+const MAX_TEXTOS_VISIBLES := 10
 const MAX_ONDAS := 24
 const COLOR_SOMBRA_TEXTO := Color(0.12, 0.07, 0.03)
 
@@ -42,6 +43,7 @@ class TextoFlotante:
 var _particulas: Array[Particula] = []
 var _ondas: Array[Onda] = []
 var _textos: Array[TextoFlotante] = []
+var _rect_textos: Array[Rect2] = []
 var _marcas: Array[Dictionary] = []
 const MAX_MARCAS := 16
 var _pausa_marca := 0.0
@@ -93,8 +95,9 @@ func numero(pos: Vector2, cantidad: float, color: Color, escala := 1.0) -> void:
 		return
 	# Agrupar durante una ventana fija: el texto termina aunque siga habiendo
 	# depósitos. Se suman los valores, no se descartan ingresos visuales.
+	var radio_agrupacion := maxf(96, 65.0 / _zoom())
 	for t in _textos:
-		if t.cantidad > 0 and t.vida > 0.55 and t.origen.distance_squared_to(pos) < 96 * 96 and t.color == color:
+		if t.cantidad > 0 and t.vida > 0.55 and t.origen.distance_squared_to(pos) < radio_agrupacion * radio_agrupacion and t.color == color:
 			t.cantidad += cantidad
 			t.texto = "+" + Juego.formatear_corto(t.cantidad)
 			t.ancho = ThemeDB.fallback_font.get_string_size(t.texto, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
@@ -184,17 +187,41 @@ func _draw() -> void:
 		draw_arc(o.pos, o.radio_max * ease(progreso, 0.4), 0, TAU, 40,
 			Color(o.color, 0.8 * (1.0 - progreso)), 3.0 / zoom, true)
 	var fuente := ThemeDB.fallback_font
-	for t in _textos:
+	_rect_textos.clear()
+	var transformacion := get_canvas_transform()
+	var presupuesto := 6 if zoom < 0.25 else MAX_TEXTOS_VISIBLES
+	# Priorizar los últimos ingresos y no tapar el mapa con nombres repetidos.
+	for i in range(_textos.size() - 1, -1, -1):
+		if _rect_textos.size() >= presupuesto:
+			break
+		var t := _textos[i]
+		if t.cantidad > 0 and t.cantidad < 0.5:
+			continue # Se sigue acumulando; no mostrar un premio redondeado a «+0».
+		if zoom < 0.25 and t.cantidad <= 0:
+			continue
 		var progreso := 1.0 - t.vida / t.vida_max
-		var pop := 1.0 + 0.5 * maxf(0.0, 1.0 - progreso * 6.0)   # aparece grande y se acomoda
+		var pop := 1.0 + 0.12 * maxf(0.0, 1.0 - progreso * 6.0)
 		# Tamaño fijo de fuente: no rasterizar cientos de glifos nuevos al hacer zoom.
 		var tamano_fuente := 18
-		var escala := 15.0 * t.escala * pop / (zoom * tamano_fuente)
+		var escala_pantalla := (13.0 if zoom < 0.25 else 15.0) * clampf(t.escala, 0.8, 1.25) * pop / tamano_fuente
+		var posicion_pantalla := transformacion * t.pos
+		var rect := Rect2(posicion_pantalla - Vector2(t.ancho * escala_pantalla * 0.5, 18 * escala_pantalla), Vector2(t.ancho + 8, 24) * escala_pantalla)
+		if not get_viewport_rect().intersects(rect):
+			continue
+		var solapado := false
+		for ocupado in _rect_textos:
+			if rect.intersects(ocupado):
+				solapado = true
+				break
+		if solapado:
+			continue
+		_rect_textos.append(rect)
+		var escala := escala_pantalla / zoom
 		draw_set_transform(t.pos, 0, Vector2.ONE * escala)
 		var alfa := clampf(t.vida / (t.vida_max * 0.4), 0.0, 1.0)
 		var origen := -Vector2(t.ancho * 0.5, 0.0)
 		draw_string_outline(fuente, origen, t.texto, HORIZONTAL_ALIGNMENT_LEFT, -1, tamano_fuente,
-			maxi(2, int(tamano_fuente / 4.0)), Color(COLOR_SOMBRA_TEXTO, alfa))
+			2, Color(COLOR_SOMBRA_TEXTO, alfa))
 		draw_string(fuente, origen, t.texto, HORIZONTAL_ALIGNMENT_LEFT, -1, tamano_fuente, Color(t.color, alfa))
 	draw_set_transform(Vector2.ZERO)
 

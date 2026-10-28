@@ -22,6 +22,7 @@ var _panel_fin: PanelContainer
 var _lbl_fin_migas: Label
 var _lbl_fin_detalle: Label
 var _lbl_fin_record: Label
+var _lbl_fin_titulo: Label
 var _boton_tienda: Button
 var _reloj_descubrimiento := 0.0
 var _lbl_composicion: Label
@@ -48,6 +49,11 @@ var _barra_meta: ProgressBar
 var _relleno_meta: StyleBoxFlat
 var _meta_lista := false
 var _lbl_llamado: Label
+var _boton_paso: Button
+var _objetivo_paso: PiezaCasa
+var _silla_inicial: PiezaCasa
+var _silla_buscada := false
+var _columna_progresion: VBoxContainer
 
 var _ventana: VentanaModal
 var _cartel: PanelContainer
@@ -73,21 +79,93 @@ class IconoMiga extends Control:
 ## que quedan fuera de la vista.
 class IndicadorEventos extends Control:
 	var run: Run
+	var _reloj := 0.0
+	var _habia_eventos := false
+	var etiquetas: Array[Rect2] = []
+	var _eventos: Array[Evento] = []
+	var _fondo: StyleBoxFlat
 
-	func _process(_delta: float) -> void:
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_fondo = Estilo.caja(Color("202b25"), 8, Color("807352"), 1, 0)
+
+	func _process(delta: float) -> void:
+		_reloj -= delta
+		if _reloj > 0 or not is_instance_valid(run) or run.eventos == null:
+			return
+		_reloj = 0.1
+		var hay := not run.eventos.activos.is_empty()
+		if hay or _habia_eventos:
+			queue_redraw()
+		_habia_eventos = hay
+
+	func nombre(tipo: String) -> String:
+		match tipo:
+			"arana": return tr("Araña · Ver")
+			"mozo": return tr("Mozo · Ver")
+			"aspiradora": return tr("Aspiradora · Ver")
+			"paloma": return tr("Palomas · Ver")
+			"gato": return tr("Gato · Ver")
+			"rata": return tr("Rata · Ver")
+			"dorada": return tr("Miga dorada · Ver")
+		return ""
+
+	func detalle(tipo: String) -> String:
+		match tipo:
+			"arana": return tr("Protegé a tus hormigas")
+			"mozo": return tr("Hacé clic en su sombra")
+			"aspiradora": return tr("Recuperá lo que se llevó")
+			"paloma": return tr("Espantalas para proteger la comida")
+			"gato": return tr("Está sobre tu comida")
+			"rata": return tr("Está robando comida")
+			"dorada": return tr("Recogela antes de que desaparezca")
+		return ""
+
+	# Sólo las tarjetas interceptan el mouse. El resto del mapa sigue recibiendo
+	# las órdenes, el zoom y el arrastre sin una capa transparente que los tape.
+	func _has_point(punto: Vector2) -> bool:
+		return etiquetas.any(func(caja: Rect2) -> bool: return caja.has_point(punto))
+
+	func enfocar(indice: int) -> bool:
+		if indice < 0 or indice >= _eventos.size() or not is_instance_valid(run) or not run.activa:
+			return false
+		var evento := _eventos[indice]
+		if not is_instance_valid(evento) or evento.resuelto:
+			return false
+		run.feromonas.soltar()
+		run.camara.arrastrando = false
+		run.camara.mirar(run.eventos.punto_de_clic(evento), Vector2(500, 400))
 		queue_redraw()
+		return true
+
+	func _gui_input(evento: InputEvent) -> void:
+		if evento is InputEventMouseButton and evento.button_index == MOUSE_BUTTON_LEFT:
+			accept_event()
+			if evento.pressed:
+				for i in etiquetas.size():
+					if etiquetas[i].has_point(evento.position):
+						enfocar(i)
+						return
 
 	func _draw() -> void:
-		if not is_instance_valid(run) or run.eventos == null:
+		etiquetas.clear()
+		_eventos.clear()
+		if not is_instance_valid(run) or run.eventos == null or not run.activa:
 			return
-		var centro := size * 0.5
-		var area := Rect2(Vector2.ZERO, size).grow(-46)
+		# Reservar el HUD superior y los controles inferiores, incluida la punta.
+		var area := Rect2(30, 150, maxf(1, size.x - 60), maxf(1, size.y - 290))
+		var centro := area.get_center()
+		var vistos: Dictionary = {}
 		for e in run.eventos.activos:
 			if not is_instance_valid(e) or e.resuelto or (e.tipo == "mozo" and e.estado != "avisando"):
 				continue
+			if vistos.has(e.tipo):
+				continue # Una señal por bandada, no tres etiquetas superpuestas.
 			var p := run.a_pantalla(run.eventos.punto_de_clic(e))
 			if Rect2(Vector2.ZERO, size).has_point(p):
 				continue
+			vistos[e.tipo] = true
 			var dir := (p - centro).normalized()
 			# Punto del borde en esa dirección.
 			var t := INF
@@ -97,9 +175,30 @@ class IndicadorEventos extends Control:
 				t = minf(t, (area.size.y * 0.5) / absf(dir.y))
 			var borde := centro + dir * t
 			var tinta := Color("f2c84b") if e.tipo == "dorada" else Color("e0634a")
-			draw_circle(borde, 17, Color(0.08, 0.06, 0.04, 0.75))
-			draw_circle(borde, 11, tinta)
-			draw_colored_polygon(PackedVector2Array([borde + dir * 30, borde + dir * 18 + dir.orthogonal() * 9, borde + dir * 18 - dir.orthogonal() * 9]), tinta)
+			var texto := nombre(e.tipo)
+			var ayuda := detalle(e.tipo)
+			var ancho := maxf(ThemeDB.fallback_font.get_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x,
+				ThemeDB.fallback_font.get_string_size(ayuda, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x)
+			var caja := Rect2(borde - Vector2(ancho * 0.5 + 14, 24), Vector2(ancho + 28, 48))
+			caja.position = caja.position.clamp(area.position, area.end - caja.size)
+			var base := caja.position
+			var sentido := -1.0 if caja.get_center().y > centro.y else 1.0
+			for paso in 7:
+				caja.position.y = clampf(base.y + paso * sentido * 56, area.position.y, area.end.y - caja.size.y)
+				var libre := true
+				for anterior in etiquetas:
+					libre = libre and not caja.grow(5).intersects(anterior)
+				if libre:
+					break
+			etiquetas.append(caja)
+			_eventos.append(e)
+			_fondo.border_color = Color(tinta, 0.65)
+			draw_style_box(_fondo, caja)
+			draw_string(ThemeDB.fallback_font, caja.position + Vector2(14, 19), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, tinta)
+			draw_string(ThemeDB.fallback_font, caja.position + Vector2(14, 36), ayuda, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Estilo.TEXTO_SUAVE)
+			# Punta por fuera del cartel, orientada hacia el evento real.
+			var salida := caja.get_center() + dir * minf((caja.size.x * 0.5) / maxf(absf(dir.x), 0.001), 24.0 / maxf(absf(dir.y), 0.001))
+			draw_colored_polygon(PackedVector2Array([salida + dir * 12, salida + dir.orthogonal() * 5, salida - dir.orthogonal() * 5]), tinta)
 
 
 func _ready() -> void:
@@ -117,13 +216,13 @@ func _ready() -> void:
 	_crear_proxima_meta(raiz)
 	_crear_prioridades(raiz)
 	_lbl_llamado = Estilo.etiqueta("", 13, Color("c2ecd2"), 4)
+	_lbl_llamado.add_theme_stylebox_override("normal", Estilo.caja(Color("20302a"), 8, Color(0.55, 0.75, 0.65, 0.25), 1, 10))
 	_lbl_llamado.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_lbl_llamado.visible = false
 	raiz.add_child(_lbl_llamado)
 	var indicador := IndicadorEventos.new()
 	indicador.run = run
 	indicador.set_anchors_preset(Control.PRESET_FULL_RECT)
-	indicador.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	raiz.add_child(indicador)
 	_hitos_vistos = Juego.hitos.size()
 	Juego.progreso_cambio.connect(_notificar_hito)
@@ -172,7 +271,8 @@ func _process(delta: float) -> void:
 				_lbl_llamado.text += tr("\n%d buscando un camino") % datos.esperando
 			if run.feromonas.posicion.length() > run.radio_actual:
 				_lbl_llamado.text = tr("Fuera del territorio descubierto")
-			_lbl_llamado.position = (run.a_pantalla(run.feromonas.posicion) + Vector2(20, -50)).clamp(Vector2(12, 100), get_viewport().get_visible_rect().size - Vector2(340, 120))
+			# El estado del llamado pertenece al HUD: no tapar el objeto que se muerde.
+			_lbl_llamado.position = Vector2(32, get_viewport().get_visible_rect().size.y - 136)
 
 	_lbl_hormigas.text = (tr("Hormigas: %d · colonia llena") if run.colonia.colonia_llena() else tr("Hormigas: %d")) % run.colonia.cantidad()
 	_reloj_descubrimiento -= delta
@@ -251,22 +351,30 @@ func mostrar_aviso(texto: String) -> void:
 	_lbl_aviso.visible = true
 	_lbl_aviso.modulate.a = 0.0
 	_lbl_aviso.pivot_offset = _lbl_aviso.size / 2.0
-	_lbl_aviso.scale = Vector2.ONE * 0.7
+	_lbl_aviso.scale = Vector2.ONE * 0.96
 	var tween := _lbl_aviso.create_tween().set_parallel(true)
 	_tween_aviso = tween
 	tween.tween_property(_lbl_aviso, "modulate:a", 1.0, 0.25)
-	tween.tween_property(_lbl_aviso, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.chain().tween_interval(1.4)
+	tween.tween_property(_lbl_aviso, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.chain().tween_interval(1.8)
 	tween.chain().tween_property(_lbl_aviso, "modulate:a", 0.0, 0.5)
 
 
 func mostrar_fin() -> void:
 	_lbl_aviso.hide()
+	_lbl_fin_titulo.text = (tr("¡Mapa despejado!") if run.limpieza_completa else tr("¡Zona despejada!")) if run.limpieza_lograda else tr("¡Se acabó el tiempo!")
 	_lbl_fin_migas.text = tr("+%s migas") % Juego.formatear(Juego.migas_run)
 	_lbl_fin_detalle.text = tr("Comidas: %d · Partes de la casa: %d\nMejor combo: x%d\nTotal en el hormiguero: %s") % [
 		Juego.comidas_destruidas_run, Juego.partes_destruidas_run, Juego.mejor_combo_run, Juego.formatear(Juego.migas)]
 	_lbl_fin_detalle.text += tr("\n%s migas/s · %s") % [Juego.formatear_corto(run.produccion_run), (tr("%+.0f%% frente al récord anterior") % run.mejora_produccion) if run.tenia_record else tr("primer registro en este destino")]
 	_lbl_fin_detalle.text += tr("\nAlimentos %s · Muebles %s · Estructuras %s") % [Juego.formatear_corto(run.ingresos[0]), Juego.formatear_corto(run.ingresos[1]), Juego.formatear_corto(run.ingresos[2])]
+	if run.limpieza_lograda:
+		_lbl_fin_detalle.text += tr("\nLimpieza: %.1f s · Total con entregas: %.1f s") % [run.tiempo_limpieza, run.tiempo_jugado + run.tiempo_retirada]
+		_lbl_fin_detalle.text += "\n" + tr("Se agotó todo lo comestible dentro del territorio.")
+		if run.limpieza_registrada:
+			_lbl_fin_detalle.text += "\n" + (tr("Récord de limpieza para esta dieta y alcance") if run.nuevo_record_limpieza else tr("Marca de limpieza guardada en el archivo"))
+	else:
+		_lbl_fin_detalle.text += tr("\nTiempo de expedición: %.1f s") % (run.tiempo_jugado + run.tiempo_retirada)
 	var record: Dictionary = Juego.records_destino.get(Juego.lugar_actual, {})
 	_lbl_fin_detalle.text += tr("\nGran objetivo: %.0f%% · mejor intento %.0f%%") % [run.progreso_objetivo * 100, float(record.get("objetivo", 0)) * 100]
 	if run.cargas_pendientes > 0:
@@ -363,11 +471,14 @@ func _crear_hormigas(raiz: Control) -> void:
 
 
 func _crear_avisos(raiz: Control) -> void:
-	_lbl_aviso = Estilo.etiqueta("", 36, Estilo.ACENTO, 8)
+	_lbl_aviso = Estilo.etiqueta("", 18, Estilo.ACENTO)
 	_lbl_aviso.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_lbl_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_lbl_aviso.custom_minimum_size = Vector2(800, 0)
-	_lbl_aviso.position = Vector2(-400, 130)
+	_lbl_aviso.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lbl_aviso.custom_minimum_size = Vector2(620, 0)
+	_lbl_aviso.size.x = 620
+	_lbl_aviso.add_theme_stylebox_override("normal", Estilo.caja(Color(0.10, 0.14, 0.12, 0.94), 10, Color(0.7, 0.7, 0.5, 0.25), 1, 14))
+	_lbl_aviso.position = Vector2(-310, 116)
 	_lbl_aviso.visible = false
 	raiz.add_child(_lbl_aviso)
 
@@ -462,9 +573,9 @@ func _crear_panel_fin(raiz: Control) -> void:
 	columna.add_theme_constant_override("separation", 10)
 	columna.custom_minimum_size = Vector2(420, 0)
 	_panel_fin.add_child(columna)
-	var titulo := Estilo.etiqueta(tr("¡Se acabó el tiempo!"), 30, Estilo.TEXTO, 4)
-	titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	columna.add_child(titulo)
+	_lbl_fin_titulo = Estilo.etiqueta(tr("¡Se acabó el tiempo!"), 30, Estilo.TEXTO, 4)
+	_lbl_fin_titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	columna.add_child(_lbl_fin_titulo)
 	_lbl_fin_record = Estilo.etiqueta(tr("¡NUEVO RÉCORD!"), 18, Estilo.VERDE, 3)
 	_lbl_fin_record.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(_lbl_fin_record)
@@ -482,26 +593,38 @@ func _crear_panel_fin(raiz: Control) -> void:
 	_boton_tienda = Estilo.boton(tr("Mejorar el hormiguero") + "  ▸", 22, Color(0.45, 0.3, 0.12), Estilo.ACENTO)
 	_boton_tienda.pressed.connect(run.ir_a_tienda)
 	columna.add_child(_boton_tienda)
+	var archivo := Estilo.boton(tr("Archivo de expediciones"), 15, Color("293329"), Color("71865b"))
+	archivo.pressed.connect(_abrir_archivo)
+	columna.add_child(archivo)
+
+
+func _abrir_archivo() -> void:
+	if is_instance_valid(_ventana):
+		return
+	_ventana = PanelArchivo.new()
+	_ventana.cerrada.connect(func() -> void:
+		_ventana = null
+		_boton_tienda.grab_focus())
+	get_child(0).add_child(_ventana)
 
 func _crear_progresion(raiz: Control) -> void:
-	_lbl_etapa = Estilo.etiqueta("", 13, Color("d4ccaa"), 3)
-	_lbl_etapa.position = Vector2(20, 274)
-	_lbl_etapa.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	raiz.add_child(_lbl_etapa)
-	_lbl_objetivo = Estilo.etiqueta("", 13, Estilo.TEXTO, 3)
-	_lbl_objetivo.position = Vector2(20, 350)
-	_lbl_objetivo.size.x = 430
-	_lbl_objetivo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_lbl_objetivo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	raiz.add_child(_lbl_objetivo)
+	_columna_progresion = VBoxContainer.new()
+	_columna_progresion.position = Vector2(20, 250)
+	_columna_progresion.size.x = 300
+	_columna_progresion.custom_minimum_size.x = 300
+	_columna_progresion.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_columna_progresion.add_theme_constant_override("separation", 7)
+	raiz.add_child(_columna_progresion)
 	_lbl_lugar = Estilo.etiqueta("", 14, Estilo.TEXTO, 3)
-	_lbl_lugar.position = Vector2(20, 250)
-	raiz.add_child(_lbl_lugar)
+	_columna_progresion.add_child(_lbl_lugar)
+	_lbl_etapa = Estilo.etiqueta("", 13, Color("d4ccaa"), 3)
+	_columna_progresion.add_child(_lbl_etapa)
 	_lbl_meta = Estilo.etiqueta("", 12, Color("c4cfa0"), 3)
-	_lbl_meta.position = Vector2(20, 299)
-	_lbl_meta.size.x = 400
 	_lbl_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	raiz.add_child(_lbl_meta)
+	_columna_progresion.add_child(_lbl_meta)
+	_lbl_objetivo = Estilo.etiqueta("", 13, Estilo.TEXTO, 3)
+	_lbl_objetivo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_columna_progresion.add_child(_lbl_objetivo)
 
 func _crear_prioridades(raiz: Control) -> void:
 	var panel := PanelContainer.new()
@@ -577,15 +700,42 @@ func _crear_proxima_meta(raiz: Control) -> void:
 	_barra_meta.add_theme_stylebox_override("fill", _relleno_meta)
 	columna.add_child(_barra_meta)
 	_lbl_meta_progreso = Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
+	_lbl_meta_progreso.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lbl_meta_progreso.custom_minimum_size.x = 276
 	columna.add_child(_lbl_meta_progreso)
+	_boton_paso = Estilo.boton(tr("Ver en el mapa"), 12, Color("293629"), Color("71865b"))
+	_boton_paso.custom_minimum_size.y = 30
+	_boton_paso.visible = false
+	_boton_paso.pressed.connect(_ver_paso)
+	columna.add_child(_boton_paso)
 	_actualizar_meta()
+
+
+func _ver_paso() -> void:
+	if not is_instance_valid(_objetivo_paso) or not _objetivo_paso.disponible() or not run.activa:
+		return
+	run.feromonas.soltar()
+	run.camara.arrastrando = false
+	run.camara.mirar(_objetivo_paso.position, _objetivo_paso.rect_mundo.size)
 
 
 func _actualizar_meta() -> void:
 	var meta := Juego.proxima_meta()
 	var practica := run.objetivo_practica
-	if is_instance_valid(practica) and not practica.muerta and not Juego.hitos.has("primer_derrumbe"):
+	_objetivo_paso = null
+	# La geometría se consulta una sola vez, después de generar el escenario.
+	if run.activa and not _silla_buscada:
+		_silla_buscada = true
+		for parte in run.comidas.partes:
+			if parte.pieza.get("perfil", "") == "silla_inicial":
+				_silla_inicial = parte
+				break
+	if is_instance_valid(practica) and not practica.muerta and Juego.stat("materiales") < 1 and not Juego.hitos.has("primer_derrumbe"):
 		meta = {"tipo": "practica", "nombre": tr("Desarmá el banquito de cartón")}
+		_objetivo_paso = practica
+	if is_instance_valid(_silla_inicial) and _silla_inicial.disponible() and not Juego.hitos.has("primera_silla"):
+		meta = {"tipo": "madera", "nombre": tr("Tu primera silla de madera")}
+		_objetivo_paso = _silla_inicial
 	var actual := 0.0
 	var objetivo := 1.0
 	var texto := ""
@@ -594,6 +744,10 @@ func _actualizar_meta() -> void:
 			actual = practica.vida_max - practica.vida
 			objetivo = practica.vida_max
 			texto = tr("Mantené clic sobre el banquito · no requiere mejoras")
+		"madera":
+			actual = _silla_inicial.vida_max - _silla_inicial.vida
+			objetivo = _silla_inicial.vida_max
+			texto = tr("Ya comen madera: llamalas sobre la silla y mirá cómo la desarman.")
 		"migas":
 			actual = meta.actual
 			objetivo = maxf(1.0, meta.objetivo)
@@ -613,13 +767,15 @@ func _actualizar_meta() -> void:
 		_:
 			actual = 1.0
 			texto = meta.detalle
-	_lbl_meta_titulo.text = tr("GRAN OBJETIVO") if meta.tipo == "objetivo" else (tr("SIGUIENTE PASO") if meta.tipo == "viaje" else tr("PRÓXIMO DESBLOQUEO"))
+	_lbl_meta_titulo.text = tr("GRAN OBJETIVO") if meta.tipo == "objetivo" else (tr("SIGUIENTE PASO") if meta.tipo in ["viaje", "madera", "practica"] else tr("PRÓXIMO DESBLOQUEO"))
 	_lbl_meta_nombre.text = meta.nombre
+	_boton_paso.visible = is_instance_valid(_objetivo_paso) and run.activa and _objetivo_paso.disponible()
 	_barra_meta.value = clampf(actual / objetivo, 0.0, 1.0) * 100.0
 	var lista: bool = meta.tipo == "migas" and actual >= objetivo
 	if lista:
 		texto = tr("¡Ya te alcanza! Compralo en el taller al terminar")
 	_lbl_meta_progreso.text = texto
+	_columna_progresion.position.y = _panel_meta.position.y + _panel_meta.get_combined_minimum_size().y + 14
 	_relleno_meta.bg_color = Estilo.VERDE if lista else Estilo.ACENTO
 	if lista and not _meta_lista:
 		Sonido.tocar("comprar", 1.2, 0.0)
@@ -650,9 +806,12 @@ func _anunciar_novedades() -> void:
 			Juego.marcar_visto(id)
 	if nuevas.is_empty():
 		return
-	await get_tree().create_timer(2.6).timeout  # después del aviso de territorio
-	if is_inside_tree():
-		mostrar_aviso(tr("Nuevo · %s") % "\n".join(nuevas))
+	await get_tree().create_timer(2.6, false).timeout  # después del aviso de territorio
+	for novedad in nuevas:
+		if not is_inside_tree():
+			return
+		mostrar_aviso(tr("Nuevo · %s") % novedad)
+		await get_tree().create_timer(3.0, false).timeout
 
 
 func _cambiar_prioridad(id: String) -> void:
@@ -689,8 +848,10 @@ func pausado() -> bool:
 
 
 func pausar() -> void:
-	if not is_node_ready() or not run.activa or pausado():
+	if not is_inside_tree() or not is_node_ready() or not run.activa or pausado():
 		return
+	run.feromonas.soltar()
+	run.camara.arrastrando = false
 	get_tree().paused = true
 	Sonido.tocar("clic", 0.7)
 	_menu_pausa()
@@ -753,7 +914,9 @@ func _terminar_desde_pausa() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and Ajustes.pausar_sin_foco and is_inside_tree():
-		pausar()
+		# Godot bloquea los hijos mientras propaga esta notificación. Abrir
+		# la ventana al terminar ese recorrido evita una pausa sin controles.
+		pausar.call_deferred()
 
 
 func _miga_llego(miga: Control) -> void:

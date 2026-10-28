@@ -17,6 +17,7 @@ var _tween: Tween
 var _evoluciones: Dictionary = {}
 var _lbl_evoluciones: Label
 var _detalle_evolucion: Label
+var _equipo: Label
 
 
 func _ready() -> void:
@@ -146,6 +147,16 @@ func _crear_ficha() -> Control:
 	_habilidad = Estilo.etiqueta("", 13)
 	_habilidad.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ficha.add_child(_habilidad)
+	var equipo := PanelContainer.new()
+	equipo.add_theme_stylebox_override("panel", Estilo.caja(Color("293328"), 10, Color("53634a"), 1, 12))
+	ficha.add_child(equipo)
+	var trabajo := VBoxContainer.new()
+	trabajo.add_theme_constant_override("separation", 6)
+	equipo.add_child(trabajo)
+	trabajo.add_child(Estilo.etiqueta(tr("TRABAJO EN EQUIPO"), 11, Estilo.VERDE))
+	_equipo = Estilo.etiqueta("", 13, Estilo.TEXTO)
+	_equipo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	trabajo.add_child(_equipo)
 	var herencia := Estilo.etiqueta(tr("Estos valores incluyen tus mejoras del hormiguero. Las obreras varían levemente su velocidad al nacer."), 11, Estilo.TEXTO_SUAVE)
 	herencia.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ficha.add_child(herencia)
@@ -210,6 +221,7 @@ func _refrescar() -> void:
 	_descripcion.text = tr(c.descripcion)
 	_habilidad.text = tr(c.habilidad)
 	_habilidad.label_settings.font_color = c.color.lightened(0.2)
+	_equipo.text = consejo_equipo(seleccion)
 	var stats := Juego.stats_casta(seleccion)
 	_stats.velocidad.text = tr("Velocidad · %.0f px/s") % stats.velocidad
 	_stats.dano.text = tr("Mordida · %.2f daño") % stats.dano
@@ -237,6 +249,19 @@ func _refrescar() -> void:
 		fila.boton.add_theme_stylebox_override("hover", Estilo.caja(Color(color, 0.15), 12, color, 1, 0))
 		fila.boton.add_theme_stylebox_override("pressed", Estilo.caja(Color(color, 0.22), 12, color, 2, 0))
 		fila.boton.add_theme_stylebox_override("focus", Estilo.caja(Color.TRANSPARENT, 12, color, 2, 0))
+
+
+## Explica conductas existentes; las parejas no dan multiplicadores ocultos.
+func consejo_equipo(id: String) -> String:
+	match id:
+		"carpintera": return tr("Carpinteras + cargadoras: unas desprenden madera; las otras retiran los restos pesados. Corte aserrado permite seguir cortando mientras el resto transporta.")
+		"cargadora": return tr("Cargadoras + carpinteras o demoledoras: las especialistas abren piezas y ellas priorizan los fragmentos. Más capacidad rinde mejor si la vuelta al nido es corta.")
+		"roja": return tr("Rojas + demoledoras: la corrosión ablanda una pieza para todas las que la muerden. Una roja puede apoyar a varias trabajadoras sobre el mismo material resistente.")
+		"demoledora": return tr("Demoledoras + rojas: concentran el trabajo sobre materiales duros. Las cargadoras ayudan a retirar los restos que dejan al abrir muros y soportes.")
+		"veloz": return tr("Veloces + entradas secundarias: menos tiempo viajando para recoger comida dispersa. Su mordida débil no es la mejor opción para demoler muebles.")
+		"voladora": return tr("Voladoras + olfato: encuentran recursos lejos y cruzan muebles para entregar cargas livianas. Las paredes siguen requiriendo una puerta o un paso abierto.")
+		"reina": return tr("Reinas + tiempo: las expediciones largas dan margen para criar más miniobreras. La colonia tiene un límite compartido de 500 hormigas.")
+	return ""
 
 
 func _reclutar() -> void:

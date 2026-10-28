@@ -52,6 +52,7 @@ func _ready() -> void:
 	run.queue_free()
 	await get_tree().process_frame
 	await probar_clic_real()
+	await probar_agotamiento()
 	await probar_inaccesible()
 	await probar_presupuesto()
 	print("Feromonas bajo carga: %d verificaciones; %d fallas." % [total, fallas])
@@ -139,6 +140,51 @@ func probar_inaccesible() -> void:
 		run.cocina.procesar_cambios()
 		h._process(1.0 / 60)
 	verificar(h.position.distance_to(centro) < 2, "abrir un paso invalida el fallo anterior y permite llegar sin soltar el llamado")
+	run.queue_free()
+	await get_tree().process_frame
+
+func probar_agotamiento() -> void:
+	Juego.reiniciar_estado()
+	var run := crear_run()
+	run.comidas._indice.clear()
+	var datos: Dictionary = Juego.comidas[0].duplicate()
+	datos.vida = 100
+	var punto := Vector2(-90, -130)
+	run.comidas._crear(datos, punto, 91)
+	var primera: Comida = run.comidas.lista.back()
+	run.comidas._crear(datos, punto + Vector2(34, 0), 92)
+	var siguiente: Comida = run.comidas.lista.back()
+	var grupo: Array[Hormiga] = []
+	for i in 8:
+		var h := run.colonia._nacer()
+		h.position = punto + Vector2(-i, 0)
+		grupo.append(h)
+	run.feromonas.mantener_en(punto)
+	for h in grupo:
+		h._pensar()
+	verificar(primera.trabajadoras == 8, "la orden reúne a las cercanas sobre el objetivo indicado")
+	primera.morder(primera.vida)
+	run.feromonas._actualizar_cercanas()
+	for h in grupo:
+		h._pensar()
+	verificar(primera.trabajadoras == 0 and siguiente.trabajadoras > 0 and siguiente.trabajadoras <= siguiente.cupos_trabajo(), "al agotarse la orden trabajan en migas cercanas respetando cupos en vez de esperar inmóviles")
+	var retoman := true
+	for h in grupo:
+		h._pensar()
+		retoman = retoman and (h.comida == null or h.comida == siguiente)
+	verificar(retoman and siguiente.trabajadoras > 0, "el trabajo cercano se conserva entre muestreos del llamado")
+	run.feromonas.soltar()
+	var libres := true
+	for h in grupo:
+		h._pensar()
+		libres = libres and h.estado != Hormiga.Estado.SIGUIENDO
+	verificar(libres and siguiente.trabajadoras > 0, "soltar mantiene el trabajo útil y libera al resto para explorar")
+	var agotadas := true
+	siguiente.morder(siguiente.vida)
+	for h in grupo:
+		h._process(0.2)
+		agotadas = agotadas and h.comida == null and h.estado == Hormiga.Estado.EXPLORANDO
+	verificar(agotadas and siguiente.trabajadoras == 0, "al acabarse también el segundo alimento toda la reserva se libera sin oscilación")
 	run.queue_free()
 	await get_tree().process_frame
 

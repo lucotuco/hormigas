@@ -28,7 +28,10 @@ El juego arranca en el **menú principal** (Jugar o Continuar, Estadísticas,
 Configuración y Salir). La configuración (idioma, sonido, volumen, pantalla
 completa, temblor de cámara, pausar al cambiar de ventana y borrar la partida)
 se guarda aparte de la partida, en `user://ajustes.cfg`. La expedición se pausa
-sola cuando la ventana pierde el foco.
+sola cuando la ventana pierde el foco. Al abrir una captura de pantalla o
+cambiar de aplicación se sueltan las feromonas y el arrastre de cámara;
+al volver, **Seguir** reanuda la misma expedición. Esta pausa se puede
+desactivar con **Pausar al cambiar de ventana**.
 
 ### Atajos de desarrollo (solo al correr desde el editor)
 
@@ -91,17 +94,49 @@ res://
 
 ## Casa y hormiguero
 
-La tienda se recorre eligiendo una de las seis cámaras del hormiguero. Cada
-cámara muestra sus mejoras, requisitos y la estadística exacta antes y después
-de comprar. Los botones **×1, ×10 y Máx** se comparten entre mejoras y castas.
+La resolución base del juego es **1920 × 1080**; las ventanas menores escalan
+el lienzo, no cambian la resolución de diseño. El hormiguero de la tienda queda
+visible en sus cuatro secciones: **Mejoras, Castas, Viajes y Jalea real**, que
+son cámaras conectadas dentro del mismo corte de tierra. Conservan sus requisitos
+de descubrimiento. El árbol ocupa toda la pantalla: seis ramas se subdividen en
+31 cámaras de mejoras, conectadas según sus requisitos reales. Las compras
+agrandan cámaras, ensanchan túneles y suman huevos, reservas y herramientas.
+Al elegir una mejora aparece una ficha flotante cerrable, con requisitos y la
+estadística exacta antes y después de comprar. Las otras secciones se abren
+sobre el mismo hormiguero y permiten volver al árbol.
+Los botones **×1, ×10 y Máx** se comparten entre mejoras y castas.
 ×10 compra el lote completo (o los niveles restantes hasta el límite); Máx
 calcula cuántos podés pagar. El precio suma el costo creciente de cada nivel,
 se cobra una sola vez y la vista previa muestra el resultado del lote entero.
 Cada rama señala cuántas mejoras podés comprar en el modo seleccionado.
-Las cámaras crecen y se iluminan con su desarrollo. El sonido se
+La cámara seleccionada se ilumina y cada rama muestra su desarrollo.
+Veintidós hormigas decorativas recorren los túneles compartidos: el fondo es
+estático y sólo las siluetas se actualizan a 30 Hz, sin IA ni navegación de la run.
+El sonido se
 puede silenciar y regular desde el pie de la tienda; `M` sigue funcionando.
 
 La casa tiene cocina, comedor, living, pasillo, dormitorio, estudio y baño/lavadero.
+Los seis planos tienen más objetos útiles para devorar, sin agrandar zonas vacías:
+55 muebles en casa, 49 en restaurante, 29 en museo, 33 en Buenos Aires, 39 en
+Roma y 37 en París. Alrededor del Obelisco hay colectivo, taxi, kioscos y carteles
+de la avenida; Roma suma columnas, ánforas y fuente; París, puestos de libros,
+cafés, faroles y jardines. Son escenarios estilizados, no recreaciones geográficas.
+
+La estética usa superficies de contraste bajo, sombras de apoyo y acentos
+acotados para recompensas, peligro y feromonas. Los avisos aparecen de a uno
+en tarjetas compactas; el estado del llamado queda junto a los controles,
+fuera del objeto que se está devorando. La corrosión marca la rotura sin teñir
+todo el mueble. Las juntas del piso se filtran al alejar la cámara y la textura
+sólo aporta relieve suave, evitando el damero de colores del atlas original.
+
+Obelisco, torre, arcos, plantas, sillas e inodoros tienen perfiles de material
+ajustados a su dibujo. Los márgenes transparentes ya no bloquean el camino ni
+reciben mordidas; los vanos grandes se pueden atravesar. Esos perfiles se
+preparan una vez y se recortan al destruir secciones. Se conservan la resistencia
+total, las recompensas y los cuatro pisos de la torre. La orientación de las
+hormigas apunta al material cercano y se recalcula sólo al cambiar de contacto
+o romperse esa pieza.
+
 Mesadas, heladera, cocina, mesas con sillas, sillón, cama, escritorio y sanitarios
 dan identidad a cada ambiente. Paredes y puertas organizan los recorridos.
 `mundo/plano_casa.gd` centraliza la geometría que comparten dibujo, navegación
@@ -207,7 +242,22 @@ El cierre se adelanta si ya entregaron todas. Lo que no llega a tiempo se
 informa como carga pendiente y no se cobra. Eiffel extiende el plazo a 10 s.
 El resumen muestra ingresos por alimentos/muebles/estructuras, migas por
 segundo (incluye la retirada) y porcentaje del gran objetivo. Los mejores
-intentos por destino persisten al fundar y se guardan en partidas versión 6.
+intentos por destino persisten al fundar y se guardan en partidas versión 7.
+
+Si se devora **todo lo disponible para la dieta y el territorio actuales**, la
+expedición termina anticipadamente y pasa a la misma retirada. El resumen
+distingue **Zona despejada** de **Mapa despejado**: la segunda exige que tampoco
+queden materiales bloqueados ni recursos fuera del alcance. El tiempo de limpieza
+fecha el último recurso relevante; la entrega final aparece por separado.
+No se cuentan pausas ni se cobra carga que no llegó. Los fragmentos, derrumbes,
+tesoros pendientes y el botín recuperable de amenazas impiden cerrar antes de tiempo.
+
+El **Archivo de expediciones**, accesible desde Estadísticas y el resultado,
+conserva las últimas 128 limpiezas y hasta 1024 marcas por categoría. Sólo compara
+la misma dieta, alcance y versión del mapa; las mejoras pueden ser distintas.
+Se conserva al fundar y permite exportar un JSON independiente de la partida.
+Las partidas viejas cargan sin inventar récords. El contenido ampliado se identifica
+como versión de mapa 2, para no compararlo con planos anteriores.
 
 Los depósitos próximos se agrupan en ventanas de 0,35 s; el total económico
 no se limita. El piso tiene menos contraste, parte de la comida forma grupos
@@ -252,8 +302,11 @@ más la raíz cuarta de (migas juntadas en la colonia / 100.000). La jalea se ga
 las dietas aprendidas, conservar migas o castas), poder (daño, migas, obreras,
 tiempo) y reglas nuevas (hallazgos compartidos, más niveles de tope, corona doble).
 Toda la jalea ganada en la historia da además +3% de daño y migas por punto,
-aunque se gaste. Se conservan destinos, hitos y el árbol. Cada gran objetivo
-paga sus coronas una vez por colonia.
+aunque se gaste. Se conservan los destinos visitados, sus adaptaciones y topes,
+los hitos, el árbol y el archivo de tiempos. **La colonia nueva vuelve a la casa**
+y debe reconquistar cada gran objetivo para abrir el viaje siguiente; haber
+visitado un destino no permite saltarse ese recorrido. Cada gran objetivo paga
+sus coronas una vez por colonia.
 
 Al fundar se elige un **decreto de la reina** para la colonia nueva
 (`datos/decretos.csv`): numerosa, guerrera, recolectora o exploradora, cada uno
@@ -297,9 +350,11 @@ un monumento.
 - Niebla en una superficie, textos con un tamaño de fuente fijo y efectos limitados.
   Lo que está fuera de pantalla no vuelve a dibujar la animación de sus hormigas.
 - El juego normal está limitado a 60 FPS. Un solo atlas compartido de unos
-  33 MiB RGBA8 sirve para los seis destinos y tres etapas visuales; sólo el
+  34 MiB RGBA8 sirve para los seis destinos y tres etapas visuales; sólo el
   escenario activo tiene nodos. Máximos: 64 montones, 600 partículas, 24 ondas
-  y 40 textos. No se generan efectos visuales lejos de cámara.
+  y 40 textos almacenados (como máximo 10 visibles, 6 al alejar). No se generan
+  efectos visuales lejos de cámara. Las cuatro hojas de arte preiluminado son
+  recursos fijos compartidos, no una textura ni un emisor por instancia.
 
 El benchmark gráfico usa el renderizador real, la casa completa y grupos de 5,
 150 y 500 hormigas; añade una fase de demolición con 500. No guarda la partida;
@@ -396,6 +451,56 @@ de los muebles que reemplazan; césped y arena tienen pisos propios.
 La comida respeta los ambientes previstos incluso cuando se agrupa junto a
 muebles. El detalle se dibuja una sola vez en un atlas compartido; no agrega
 física ni luces dinámicas. Ver `tests/RENDIMIENTO.md` para mediciones y capturas.
+
+La casa usa ahora dibujo cenital por código: madera mate, cerámica marfil,
+tapizados apagados, contornos suaves y sombras cortas hacia abajo/derecha.
+Comida, repostería y textiles comparten esa paleta; los accesorios se eligen
+por ambiente en lugar de repetir platos y floreros en todas las mesas. Todo
+se hornea una vez en el atlas. Se conservan los perfiles transitables y las
+secciones de destrucción. El Obelisco, los arcos y Eiffel conservan sus imágenes
+preiluminadas; los materiales del suelo mantienen un muestreo con mipmaps.
+Las fuentes originales, incluso las sustituidas, están documentadas en
+`arte/realista/PROCEDENCIA.md`.
+
+Los premios se agrupan por distancia en pantalla y no se dibujan unos encima
+de otros; al alejar se omiten los nombres repetidos de alimentos. La señal de
+eventos fuera de cámara identifica la amenaza o miga dorada, explica su efecto
+y ofrece **Ver**: un clic encuadra el evento sin resolverlo ni dar órdenes a la
+colonia. Sólo esas tarjetas capturan el mouse; el resto deja pasar el zoom y
+las feromonas. Se actualizan a 10 Hz y reservan la barra inferior.
+
+`tests/revision_estetica.tscn` recorre los seis mapas y los ambientes de la casa.
+`tests/revision_realismo.tscn` comprueba con render real los indicadores a
+1280×720 y 1000×620, los límites de etiquetas y el recorte de una mesa ilustrada.
+`tests/revision_estilo_casa.tscn` captura la casa y cinco ambientes en Full HD.
+`tests/revision_claridad.tscn` verifica el clic real de los indicadores, la
+separación del tutorial y el modal de fundación al redimensionar.
+
+### Criterios para seguir creciendo
+
+La promesa es visible: de migas a muebles y de muebles a monumentos. Una compra
+debe cambiar lo que hace y muestra la colonia, no sólo un número. Se priorizan
+autonomía de las hormigas, respuesta a las órdenes, primera media hora y
+coherencia artística antes de sumar monedas o destinos.
+
+- La primera silla de madera cercana al nido usa el perfil `silla_inicial`
+  (140 de resistencia / 420 de valor, en `stats_base.csv`). Requiere madera,
+  pierde secciones y se transporta normalmente. No se facilita el resto de la
+  campaña. El HUD permite encontrarla al comprar la dieta; el cartón del
+  tutorial ya no cuenta como una silla de madera para los hitos.
+- Las fichas de castas explican equipos y limitaciones reales; no agregan un
+  multiplicador por juntar dos clases. Las evoluciones siguen siendo dos y
+  se pueden cambiar entre expediciones.
+- La confirmación de fundar muestra obreras, especialistas, dieta, duración,
+  mordida, multiplicador y reservas del arranque real, recalculados al elegir
+  decreto. Usa sólo mejoras permanentes compradas, sin gastar la jalea futura
+  ni modificar el guardado. Prueba: `tests/prueba_claridad.tscn`.
+
+Antes de extender la campaña: observar 5–10 personas nuevas sin guiarlas.
+Registrar cuándo entienden el llamado, cuándo desmontan madera, qué compra
+les cambia la experiencia, si comprenden el reinicio y dónde dejarían de jugar.
+Además probar sesiones largas, capturas/cambio de ventana y hardware integrado.
+Los bots y suites comprueban reglas; no validan diversión ni duración humana.
 
 El balance se edita en CSV que pueden abrir en Google Sheets o Excel.
 Los intervalos de las habilidades especiales están junto a su implementación.
@@ -647,6 +752,12 @@ las evoluciones en 1280×720 y 1000×620 y las fases de los grandes objetivos.
 `tests/prueba_dispersion.tscn` reproduce 40 s con 500 hormigas sin feromonas,
 verifica el cambio de objetivos agotados, la exploración y las reservas. Con
 renderer real guarda capturas a los 10 y 40 s en `.godot/qa/dispersion_*.png`.
+
+`tests/prueba_rebirth_archivo.tscn`, `prueba_limpieza.tscn` y
+`prueba_poblacion.tscn` cubren el reinicio de viajes, archivo/JSON, cierre sin
+recursos pendientes y circulación por los mapas ampliados. `revision_nido.tscn`,
+`revision_archivo.tscn` y `revision_poblacion.tscn` capturan el árbol, los tiempos
+y los seis destinos con el renderer real, sin tocar la partida del jugador.
 
 ## Exportar
 

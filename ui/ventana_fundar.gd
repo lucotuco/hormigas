@@ -8,11 +8,23 @@ signal fundada
 var elegido := ""
 var _tarjetas: Dictionary = {}
 var _boton_fundar: Button
+var _lbl_inicio: Label
+var _scroll: ScrollContainer
 
 
 func _ready() -> void:
 	titulo(tr("Fundar una nueva colonia"))
 	ancho(720)
+	# La confirmación y el cierre quedan accesibles incluso en una ventana baja.
+	var scroll := ScrollContainer.new()
+	_scroll = scroll
+	scroll.custom_minimum_size = Vector2(660, clampf(get_viewport_rect().size.y - 240, 280, 680))
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	contenido.add_child(scroll)
+	var cuerpo := VBoxContainer.new()
+	cuerpo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cuerpo.add_theme_constant_override("separation", 12)
+	scroll.add_child(cuerpo)
 	var detalle := Juego.detalle_fundar()
 	var lineas := PackedStringArray()
 	lineas.append(tr("Ganás %d de jalea real (bonus pasivo: +%d%% → +%d%%).") % [detalle.total, roundi(Juego.legado * Juego.BONUS_LEGADO * 100), roundi((Juego.legado + detalle.total) * Juego.BONUS_LEGADO * 100)])
@@ -20,23 +32,37 @@ func _ready() -> void:
 	lineas.append(tr("Se reinician: migas%s, mejoras y castas%s.") % [
 		tr(" (conservás el %d%%)") % conserva if conserva > 0 else "",
 		tr(" (conservás el %d%%)") % (25 * Juego.nivel_jalea("linaje")) if Juego.nivel_jalea("linaje") > 0 else ""])
-	lineas.append(tr("Se conservan: destinos, hitos, el árbol de la reina y lo descubierto."))
+	lineas.append(tr("Volvés a la casa. Los viajes se desbloquean otra vez al conquistar cada destino."))
+	lineas.append(tr("Se conservan: destinos visitados, hitos, el árbol de la reina y lo descubierto."))
 	lineas.append(tr("Cada gran objetivo vuelve a dar sus coronas una vez."))
 	lineas.append(tr("También conservás adaptaciones de viaje, récords y evoluciones."))
 	lineas.append(Juego.oportunidades_jalea())
 	var texto := Estilo.etiqueta("\n".join(lineas), 15, Estilo.TEXTO)
 	texto.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	texto.custom_minimum_size.x = 660
-	contenido.add_child(texto)
-	contenido.add_child(Estilo.etiqueta(tr("EL DECRETO DE LA COLONIA NUEVA"), 12, Color("c9b779")))
+	cuerpo.add_child(texto)
+	var inicio := PanelContainer.new()
+	inicio.add_theme_stylebox_override("panel", Estilo.caja(Color("2b3528"), 12, Color("718459"), 1, 14))
+	cuerpo.add_child(inicio)
+	var columna := VBoxContainer.new()
+	columna.add_theme_constant_override("separation", 6)
+	inicio.add_child(columna)
+	columna.add_child(Estilo.etiqueta(tr("ASÍ NACE TU PRÓXIMA COLONIA"), 12, Estilo.VERDE))
+	_lbl_inicio = Estilo.etiqueta("", 15)
+	_lbl_inicio.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	columna.add_child(_lbl_inicio)
+	var aclaracion := Estilo.etiqueta(tr("Con tus mejoras permanentes actuales y el decreto elegido, antes de gastar la nueva jalea."), 12, Estilo.TEXTO_SUAVE)
+	aclaracion.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	columna.add_child(aclaracion)
+	cuerpo.add_child(Estilo.etiqueta(tr("EL DECRETO DE LA COLONIA NUEVA"), 12, Color("c9b779")))
 	var ayuda := Estilo.etiqueta(tr("Rige toda la colonia, hasta la próxima fundación. Cada uno sirve para otra cosa."), 13, Estilo.TEXTO_SUAVE)
 	ayuda.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	contenido.add_child(ayuda)
+	cuerpo.add_child(ayuda)
 	var grilla := GridContainer.new()
 	grilla.columns = 2
 	grilla.add_theme_constant_override("h_separation", 10)
 	grilla.add_theme_constant_override("v_separation", 10)
-	contenido.add_child(grilla)
+	cuerpo.add_child(grilla)
 	for d in Juego.decretos:
 		grilla.add_child(_tarjeta(d))
 	var botones := HBoxContainer.new()
@@ -51,6 +77,11 @@ func _ready() -> void:
 	botones.add_child(_boton_fundar)
 	# Por defecto, el mismo decreto que la colonia actual (o el primero).
 	elegir(Juego.decreto if Juego.decretos_por_id.has(Juego.decreto) else Juego.decretos[0].id)
+	get_viewport().size_changed.connect(_ajustar_alto)
+
+
+func _ajustar_alto() -> void:
+	_scroll.custom_minimum_size.y = clampf(get_viewport_rect().size.y - 240, 280, 680)
 
 
 func _tarjeta(d: Dictionary) -> Control:
@@ -84,6 +115,14 @@ func elegir(id: String) -> void:
 		_tarjetas[clave].add_theme_stylebox_override("normal", Estilo.caja(fondo, 12, Color(color, 0.9 if activo else 0.15), 2 if activo else 1, 0))
 		_tarjetas[clave].add_theme_stylebox_override("hover", Estilo.caja(fondo.lightened(0.05), 12, color, 1, 0))
 		_tarjetas[clave].add_theme_stylebox_override("pressed", Estilo.caja(fondo, 12, color, 2, 0))
+	var previa := Juego.vista_previa_fundar(id)
+	var especialistas := 0
+	for cantidad in previa.castas.values():
+		especialistas += int(cantidad)
+	_lbl_inicio.text = tr("%d obreras · %d especialistas · %d s por expedición\nDieta inicial: %s\nMordida: %s · Migas: ×%.2f\nReservas: %s migas · Jalea disponible: %d") % [
+		int(previa.stats.hormigas_iniciales), especialistas, int(previa.stats.duracion_run),
+		tr(MaterialesCasa.NIVELES[clampi(int(previa.stats.materiales), 0, 3)]),
+		Juego.formatear_corto(previa.stats.dano), previa.stats.multiplicador_migas, Juego.formatear_corto(previa.migas), previa.jalea]
 
 
 func fundar() -> void:

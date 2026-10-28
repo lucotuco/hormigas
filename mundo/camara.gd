@@ -132,7 +132,7 @@ func mirar(centro: Vector2, tamano: Vector2) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+	if what in [NOTIFICATION_WM_WINDOW_FOCUS_OUT, NOTIFICATION_APPLICATION_FOCUS_OUT]:
 		arrastrando = false
 
 

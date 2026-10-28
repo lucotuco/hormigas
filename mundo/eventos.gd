@@ -1,5 +1,6 @@
 class_name Eventos
 extends Node2D
+signal botin_terminado
 ## Decide cuándo aparece la amenaza de cada destino y la miga dorada, recibe
 ## los clics (antes que la comida) y reparte los premios.
 ##
@@ -163,3 +164,5 @@ func premiar(e: Evento) -> float:
 
 func _terminado(e: Evento) -> void:
 	activos.erase(e)
+	if e.botin > 0:
+		botin_terminado.emit()

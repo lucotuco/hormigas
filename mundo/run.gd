@@ -15,6 +15,7 @@ const BONUS_DESTRUIR := 0.25      # migas extra al destruir una comida (proporci
 const PROPORCION_PISOTON := 0.5   # el pisotón da la mitad de migas que una mordida de hormiga
 const ALCANCE_PISADA_AUTO := 400.0  # el pisotón automático busca comida a esta distancia del cursor
 const MAX_PISADAS_POR_CUADRO := 4
+const INTERVALO_LIMPIEZA := 0.5
 
 @onready var comidas: Comidas = $Comidas
 @onready var cocina: Cocina = $Cocina
@@ -63,6 +64,16 @@ var _reloj := 0.0
 var _carga_pisadas := 0.0
 var _ultimo_deposito := -100.0
 var _ultimo_tic := -1
+var limpieza_lograda := false
+var limpieza_completa := false
+var tiempo_limpieza := 0.0
+var nuevo_record_limpieza := false
+var limpieza_registrada := false
+var _hubo_objetivos := false
+var _reloj_limpieza := INTERVALO_LIMPIEZA
+var _retiro_completado := false
+var _colonia_operativa := false
+var _tiempo_fin_botin := 0.0
 
 
 func _ready() -> void:
@@ -80,6 +91,7 @@ func _ready() -> void:
 	radio_actual = radio_inicio
 
 	comidas.generar()
+	_hubo_objetivos = comidas.estado_limpieza(radio_actual).pendientes
 	reglas = ReglasDestino.new()
 	add_child(reglas)
 	reglas.run = self
@@ -110,6 +122,7 @@ func _ready() -> void:
 	eventos = Eventos.new()
 	add_child(eventos)
 	eventos.iniciar(self)
+	eventos.botin_terminado.connect(_registrar_fin_botin)
 	activa = true
 	hud._actualizar_meta()
 
@@ -132,6 +145,7 @@ func _process(delta: float) -> void:
 			for h in colonia.hormigas:
 				cargas_pendientes += h.carga
 			if cargas_pendientes <= 0 or retiro_restante <= 0:
+				_retiro_completado = true
 				_terminar()
 		return
 	if not activa:
@@ -141,6 +155,11 @@ func _process(delta: float) -> void:
 	_descanso_frenesi = maxf(0, _descanso_frenesi - delta)
 	_pisotones_automaticos(delta)
 	tiempo_restante -= delta
+	_reloj_limpieza -= delta
+	if _reloj_limpieza <= 0 or tiempo_restante <= 0:
+		_reloj_limpieza = INTERVALO_LIMPIEZA
+		if _comprobar_limpieza():
+			return
 	var segundos := int(ceil(tiempo_restante))
 	if segundos <= 5 and segundos != _ultimo_tic and segundos > 0:
 		_ultimo_tic = segundos
@@ -148,6 +167,37 @@ func _process(delta: float) -> void:
 	if tiempo_restante <= 0.0:
 		tiempo_restante = 0.0
 		_iniciar_retirada()
+
+
+func _comprobar_limpieza() -> bool:
+	if not activa or retirando or terminada:
+		return false
+	# No confundir la salida inicial o la expansión animada con un escenario
+	# sin trabajo. Tampoco retirar mientras una cadena puede producir restos.
+	_colonia_operativa = _colonia_operativa or colonia.cantidad() > 0
+	if colonia._por_salir > 0 or not _colonia_operativa or radio_actual < Juego.stat("radio_territorio") - 1:
+		return false
+	if is_instance_valid(reglas) and not reglas._pendientes.is_empty():
+		return false
+	for evento in eventos.activos:
+		if is_instance_valid(evento) and not evento.resuelto and evento.botin > 0:
+			return false # Todavía puede recuperarse el recurso que se llevó.
+	var estado := comidas.estado_limpieza(radio_actual)
+	if estado.pendientes:
+		_hubo_objetivos = true
+		return false
+	if not _hubo_objetivos:
+		return false
+	limpieza_lograda = true
+	limpieza_completa = estado.completa
+	tiempo_limpieza = maxf(0.001, minf(tiempo_jugado, maxf(comidas.ultimo_cambio, _tiempo_fin_botin)))
+	_iniciar_retirada()
+	return true
+
+
+func _registrar_fin_botin() -> void:
+	if activa:
+		_tiempo_fin_botin = tiempo_jugado
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -208,7 +258,7 @@ func _on_comida_destruida(comida: Comida) -> void:
 		reglas.parte_devorada(comida)
 		Juego.partes_destruidas_run += 1
 		hud.mostrar_aviso(tr("¡La colonia devoró: %s!") % comida.nombre)
-		if comida.pieza.tipo == "silla":
+		if comida.pieza.tipo == "silla" and not comida.pieza.get("practica", false):
 			_sillas_devoradas += 1
 			Juego.obtener_hito("primera_silla")
 			if _sillas_devoradas >= 4:
@@ -367,6 +417,15 @@ func _cerrar() -> void:
 	Juego.registrar_record(produccion_run, progreso_objetivo)
 	Juego.registrar_maximo("mayor_colonia", colonia.cantidad())
 	Juego.terminar_run()
+	if limpieza_lograda and _retiro_completado:
+		nuevo_record_limpieza = Juego.registrar_limpieza({
+			"destino": Juego.lugar_actual, "dieta": int(Juego.stat("materiales")),
+			"territorio": Juego.stat("radio_territorio"), "version_mapa": Mundos.VERSION_CONTENIDO,
+			"completa": limpieza_completa, "tiempo_limpieza": tiempo_limpieza,
+			"tiempo_total": tiempo_jugado + tiempo_retirada, "retirando": tiempo_retirada,
+			"migas": Juego.migas_run, "produccion": produccion_run, "pendiente": cargas_pendientes,
+		})
+		limpieza_registrada = true
 
 
 func salir_al_menu() -> void:

@@ -2,11 +2,11 @@ class_name MaterialesCasa
 extends RefCounted
 ## La geometría conserva su arte; estos datos definen qué se puede devorar y cuándo.
 const NIVELES := ["Comida del piso", "Madera y telas", "Materiales resistentes", "Paredes"]
-const MADERA := ["banco", "silla", "mesa", "mesa_comedor", "ratona", "escritorio", "mesita", "sofa", "sillon", "cama", "biblioteca", "ropero", "alacena", "aparador", "consola", "planta"]
-const NOMBRES := {"banco": "Banco de plaza", "silla": "Silla", "mesa": "Mesa de cocina", "mesa_comedor": "Mesa del comedor", "ratona": "Mesa ratona", "escritorio": "Escritorio", "mesita": "Mesa de luz", "sofa": "Sofá", "sillon": "Sillón", "cama": "Cama", "biblioteca": "Biblioteca", "ropero": "Ropero", "alacena": "Alacena", "aparador": "Aparador", "consola": "Consola", "planta": "Maceta", "pileta": "Pileta", "mesada": "Mesada", "cocina": "Cocina", "heladera": "Heladera", "television": "Televisor", "banera": "Bañera", "lavabo": "Lavabo", "inodoro": "Inodoro", "lavarropas": "Lavarropas", "pared": "Tramo de pared", "vitrina": "Vitrina", "escultura": "Escultura", "obelisco": "Obelisco", "arco": "Arco", "torre": "Torre"}
+const MADERA := ["banco", "silla", "mesa", "mesa_comedor", "ratona", "escritorio", "mesita", "sofa", "sillon", "cama", "biblioteca", "ropero", "alacena", "aparador", "consola", "planta", "canasto", "carrito", "kiosco"]
+const NOMBRES := {"banco": "Banco de plaza", "silla": "Silla", "mesa": "Mesa de cocina", "mesa_comedor": "Mesa del comedor", "ratona": "Mesa ratona", "escritorio": "Escritorio", "mesita": "Mesa de luz", "sofa": "Sofá", "sillon": "Sillón", "cama": "Cama", "biblioteca": "Biblioteca", "ropero": "Ropero", "alacena": "Alacena", "aparador": "Aparador", "consola": "Consola", "planta": "Maceta", "pileta": "Pileta", "mesada": "Mesada", "cocina": "Cocina", "heladera": "Heladera", "television": "Televisor", "banera": "Bañera", "lavabo": "Lavabo", "inodoro": "Inodoro", "lavarropas": "Lavarropas", "pared": "Tramo de pared", "vitrina": "Vitrina", "escultura": "Escultura", "obelisco": "Obelisco", "arco": "Arco", "torre": "Torre", "canasto": "Canasto", "carrito": "Carrito de servicio", "kiosco": "Kiosco", "colectivo": "Colectivo porteño", "taxi": "Taxi porteño", "farol": "Farol", "papelera": "Papelera", "cartel": "Cartel de la avenida", "columna": "Columna de piedra", "anfora": "Ánfora", "fuente": "Fuente"}
 
 static func definir(tipo: String, rect: Rect2, color: Color) -> Dictionary:
-	var nivel := 3 if tipo in ["pared", "arco", "escultura", "obelisco", "torre"] else (1 if tipo in MADERA else 2)
+	var nivel := 3 if tipo in ["pared", "arco", "escultura", "obelisco", "torre", "columna", "fuente"] else (1 if tipo in MADERA else 2)
 	var escala := clampf(rect.get_area() / 32000.0, 1, 18)
 	var vida := (700.0 if nivel == 1 else (4200.0 if nivel == 2 else 14000.0)) * sqrt(escala)
 	return {"id": tipo, "nombre": NOMBRES.get(tipo, tipo.capitalize()), "forma": "casa", "color": color, "vida": vida, "recompensa": vida * (3.0 if nivel == 1 else 5.0), "radio": rect.size.length() * 0.5, "nivel": nivel}
@@ -17,7 +17,8 @@ static func piezas() -> Array[Dictionary]:
 	for i in muebles.size():
 		var m: Dictionary = muebles[i]
 		var clave := "mueble:%d" % i
-		resultado.append({"clave": clave, "tipo": m.tipo, "rect": m.rect, "color": m.color, "mueble": i, "pared": false, "dibujo": m, "meta": clave == Mundos.plano(Juego.lugar_actual).meta, "practica": m.get("practica", false)})
+		var perfil: String = m.get("perfil", "") if Juego.lugar_actual == "casa" and not m.get("practica", false) else ""
+		resultado.append({"clave": clave, "tipo": m.tipo, "rect": m.rect, "color": m.color, "mueble": i, "pared": false, "dibujo": m, "meta": clave == Mundos.plano(Juego.lugar_actual).meta, "practica": m.get("practica", false), "perfil": perfil})
 	# Los muros se comen por tramos; no desaparece una habitación de un bocado.
 	var paredes := PlanoCasa.paredes()
 	for i in paredes.size():

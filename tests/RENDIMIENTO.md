@@ -314,3 +314,254 @@ de los bancos y ubicación de comida en su ambiente. `revision_estetica` captura
 cada ambiente de la casa, el inicio con HUD y los seis destinos completos en
 `.godot/qa/estetica_*.png`. Las pruebas no escriben la partida del jugador.
 Siguen pendientes GPU integrada y sesiones prolongadas.
+
+## Arte preiluminado y legibilidad — 28/10, segunda revisión
+
+Se sustituyen los dibujos planos del mobiliario doméstico por sprites con
+materiales y sombras precalculadas. Pisos y alfombras usan texturas filtradas;
+el Obelisco, los arcos y la Torre Eiffel tienen ilustraciones nuevas. La plaza
+incorpora calzadas y cruces transitables, sin cambiar obstáculos ni recompensas.
+Los recortes de destrucción y la navegación conservan su geometría.
+
+El atlas continúa en **2048×4352 / 34 MiB RGBA8**, ahora con 41 acabados:
+se agrega la biblioteca horizontal del museo que faltaba. Las cuatro hojas
+fuente ocupan aproximadamente **8,85 MiB en disco** y agregan memoria de textura
+fija compartida (ese dato de disco no representa su costo en VRAM). No se
+generan texturas por objeto ni luces dinámicas. El suelo realiza un muestreo
+de material por fragmento; las alfombras usan mipmaps al alejar.
+
+Los textos tienen un máximo de diez visibles, seis en vista alejada, se
+agrupan por distancia en pantalla y evitan superponerse. Los indicadores de
+eventos muestran el nombre y reservan el HUD; se actualizan a 10 Hz y se
+deduplican por tipo de evento. El dinero acreditado no cambia.
+
+Medición final con renderer Compatibility, RTX 3060, 1280×720, sin VSync,
+500 hormigas y los mismos perfiles, ejecutados de a uno:
+
+| Destino | Media | p95 | Peor cuadro | Máximo rutas/cuadro |
+|---|---:|---:|---:|---:|
+| Casa | 7,94 ms | 10,99 ms | 12,80 ms | 6 |
+| Restaurante | 7,60 ms | 9,76 ms | 10,97 ms | 6 |
+| Museo | 7,23 ms | 10,09 ms | 13,34 ms | 6 |
+| Obelisco | 6,30 ms | 8,69 ms | 10,14 ms | 6 |
+| Coliseo | 5,91 ms | 7,83 ms | 9,50 ms | 6 |
+| Eiffel | 6,91 ms | 9,24 ms | 11,17 ms | 6 |
+
+Feromonas: sin llamado **6,68 ms** de media; cursor con 24 seleccionadas
+**8,18 ms**; cursor con 64 **9,01 ms**, p95 10,55 y peor 14,89 ms. Sobre muebles:
+**9,49 ms** de media, p95 11,62 y peor 13,94 ms. Una pasada anterior de esta
+revisión dio 8,83 ms sobre muebles: hay variación entre muestras. Se mantiene
+margen para 60 FPS en esta PC, no se garantiza ese resultado en hardware distinto.
+
+**18 suites / 549 verificaciones lógicas sin fallos**, más **13 verificaciones
+con render real** en `revision_realismo.tscn`: indicadores en los cuatro
+bordes y dos tamaños de ventana, deduplicado de bandadas, números sin
+superposición y pérdida de fragmentos de la mesa ilustrada. Capturas:
+`.godot/qa/estetica_*.png` y `.godot/qa/realismo_*.png`. No se escribió la partida.
+Fuentes y prompts de generación: `arte/realista/PROCEDENCIA.md`.
+
+### Hormiguero integrado y base Full HD (28/10/2026)
+
+`project.godot` ahora diseña a **1920×1080**, con escalado de `canvas_items`
+para ventanas menores. La tienda mantiene las cuatro cámaras principales
+visibles al cambiar de sección. El corte de tierra no ejecuta `_process`:
+su dibujo queda retenido y las once rutas se precalculan sólo al redimensionar.
+Las 22 hormigas decorativas se dibujan juntas en un único Control a 30 Hz;
+no usan la IA, colisiones, búsquedas A* ni nodos individuales de la expedición.
+La animación no avanza si el hormiguero está oculto.
+
+`prueba_nido.tscn`: 41 verificaciones, incluyendo clics de ventana reales a
+1920×1080 y 1280×720, secciones dentro del corte, navegación persistente,
+movimiento, presupuesto de redibujos y reutilización de rutas. Las 18 suites
+preexistentes también pasan (19 suites en total). `revision_nido.tscn` guarda
+capturas Full HD en `.godot/qa/nido_1920.png` y `nido_seccion_*.png`.
+
+Para revisar el cambio de resolución también se ejecutó
+`perfil_feromonas.tscn --resolution 1920x1080`, renderer Compatibility,
+RTX 3060, sin VSync, 500 hormigas, sin otros benchmarks simultáneos:
+
+| Carga | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Sin llamado | 6,45 ms | 8,68 ms | 10,36 ms |
+| Cursor / 24 seleccionadas | 7,07 ms | 8,64 ms | 9,45 ms |
+| Cursor / 64 seleccionadas | 7,77 ms | 9,25 ms | 10,68 ms |
+| Cursor sobre muebles | 7,79 ms | 10,21 ms | 12,29 ms |
+
+Es una medición de la expedición en esta PC, no del costo aislado del menú ni
+una garantía para otro hardware. Las muestras anteriores siguen documentadas
+con su resolución original y no son una comparación A/B controlada.
+
+### Contornos de material y acabado de escenarios (28/10/2026)
+
+El perfil compartido de `SiluetaMueble` usa hasta 31 bandas por objeto. Se
+prepara al crear el mapa: no se consulta el alfa del PNG durante la simulación.
+`Cocina` registra esos contornos desde el inicio; `PiezaCasa` los intersecta con
+sus hasta 16 secciones y sólo reconstruye los recortes cuando desaparece una
+sección. La resistencia total se conserva; la torre conserva cuatro pisos de
+igual resistencia. Las consultas de contacto siguen cacheadas y la orientación
+de mordida sólo consulta el material al llegar o al cambiar esa pieza.
+
+El suelo conserva un muestreo de textura por píxel, ahora con relieve tenue y
+paleta por ambiente. Sombras de monumentos horneadas en el atlas; bordes de
+rotura y corrosión en la máscara ya existente. Feromonas con un pulso en lugar
+de tres, estado fuera del objeto y avisos compactos de a uno.
+
+Las 19 suites lógicas pasan. La regresión de materiales incluye márgenes
+transparentes transitables, vanos abiertos, contactos alcanzables, resistencia
+total, extracción completa y orientación hacia la superficie. La revisión con
+renderer real compara 24 contactos por monumento con el alfa del PNG de
+Obelisco, Eiffel y arco, y guarda planos y roturas en `.godot/qa/acabado_*.png`.
+La revisión de superposiciones del HUD suma 13 comprobaciones sin fallos.
+
+Medición final de `perfil_logistica.tscn`, ejecutada sola: RTX 3060,
+1920×1080, Compatibility, VSync desactivado y 500 hormigas:
+
+| Destino | Media | p95 | Peor cuadro | Rutas/cuadro máx. |
+|---|---:|---:|---:|---:|
+| Casa | 6,40 ms | 8,81 ms | 10,77 ms | 6 |
+| Restaurante | 4,31 ms | 6,34 ms | 10,49 ms | 6 |
+| Museo | 3,44 ms | 4,52 ms | 7,75 ms | 6 |
+| Obelisco | 3,24 ms | 4,28 ms | 5,22 ms | 6 |
+| Coliseo | 3,47 ms | 4,45 ms | 5,30 ms | 6 |
+| Eiffel | 2,95 ms | 3,72 ms | 5,17 ms | 6 |
+
+`perfil_feromonas.tscn`, también ejecutado solo en Full HD: sin llamado,
+**5,46 ms** de media; 24 seleccionadas, **6,16 ms**; 64 seleccionadas,
+**7,60 ms**, p95 8,94 y peor 10,74 ms; sobre muebles, **7,56 ms**, p95 9,05
+y peor 10,33 ms. Son resultados de esta PC, no una promesa para otro hardware
+ni una comparación A/B controlada con las mediciones anteriores.
+
+### Coherencia cenital, recuperación del llamado y claridad (28/10/2026)
+
+La casa usa dibujos cenitales retenidos: materiales mates, contornos y sombra
+consistentes, alfombras sin fotografía y accesorios por función del mueble.
+Sillas, plantas e inodoro respetan los perfiles anteriores. No hay nodos,
+texturas individuales ni trabajo adicional de dibujo por mueble y por cuadro.
+El atlas sigue en **2048×4352, 289 regiones** (~34 MiB RGBA8, sin contar otros
+recursos del renderer). Las hojas originales de muebles/detalles se cargan
+sólo si se consultan. Los efectos sintetizados suman **131.628 bytes PCM**;
+se mantiene el pool de 16 y el intervalo compartido de mordidas de 0,14 s.
+
+La IA deja de reservar piezas en derrumbe y conserva el puesto hasta que cambia
+la geometría de SU recurso. Si el cursor queda sobre suelo/comida agotada,
+conserva trabajo local y busca cerca al llegar, como máximo cada 0,6 s por
+seleccionada, respetando cupos. No añade búsquedas por cuadro ni comparaciones
+entre pares de hormigas. Los avisos se actualizan a 10 Hz y sólo sus tarjetas
+capturan clics. La vista previa de fundación corre en el menú al elegir decreto,
+sin mutar guardado ni caché.
+
+`revision_estilo_casa` valida 16 contactos por cada una de 14 sillas, plantas e
+inodoro contra el alfa del atlas final (224 contactos), con tolerancia de 12
+unidades del mundo; no contra la imagen anterior. Usa un solo readback de QA,
+sin lecturas de píxeles durante la simulación. Las seis capturas Full HD se
+guardan en `.godot/qa/estilo_casa_*.png`.
+
+21 suites lógicas, **680 verificaciones sin fallos**. La nueva `prueba_claridad`
+contrasta cuatro decretos (e inválido) contra la fundación real, comprueba el
+paso de madera y separa el cartón de los hitos de silla. `revision_claridad`
+verifica clic real sobre tarjeta, ausencia de feromonas accidentales, separación
+del tutorial y confirmación visible al redimensionar Full HD / 1280 / 1000.
+
+Medición integrada, ejecutando cada benchmark solo: Godot 4.7.2, RTX 3060,
+GL Compatibility, **1920×1080**, VSync apagado, 500 hormigas, paso 1/60.
+Se excluyen arranque y horneado; no es una comparación A/B ni una garantía de
+FPS en otra PC. Los escenarios anteriores tienen otras trayectorias y estados.
+
+| Feromonas | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Sin llamado | 6,91 ms | 8,80 ms | 10,29 ms |
+| Cursor móvil, 24 | 8,06 ms | 9,58 ms | 10,83 ms |
+| Cursor móvil, 64 | 8,99 ms | 10,73 ms | 11,63 ms |
+| Cursor sobre muebles | 9,12 ms | 10,71 ms | 12,05 ms |
+| Suelo sin objetivo, 64 cercanas | 8,41 ms | 10,29 ms | 11,02 ms |
+| Objetivo agotado, 64 cercanas | 7,85 ms | 9,35 ms | 11,05 ms |
+
+Las dos fases nuevas recolocan 64 de las 500 hormigas antes de medir; mantienen
+el cursor quieto y comprueban que sigan seleccionadas, sin simular daño por clic.
+Sus muestras y contadores de rutas excluyen esa preparación. Son estrés
+secuencial, no una comparación controlada de recuperación frente a ausencia de
+orden. Registro: `.godot/qa/perfil_producto_feromonas.log`.
+
+| Logística por destino | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Casa | 8,35 ms | 10,27 ms | 14,18 ms |
+| Restaurante | 7,78 ms | 10,05 ms | 12,26 ms |
+| Museo | 6,90 ms | 8,98 ms | 10,80 ms |
+| Obelisco | 6,92 ms | 9,22 ms | 10,17 ms |
+| Coliseo | 7,32 ms | 9,64 ms | 12,88 ms |
+| Eiffel | 7,29 ms | 9,47 ms | 14,98 ms |
+
+Todos conservaron las 500 hormigas y el máximo de seis rutas/cuadro. Falta
+validar GPU integrada, sesiones largas y juego humano; el resultado local no
+resuelve esas tareas. Registro: `.godot/qa/perfil_producto_logistica.log`.
+
+### Mapas poblados, archivo y árbol completo (28/10/2026)
+
+El contenido ampliado usa un atlas único de **2048×5504, 307 regiones**
+(aproximadamente **43 MiB RGBA8**, sin sumar el resto del renderer). Hay 59
+acabados compartidos. Los accesorios se hornean, no crean procesos individuales;
+los nuevos objetos reutilizan perfiles de navegación. La generación respeta
+los límites del plano y los pasos reales se prueban con A*, no sólo con distancias.
+Casa/restaurante/museo/BA/Roma/París tienen 55/49/29/33/39/37 muebles.
+
+La detección de limpieza se ejecuta cada 0,5 s, no por hormiga ni por cuadro.
+Recorre recursos con salida temprana y no solicita rutas. El instante final se
+fecha en los cambios relevantes; el chequeo periódico no se suma al récord.
+El archivo queda fuera de la simulación: máximo 128 entradas recientes y 1024
+contextos, con ocho tarjetas construidas por página y exportación sólo a pedido.
+
+El hormiguero dibuja 31 nodos de mejoras, seis ramas y cuatro secciones. Su
+fondo queda retenido; las 41 rutas se preparan al distribuir o cambiar progreso,
+no cada cuadro. Hasta 22 hormigas visuales comparten una capa a 30 Hz, sin IA.
+No aumenta el tope de 500 hormigas ni el presupuesto de seis rutas de la run.
+
+**24 suites / 803 verificaciones lógicas sin fallos**: guardados deshabilitados,
+paso fijo 1/60 y ejecuciones headless secuenciales. Dos fixtures se actualizan por
+el cambio intencional de reconquista, no se relaja el contrato productivo.
+`prueba_limpieza` suma 31 casos, `prueba_rebirth_archivo` 37, `prueba_poblacion`
+46 y `prueba_nido` 50. Resumen local: `.godot/qa/integracion-resumen.json`.
+
+Revisión gráfica de los seis mapas y del árbol inicial/desarrollado, más nueve
+verificaciones del archivo/resultado en cada idioma (1920, 1280 y 1000 de ancho).
+Se comprobó exportación JSON real a la carpeta ignorada de QA, sin escribir la
+partida del jugador. Capturas: `poblacion_*.png`, `nido_*.png`, `archivo_*.png`
+y `limpieza_resultado_*.png` dentro de `.godot/qa/`.
+
+Medición actual con Godot 4.7.2, GL Compatibility, RTX 3060, Full HD, VSync
+desactivado y paso 1/60. Los tres perfiles se ejecutaron de a uno, sin pruebas
+headless simultáneas; **el editor y una ejecución del usuario seguían abiertos**.
+No se cerraron sesiones del usuario para medir, por lo que hay carga concurrente:
+no es una comparación A/B controlada ni una medición completamente aislada.
+
+| Escenario, 500 hormigas | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Casa | 8,71 ms | 10,80 ms | 13,38 ms |
+| Restaurante | 7,80 ms | 10,16 ms | 12,40 ms |
+| Museo | 7,91 ms | 10,29 ms | 12,36 ms |
+| Obelisco | 7,33 ms | 9,87 ms | 12,09 ms |
+| Coliseo | 7,08 ms | 9,43 ms | 12,34 ms |
+| Eiffel | 7,96 ms | 10,41 ms | 14,90 ms |
+
+Se mantienen 500 hormigas, navegación activa y seis rutas/cuadro como máximo.
+El perfil de logística desactiva el reloj de Run para medir IA/transporte sin
+terminar la muestra; no mide la detección de limpieza ni el cierre. Registro:
+`.godot/qa/perfil_contenido_logistica.log`.
+
+| Feromonas, 500 hormigas | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Sin llamado | 7,04 ms | 8,65 ms | 9,94 ms |
+| Cursor / 24 | 7,90 ms | 9,60 ms | 10,60 ms |
+| Cursor / 64 | 8,91 ms | 10,14 ms | 11,09 ms |
+| Sobre muebles / 64 | 8,92 ms | 10,22 ms | 10,89 ms |
+| Suelo sin objetivo / 64 | 8,32 ms | 9,65 ms | 10,59 ms |
+| Objetivo agotado / 64 | 8,33 ms | 9,93 ms | 10,73 ms |
+
+Registro: `.godot/qa/perfil_contenido_feromonas.log`. Las fases son secuenciales
+y el mundo evoluciona entre ellas; no comparan estrategias de IA con igual estado.
+
+`perfil_hormiguero.tscn` espera el atlas y descarta 90 cuadros antes de cada
+muestra de 360. Inicial: media 4,01 / p95 4,84 / peor 5,38 ms; desarrollado:
+5,35 / 6,42 / 7,83 ms. En ambos conserva 786 nodos y la identidad de sus rutas;
+no hay reconstrucción continua. Registro: `.godot/qa/perfil_hormiguero_integrado.log`.
+Las cifras del menú no representan expediciones. Falta probar GPU integrada,
+sesiones largas y ritmo de reconquista con jugadores.

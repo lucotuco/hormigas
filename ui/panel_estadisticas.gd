@@ -26,6 +26,13 @@ func _ready() -> void:
 		columna.add_child(grilla)
 		for fila in grupo.filas:
 			grilla.add_child(_tarjeta(fila[0], fila[1], fila[2]))
+	var archivo := Estilo.boton(tr("Archivo de expediciones"), 16, Color("33412e"), Color("91ad7b"))
+	archivo.pressed.connect(abrir_archivo)
+	contenido.add_child(archivo)
+
+
+func abrir_archivo() -> void:
+	add_child(PanelArchivo.new())
 
 
 ## Los grupos con sus filas: [id, nombre, valor ya formateado].

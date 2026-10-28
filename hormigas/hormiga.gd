@@ -30,6 +30,7 @@ var comida: Comida = null:
 			comida.trabajadoras = maxi(0, comida.trabajadoras - 1)
 		comida = nueva
 		_version_objetivo = -1
+		_version_mirada = -1
 		if is_instance_valid(comida):
 			comida.trabajadoras += 1
 			if is_instance_valid(run) and is_instance_valid(run.colonia):
@@ -65,6 +66,7 @@ var en_pantalla := true
 var _evolucion := 0
 var _material_carga := -1
 var _siguiendo_llamado := false
+var _proxima_busqueda_llamado := 0.0
 var _comidas_sin_ruta: Dictionary = {}
 var _reloj_vida := 0.0
 var _fase := 0.0
@@ -81,6 +83,9 @@ var _animacion: Array[Rect2] = []
 var _tipo_animacion := ""
 var _evolucion_animacion := -1
 var _version_objetivo := -1
+var _version_mirada := -1
+var _posicion_mirada := Vector2.INF
+var _angulo_mordida := 0.0
 var _entradas_fallidas: Dictionary = {}
 var _carga_origen: Array[float] = [0.0, 0.0, 0.0]
 
@@ -203,10 +208,21 @@ func _pensar() -> void:
 		_siguiendo_llamado = true
 		# Puede haberse liberado desde el último muestreo compartido del cursor.
 		var elegida = run.feromonas.objetivo_comida
-		if not is_instance_valid(elegida):
+		if not _comida_valida(elegida):
 			elegida = null
 		if elegida is FragmentoCasa and elegida.peso > RolesHormiga.peso_maximo(casta):
 			elegida = null
+		# Una orden sobre suelo o sobre comida ya agotada sigue reuniendo a la
+		# colonia, pero al llegar no la deja inmóvil entre migas libres. La
+		# búsqueda es local, respeta cupos y se espacia: no suma trabajo por cuadro.
+		if elegida == null:
+			if _comida_valida(comida) and comida.distancia_a(run.feromonas.posicion) < _olfato:
+				elegida = comida
+			elif global_position.distance_squared_to(run.feromonas.posicion) < 24 * 24 and _reloj_vida >= _proxima_busqueda_llamado:
+				_proxima_busqueda_llamado = _reloj_vida + 0.6
+				elegida = run.comidas.buscar_cercana(global_position, _olfato, run.radio_actual, _comidas_sin_ruta, casta)
+				if elegida != null:
+					run.colonia.avistar(elegida)
 		if _comida_valida(elegida) and elegida.alcanza_desde(global_position):
 			comida = elegida
 			if estado != Estado.MORDIENDO:
@@ -214,8 +230,11 @@ func _pensar() -> void:
 			estado = Estado.MORDIENDO
 			return
 		comida = elegida if _comida_valida(elegida) else null
+		if comida != null:
+			_actualizar_puesto()
+		else:
+			objetivo = run.feromonas.destino_para(casta == "voladora")
 		estado = Estado.SIGUIENDO
-		objetivo = elegida.punto_trabajo(global_position, run.radio_actual, casta == "voladora", _puesto) if _comida_valida(elegida) else run.feromonas.destino_para(casta == "voladora")
 		return
 	if _siguiendo_llamado:
 		_siguiendo_llamado = false
@@ -238,14 +257,21 @@ func _pensar() -> void:
 	if comida != null:
 		# El puesto se conserva durante el viaje. Sólo cambia al abrir material
 		# o tomar otro recurso: no perseguir una proyección móvil cada 150 ms.
-		if estado != Estado.YENDO_A_COMIDA or _version_objetivo != run.cocina.version:
-			objetivo = comida.punto_trabajo(global_position, run.radio_actual, casta == "voladora", _puesto)
-			_version_objetivo = run.cocina.version
+		_actualizar_puesto()
 		estado = Estado.YENDO_A_COMIDA
 		return
 	if estado != Estado.EXPLORANDO:
 		estado = Estado.EXPLORANDO
 		_elegir_destino_al_azar()
+
+
+func _actualizar_puesto() -> void:
+	# Romper un mueble lejano sólo abre caminos: no cambia este frente de
+	# trabajo ni obliga a cientos de hormigas a volver a elegir su acercamiento.
+	var version: int = comida.version_forma if comida is PiezaCasa else 0
+	if estado not in [Estado.YENDO_A_COMIDA, Estado.SIGUIENDO] or _version_objetivo != version:
+		objetivo = comida.punto_trabajo(global_position, run.radio_actual, casta == "voladora", _puesto)
+		_version_objetivo = version
 
 
 func _caminar(delta: float) -> void:
@@ -361,6 +387,15 @@ func _morder(delta: float) -> void:
 			objetivo = comida.punto_mordida(global_position, run.radio_actual, casta == "voladora")
 		return
 	var hacia := (comida.global_position - global_position).angle()
+	if comida is PiezaCasa:
+		# Mirar la piedra o la pata que se muerde, no el aire en el centro de
+		# un arco. Esta consulta sólo cambia al llegar o al romper esa pieza.
+		if _version_mirada != comida.version_forma or _posicion_mirada.distance_squared_to(global_position) > 0.25:
+			var direccion: Vector2 = comida.material_cercano(global_position) - global_position
+			_angulo_mordida = direccion.angle() if direccion.length_squared() > 0.001 else hacia
+			_version_mirada = comida.version_forma
+			_posicion_mirada = global_position
+		hacia = _angulo_mordida
 	rotation = rotate_toward(rotation, hacia, VELOCIDAD_GIRO * delta)
 	_reloj_mordida -= delta * run.factor_ritmo()
 	if _reloj_mordida > 0.0:
@@ -475,7 +510,7 @@ func _elegir_destino_al_azar() -> void:
 ## Sin tipo a propósito: la comida pudo haber sido destruida (liberada) y un
 ## parámetro tipado tiraría error al recibir un objeto liberado.
 func _comida_valida(c) -> bool:
-	return is_instance_valid(c) and not c.muerta
+	return is_instance_valid(c) and c.disponible()
 
 
 func _draw() -> void:

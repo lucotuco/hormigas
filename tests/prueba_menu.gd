@@ -125,6 +125,7 @@ func probar_estadisticas() -> void:
 
 
 func probar_pausa() -> void:
+	Sonido.silenciado = true
 	Juego.reiniciar_estado()
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
 	add_child(run)
@@ -148,8 +149,48 @@ func probar_pausa() -> void:
 	run.hud.reanudar()
 	verificar(not get_tree().paused and run.activa, "Seguir reanuda la expedición")
 	Ajustes.pausar_sin_foco = true
-	run.hud._notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
-	verificar(get_tree().paused, "al perder el foco la expedición se pausa")
+	# La notificación real recorre el árbol con los hijos bloqueados. Llamar
+	# _notification a mano ocultaba el error de add_child del menú de pausa.
+	for ciclo in 3:
+		run.feromonas.mantener_en(Vector2(60, 60))
+		run.camara.arrastrando = true
+		run.propagate_notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+		run.propagate_notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		verificar(get_tree().paused and run.hud._ventana.is_inside_tree() and run.hud._ventana.can_process(), "perder foco abre una pausa visible y utilizable, ciclo %d" % ciclo)
+		var ventanas := run.hud.get_children().filter(func(n: Node) -> bool: return n is VentanaModal and not n.is_queued_for_deletion())
+		verificar(ventanas.size() == 1, "las notificaciones repetidas no duplican la pausa")
+		verificar(not run.feromonas.activa and not run.camara.arrastrando, "se liberan las feromonas y el arrastre al salir")
+		tiempo = run.tiempo_restante
+		await get_tree().process_frame
+		await get_tree().process_frame
+		verificar(is_equal_approx(run.tiempo_restante, tiempo), "el tiempo se conserva mientras la ventana está en pausa")
+		if ciclo < 2:
+			run.hud.reanudar()
+			await get_tree().process_frame
+			await get_tree().process_frame
+			verificar(not get_tree().paused and run.tiempo_restante < tiempo, "la expedición sigue al volver")
+	run.hud._abrir_configuracion()
+	run.propagate_notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	verificar(run.hud._ventana is PanelConfiguracion, "una captura desde configuración no reemplaza esa ventana")
+	run.hud._ventana.cerrar()
+	await get_tree().process_frame
+	run.hud.reanudar()
+	Ajustes.pausar_sin_foco = false
+	run.feromonas.mantener_en(Vector2(60, 60))
+	run.camara.arrastrando = true
+	run.propagate_notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	verificar(not get_tree().paused, "desactivar la pausa automática permite seguir en segundo plano")
+	verificar(not run.feromonas.activa and not run.camara.arrastrando, "sin pausa automática tampoco quedan clics o arrastres pegados")
+	Ajustes.pausar_sin_foco = true
+	run.propagate_notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+	await get_tree().process_frame
+	await get_tree().process_frame
 	run.hud._terminar_desde_pausa()
 	for i in 3:
 		await get_tree().process_frame

@@ -81,6 +81,23 @@ func probar_trabajo() -> void:
 	verificar(a.comida == c and a.estado in [Hormiga.Estado.SIGUIENDO, Hormiga.Estado.MORDIENDO], "el llamado toma prioridad sobre el trabajo automático")
 	r.feromonas.soltar()
 	verificar(not r.feromonas.llama_a(a) and r.feromonas.seleccionadas.is_empty(), "soltar borra la orden y su selección")
+	Juego.niveles.mordida_madera = 1
+	Juego._cache_stats.clear()
+	var silla: PiezaCasa = r.comidas.partes[6]
+	a.position = silla.rect_mundo.position - Vector2(100, 100)
+	a.comida = silla
+	a.estado = Hormiga.Estado.YENDO_A_COMIDA
+	a._pensar()
+	var puesto := a.objetivo
+	a.position += Vector2(30, 30)
+	r.cocina.version += 1 # Simular la apertura de una pieza lejana.
+	a._pensar()
+	verificar(a.objetivo == puesto, "abrir otra pieza no cambia el frente de una hormiga que ya se acerca a trabajar")
+	silla.derrumbando = true
+	a.estado = Hormiga.Estado.MORDIENDO
+	a.carga = 0
+	a._morder(0.1)
+	verificar(a.comida == null and silla.trabajadoras == 0 and a.estado == Hormiga.Estado.EXPLORANDO, "un mueble que entra en derrumbe libera el puesto sin mordidas ni regresos vacíos")
 	r.queue_free()
 	await get_tree().process_frame
 
@@ -149,8 +166,8 @@ func probar_habilidades() -> void:
 	carpintera._reloj_mordida = 0
 	carpintera._morder(0.1)
 	var tocadas := 0
-	for vida in silla.vidas:
-		if vida < silla._vida_celda:
+	for i in silla.vidas.size():
+		if silla.vidas[i] < silla._vidas_iniciales[i]:
 			tocadas += 1
 	verificar(tocadas == 2 and is_equal_approx(silla.dano_recibido, 2 * RolesHormiga.dano("carpintera", 1)), "Corte aserrado reparte el daño entre dos secciones sin multiplicarlo")
 	var acumulado := 0.0
@@ -208,7 +225,7 @@ func probar_destinos() -> void:
 	torre.morder_en(torre.vida_max * 0.25, punto)
 	var arriba_intacto := true
 	for i in 12:
-		arriba_intacto = arriba_intacto and is_equal_approx(torre.vidas[i], torre._vida_celda)
+		arriba_intacto = arriba_intacto and is_equal_approx(torre.vidas[i], torre._vidas_iniciales[i])
 	verificar(arriba_intacto and torre._fila_activa == 2 and torre.etapa == 1, "la base desaparece primero y habilita el piso siguiente")
 	if not arriba_intacto or torre._fila_activa != 2 or torre.etapa != 1:
 		print("TORRE ", torre.vidas, " fila ", torre._fila_activa, " etapa ", torre.etapa)

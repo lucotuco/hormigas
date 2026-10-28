@@ -12,6 +12,8 @@ radio_territorio,620,Radio en píxeles del territorio explorable
 multiplicador_migas,1,Multiplicador de todas las migas recolectadas
 cria,0,Hormigas nuevas que nacen cada 10 segundos durante la run
 materiales,0,Etapa de materiales que la colonia puede devorar
+vida_silla_inicial,140,Resistencia de la primera silla de madera cercana al nido
+recompensa_silla_inicial,420,Valor de la primera silla; conserva tres migas por punto de resistencia
 entradas,0,Entradas secundarias en ambientes descubiertos (hasta seis)
 retirada,6,Segundos finales para entregar la carga sin nuevas mordidas
 festin_duracion,8,Duración del festín al abrir un tesoro

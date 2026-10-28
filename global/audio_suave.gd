@@ -9,32 +9,32 @@ static func crear(nombre: String) -> AudioStreamWAV:
 	var ruido := 0.0
 	match nombre:
 		"mordida":
-			notas = [320.0]
-			duracion = 0.065
-			ruido = 0.32
+			notas = [300.0]
+			duracion = 0.055
+			ruido = 0.24
 		"mordida_madera":
-			notas = [260.0, 390.0]
-			duracion = 0.085
-			ruido = 0.5
+			notas = [220.0, 340.0]
+			duracion = 0.075
+			ruido = 0.43
 		"mordida_metal":
-			notas = [620.0, 930.0]
-			duracion = 0.12
-			ruido = 0.06
+			notas = [570.0, 1280.0]
+			duracion = 0.085
+			ruido = 0.025
 		"mordida_piedra":
-			notas = [145.0, 217.5]
-			duracion = 0.11
+			notas = [135.0, 205.0]
+			duracion = 0.085
 			ruido = 0.28
 		"clic":
 			notas = [520.0, 780.0]
 			duracion = 0.09
 			ruido = 0.08
 		"deposito":
-			notas = [784.0, 1174.66]
-			duracion = 0.19
+			notas = [660.0, 990.0]
+			duracion = 0.115
 		"romper":
-			notas = [392.0, 493.88, 587.33]
-			duracion = 0.32
-			ruido = 0.15
+			notas = [294.0, 392.0, 490.0]
+			duracion = 0.23
+			ruido = 0.18
 		"comprar":
 			notas = [523.25, 659.25, 783.99, 1046.5]
 			duracion = 0.42
@@ -57,6 +57,7 @@ static func crear(nombre: String) -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = nombre.hash()
 	var filtro := 0.0
+	var material := nombre.begins_with("mordida")
 	for i in muestras:
 		var t := float(i) / frecuencia
 		var muestra := 0.0
@@ -66,11 +67,12 @@ static func crear(nombre: String) -> AudioStreamWAV:
 			if edad < 0.0:
 				continue
 			var ataque := minf(edad / 0.008, 1.0)
-			var envolvente := ataque * exp(-edad * 7.0 / duracion)
+			var envolvente := ataque * exp(-edad * (9.0 if material else 7.0) / duracion)
 			var f: float = notas[n]
 			muestra += (sin(TAU * f * edad) + 0.16 * sin(TAU * f * 2.0 * edad)) * envolvente / notas.size()
-		filtro = lerpf(filtro, rng.randf_range(-1.0, 1.0), 0.32)
-		muestra += filtro * ruido * exp(-t * 20.0 / duracion) * minf(t / 0.004, 1.0)
+		filtro = lerpf(filtro, rng.randf_range(-1.0, 1.0), 0.22 if material else 0.32)
+		# Un crujido amortiguado y breve, no una nota larga por cada hormiga.
+		muestra += filtro * ruido * exp(-t * (12.0 if material else 20.0) / duracion) * minf(t / 0.004, 1.0)
 		var salida := minf((duracion - t) / 0.018, 1.0)
 		bytes.encode_s16(i * 2, int(clampf(muestra * salida * 0.7, -1.0, 1.0) * 32767))
 	var stream := AudioStreamWAV.new()

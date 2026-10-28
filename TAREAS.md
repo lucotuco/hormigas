@@ -1,5 +1,36 @@
 # Tareas
 
+## Hormiguero, viajes y archivo — 28/10
+
+- [x] Volver a casa al fundar y reabrir viajes en orden por colonia; preservar descubrimientos, adaptaciones, topes e hitos históricos.
+- [x] Árbol de pantalla completa: 31 cámaras individuales en seis ramas, túneles por requisitos y cuatro secciones integradas.
+- [x] Desarrollo visual del hormiguero por compras y ficha contextual, sin reconstruir la interfaz por cuadro.
+- [x] Poblar los seis mapas y sumar objetos característicos de Buenos Aires, Roma y París con atlas/perfiles compartidos.
+- [x] Cierre automático al consumir lo disponible, sin ignorar fragmentos, derrumbes, tesoros ni botín recuperable.
+- [x] Archivo paginado de tiempos, mejores marcas por contexto y exportación JSON; compatible con partidas anteriores.
+- [ ] Validar con personas el ritmo de reconquista tras fundar y la lectura del árbol completo; no confundir una prueba automática corta con balance de campaña.
+
+## Prioridad de producto y dirección visual — 28/10
+
+Promesa: empezar juntando migas y terminar viendo una colonia devorar lugares
+reconocibles. Mantener crecimiento incremental y automatización útil. La casa
+cenital ilustrada es la referencia de paleta, materiales, escala y luz para
+evitar una mezcla de imágenes con estilos incompatibles.
+
+- [x] Recuperar trabajo cercano cuando el llamado queda sobre suelo/comida agotada; no reservar muebles que ya caen.
+- [x] Conservar puestos de trabajo hasta cambiar de objetivo o SU geometría, no por cualquier rotura del mapa.
+- [x] Primera silla de madera accesible, premio proporcional y paso contextual con botón para encontrarla.
+- [x] Separar los hitos de silla de madera del banquito de cartón inicial; conservar premios ya guardados.
+- [x] Mostrar compañeros, utilidad y limitaciones en fichas de castas, sin sinergias numéricas inventadas.
+- [x] Mostrar el arranque real de la próxima colonia al elegir decreto, sin simular compras futuras.
+- [x] Unificar mobiliario doméstico, textiles y repostería en dibujo cenital horneado; audio más corto y amortiguado.
+- [x] Avisos de amenazas con contexto y acción Ver; clic de cámara separado del llamado.
+- [ ] Probar la primera media hora con 5–10 personas que no conozcan el juego; observar sin explicarles los controles.
+- [ ] Medir equipos/decretos distintos con personas; una prueba de carpintera+cargadora no valida todas las combinaciones.
+- [ ] Validar primera fundación y campaña tardía con el balance integrado, sin reutilizar duraciones antiguas.
+- [ ] Probar GPU integrada y sesiones largas con alt-tab/capturas; conservar topes y presupuestos actuales.
+- [ ] Preparar demo y presentación de Steam después de validar ese recorrido; definir cierre de campaña y audio final.
+
 ## Integración y estética — 28/10
 
 - [x] Integrar menú, idiomas, eventos y decretos de main sin perder IA ni logística; publicar en main sin sobrescribir historial.
@@ -32,7 +63,7 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 
 - [x] Temporizador por run
 - [x] Panel de fin de run
-- [x] Tienda con árbol de mejoras (18 mejoras en 6 ramas, las bloqueadas en sombra)
+- [x] Tienda con árbol de mejoras (31 mejoras en 6 ramas, las bloqueadas en sombra)
 - [x] Comprar mejoras y castas en cantidades ×1, ×10 o Máx, con indicadores de disponibilidad por rama
 - [x] Guardado y carga automáticos
 - [x] Clic exclusivamente para llamar; compras de Pisotón migradas a daño de hormigas sin perder niveles
@@ -86,10 +117,10 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] **A:** atlas compartido, búsqueda espacial, navegación incremental y benchmark gráfico con 5/150/500 hormigas
 - [x] **A:** cola justa de rutas con prioridad manual, caché de fallos, giros comprimidos y prueba de cursor móvil con 500 hormigas
 - [ ] **Los dos:** probar rendimiento en otras PCs y balancear los tiempos de desbloqueo y resistencia de materiales
-- [x] **B:** prestigio con confirmación (fundar colonia → legado; conserva destinos e hitos)
+- [x] **B:** prestigio con confirmación (fundar colonia → legado; vuelve a casa y conserva descubrimientos e hitos)
 - [x] **B:** hitos opcionales con premios permanentes explícitos
 - [x] **B:** seis destinos con objetivos: casa, restaurante, museo, Obelisco, Coliseo y Torre Eiffel
-- [x] **B:** árbol de mejoras como hormiguero en corte con seis cámaras interactivas
+- [x] **B:** árbol de mejoras como hormiguero de pantalla completa, con cámaras subdivididas y desarrollo visual
 - [x] Bot de balance con paso 1/60 y tiempo ×1; piloto final con retirada: madera 7,3 min, paredes/casa 33,1, restaurante 38,2; comparación controlada de castas (ver limitaciones en diseño)
 - [x] Puestos de trabajo estables durante el acercamiento; regresos alternativos si una entrada queda aislada
 - [x] Hasta seis entradas secundarias por destino, sin simulación subterránea y con navegación compartida
@@ -103,5 +134,5 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] Decretos de la reina: al fundar se elige uno de cuatro (numerosa, guerrera, recolectora, exploradora)
 - [x] Pisada automática temprana (y la Guardia de la reina la da desde el comienzo de cada colonia)
 - [ ] **Los dos:** jugar varias colonias y ver si los decretos se sienten distintos
-- [x] Campaña más corta: ~3 h 53 min de bot (4,5–5,5 h para una persona), una fundación por destino desde el museo
+- [ ] Volver a medir duración total: las antiguas 3 h 53 min de bot y estimaciones humanas no validan el balance integrado actual.
 - [ ] **B:** pasar los CSV a una planilla compartida

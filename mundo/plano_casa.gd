@@ -30,7 +30,8 @@ const MUEBLES := [
 	{"tipo": "heladera", "rect": Rect2(1240, -870, 360, 650), "color": Color("d6dfd5")},
 	{"tipo": "alacena", "rect": Rect2(-850, 800, 500, 470), "color": Color("879989")},
 	{"tipo": "mesa", "rect": Rect2(400, 160, 700, 440), "color": Color("ba8b59")},
-	{"tipo": "silla", "rect": Rect2(180, -100, 140, 190), "color": Color("a6b194"), "frente": "este"},
+	# La primera silla enseña la madera sin cambiar la resistencia de la casa.
+	{"tipo": "silla", "rect": Rect2(180, -100, 140, 190), "color": Color("a6b194"), "frente": "este", "perfil": "silla_inicial"},
 	{"tipo": "silla", "rect": Rect2(580, -80, 190, 180), "color": Color("a6b194")},
 	{"tipo": "silla", "rect": Rect2(650, 680, 200, 190), "color": Color("a6b194"), "frente": "norte"},
 	{"tipo": "silla", "rect": Rect2(1180, 300, 170, 210), "color": Color("a6b194"), "frente": "oeste"},
@@ -60,6 +61,26 @@ const MUEBLES := [
 	{"tipo": "lavabo", "rect": Rect2(5820, 2700, 850, 410), "color": Color("e7e8dd")},
 	{"tipo": "inodoro", "rect": Rect2(6230, 3700, 400, 650), "color": Color("edeee4")},
 	{"tipo": "lavarropas", "rect": Rect2(4700, 3930, 650, 540), "color": Color("c4d3cf")},
+	# Grupos secundarios: guardado, vajilla y textiles. Se conserva el orden
+	# inicial para el gran objetivo y la primera silla de la colonia.
+	{"tipo": "mesada", "rect": Rect2(-850, -450, 420, 360), "color": Color("b8c0af")},
+	{"tipo": "canasto", "rect": Rect2(-700, 350, 220, 200), "color": Color("c4a575")},
+	{"tipo": "carrito", "rect": Rect2(1120, 850, 420, 330), "color": Color("ad8d64")},
+	{"tipo": "canasto", "rect": Rect2(3360, -800, 250, 200), "color": Color("c4a575")},
+	{"tipo": "aparador", "rect": Rect2(1880, 340, 460, 380), "color": Color("a88765")},
+	{"tipo": "carrito", "rect": Rect2(3940, 300, 320, 380), "color": Color("ad8d64")},
+	{"tipo": "consola", "rect": Rect2(4450, 1350, 330, 240), "color": Color("a3886b")},
+	{"tipo": "biblioteca", "rect": Rect2(6500, 1050, 280, 440), "color": Color("a58667")},
+	{"tipo": "canasto", "rect": Rect2(6000, 2050, 250, 210), "color": Color("c4a575")},
+	{"tipo": "sillon", "rect": Rect2(4900, 1950, 400, 410), "color": Color("a99b7d")},
+	{"tipo": "mesita", "rect": Rect2(5350, 2110, 300, 260), "color": Color("b99b7b")},
+	{"tipo": "canasto", "rect": Rect2(-650, 2140, 250, 240), "color": Color("c4a575")},
+	{"tipo": "consola", "rect": Rect2(1020, 3100, 800, 150), "color": Color("b3977b")},
+	{"tipo": "mesita", "rect": Rect2(-850, 2700, 190, 240), "color": Color("b99b7b")},
+	{"tipo": "biblioteca", "rect": Rect2(3250, 3880, 850, 180), "color": Color("a38565")},
+	{"tipo": "carrito", "rect": Rect2(3700, 3450, 400, 300), "color": Color("ad8d64")},
+	{"tipo": "canasto", "rect": Rect2(5600, 3200, 400, 350), "color": Color("c4a575")},
+	{"tipo": "alacena", "rect": Rect2(6520, 3210, 250, 350), "color": Color("a0b09a")},
 ]
 
 static func ambiente_en(pos: Vector2) -> String:
