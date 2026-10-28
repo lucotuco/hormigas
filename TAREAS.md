@@ -83,5 +83,5 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] Decretos de la reina: al fundar se elige uno de cuatro (numerosa, guerrera, recolectora, exploradora)
 - [x] Pisada automática temprana (y la Guardia de la reina la da desde el comienzo de cada colonia)
 - [ ] **Los dos:** jugar varias colonias y ver si los decretos se sienten distintos
-- [ ] **Los dos:** el prestigio tardío acelera mucho (×1000 por colonia): decidir si se amortigua más o se suman destinos
+- [x] Campaña más corta: ~3 h 53 min de bot (4,5–5,5 h para una persona), una fundación por destino desde el museo
 - [ ] **B:** pasar los CSV a una planilla compartida

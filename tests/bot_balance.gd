@@ -41,7 +41,7 @@ const VELOCIDAD := 8.0
 ## Una persona no clickea 3 veces por segundo durante horas; con la pisada
 ## automática tampoco hace falta.
 const CLICS_POR_SEGUNDO := 2.0
-const RUNS_TRABADO := 5          # runs sin conquistar antes de pensar en fundar
+const RUNS_TRABADO := 4          # runs sin conquistar antes de pensar en fundar
 ## Decreto que elige al fundar: el bot se traba en grandes objetivos, que piden
 ## daño de mordida sostenido, y para eso conviene una colonia numerosa.
 const DECRETO := "numerosa"
@@ -56,9 +56,9 @@ const GANANCIA_MINIMA_DOBLE := 20
 var trabado := 0
 var runs_trabado := RUNS_TRABADO
 ## Cuánto más fuerte tiene que ser la colonia siguiente que la que se trabó.
-## Con 3 la campaña duraba ~11 h de bot; con menos, cada destino pide una
-## fundación y no dos o cuatro.
-const FACTOR_CALIBRACION := 1.6
+## Con 3 la campaña duraba ~11 h de bot; con 1,3, cada destino pide una
+## fundación y no dos o cuatro (~3 h 53 min, ver README).
+const FACTOR_CALIBRACION := 1.3
 var factor_calibracion := FACTOR_CALIBRACION
 const INVULNERABLE := 1e40
 var calibrar := false
