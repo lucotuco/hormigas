@@ -60,15 +60,6 @@ msgstr "FRENZY! The colony works faster"
 msgid "¡La colonia devoró: %s!"
 msgstr "The colony devoured: %s!"
 
-msgid "¡Gran objetivo! +1 corona"
-msgstr "Grand target! +1 crown"
-
-msgid "¡Gran objetivo! +%d coronas"
-msgstr "Grand target! +%d crowns"
-
-msgid "¡Gran objetivo! (las coronas de este destino ya se cobraron en esta colonia)"
-msgstr "Grand target! (this colony already claimed this destination's crowns)"
-
 msgid "¡%s!"
 msgstr "%s!"
 
@@ -1499,3 +1490,27 @@ msgstr "Golden crumbs: stomp them before they vanish"
 
 msgid "Amenazas: cada destino tiene la suya; pisalas para salvar a la colonia"
 msgstr "Threats: every destination has its own; stomp them to save the colony"
+
+msgid "¡La colonia conquistó el mundo!"
+msgstr "The colony conquered the world!"
+
+msgid "¡Destino conquistado!"
+msgstr "Destination conquered!"
+
+msgid "%s · gran objetivo devorado: %s"
+msgstr "%s · grand target devoured: %s"
+
+msgid "+1 corona"
+msgstr "+1 crown"
+
+msgid "+%d coronas"
+msgstr "+%d crowns"
+
+msgid "Las coronas de este destino ya se cobraron en esta colonia"
+msgstr "This colony already claimed this destination's crowns"
+
+msgid "Nuevo destino: %s"
+msgstr "New destination: %s"
+
+msgid "Gracias por jugar. Fundá colonias para batir tus récords."
+msgstr "Thanks for playing. Found colonies to beat your records."

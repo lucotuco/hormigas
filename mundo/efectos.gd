@@ -60,7 +60,7 @@ func explosion(pos: Vector2, color: Color, radio: float) -> void:
 		var dir := Vector2.from_angle(randf() * TAU)
 		_agregar_particula(pos + dir * randf() * radio * 0.6, dir * randf_range(0.3, 1.0) * fuerza,
 			randf_range(0.45, 0.9), color.lerp(Color.WHITE, randf_range(0.0, 0.35)),
-			randf_range(1.2, 2.0) + radio * 0.08)
+			randf_range(1.2, 2.0) + minf(radio * 0.08, 5.0))
 	if _ondas.size() >= MAX_ONDAS:
 		return
 	var onda := Onda.new()

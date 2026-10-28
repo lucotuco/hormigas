@@ -389,6 +389,11 @@ vacía = en todos) y **su amenaza**, que se resuelve a clics y da botín:
 | Coliseo | aceituna, uvas, pan romano | Gato | Duerme sobre la mejor comida y salta si lo molestan; 4 clics y se va |
 | Torre Eiffel | macaron, croissant, baguette | Rata | Corre a robarse lo más rico; 5 clics la atrapan |
 
+Devorar un gran objetivo es el clímax de cada destino (`mundo/conquista.gd`):
+cámara lenta, la cámara encuadra el derrumbe, estallidos por todo el mueble,
+lluvia de migas y un cartel con las coronas y el destino que se abre. Sin
+pantalla (pruebas y bot) no hay cámara lenta.
+
 Además, la **miga dorada** aparece cada tanto: pisala antes de que se apague y
 da migas, frenesí o +8 s. Las amenazas llegan desde la sexta expedición y las
 migas doradas desde la tercera; una flecha en el borde de la pantalla señala
