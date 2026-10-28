@@ -4,6 +4,7 @@ patas_largas,Patas largas,Colonia,Las hormigas caminan un 12% más rápido.,velo
 cria_acelerada,Cría acelerada,Colonia,Nace 1 hormiga más cada 10 segundos durante la run.,cria,suma,1,150,2.0,10,mas_obreras:4,,0,0,,
 mandibulas,Mandíbulas fuertes,Mandíbulas,+1 de daño por mordida.,dano,suma,1,12,1.6,25,,,15,1,25,2
 pisada,Pisotón,Mandíbulas,+2 de daño al hacer clic sobre la comida.,dano_clic,suma,2,10,1.5,25,,,15,1,25,2
+pisada_auto,Pisada automática,Mandíbulas,+0.5 pisotones automáticos por segundo sobre la comida más cercana al cursor.,pisotones_auto,suma,0.5,40,2.1,6,pisada:2,,0,0,,
 pisoton,Coordinación,Feromonas,Responde 1 hormiga más al llamado. Conserva los niveles del antiguo Pisotón.,feromona_cantidad,suma,1,10,1.5,25,,,0,0,,
 mordida_rapida,Mordida rápida,Mandíbulas,Muerden un 12% más seguido.,intervalo_mordida,multiplica,0.88,40,1.8,12,mandibulas:2,,1,0,,
 mandibulas_acero,Mandíbulas de acero,Mandíbulas,Daño de mordida x1.5.,dano,multiplica,1.5,2000,3.0,5,mandibulas:10,,1,0,,

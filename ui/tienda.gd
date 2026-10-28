@@ -420,6 +420,8 @@ func _refrescar() -> void:
 	_lbl_sala.label_settings.font_color = SALAS[_rama].color
 	_lbl_detalle.text = tr(SALAS[_rama].detalle)
 	_lbl_proxima.text = tr("%d obreras + %d especialistas  ·  %d s  ·  %d cm") % [int(Juego.stat("hormigas_iniciales")), Juego.total_especialistas(), int(Juego.stat("duracion_run")), int(Juego.stat("radio_territorio") / 10.0)]
+	if Juego.decretos_por_id.has(Juego.decreto):
+		_lbl_proxima.text += "  ·  " + tr(Juego.decretos_por_id[Juego.decreto].nombre)
 	for rama in _salas:
 		var total := 0
 		var disponibles := 0

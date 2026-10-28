@@ -12,3 +12,4 @@ radio_territorio,620,Radio en píxeles del territorio explorable
 multiplicador_migas,1,Multiplicador de todas las migas recolectadas
 cria,0,Hormigas nuevas que nacen cada 10 segundos durante la run
 materiales,0,Etapa de materiales que la colonia puede devorar
+pisotones_auto,0,Pisotones automáticos por segundo sobre la comida más cercana al cursor

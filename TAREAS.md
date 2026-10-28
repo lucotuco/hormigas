@@ -78,6 +78,8 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] Bot de balance (tests/bot_balance.tscn) y primera hora calibrada: madera ~10 min, paredes ~42, casa ~50
 - [x] Progresión larga: jalea real y árbol de la reina, topes por destino, mejoras de cada viaje, hitos cada 25 niveles (docs/DISENO_PROGRESION.md)
 - [x] Tope de 500 hormigas y runs de hasta ~3,5 min
-- [ ] **Los dos:** jugar una colonia completa y ver si el árbol de la reina tiene decisiones interesantes (no sólo "comprar lo más barato")
+- [x] Decretos de la reina: al fundar se elige uno de cuatro (numerosa, guerrera, recolectora, exploradora)
+- [x] Pisada automática temprana (y la Guardia de la reina la da desde el comienzo de cada colonia)
+- [ ] **Los dos:** jugar varias colonias y ver si los decretos se sienten distintos
 - [ ] **Los dos:** el prestigio tardío acelera mucho (×1000 por colonia): decidir si se amortigua más o se suman destinos
 - [ ] **B:** pasar los CSV a una planilla compartida

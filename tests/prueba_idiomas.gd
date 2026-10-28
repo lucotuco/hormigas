@@ -82,6 +82,8 @@ func claves_del_juego() -> Dictionary:
 		_sumar(claves, [c.nombre])
 	for n in Juego.nodos_jalea:
 		_sumar(claves, [n.nombre, n.descripcion])
+	for d in Juego.decretos:
+		_sumar(claves, [d.nombre, d.descripcion])
 	for h in Juego.HITOS.values():
 		_sumar(claves, [h.nombre, h.detalle, h.premio])
 	_sumar(claves, Juego.REVELABLES.values())
