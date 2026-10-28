@@ -4,11 +4,11 @@ extends RefCounted
 const ORDEN := ["casa", "restaurante", "museo", "obelisco", "coliseo", "eiffel"]
 const INFO := {
 	"casa": {"nombre": "La casa", "subtitulo": "De las migas a los muebles", "meta": "La gran mesa familiar", "factor": 1.0, "coronas": 1, "vida_meta": 1000.0},
-	"restaurante": {"nombre": "El restaurante", "subtitulo": "Salón, barra y cocina industrial", "meta": "La barra del chef", "factor": 1.7, "coronas": 2, "vida_meta": 4.0e4},
+	"restaurante": {"nombre": "El restaurante", "subtitulo": "Salón, barra y cocina industrial", "meta": "La barra del chef", "factor": 1.7, "coronas": 2, "vida_meta": 2.5e4},
 	"museo": {"nombre": "El museo", "subtitulo": "Galerías, vitrinas y una estatua monumental", "meta": "La gran escultura", "factor": 2.8, "coronas": 3, "vida_meta": 1.0e8},
 	"obelisco": {"nombre": "Obelisco · Buenos Aires", "subtitulo": "La colonia conquista la avenida", "meta": "El Obelisco", "factor": 4.5, "coronas": 4, "vida_meta": 1.25e10},
-	"coliseo": {"nombre": "Coliseo · Roma", "subtitulo": "Arena, arcos y piedra antigua", "meta": "El gran arco imperial", "factor": 7.0, "coronas": 5, "vida_meta": 1.6e12},
-	"eiffel": {"nombre": "Torre Eiffel · París", "subtitulo": "Jardines y una estructura de hierro", "meta": "La Torre Eiffel", "factor": 11.0, "coronas": 6, "vida_meta": 2.0e14},
+	"coliseo": {"nombre": "Coliseo · Roma", "subtitulo": "Arena, arcos y piedra antigua", "meta": "El gran arco imperial", "factor": 7.0, "coronas": 5, "vida_meta": 2.4e17},
+	"eiffel": {"nombre": "Torre Eiffel · París", "subtitulo": "Jardines y una estructura de hierro", "meta": "La Torre Eiffel", "factor": 11.0, "coronas": 6, "vida_meta": 1.5e22},
 }
 static var _cache: Dictionary = {}
 ## Multiplicador de resistencia del gran objetivo cuando el destino no define
