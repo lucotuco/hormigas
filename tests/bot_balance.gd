@@ -13,10 +13,12 @@ extends Node
 ##                (por defecto no guarda: empieza siempre de cero)
 ##   BOT_LOG      archivo donde agregar el registro (además de imprimirlo)
 ##   BOT_CALIBRAR si existe, modo calibración (ver más abajo)
+##   BOT_FACTOR   factor de calibración (por defecto FACTOR_CALIBRACION)
 ##
-## Cómo juega: 3 pisotones por segundo sobre la comida más cercana al
-## hormiguero; cuando el gran objetivo se puede comer, mantiene el llamado
-## sobre él. Entre runs ahorra para la próxima dieta si ya tiene la mitad;
+## Cómo juega: 2 clics por segundo. Primero atiende amenazas y migas doradas;
+## si no hay, pisa la comida más cercana al hormiguero (además de los
+## pisotones automáticos que haya comprado). Cuando el gran objetivo se puede
+## comer, mantiene el llamado sobre él. Entre runs ahorra para la próxima dieta si ya tiene la mitad;
 ## si no, compra lo más barato (mejoras o castas).
 ##
 ## Ciclo de prestigio: cada colonia recorre los destinos en orden, cobrando
@@ -35,7 +37,9 @@ extends Node
 ## "calibrado" y al final; se copian a mundo/mundos.gd.
 const RUN := preload("res://mundo/run.tscn")
 const VELOCIDAD := 8.0
-const CLICS_POR_SEGUNDO := 3.0
+## Una persona no clickea 3 veces por segundo durante horas; con la pisada
+## automática tampoco hace falta.
+const CLICS_POR_SEGUNDO := 2.0
 const RUNS_TRABADO := 5          # runs sin conquistar antes de pensar en fundar
 ## Decreto que elige al fundar: el bot se traba en grandes objetivos, que piden
 ## daño de mordida sostenido, y para eso conviene una colonia numerosa.
@@ -49,7 +53,11 @@ const RUNS_COLONIA_MADURA := 10
 const GANANCIA_MINIMA_DOBLE := 20
 
 var trabado := 0
-const FACTOR_CALIBRACION := 3.0
+## Cuánto más fuerte tiene que ser la colonia siguiente que la que se trabó.
+## Con 3 la campaña duraba ~11 h de bot; con menos, cada destino pide una
+## fundación y no dos o cuatro.
+const FACTOR_CALIBRACION := 1.6
+var factor_calibracion := FACTOR_CALIBRACION
 const INVULNERABLE := 1e40
 var calibrar := false
 var calibrado: Dictionary = {}
@@ -82,6 +90,8 @@ func _ready() -> void:
 			Mundos.vida_meta_forzada = valores
 			anotar("(vida_meta forzada: %s)" % str(valores))
 	calibrar = OS.has_environment("BOT_CALIBRAR")
+	if OS.has_environment("BOT_FACTOR"):
+		factor_calibracion = float(OS.get_environment("BOT_FACTOR"))
 	if estado_ruta != "" and FileAccess.file_exists(estado_ruta):
 		var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(estado_ruta))
 		Juego.restaurar_partida(d.partida)
@@ -120,7 +130,7 @@ func _ready() -> void:
 			break
 		if conviene_fundar():
 			if calibrar and donde != "casa" and not calibrado.has(donde) and max_dano_destino > 0.0 and _base_meta > 0.0:
-				calibrado[donde] = FACTOR_CALIBRACION * max_dano_destino / _base_meta
+				calibrado[donde] = factor_calibracion * max_dano_destino / _base_meta
 				Mundos.vida_meta_forzada[donde] = calibrado[donde]
 				anotar("== calibrado %s: vida_meta %s (máximo daño de la colonia %s)" % [donde, str(calibrado[donde]), Juego.formatear(max_dano_destino)])
 			fundar()
