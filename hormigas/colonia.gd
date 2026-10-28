@@ -94,6 +94,7 @@ func _nacer(tipo := "obrera", donde := Vector2.INF) -> Hormiga:
 	h.iniciar(run, tipo)
 	h.scale = Vector2.ONE * _escala * h.escala_casta
 	hormigas.append(h)
+	Juego.sumar_estadistica("hormigas_nacidas")
 	return h
 
 

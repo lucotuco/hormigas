@@ -21,7 +21,7 @@ var _lista: VBoxContainer
 var _boton_run: Button
 var _migas_mostradas := 0.0
 var _tween_compra: Tween
-var _audio: CheckButton
+var _ventana: VentanaModal
 var _cuerpo_mejoras: Control
 var _panel_castas: PanelCastas
 var _pestanas: Dictionary = {}
@@ -180,7 +180,6 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_migas_mostradas = lerpf(_migas_mostradas, Juego.migas, 1.0 - exp(-10.0 * delta))
 	_lbl_migas.text = tr("%s migas") % Juego.formatear(_migas_mostradas)
-	_audio.set_pressed_no_signal(not Sonido.silenciado)
 
 
 func _encabezado() -> Control:
@@ -372,21 +371,33 @@ func _pie() -> Control:
 	var nota := Estilo.etiqueta(tr("Cada miga construye algo más grande."), 13, Estilo.TEXTO_SUAVE)
 	nota.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fila.add_child(nota)
-	var audio := CheckButton.new()
-	_audio = audio
-	audio.text = tr("Sonido")
-	audio.button_pressed = not Sonido.silenciado
-	audio.toggled.connect(func(valor: bool) -> void: Sonido.silenciado = not valor)
-	fila.add_child(audio)
-	var volumen := HSlider.new()
-	volumen.custom_minimum_size.x = 110
-	volumen.max_value = 1
-	volumen.step = 0.05
-	volumen.value = Sonido.volumen
-	volumen.tooltip_text = tr("Volumen de los efectos")
-	volumen.value_changed.connect(func(valor: float) -> void: Sonido.volumen = valor)
-	fila.add_child(volumen)
+	for opcion in [[tr("Estadísticas"), abrir_estadisticas], [tr("Configuración"), abrir_configuracion], [tr("Menú"), _ir_al_menu]]:
+		var boton := Estilo.boton(opcion[0], 13, Color("262e25"), Color("4b5945"))
+		boton.pressed.connect(opcion[1])
+		fila.add_child(boton)
 	return fila
+
+
+func abrir_estadisticas() -> void:
+	_abrir(PanelEstadisticas.new())
+
+
+func abrir_configuracion() -> void:
+	var panel := PanelConfiguracion.new()
+	panel.idioma_cambiado.connect(func() -> void: get_tree().reload_current_scene())
+	_abrir(panel)
+
+
+func _abrir(ventana: VentanaModal) -> void:
+	if is_instance_valid(_ventana):
+		_ventana.queue_free()
+	Sonido.tocar("clic", 0.9)
+	_ventana = ventana
+	add_child(ventana)
+
+
+func _ir_al_menu() -> void:
+	get_tree().change_scene_to_file("res://ui/menu.tscn")
 
 
 func _seleccionar(rama: String) -> void:

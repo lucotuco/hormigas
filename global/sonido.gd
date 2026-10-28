@@ -3,7 +3,7 @@ extends Node
 ##
 ## Uso: Sonido.tocar("mordida", tono)
 ## Cada sonido tiene un intervalo mínimo para que 200 hormigas mordiendo
-## a la vez no saturen el audio. M silencia / activa el sonido.
+## a la vez no saturen el audio. M silencia / activa el sonido (ver Ajustes).
 
 const SONIDOS := {
 	"mordida":   {"volumen": -22.0, "intervalo": 0.13},
@@ -51,7 +51,7 @@ func _exit_tree() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	var tecla := event as InputEventKey
 	if tecla and tecla.pressed and not tecla.echo and tecla.keycode == KEY_M:
-		silenciado = not silenciado
+		Ajustes.cambiar("sonido", silenciado)  # si estaba silenciado, vuelve el sonido
 
 
 ## tono: 1.0 es normal, 2.0 una octava arriba. variacion: aleatoriedad del tono.

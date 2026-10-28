@@ -48,6 +48,7 @@ var _barra_meta: ProgressBar
 var _relleno_meta: StyleBoxFlat
 var _meta_lista := false
 
+var _ventana: VentanaModal
 var _migas_mostradas := 0.0
 var _volando := 0
 var _tiempo_combo := -100.0
@@ -302,7 +303,7 @@ func _crear_avisos(raiz: Control) -> void:
 	raiz.add_child(_lbl_aviso)
 
 	_lbl_ayuda = Estilo.etiqueta(
-		tr("Clic sobre la comida: pisotón · Mantené el clic: llamar a las hormigas cercanas\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: ver la casa · Esc: terminar"),
+		tr("Clic sobre la comida: pisotón · Mantené el clic: llamar a las hormigas cercanas\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: ver la casa · Esc: pausa"),
 		13, Estilo.TEXTO, 4)
 	_lbl_ayuda.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_lbl_ayuda.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -536,6 +537,82 @@ func mostrar_inspeccion(c: Comida) -> void:
 		_lbl_objetivo.text = tr("%s · %s / %s de resistencia") % [c.nombre, Juego.formatear(c.vida), Juego.formatear(c.vida_max)] + "\n" + (tr("Mantené clic para llamar hormigas · recompensa %s") % Juego.formatear(c.recompensa) if c.disponible() else tr("Requiere: %s") % tr(MaterialesCasa.NIVELES[c.nivel_requerido]))
 	elif c is FragmentoCasa:
 		_lbl_objetivo.text = tr("%s · %s migas\nPeso %d · las cargadoras priorizan estos restos") % [c.nombre, Juego.formatear(c.recompensa), c.peso]
+
+
+# =====================================================================
+# Pausa
+# =====================================================================
+
+func pausado() -> bool:
+	return get_tree().paused and is_instance_valid(_ventana)
+
+
+func pausar() -> void:
+	if not run.activa or pausado():
+		return
+	get_tree().paused = true
+	Sonido.tocar("clic", 0.7)
+	_menu_pausa()
+
+
+func reanudar() -> void:
+	if is_instance_valid(_ventana):
+		_ventana.queue_free()
+	_ventana = null
+	get_tree().paused = false
+
+
+func _menu_pausa() -> void:
+	var ventana := VentanaModal.new()
+	ventana.titulo(tr("Pausa"))
+	ventana.ancho(380)
+	_mostrar_ventana(ventana)
+	ventana.cerrada.connect(reanudar)
+	var opciones := [
+		[tr("Seguir"), reanudar],
+		[tr("Configuración"), _abrir_configuracion],
+		[tr("Estadísticas"), func() -> void: _mostrar_ventana(PanelEstadisticas.new(), true)],
+		[tr("Terminar la expedición"), _terminar_desde_pausa],
+		[tr("Salir al menú"), run.salir_al_menu],
+	]
+	for i in opciones.size():
+		var boton := Estilo.boton(opciones[i][0], 17, Color("46593e") if i == 0 else Color("262e25"), Color("94b47e") if i == 0 else Color("4b5945"))
+		boton.custom_minimum_size.y = 46
+		boton.pressed.connect(opciones[i][1])
+		ventana.contenido.add_child(boton)
+		if i == 0:
+			boton.call_deferred("grab_focus")
+
+
+## Muestra una ventana en pausa. Las secundarias (configuración,
+## estadísticas) vuelven al menú de pausa al cerrarse.
+func _mostrar_ventana(ventana: VentanaModal, secundaria := false) -> void:
+	if is_instance_valid(_ventana):
+		if _ventana.cerrada.is_connected(reanudar):
+			_ventana.cerrada.disconnect(reanudar)
+		_ventana.queue_free()
+	_ventana = ventana
+	add_child(ventana)
+	if secundaria:
+		ventana.cerrada.connect(func() -> void:
+			_ventana = null
+			_menu_pausa())
+
+
+func _abrir_configuracion() -> void:
+	var panel := PanelConfiguracion.new()
+	# Los textos del HUD se rearman solos; la pausa se vuelve a armar al cerrar.
+	_mostrar_ventana(panel, true)
+
+
+func _terminar_desde_pausa() -> void:
+	reanudar()
+	run.tiempo_restante = 0.0
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and Ajustes.pausar_sin_foco and is_inside_tree():
+		pausar()
 
 
 func _miga_llego(miga: Control) -> void:

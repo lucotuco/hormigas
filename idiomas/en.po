@@ -135,8 +135,8 @@ msgstr "Founding now would give +%d royal jelly"
 msgid "MIGAS DE ESTA RUN"
 msgstr "CRUMBS THIS RUN"
 
-msgid "Clic sobre la comida: pisotón · Mantené el clic: llamar a las hormigas cercanas\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: ver la casa · Esc: terminar"
-msgstr "Click on food: stomp · Hold click: call nearby ants\nWheel: zoom · Right or middle button / WASD: move · R: nest · H: whole map · Esc: end run"
+msgid "Clic sobre la comida: pisotón · Mantené el clic: llamar a las hormigas cercanas\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: ver la casa · Esc: pausa"
+msgstr "Click on food: stomp · Hold click: call nearby ants\nWheel: zoom · Right or middle button / WASD: move · R: nest · H: whole map · Esc: pause"
 
 msgid "¡Se acabó el tiempo!"
 msgstr "Time's up!"
@@ -1205,3 +1205,156 @@ msgstr "Travel"
 
 msgid "Jalea real"
 msgstr "Royal jelly"
+
+msgid "Pausa"
+msgstr "Paused"
+
+msgid "Seguir"
+msgstr "Resume"
+
+msgid "Configuración"
+msgstr "Settings"
+
+msgid "Estadísticas"
+msgstr "Statistics"
+
+msgid "Terminar la expedición"
+msgstr "End the expedition"
+
+msgid "Salir al menú"
+msgstr "Quit to menu"
+
+msgid "Una colonia. Una casa entera para comer."
+msgstr "One colony. A whole house to eat."
+
+msgid "Continuar"
+msgstr "Continue"
+
+msgid "Jugar"
+msgstr "Play"
+
+msgid "Salir"
+msgstr "Quit"
+
+msgid "Guiá a tus hormigas, pisá migas y comete la casa entera."
+msgstr "Guide your ants, stomp on crumbs and eat the whole house."
+
+msgid "1 expedición · %s migas juntadas"
+msgstr "1 expedition · %s crumbs gathered"
+
+msgid "%d expediciones · %s migas juntadas"
+msgstr "%d expeditions · %s crumbs gathered"
+
+msgid "%s · %d de jalea real"
+msgstr "%s · %d royal jelly"
+
+msgid "Idioma"
+msgstr "Language"
+
+msgid "Pantalla completa (F11)"
+msgstr "Fullscreen (F11)"
+
+msgid "Temblor de cámara"
+msgstr "Screen shake"
+
+msgid "Pausar al cambiar de ventana"
+msgstr "Pause when switching windows"
+
+msgid "Borrar la partida…"
+msgstr "Delete save…"
+
+msgid "Borrar la partida"
+msgstr "Delete save"
+
+msgid "Se pierden las migas, las mejoras, las castas, los destinos, la jalea real y las estadísticas. La configuración se conserva. No se puede deshacer."
+msgstr "You lose your crumbs, upgrades, castes, destinations, royal jelly and statistics. Settings are kept. This can't be undone."
+
+msgid "Borrar todo"
+msgstr "Delete everything"
+
+msgid "Cancelar"
+msgstr "Cancel"
+
+msgid "Apagado"
+msgstr "Off"
+
+msgid "LA COLONIA"
+msgstr "THE COLONY"
+
+msgid "Migas juntadas"
+msgstr "Crumbs gathered"
+
+msgid "Migas invertidas"
+msgstr "Crumbs spent"
+
+msgid "Mejor expedición"
+msgstr "Best expedition"
+
+msgid "Hormigas nacidas"
+msgstr "Ants hatched"
+
+msgid "Colonia más grande"
+msgstr "Largest colony"
+
+msgid "Niveles de mejoras"
+msgstr "Upgrade levels bought"
+
+msgid "Especialistas reclutadas"
+msgstr "Specialists recruited"
+
+msgid "EXPEDICIONES"
+msgstr "EXPEDITIONS"
+
+msgid "Expediciones"
+msgstr "Expeditions"
+
+msgid "Tiempo de expedición"
+msgstr "Time on expeditions"
+
+msgid "Tiempo de juego"
+msgstr "Time played"
+
+msgid "Mejor combo"
+msgstr "Best combo"
+
+msgid "Pisotones"
+msgstr "Stomps"
+
+msgid "DESTRUCCIÓN"
+msgstr "DESTRUCTION"
+
+msgid "Comidas devoradas"
+msgstr "Food devoured"
+
+msgid "Muebles y muros devorados"
+msgstr "Furniture and walls devoured"
+
+msgid "Derrumbes"
+msgstr "Collapses"
+
+msgid "Grandes objetivos devorados"
+msgstr "Grand targets devoured"
+
+msgid "Destinos conquistados"
+msgstr "Destinations conquered"
+
+msgid "LA REINA"
+msgstr "THE QUEEN"
+
+msgid "Colonias fundadas"
+msgstr "Colonies founded"
+
+msgid "Coronas ganadas"
+msgstr "Crowns won"
+
+msgid "Jalea real ganada"
+msgstr "Royal jelly earned"
+
+msgid "Jalea real invertida"
+msgstr "Royal jelly spent"
+
+msgid "Hitos"
+msgstr "Milestones"
+
+msgid "Menú"
+msgstr "Menu"

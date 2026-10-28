@@ -30,8 +30,8 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] Mecánicas que aparecen de a una (frenesí, castas, prioridades, viajes, legado)
 - [x] Próxima meta siempre visible en el HUD, con barra y aviso cuando alcanza
 - [x] Hormigas más grandes en pantalla y 8 obreras iniciales
-- [ ] **B:** pantalla de título
-- [ ] **B:** menú de pausa con volumen
+- [x] Menú principal, pausa con Esc, configuración (idioma, volumen, pantalla completa, temblor) y estadísticas
+- [x] Todo el juego en español e inglés (idiomas/en.po)
 
 ## Paso 3 — El jugo
 

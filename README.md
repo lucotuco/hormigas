@@ -21,8 +21,15 @@ Incremental para PC hecho en **Godot 4.7.2**. Guiás a tu colonia manteniendo el
 | Ver el plano de la casa completa | H |
 | Enfocar el gran objetivo del destino | G o botón Gran objetivo |
 | Priorizar alimentos, muebles o estructuras | Botones de la barra inferior; el llamado manual siempre manda |
-| Terminar la run antes | Esc |
+| Pausa (seguir, configuración, estadísticas, terminar o salir al menú) | Esc |
 | Silenciar sonido | M |
+| Pantalla completa | F11 |
+
+El juego arranca en el **menú principal** (Jugar o Continuar, Estadísticas,
+Configuración y Salir). La configuración (idioma, sonido, volumen, pantalla
+completa, temblor de cámara, pausar al cambiar de ventana y borrar la partida)
+se guarda aparte de la partida, en `user://ajustes.cfg`. La expedición se pausa
+sola cuando la ventana pierde el foco.
 
 ### Atajos de desarrollo (solo al correr desde el editor)
 
@@ -40,11 +47,12 @@ res://
     juego.gd       "Juego": estado, partida guardada, stats, mejoras, lectura de /datos
     sonido.gd      "Sonido": efectos con pool de reproductores
     graficos.gd    "Graficos": atlas generado una sola vez para hormigas, comida y muebles
+    ajustes.gd     "Ajustes": configuración del jugador (user://ajustes.cfg)
   hormigas/
     hormiga.gd     Máquina de estados de una hormiga (explorar, responder al llamado, morder, volver)
     colonia.gd     Hace nacer hormigas y ajusta su tamaño al zoom
   mundo/
-    run.tscn       ESCENA PRINCIPAL: una run completa
+    run.tscn       Una run completa
     run.gd         Coordina la run: inicio, fin, combos y comida destruida
     comidas.gd     Genera el mapa (siempre igual, semilla fija) y busca comida cercana
     comida.gd      Una comida: vida, grietas, sacudida, dibujo por forma
@@ -63,10 +71,14 @@ res://
     camara.gd      Zoom según el territorio + sacudidas
     suelo.gd       Pisos de madera, cerámica y baldosas por ambiente
   ui/
-    hud.gd         Migas, tiempo, combo, avisos, panel de fin de run
+    menu.tscn      ESCENA PRINCIPAL: menú con el destino actual de fondo
+    hud.gd         Migas, tiempo, combo, avisos, pausa y panel de fin de run
+    ventana_modal.gd  Base de las ventanas (configuración, estadísticas, pausa)
+    panel_configuracion.gd / panel_estadisticas.gd
     tienda.gd      Árbol de mejoras entre runs
     estilo.gd      Colores y helpers de interfaz compartidos
   datos/         Tablas de balance (CSV)
+  idiomas/       en.po: el inglés de todos los textos (ver idiomas/LEEME.md)
   sonidos/       Efectos .wav
   tests/         Prueba de humo
 ```
