@@ -728,7 +728,7 @@ func _refrescar() -> void:
 			if m.destino != "" and not Juego.destino_desbloqueado(m.destino):
 				t.cambio.text = tr("Se descubre al llegar a %s") % tr(Mundos.INFO[m.destino].nombre)
 			else:
-				t.cambio.text = tr("Requiere %s · nivel %d") % [tr(Juego.mejoras_por_id[m.requiere_id].nombre), m.requiere_nivel]
+				t.cambio.text = texto_requisitos(Juego.requisitos_faltantes(m.requisitos))
 		elif maxima:
 			if m.tope_por_destino > 0 and Juego.lugares_completados.size() < Mundos.ORDEN.size():
 				t.cambio.text = tr("Tope alcanzado: cada destino conquistado suma %d niveles.") % m.tope_por_destino
@@ -774,6 +774,16 @@ func _actualizar_transito() -> void:
 		var id: String = _corte_tierra.caminos[i].id
 		if id == "" or _corte_tierra.estados.get(id, {}).get("visible", true):
 			_animacion_hormiguero.indices_rutas.append(i)
+
+
+## "Requiere Buche grande · nivel 2" o, si faltan varios, "Requiere: Buche grande nivel 2 + Cría acelerada nivel 3".
+func texto_requisitos(faltan: Array) -> String:
+	if faltan.size() == 1:
+		return tr("Requiere %s · nivel %d") % [tr(Juego.mejoras_por_id[faltan[0].id].nombre), faltan[0].nivel]
+	var partes := PackedStringArray()
+	for r in faltan:
+		partes.append(tr("%s nivel %d") % [tr(Juego.mejoras_por_id[r.id].nombre), r.nivel])
+	return tr("Requiere: %s") % " + ".join(partes)
 
 
 ## Las mejoras de destino se muestran (bloqueadas) recién cuando aparecen los viajes.

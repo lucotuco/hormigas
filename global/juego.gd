@@ -437,9 +437,17 @@ func esta_desbloqueada(id: String) -> bool:
 	var m: Dictionary = mejoras_por_id[id]
 	if m.destino != "" and not destino_desbloqueado(m.destino):
 		return false
-	if m.requiere_id == "":
-		return true
-	return nivel_de(m.requiere_id) >= m.requiere_nivel
+	return requisitos_faltantes(m.requisitos).is_empty()
+
+
+## Requisitos de nivel que todavía no se cumplen ({id, nivel}), en el orden del CSV.
+## Una cámara compartida entre dos ramas pide todos los suyos.
+func requisitos_faltantes(requisitos: Array) -> Array[Dictionary]:
+	var faltan: Array[Dictionary] = []
+	for r in requisitos:
+		if nivel_de(r.id) < int(r.nivel):
+			faltan.append(r)
+	return faltan
 
 
 func puede_comprar(id: String) -> bool:
@@ -513,7 +521,7 @@ func puede_comprar_casta(id: String) -> bool:
 	return c.comprable and casta_desbloqueada(id) and cantidad_casta(id) < c.maximo and migas >= costo_casta(id)
 
 func casta_desbloqueada(id: String) -> bool:
-	return (id != "carpintera" or stat("materiales") >= 1) and (id != "demoledora" or stat("materiales") >= 3)
+	return castas_por_id.has(id) and requisitos_faltantes(castas_por_id[id].requisitos).is_empty()
 
 
 func comprar_casta(id: String) -> bool:
@@ -611,10 +619,11 @@ func proxima_meta() -> Dictionary:
 		if nivel_de(id) >= 1:
 			continue
 		var m: Dictionary = mejoras_por_id[id]
-		if not esta_desbloqueada(id):
-			var previa: Dictionary = mejoras_por_id[m.requiere_id]
-			return {"tipo": "nivel", "nombre": tr("%s nivel %d") % [tr(previa.nombre), m.requiere_nivel],
-				"detalle": tr("habilita: %s") % tr(m.nombre), "actual": float(nivel_de(previa.id)), "objetivo": float(m.requiere_nivel)}
+		var faltan := requisitos_faltantes(m.requisitos)
+		if not faltan.is_empty():
+			var previa: Dictionary = mejoras_por_id[faltan[0].id]
+			return {"tipo": "nivel", "nombre": tr("%s nivel %d") % [tr(previa.nombre), faltan[0].nivel],
+				"detalle": tr("habilita: %s") % tr(m.nombre), "actual": float(nivel_de(previa.id)), "objetivo": float(faltan[0].nivel)}
 		return {"tipo": "migas", "nombre": tr(m.nombre), "detalle": tr(m.descripcion),
 			"actual": migas + migas_run, "objetivo": costo(id)}
 	if not coronas_cobradas.has(lugar_actual):
@@ -1089,6 +1098,7 @@ func _cargar_datos() -> void:
 			"descripcion": fila.descripcion, "habilidad": fila.habilidad,
 			"color": Color.from_string(fila.color, Color.WHITE),
 			"comprable": fila.comprable == "1",
+			"requisitos": _leer_requisitos(fila.get("requiere", "")),
 		}
 		for campo in ["velocidad", "dano", "capacidad", "olfato", "escala", "costo_base", "crecimiento", "maximo"]:
 			c[campo] = _num(fila[campo])
@@ -1121,11 +1131,10 @@ func _cargar_datos() -> void:
 			"bonus_cada": int(_num(fila.get("bonus_cada", ""))),
 			"bonus_mult": _num(fila.get("bonus_mult", "")) if fila.get("bonus_mult", "") != "" else 1.0,
 		}
-		var requiere: String = fila.get("requiere", "")
-		if requiere != "":
-			var partes := requiere.split(":")
-			m.requiere_id = partes[0].strip_edges()
-			m.requiere_nivel = int(partes[1]) if partes.size() > 1 else 1
+		m.requisitos = _leer_requisitos(fila.get("requiere", ""))
+		if not m.requisitos.is_empty():
+			m.requiere_id = m.requisitos[0].id
+			m.requiere_nivel = m.requisitos[0].nivel
 		if not stats_base.has(m.stat):
 			push_error("Mejora '%s': la stat '%s' no existe en %s" % [m.id, m.stat, RUTA_STATS])
 		if m.tipo != "suma" and m.tipo != "multiplica":
@@ -1136,10 +1145,15 @@ func _cargar_datos() -> void:
 		mejoras_por_id[m.id] = m
 		if not ramas.has(m.rama):
 			ramas.append(m.rama)
+	for lista in [mejoras, castas]:
+		for m in lista:
+			for r in m.requisitos.duplicate():
+				if not mejoras_por_id.has(r.id):
+					push_error("'%s' requiere '%s', que no es una mejora" % [m.id, r.id])
+					m.requisitos.erase(r)
 	for m in mejoras:
-		if m.requiere_id != "" and not mejoras_por_id.has(m.requiere_id):
-			push_error("Mejora '%s' requiere '%s', que no existe" % [m.id, m.requiere_id])
-			m.requiere_id = ""
+		m.requiere_id = m.requisitos[0].id if not m.requisitos.is_empty() else ""
+		m.requiere_nivel = m.requisitos[0].nivel if not m.requisitos.is_empty() else 0
 
 	nodos_jalea.clear()
 	jalea_por_id.clear()
@@ -1203,6 +1217,17 @@ func _cargar_datos() -> void:
 ## ¿La comida aparece en este destino?
 func comida_en_destino(tipo: Dictionary, lugar: String) -> bool:
 	return tipo.destinos.is_empty() or lugar in tipo.destinos
+
+
+## "mandibulas:4" o, para una cámara que comparten dos ramas, "buche:2|cria_acelerada:3".
+func _leer_requisitos(texto: String) -> Array[Dictionary]:
+	var lista: Array[Dictionary] = []
+	for parte in texto.split("|", false):
+		var trozos := parte.strip_edges().split(":")
+		if trozos[0].strip_edges() == "":
+			continue
+		lista.append({"id": trozos[0].strip_edges(), "nivel": int(trozos[1]) if trozos.size() > 1 else 1})
+	return lista
 
 
 ## Lee un CSV con encabezado y devuelve una lista de diccionarios (columna -> texto).
