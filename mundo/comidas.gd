@@ -55,6 +55,7 @@ func generar() -> void:
 				var distancia := sqrt(rng.randf_range(dmin * dmin, dmax * dmax))
 				var pos := Vector2.from_angle(angulo) * distancia
 				var zonas: String = tipo.get("zonas", "")
+				var zona_permitida := Rect2()
 				if zonas != "":
 					var opciones := zonas.split("|")
 					var zona := PlanoCasa.rect_ambiente(opciones[rng.randi_range(0, opciones.size() - 1)])
@@ -62,6 +63,7 @@ func generar() -> void:
 						var ambientes := PlanoCasa.ambientes()
 						zona = ambientes[rng.randi_range(0, ambientes.size() - 1)].rect
 					zona = zona.grow(-60)
+					zona_permitida = zona
 					pos = Vector2(rng.randf_range(zona.position.x, zona.end.x), rng.randf_range(zona.position.y, zona.end.y))
 					if pos.length() < dmin or pos.length() > dmax:
 						continue
@@ -71,6 +73,8 @@ func generar() -> void:
 					var m: Dictionary = muebles[rng.randi_range(0, muebles.size() - 1)]
 					var rect: Rect2 = m.rect
 					pos = Vector2(rect.position.x - radio - 25 - rng.randf_range(0, 55), rect.position.y + rect.size.y * rng.randf())
+					if zona_permitida.has_area() and not zona_permitida.has_point(pos):
+						continue # los grupos junto a muebles también respetan el ambiente
 					if pos.length() < dmin or pos.length() > dmax:
 						continue
 				if _hay_lugar(pos, radio, ocupados):

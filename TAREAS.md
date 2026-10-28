@@ -1,5 +1,14 @@
 # Tareas
 
+## Integración y estética — 28/10
+
+- [x] Integrar menú, idiomas, eventos y decretos de main sin perder IA ni logística; publicar en main sin sobrescribir historial.
+- [x] Renovar mobiliario, materiales de piso, textiles y luz estática en el atlas compartido.
+- [x] Respetar color/orientación/acabado de cada mueble; deduplicar instancias del atlas.
+- [x] Bancos en la plaza, cartón reconocible en el tutorial, arena y césped sin baldosas.
+- [x] Mantener la comida en su ambiente también al agruparla junto a muebles.
+- [x] Verificar 18 suites, capturas de ambientes y rendimiento de los seis destinos con 500 hormigas.
+
 Reparto propuesto:
 
 - **A — Hormigas:** todo lo que se mueve. Carpeta `hormigas/` y `mundo/feromonas.gd`.

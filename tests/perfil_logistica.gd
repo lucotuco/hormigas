@@ -2,6 +2,8 @@ extends Node
 ## Render real: 500 hormigas, entradas y adaptaciones en los seis destinos.
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Ajustes.pausar_sin_foco = false
+	get_tree().paused = false
 	Sonido.silenciado = true
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	for destino in Mundos.ORDEN:
@@ -48,6 +50,7 @@ func _ready() -> void:
 			antes = ahora
 			max_pedidos = maxi(max_pedidos, r.cocina._pedidos_cuadro)
 		tiempos.sort()
+		assert(not get_tree().paused and r.colonia.cantidad() == 500 and r.cocina.consultas_ruta > 0, "El benchmark requiere 500 hormigas activas y navegación real")
 		var media := 0.0
 		for ms in tiempos:
 			media += ms

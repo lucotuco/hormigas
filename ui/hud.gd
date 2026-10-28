@@ -673,7 +673,7 @@ func _notificar_hito() -> void:
 		mostrar_aviso(tr("¡Hito! %s") % tr(Juego.HITOS[id].nombre))
 
 func mostrar_inspeccion(c: Comida) -> void:
-	_lbl_objetivo.text = tr(ReglasDestino.DESCRIPCIONES[Juego.lugar_actual])
+	_lbl_objetivo.text = "" # las reglas están en Viajes; no tapar el mapa vacío
 	if c is PiezaCasa:
 		_lbl_objetivo.text = tr("%s · %s\n%s / %s de resistencia · %d trabajadoras\n%s") % [c.nombre, c.nombre_etapa(), Juego.formatear(c.vida), Juego.formatear(c.vida_max), c.trabajadoras, tr("Mantené clic para llamar hormigas") if c.disponible() else tr("Requiere: %s") % tr(MaterialesCasa.NIVELES[c.nivel_requerido])]
 	elif c is FragmentoCasa:
@@ -689,7 +689,7 @@ func pausado() -> bool:
 
 
 func pausar() -> void:
-	if not run.activa or pausado():
+	if not is_node_ready() or not run.activa or pausado():
 		return
 	get_tree().paused = true
 	Sonido.tocar("clic", 0.7)

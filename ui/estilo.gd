@@ -4,11 +4,11 @@ extends RefCounted
 ## Cambiar algo acá cambia el look de toda la interfaz.
 
 const TEXTO := Color(0.98, 0.94, 0.86)
-const TEXTO_SUAVE := Color(0.98, 0.94, 0.86, 0.6)
-const ACENTO := Color(1.0, 0.82, 0.35)
-const VERDE := Color(0.55, 0.88, 0.45)
+const TEXTO_SUAVE := Color(0.88, 0.88, 0.79, 0.76)
+const ACENTO := Color("ebc67d")
+const VERDE := Color("a8c88c")
 const ROJO := Color(0.95, 0.38, 0.28)
-const PANEL := Color(0.1, 0.065, 0.04, 0.85)
+const PANEL := Color(0.10, 0.14, 0.12, 0.94)
 const TIERRA := Color(0.23, 0.16, 0.11)
 const TIERRA_CLARA := Color(0.36, 0.25, 0.17)
 const TIERRA_OSCURA := Color(0.13, 0.09, 0.06)
@@ -30,8 +30,8 @@ static func ajustes_texto(tamano: int, color := TEXTO, contorno := 0) -> LabelSe
 	ajustes.font_size = tamano
 	ajustes.font_color = color
 	if contorno > 0:
-		ajustes.outline_size = contorno
-		ajustes.outline_color = Color(0.08, 0.05, 0.03)
+		ajustes.outline_size = mini(contorno, 2)
+		ajustes.outline_color = Color(0.08, 0.10, 0.08, 0.9)
 	return ajustes
 
 

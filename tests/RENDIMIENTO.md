@@ -266,3 +266,51 @@ integrada ni sesiones prolongadas. El presupuesto temporal de A* sigue siendo
 blando (1,2 ms): una búsqueda en curso no puede interrumpirse. Cambiar comida,
 objetivos y entradas también cambia la actividad; las diferencias con versiones
 anteriores no se atribuyen exclusivamente a optimizaciones de código.
+
+## Integración de main y renovación estética — 28/10
+
+Se integraron menú, traducciones, eventos, decretos y resistencias de `main`
+sin perder IA, entradas, retirada ni registros. El clic manual sólo interactúa
+con eventos: no vuelve a extraer comida ni muebles. La mejora automática que
+ya estaba en `main` se conserva. El piloto anterior es histórico: no mide esta
+combinación de cambios.
+
+Arte cenital renovado: sillas con marco y tapizado, vajilla, utensilios,
+puertas/tiradores, textiles y hojas; sombras suaves precalculadas y luz estática
+de ventanas. Bancos de plaza reemplazan consolas con la misma geometría y
+economía. Césped y arena ya no usan juntas de cerámica. Los accesorios del
+mueble comparten su máscara: no quedan flotando tras destruirlo.
+
+El atlas distingue color, orientación y acabado, y omite instancias duplicadas.
+Con las comidas adicionales de `main` y los nuevos acabados mide **2048×4352,
+34 MiB RGBA8**, 40 acabados de mobiliario. Se renderiza una vez; no se agregan
+luces dinámicas, cuerpos físicos ni texturas por hormiga.
+
+Medición gráfica final, misma RTX 3060 y configuración de la sección anterior,
+500 hormigas, Corte + Barrido, seis entradas, todas las adaptaciones:
+
+| Destino | Media | p95 | Peor cuadro | Máximo rutas/cuadro |
+|---|---:|---:|---:|---:|
+| Casa | 7,45 ms | 9,69 ms | 10,70 ms | 6 |
+| Restaurante | 7,23 ms | 9,86 ms | 11,59 ms | 6 |
+| Museo | 6,74 ms | 8,89 ms | 11,28 ms | 6 |
+| Obelisco | 6,32 ms | 8,96 ms | 11,27 ms | 6 |
+| Coliseo | 6,24 ms | 8,34 ms | 9,53 ms | 6 |
+| Eiffel | 7,24 ms | 9,65 ms | 11,24 ms | 6 |
+
+Feromonas (500 hormigas): sin llamado 6,78 ms media; cursor móvil con 24
+respuestas 8,05 ms; con 64 respuestas 8,95 ms. Sobre muebles: **8,93 ms media,
+10,92 ms p95, 12,27 ms peor cuadro**. Son muestras locales cortas, no una
+garantía de ausencia de tirones en otros equipos.
+
+Se descarta una primera medición porque el menú nuevo pausaba al perder foco:
+medía escenas quietas, no IA. Los perfiles ahora desactivan esa preferencia
+sólo en memoria (sin guardar) y el de logística comprueba 500 hormigas, árbol
+sin pausa y consultas reales de navegación. La pausa del juego sigue activa.
+
+Las **18 suites suman 543 verificaciones sin fallos**. `prueba_estetica` cubre
+acabados de todos los destinos, identidad del tutorial, equivalencia económica
+de los bancos y ubicación de comida en su ambiente. `revision_estetica` captura
+cada ambiente de la casa, el inicio con HUD y los seis destinos completos en
+`.godot/qa/estetica_*.png`. Las pruebas no escriben la partida del jugador.
+Siguen pendientes GPU integrada y sesiones prolongadas.

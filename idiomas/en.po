@@ -1727,3 +1727,5 @@ msgstr "Domino effect · devoured arches shake up to two neighbors"
 msgid "Desarmado por pisos · vaciá la base antes de subir a la siguiente sección"
 msgstr "Floor-by-floor dismantling · clear the base before moving up"
 
+msgid "Banco de plaza"
+msgstr "Park bench"

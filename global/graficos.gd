@@ -72,6 +72,9 @@ func _ready() -> void:
 		_agregar("comida:" + tipo.id, comida, Rect2(-r, -r, r * 2, r * 2), 2)
 	var catalogo := PlanoCasa.MUEBLES + Mundos.ESPECIALES
 	for i in catalogo.size():
+		var id := clave_mueble(catalogo[i])
+		if _mueble_claves.has(id):
+			continue # una textura por acabado y orientación, no por instancia
 		var p := Pintura.new()
 		p.tipo = "mueble"
 		p.datos = catalogo[i].duplicate()
@@ -79,10 +82,8 @@ func _ready() -> void:
 		p.datos.rect = Rect2(Vector2.ZERO, r.size)
 		var escala := minf(0.8, 512.0 / maxf(r.size.x + 75, r.size.y + 150))
 		_agregar("mueble:%d" % i, p, Rect2(-35, -100, r.size.x + 75, r.size.y + 150), escala)
-		var id := str(p.datos.tipo) + ":" + str(p.datos.get("frente", "sur"))
-		if not _mueble_claves.has(id):
-			_mueble_claves[id] = "mueble:%d" % i
-			_mueble_medidas[id] = r.size
+		_mueble_claves[id] = "mueble:%d" % i
+		_mueble_medidas[id] = r.size
 	for material_id in 4:
 		var resto := Pintura.new()
 		resto.tipo = "resto"
@@ -141,8 +142,12 @@ func dibujar(lienzo: CanvasItem, clave: String, desplazamiento := Vector2.ZERO, 
 		rect.position += desplazamiento
 		lienzo.draw_texture_rect_region(textura, rect, regiones[clave], color)
 
+func clave_mueble(datos: Dictionary) -> String:
+	var color: Color = datos.color
+	return "%s:%s:%s:%s" % [datos.tipo, datos.get("frente", "sur"), color.to_html(), datos.get("acabado", "normal")]
+
 func dibujar_mueble(lienzo: CanvasItem, datos: Dictionary) -> void:
-	var id := str(datos.tipo) + ":" + str(datos.get("frente", "sur"))
+	var id := clave_mueble(datos)
 	if not _mueble_claves.has(id):
 		return
 	var clave: String = _mueble_claves[id]

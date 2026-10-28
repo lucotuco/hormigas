@@ -6,6 +6,7 @@ var _centros: Array[Vector2] = [Vector2(-100, 300), Vector2(900, 300), Vector2(2
 
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Ajustes.pausar_sin_foco = false
 	Juego.usar_idioma("es")  # las verificaciones leen textos en español
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()

@@ -22,6 +22,8 @@ static func vida_meta(id: String) -> float:
 	return float(vida_meta_forzada.get(id, INFO[id].get("vida_meta", VIDA_META_BASE)))
 
 const ESPECIALES := [
+	{"tipo": "silla", "acabado": "carton", "rect": Rect2(0, 0, 110, 130), "color": Color("a6b194"), "frente": "sur"},
+	{"tipo": "banco", "rect": Rect2(0, 0, 800, 220), "color": Color("aa815b")},
 	{"tipo": "vitrina", "rect": Rect2(0, 0, 700, 350), "color": Color("8faeaa")},
 	{"tipo": "escultura", "rect": Rect2(0, 0, 950, 1150), "color": Color("d4c9b0")},
 	{"tipo": "obelisco", "rect": Rect2(0, 0, 650, 1650), "color": Color("dcd4bd")},
@@ -38,6 +40,7 @@ static func plano(id: String) -> Dictionary:
 		p.muebles = PlanoCasa.MUEBLES.duplicate()
 		_poner(p, "silla", Rect2(-360, 190, 110, 130))
 		p.muebles.back()["practica"] = true
+		p.muebles.back()["acabado"] = "carton"
 		p.paredes = PlanoCasa.PAREDES
 		p.ventanas = PlanoCasa.VENTANAS
 	else:
@@ -104,13 +107,13 @@ static func _plaza(p: Dictionary) -> void:
 		for y in [-650, 3700]:
 			_poner(p, "planta", Rect2(x, y, 300, 320))
 	for x in [500, 2000, 4400, 5900]:
-		_poner(p, "consola", Rect2(x, 3100, 800, 220))
+		_poner(p, "banco", Rect2(x, 3100, 800, 220))
 	_poner(p, "mesa", Rect2(800, 400, 650, 400))
 	p.banquete = Vector2(5200, 2000)
 
 static func _coliseo(p: Dictionary) -> void:
 	_zona(p, "cocina", "ACCESO A LA ARENA", Rect2(-900, -950, 2400, 5500), "cbb89a", 0)
-	_zona(p, "comedor", "ARENA DEL COLISEO", Rect2(1500, -950, 5400, 5500), "d5b98a", 0)
+	_zona(p, "comedor", "ARENA DEL COLISEO", Rect2(1500, -950, 5400, 5500), "d5b98a", 3)
 	var centro := Vector2(3700, 1700)
 	for i in 18:
 		var a := TAU * i / 18
@@ -120,7 +123,7 @@ static func _coliseo(p: Dictionary) -> void:
 	p.banquete = Vector2(4200, 2700)
 
 static func _paris(p: Dictionary) -> void:
-	_zona(p, "cocina", "CHAMP DE MARS", Rect2(-900, -950, 7800, 5500), "9da37c", 2)
+	_zona(p, "cocina", "CHAMP DE MARS", Rect2(-900, -950, 7800, 5500), "9da37c", 4)
 	_zona(p, "comedor", "ESPLANADA DE PARÍS", Rect2(1950, -950, 2600, 5500), "c7bfaa", 0)
 	_poner(p, "torre", Rect2(2500, 750, 1550, 2100), true)
 	for x in [-600, 900, 4900, 6300]:

@@ -82,10 +82,10 @@ vigente, para que repetir sea un clic.
 
 #### Pisada automática
 
-Una mejora barata del taller (Pisada automática, desde Pisotón 2) suma 0,5
+Una mejora barata del taller (Pisada automática, desde Mandíbulas cooperativas 2) suma 0,5
 pisotones por segundo sobre la comida más cercana al cursor, hasta 3 por
-segundo. Así, horas de clic seguido no son obligatorias: clickear suma, pero
-el juego avanza igual. La Guardia de la reina hace lo mismo desde el comienzo de
+segundo. Se conserva esta mecánica de `main`; el clic manual no daña alimentos,
+sólo interactúa con amenazas y premios. La Guardia de la reina hace lo mismo desde el comienzo de
 cada colonia.
 
 ### 3. Destinos

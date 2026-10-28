@@ -115,6 +115,8 @@ Las feromonas son un **llamado al punto actual del cursor**, no un camino.
 Al mantener el clic, las 24 hormigas disponibles más cercanas se aproximan;
 la mejora Llamado potente aumenta esa cantidad de a tres y Coordinación de a una
 (máximo 64 a la vez). **El clic no hace daño**: sólo da una orden a las hormigas.
+Las amenazas y premios sí responden al clic. Se conserva la mejora automática
+de `main`, pero no vuelve el daño manual sobre alimentos o muebles.
 La compra antigua `pisoton` conserva sus niveles como Coordinación; `pisada`
 se convierte en Mandíbulas cooperativas (+0,5 de daño por nivel a las hormigas).
 Si movés el cursor,
@@ -255,7 +257,7 @@ paga sus coronas una vez por colonia.
 
 Al fundar se elige un **decreto de la reina** para la colonia nueva
 (`datos/decretos.csv`): numerosa, guerrera, recolectora o exploradora, cada uno
-con una ventaja y un costo. La **Pisada automática** (taller, desde Pisotón 2)
+con una ventaja y un costo. La **Pisada automática** (taller, desde Mandíbulas cooperativas 2)
 pisa sola la comida más cercana al cursor.
 
 Cada destino conquistado **sube el tope** de las mejoras (`tope_por_destino` en
@@ -385,6 +387,16 @@ partidas anteriores conservan su progreso y comienzan sin especialistas.
 
 ## Balance: los CSV de `/datos`
 
+### Arte compartido y ambientes
+
+El mobiliario distingue acabado, color y orientación: sillas tapizadas, vajilla,
+utensilios, cajones, textiles y plantas. Los accesorios desaparecen junto al
+mueble que los sostiene. Los bancos de plaza conservan las colisiones y valores
+de los muebles que reemplazan; césped y arena tienen pisos propios.
+La comida respeta los ambientes previstos incluso cuando se agrupa junto a
+muebles. El detalle se dibuja una sola vez en un atlas compartido; no agrega
+física ni luces dinámicas. Ver `tests/RENDIMIENTO.md` para mediciones y capturas.
+
 El balance se edita en CSV que pueden abrir en Google Sheets o Excel.
 Los intervalos de las habilidades especiales están junto a su implementación.
 
@@ -406,7 +418,7 @@ Los intervalos de las habilidades especiales están junto a su implementación.
 ### Medir el ritmo con el bot
 
 `tests/bot_balance.tscn` juega solo, como un jugador activo (actualiza el llamado
-tres veces por segundo, sin daño por clic, compra lo más barato y ahorra para
+dos veces por segundo, atiende eventos sin daño manual a la comida, compra lo más barato y ahorra para
 cada dieta), y anota el minuto de juego de cada desbloqueo y de cada destino:
 
 ```bash

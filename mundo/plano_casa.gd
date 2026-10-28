@@ -5,13 +5,13 @@ const LIMITES := Rect2(-950, -1000, 7900, 5600)
 const BANQUETE := Vector2(3900, 1040)
 const VENTANAS := [Rect2(-650, -1010, 840, 65), Rect2(5000, -1010, 1060, 65), Rect2(-400, 4530, 960, 65), Rect2(5700, 4530, 780, 65)]
 const AMBIENTES := [
-	{"id": "cocina", "nombre": "COCINA", "rect": Rect2(-900, -950, 2600, 2300), "color": Color("e1d9c3"), "patron": 0},
-	{"id": "comedor", "nombre": "COMEDOR", "rect": Rect2(1700, -950, 2600, 2300), "color": Color("c49d72"), "patron": 1},
-	{"id": "living", "nombre": "LIVING", "rect": Rect2(4300, -950, 2600, 3500), "color": Color("b7916b"), "patron": 1},
+	{"id": "cocina", "nombre": "COCINA", "rect": Rect2(-900, -950, 2600, 2300), "color": Color("e5ddc9"), "patron": 0},
+	{"id": "comedor", "nombre": "COMEDOR", "rect": Rect2(1700, -950, 2600, 2300), "color": Color("bb936d"), "patron": 1},
+	{"id": "living", "nombre": "LIVING", "rect": Rect2(4300, -950, 2600, 3500), "color": Color("c6a17b"), "patron": 1},
 	{"id": "pasillo", "nombre": "PASILLO", "rect": Rect2(-900, 1350, 5200, 700), "color": Color("c8bda7"), "patron": 0},
 	{"id": "dormitorio", "nombre": "DORMITORIO", "rect": Rect2(-900, 2050, 3000, 2500), "color": Color("d5bca2"), "patron": 1},
 	{"id": "estudio", "nombre": "ESTUDIO", "rect": Rect2(2100, 2050, 2200, 2500), "color": Color("bfa489"), "patron": 1},
-	{"id": "bano", "nombre": "BAÑO Y LAVADERO", "rect": Rect2(4300, 2550, 2600, 2000), "color": Color("c9d8d1"), "patron": 2},
+	{"id": "bano", "nombre": "BAÑO Y LAVADERO", "rect": Rect2(4300, 2550, 2600, 2000), "color": Color("c0d3cf"), "patron": 2},
 ]
 const PAREDES := [
 	Rect2(-950, -1000, 7900, 50), Rect2(-950, -1000, 50, 5600),

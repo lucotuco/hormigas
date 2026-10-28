@@ -4,6 +4,7 @@ var run: Run
 
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Ajustes.pausar_sin_foco = false
 	Juego.usar_idioma("es")  # las verificaciones leen textos en español
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()
