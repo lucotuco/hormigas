@@ -37,6 +37,9 @@ const RUN := preload("res://mundo/run.tscn")
 const VELOCIDAD := 8.0
 const CLICS_POR_SEGUNDO := 3.0
 const RUNS_TRABADO := 5          # runs sin conquistar antes de pensar en fundar
+## Decreto que elige al fundar: el bot se traba en grandes objetivos, que piden
+## daño de mordida sostenido, y para eso conviene una colonia numerosa.
+const DECRETO := "numerosa"
 const RUNS_TRABADO_MAXIMO := 20  # funda igual, aunque dé poca jalea
 const FRACCION_LEGADO := 0.25    # fundar si da al menos este % de la jalea histórica
 const MEJORA_MINIMA := 1.10      # una run que supera la mejor en 10% cuenta como progreso
@@ -207,7 +210,7 @@ func conviene_fundar() -> bool:
 func fundar() -> void:
 	var ganada := Juego.jalea_por_fundar()
 	var donde := Juego.lugar_actual
-	Juego.fundar_colonia()
+	Juego.fundar_colonia(DECRETO)
 	trabado = 0
 	mejor_run_colonia = 0.0
 	runs_colonia = 0

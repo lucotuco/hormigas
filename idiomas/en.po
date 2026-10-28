@@ -852,8 +852,8 @@ msgstr "+5 max levels on upgrades that grow with destinations."
 msgid "Guardia de la reina"
 msgstr "Queen's guard"
 
-msgid "Un pisotón automático cerca del cursor cada 2 s (más seguido por nivel)."
-msgstr "An automatic stomp near the cursor every 2 s (more often per level)."
+msgid "+1 pisotón automático por segundo desde el comienzo de cada colonia."
+msgstr "+1 automatic stomp per second from the start of every colony."
 
 msgid "Memoria del metal"
 msgstr "Memory of metal"
@@ -1358,3 +1358,42 @@ msgstr "Milestones"
 
 msgid "Menú"
 msgstr "Menu"
+
+msgid "Decreto de esta colonia: %s · %s"
+msgstr "This colony's decree: %s · %s"
+
+msgid "EL DECRETO DE LA COLONIA NUEVA"
+msgstr "THE NEW COLONY'S DECREE"
+
+msgid "Rige toda la colonia, hasta la próxima fundación. Cada uno sirve para otra cosa."
+msgstr "It rules the whole colony until you found the next one. Each one suits a different plan."
+
+msgid "Pisada automática"
+msgstr "Auto stomp"
+
+msgid "+0.5 pisotones automáticos por segundo sobre la comida más cercana al cursor."
+msgstr "+0.5 automatic stomps per second on the food closest to the cursor."
+
+msgid "Colonia numerosa"
+msgstr "Teeming colony"
+
+msgid "+50% de obreras y +2 crías cada 10 s, pero muerden 25% más lento."
+msgstr "+50% workers and +2 hatchlings every 10 s, but they bite 25% slower."
+
+msgid "Colonia guerrera"
+msgstr "Warrior colony"
+
+msgid "Pisotón ×3 y mordidas ×1.5, pero salen 30% menos obreras."
+msgstr "Stomp ×3 and bites ×1.5, but 30% fewer workers head out."
+
+msgid "Colonia recolectora"
+msgstr "Forager colony"
+
+msgid "Todas las migas ×2, pero cada expedición dura 15 s menos."
+msgstr "All crumbs ×2, but every expedition is 15 s shorter."
+
+msgid "Colonia exploradora"
+msgstr "Explorer colony"
+
+msgid "Territorio +35%, hormigas 25% más rápidas y olfato +30%, pero muerden 25% más débil."
+msgstr "Territory +35%, ants 25% faster and smell +30%, but bites are 25% weaker."

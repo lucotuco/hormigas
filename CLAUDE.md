@@ -42,7 +42,8 @@ pendientes y quién hace qué, en `TAREAS.md`.
   (`Juego.sumar_estadistica`); una nueva se agrega a `Juego.ESTADISTICAS`.
 - `datos/*.csv`: **todo el balance**. Costos, stats base, comidas y castas van
   en los CSV, no en el código. Una mejora nueva es una fila en `mejoras.csv`.
-  El árbol de la reina (prestigio) está en `jalea.csv`. El porqué de la
+  El árbol de la reina (prestigio) está en `jalea.csv`; los decretos que se
+  eligen al fundar, en `decretos.csv` (efectos `stat:suma|multiplica:valor`). El porqué de la
   economía está en `docs/DISENO_PROGRESION.md`: leelo antes de tocar el balance,
   y medí con `tests/bot_balance.tscn` después.
 

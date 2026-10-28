@@ -13,8 +13,8 @@ const DURACION_EXPANSION := 1.8   # segundos que tarda en crecer el territorio a
 const VENTANA_COMBO := 1.2        # segundos entre depósitos para que el combo siga
 const BONUS_DESTRUIR := 0.25      # migas extra al destruir una comida (proporción de su recompensa)
 const PROPORCION_PISOTON := 0.5   # el pisotón da la mitad de migas que una mordida de hormiga
-const INTERVALO_GUARDIA := 2.0    # segundos entre pisotones automáticos con Guardia de la reina nivel 1
-const ALCANCE_GUARDIA := 400.0
+const ALCANCE_PISADA_AUTO := 400.0  # el pisotón automático busca comida a esta distancia del cursor
+const MAX_PISADAS_POR_CUADRO := 4
 
 @onready var comidas: Comidas = $Comidas
 @onready var cocina: Cocina = $Cocina
@@ -44,7 +44,7 @@ var _sillas_devoradas := 0
 var _ultimo_efecto_deposito := -1000
 
 var _reloj := 0.0
-var _reloj_guardia := 0.0
+var _carga_pisadas := 0.0
 var _ultimo_deposito := -100.0
 var _ultimo_tic := -1
 
@@ -98,7 +98,7 @@ func _process(delta: float) -> void:
 		return
 	frenesi_restante = maxf(0, frenesi_restante - delta)
 	_descanso_frenesi = maxf(0, _descanso_frenesi - delta)
-	_pisotones_guardia(delta)
+	_pisotones_automaticos(delta)
 	tiempo_restante -= delta
 	var segundos := int(ceil(tiempo_restante))
 	if segundos <= 5 and segundos != _ultimo_tic and segundos > 0:
@@ -223,33 +223,31 @@ func pisar(pos: Vector2, automatico := false) -> float:
 	return migas
 
 
-## Guardia de la reina (árbol de jalea): pisotones automáticos cerca del
-## cursor, o cerca del hormiguero si el cursor está lejos de la comida.
-## Devuelve el intervalo actual (0 si no hay guardia).
-func intervalo_guardia() -> float:
-	var nivel := Juego.nivel_jalea("guardia")
-	return INTERVALO_GUARDIA / nivel if nivel > 0 else 0.0
-
-
-func _pisotones_guardia(delta: float) -> void:
-	var intervalo := intervalo_guardia()
-	if intervalo <= 0.0:
+## Pisada automática (mejora) y Guardia de la reina (jalea): pisotones solos
+## sobre la comida más cercana al cursor, o al hormiguero si el cursor está
+## lejos de la comida. La stat "pisotones_auto" son pisotones por segundo.
+func _pisotones_automaticos(delta: float) -> void:
+	var ritmo := Juego.stat("pisotones_auto")
+	if ritmo <= 0.0:
 		return
-	_reloj_guardia += delta
-	if _reloj_guardia < intervalo:
-		return
-	_reloj_guardia = 0.0
-	for centro in [get_global_mouse_position(), Vector2.ZERO]:
-		var objetivo := _comida_para_guardia(centro)
-		if objetivo != null:
-			pisar(objetivo.global_position, true)
+	_carga_pisadas = minf(_carga_pisadas + ritmo * delta, MAX_PISADAS_POR_CUADRO)
+	while _carga_pisadas >= 1.0:
+		_carga_pisadas -= 1.0
+		var objetivo: Comida = null
+		for centro in [get_global_mouse_position(), Vector2.ZERO]:
+			objetivo = _comida_para_pisada(centro)
+			if objetivo != null:
+				break
+		if objetivo == null:
+			_carga_pisadas = 0.0
 			return
+		pisar(objetivo.global_position, true)
 
 
-func _comida_para_guardia(centro: Vector2) -> Comida:
+func _comida_para_pisada(centro: Vector2) -> Comida:
 	var mejor: Comida = null
 	var mejor_distancia := INF
-	for c in comidas._candidatas(centro, ALCANCE_GUARDIA):
+	for c in comidas._candidatas(centro, ALCANCE_PISADA_AUTO):
 		if c is PiezaCasa or c is FragmentoCasa or not c.en_territorio(radio_actual):
 			continue
 		var d := c.global_position.distance_squared_to(centro)

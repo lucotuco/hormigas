@@ -3,7 +3,8 @@ extends VBoxContainer
 ## Menús construidos al entrar o cambiar progreso, nunca por cuadro.
 var modo := "viajes"
 var _contenido: VBoxContainer
-var _confirmar: ConfirmationDialog
+## La ventana de fundar, mientras está abierta.
+var _confirmar: VentanaFundar
 
 func _ready() -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -15,12 +16,6 @@ func _ready() -> void:
 	_contenido.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_contenido.add_theme_constant_override("separation", 14)
 	scroll.add_child(_contenido)
-	_confirmar = ConfirmationDialog.new()
-	_confirmar.title = tr("Fundar una nueva colonia")
-	_confirmar.ok_button_text = tr("Fundar la nueva colonia")
-	_confirmar.cancel_button_text = tr("Seguir creciendo")
-	_confirmar.confirmed.connect(Juego.fundar_colonia)
-	add_child(_confirmar)
 	Juego.progreso_cambio.connect(refrescar)
 	Juego.partida_borrada.connect(refrescar)
 	refrescar()
@@ -118,6 +113,9 @@ func _resumen() -> Control:
 	izquierda.add_child(_texto(tr("JALEA DISPONIBLE"), 11, Estilo.TEXTO_SUAVE))
 	izquierda.add_child(_texto("%d" % Juego.jalea, 32, Color("f0d277")))
 	var colonias := tr("1 colonia fundada") if Juego.fundaciones == 1 else tr("%d colonias fundadas") % Juego.fundaciones
+	if Juego.decretos_por_id.has(Juego.decreto):
+		var d: Dictionary = Juego.decretos_por_id[Juego.decreto]
+		izquierda.add_child(_texto(tr("Decreto de esta colonia: %s · %s") % [tr(d.nombre), tr(d.descripcion)], 13, Color("d1c490")))
 	izquierda.add_child(_texto(tr("Ganada en total: %d · bonus pasivo +%d%% de daño y migas · %s") % [Juego.legado, roundi(Juego.legado * Juego.BONUS_LEGADO * 100), colonias], 13, Estilo.TEXTO))
 	var derecha := VBoxContainer.new()
 	derecha.custom_minimum_size.x = 330
@@ -189,15 +187,11 @@ func _comprar_jalea(id: String) -> void:
 func _pedir_fundacion() -> void:
 	if not Juego.puede_fundar():
 		return
-	var detalle := Juego.detalle_fundar()
-	var lineas := PackedStringArray()
-	lineas.append(tr("Ganás %d de jalea real (bonus pasivo: +%d%% → +%d%%).") % [detalle.total, roundi(Juego.legado * Juego.BONUS_LEGADO * 100), roundi((Juego.legado + detalle.total) * Juego.BONUS_LEGADO * 100)])
-	lineas.append("")
-	var conserva := 10 * Juego.nivel_jalea("despensa")
-	lineas.append(tr("Se reinician: migas%s, mejoras y castas%s.") % [
-		tr(" (conservás el %d%%)") % conserva if conserva > 0 else "",
-		tr(" (conservás el %d%%)") % (25 * Juego.nivel_jalea("linaje")) if Juego.nivel_jalea("linaje") > 0 else ""])
-	lineas.append(tr("Se conservan: destinos, hitos, el árbol de la reina y lo descubierto."))
-	lineas.append(tr("Cada gran objetivo vuelve a dar sus coronas una vez."))
-	_confirmar.dialog_text = "\n".join(lineas)
-	_confirmar.popup_centered(Vector2i(620, 260))
+	if is_instance_valid(_confirmar):
+		_confirmar.queue_free()
+	_confirmar = VentanaFundar.new()
+	# Va sobre toda la pantalla, no dentro de la lista con scroll.
+	var raiz: Node = self
+	while raiz.get_parent() is Control:
+		raiz = raiz.get_parent()
+	raiz.add_child(_confirmar)

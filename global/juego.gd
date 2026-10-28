@@ -31,6 +31,7 @@ const RUTA_MEJORAS := "res://datos/mejoras.csv"
 const RUTA_COMIDAS := "res://datos/comidas.csv"
 const RUTA_CASTAS := "res://datos/castas.csv"
 const RUTA_JALEA := "res://datos/jalea.csv"
+const RUTA_DECRETOS := "res://datos/decretos.csv"
 
 # --- Prestigio (ver docs/DISENO_PROGRESION.md) ---
 ## Jalea al fundar = JALEA_POR_CORONA × coronas + ⌊(migas de la colonia / DIVISOR_JALEA_MIGAS) ^ EXPONENTE_JALEA_MIGAS⌋
@@ -44,7 +45,9 @@ const BONUS_LEGADO := 0.03
 ## Niveles extra de tope por cada nivel de "Cámaras más hondas".
 const NIVELES_POR_TECHO := 5
 ## Efectos especiales del árbol de la reina (columna "efecto" de jalea.csv).
-const EFECTOS_JALEA := ["stat", "herencia", "despensa", "techo", "guardia", "linaje", "corona"]
+const EFECTOS_JALEA := ["stat", "herencia", "despensa", "techo", "linaje", "corona"]
+## Ninguna expedición dura menos que esto, aunque un decreto reste tiempo.
+const DURACION_MINIMA := 20.0
 
 const SUFIJOS: Array[String] = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"]
 
@@ -58,6 +61,9 @@ var castas: Array[Dictionary] = []
 var castas_por_id: Dictionary = {}
 var nodos_jalea: Array[Dictionary] = []  # árbol de la reina, en el orden del CSV
 var jalea_por_id: Dictionary = {}
+## Decretos de la reina: al fundar se elige uno, que rige toda la colonia nueva.
+var decretos: Array[Dictionary] = []
+var decretos_por_id: Dictionary = {}
 
 # --- Partida guardada ---
 var migas: float = 0.0
@@ -78,6 +84,8 @@ var niveles_jalea: Dictionary = {}       # id de nodo -> nivel (permanente)
 var migas_colonia: float = 0.0           # migas juntadas desde la última fundación
 var coronas := 0
 var fundaciones := 0
+## Decreto de la colonia actual ("" en la primera colonia).
+var decreto := ""
 var prioridad := "automatico"
 ## Mecánicas de la interfaz que ya se revelaron: id -> true si el jugador ya
 ## las vio, false si son nuevas. Ver REVELABLES.
@@ -215,7 +223,17 @@ func _calcular(nombre: String, id_extra := "", niveles_extra := 0) -> float:
 			valor += n.valor * nivel
 		else:
 			multiplicador *= pow(n.valor, nivel)
-	return _aplicar_legado(nombre, valor * multiplicador)
+	if decretos_por_id.has(decreto):
+		for efecto in decretos_por_id[decreto].efectos:
+			if efecto.stat == nombre:
+				if efecto.tipo == "suma":
+					valor += efecto.valor
+				else:
+					multiplicador *= efecto.valor
+	var resultado := valor * multiplicador
+	if nombre == "duracion_run":
+		resultado = maxf(resultado, DURACION_MINIMA)
+	return _aplicar_legado(nombre, resultado)
 
 func _aplicar_legado(nombre: String, resultado: float) -> float:
 	if nombre in ["dano", "multiplicador_migas"]:
@@ -511,10 +529,12 @@ func puede_fundar() -> bool:
 
 ## Reinicia la economía de la colonia y la convierte en jalea real.
 ## Se conservan destinos, hitos, jalea, el árbol de la reina y lo revelado.
-func fundar_colonia() -> bool:
+## `decreto_nuevo` rige la colonia que nace ("" = sin decreto).
+func fundar_colonia(decreto_nuevo := "") -> bool:
 	var ganada := jalea_por_fundar()
 	if ganada < 1:
 		return false
+	decreto = decreto_nuevo if decretos_por_id.has(decreto_nuevo) else ""
 	var conservar_migas := migas * 0.1 * nivel_jalea("despensa")
 	var porcion_castas := 0.25 * nivel_jalea("linaje")
 	legado += ganada
@@ -663,7 +683,7 @@ func datos_partida() -> Dictionary:
 		"legado": legado, "coronas": coronas, "fundaciones": fundaciones, "prioridad": prioridad,
 		"descubiertos": descubiertos,
 		"jalea": jalea, "niveles_jalea": niveles_jalea, "migas_colonia": migas_colonia,
-		"estadisticas": estadisticas,
+		"estadisticas": estadisticas, "decreto": decreto,
 	}
 
 
@@ -720,6 +740,9 @@ func restaurar_partida(datos: Dictionary) -> void:
 	_cache_stats.clear()
 	coronas = clampi(int(datos.get("coronas", 0)), 0, 1000000)
 	fundaciones = maxi(0, int(datos.get("fundaciones", 0)))
+	decreto = str(datos.get("decreto", ""))
+	if not decretos_por_id.has(decreto):
+		decreto = ""
 	lugar_actual = str(datos.get("lugar", "casa"))
 	if not destino_desbloqueado(lugar_actual):
 		lugar_actual = "casa"
@@ -780,6 +803,7 @@ func reiniciar_estado() -> void:
 	migas_colonia = 0.0
 	coronas = 0
 	fundaciones = 0
+	decreto = ""
 	prioridad = "automatico"
 	descubiertos = {}
 	estadisticas = {}
@@ -914,6 +938,19 @@ func _cargar_datos() -> void:
 			push_error("Jalea '%s': la stat '%s' no existe" % [n.id, n.stat])
 		nodos_jalea.append(n)
 		jalea_por_id[n.id] = n
+
+	decretos.clear()
+	decretos_por_id.clear()
+	for fila in _leer_csv(RUTA_DECRETOS):
+		var d := {"id": fila.id, "nombre": fila.nombre, "descripcion": fila.descripcion, "efectos": []}
+		for texto in String(fila.efectos).split(";", false):
+			var partes := texto.strip_edges().split(":")
+			if partes.size() != 3 or not stats_base.has(partes[0]) or partes[1] not in ["suma", "multiplica"]:
+				push_error("Decreto '%s': efecto mal escrito '%s' (stat:suma|multiplica:valor)" % [d.id, texto])
+				continue
+			d.efectos.append({"stat": partes[0], "tipo": partes[1], "valor": _num(partes[2])})
+		decretos.append(d)
+		decretos_por_id[d.id] = d
 
 	comidas.clear()
 	for fila in _leer_csv(RUTA_COMIDAS):

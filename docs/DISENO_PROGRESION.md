@@ -61,7 +61,32 @@ El árbol de la reina mezcla tres tipos de premio:
 |---|---|---|
 | Atajos | Memoria de la madera / del metal / de la piedra (empezar con la dieta aprendida), Reservas de la reina (conservar % de migas), Linaje (conservar % de castas) | Que cada colonia nueva arranque más arriba y la primera hora no se repita igual |
 | Poder | Mandíbulas de jalea, Despensa real, Obreras reales, Reloj de arena | Multiplicadores que hacen viable el destino siguiente |
-| Nuevas reglas | Cámaras más hondas (+5 niveles de tope), Guardia de la reina (pisotón automático), Corona doble | Cambian cómo se juega, no sólo los números |
+| Nuevas reglas | Cámaras más hondas (+5 niveles de tope), Guardia de la reina (+1 pisotón automático por segundo desde el comienzo de cada colonia), Corona doble | Cambian cómo se juega, no sólo los números |
+
+#### Decretos de la reina: una decisión por colonia
+
+El árbol solo era una lista de compras: el bot compraba lo más barato y llegaba
+igual. Ahora, al fundar, se elige **un decreto** que rige toda la colonia nueva
+(`datos/decretos.csv`). Cada uno tiene una ventaja y un costo, y sirve para
+otro plan:
+
+| Decreto | Ventaja | Costo | Para qué |
+|---|---|---|---|
+| Numerosa | +50% obreras, +2 crías cada 10 s | muerden 25% más lento | Más daño sostenido: grandes objetivos |
+| Guerrera | Pisotón ×3, mordidas ×1.5 | 30% menos obreras | Jugar activo; las comidas caen rápido |
+| Recolectora | Migas ×2 | 15 s menos por expedición | Juntar migas (y jalea por migas) |
+| Exploradora | Territorio +35%, velocidad +25%, olfato +30% | mordidas 25% más débiles | Llegar lejos con pocas mejoras |
+
+La primera colonia no tiene decreto. La ventana de fundar propone el decreto
+vigente, para que repetir sea un clic.
+
+#### Pisada automática
+
+Una mejora barata del taller (Pisada automática, desde Pisotón 2) suma 0,5
+pisotones por segundo sobre la comida más cercana al cursor, hasta 3 por
+segundo. Así, horas de clic seguido no son obligatorias: clickear suma, pero
+el juego avanza igual. La Guardia de la reina hace lo mismo desde el comienzo de
+cada colonia.
 
 ### 3. Destinos
 

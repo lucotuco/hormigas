@@ -205,6 +205,11 @@ Toda la jalea ganada en la historia da además +3% de daño y migas por punto,
 aunque se gaste. Se conservan destinos, hitos y el árbol. Cada gran objetivo
 paga sus coronas una vez por colonia.
 
+Al fundar se elige un **decreto de la reina** para la colonia nueva
+(`datos/decretos.csv`): numerosa, guerrera, recolectora o exploradora, cada uno
+con una ventaja y un costo. La **Pisada automática** (taller, desde Pisotón 2)
+pisa sola la comida más cercana al cursor.
+
 Cada destino conquistado **sube el tope** de las mejoras (`tope_por_destino` en
 `mejoras.csv`) y trae **mejoras propias** (marcadas con ✦, columna `destino`).
 Mandíbulas fuertes y Pisotón duplican su efecto cada 25 niveles. El diseño

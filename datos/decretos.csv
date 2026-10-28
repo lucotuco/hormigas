@@ -1,0 +1,5 @@
+id,nombre,descripcion,efectos
+numerosa,Colonia numerosa,"+50% de obreras y +2 crías cada 10 s, pero muerden 25% más lento.",hormigas_iniciales:multiplica:1.5;cria:suma:2;intervalo_mordida:multiplica:1.25
+guerrera,Colonia guerrera,"Pisotón ×3 y mordidas ×1.5, pero salen 30% menos obreras.",dano_clic:multiplica:3;dano:multiplica:1.5;hormigas_iniciales:multiplica:0.7
+recolectora,Colonia recolectora,"Todas las migas ×2, pero cada expedición dura 15 s menos.",multiplicador_migas:multiplica:2;duracion_run:suma:-15
+exploradora,Colonia exploradora,"Territorio +35%, hormigas 25% más rápidas y olfato +30%, pero muerden 25% más débil.",radio_territorio:multiplica:1.35;velocidad:multiplica:1.25;olfato:multiplica:1.3;dano:multiplica:0.75

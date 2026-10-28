@@ -36,7 +36,7 @@ func _ready() -> void:
 	await captura("jalea_panel")
 	tienda._panel_legado._pedir_fundacion()
 	await captura("jalea_confirmar")
-	tienda._panel_legado._confirmar.hide()
+	tienda._panel_legado._confirmar.queue_free()
 	get_window().size = Vector2i(1000, 620)
 	await captura("jalea_panel_1000")
 	get_window().size = Vector2i(1280, 720)
