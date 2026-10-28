@@ -14,6 +14,7 @@ extends Node
 ##   BOT_LOG      archivo donde agregar el registro (además de imprimirlo)
 ##   BOT_CALIBRAR si existe, modo calibración (ver más abajo)
 ##   BOT_FACTOR   factor de calibración (por defecto FACTOR_CALIBRACION)
+##   BOT_TRABADO  runs sin progreso antes de pensar en fundar (por defecto RUNS_TRABADO)
 ##
 ## Cómo juega: 2 clics por segundo. Primero atiende amenazas y migas doradas;
 ## si no hay, pisa la comida más cercana al hormiguero (además de los
@@ -53,6 +54,7 @@ const RUNS_COLONIA_MADURA := 10
 const GANANCIA_MINIMA_DOBLE := 20
 
 var trabado := 0
+var runs_trabado := RUNS_TRABADO
 ## Cuánto más fuerte tiene que ser la colonia siguiente que la que se trabó.
 ## Con 3 la campaña duraba ~11 h de bot; con menos, cada destino pide una
 ## fundación y no dos o cuatro.
@@ -90,6 +92,8 @@ func _ready() -> void:
 			Mundos.vida_meta_forzada = valores
 			anotar("(vida_meta forzada: %s)" % str(valores))
 	calibrar = OS.has_environment("BOT_CALIBRAR")
+	if OS.has_environment("BOT_TRABADO"):
+		runs_trabado = int(OS.get_environment("BOT_TRABADO"))
 	if OS.has_environment("BOT_FACTOR"):
 		factor_calibracion = float(OS.get_environment("BOT_FACTOR"))
 	if estado_ruta != "" and FileAccess.file_exists(estado_ruta):
@@ -216,7 +220,7 @@ func conviene_fundar() -> bool:
 	var ganada := Juego.jalea_por_fundar()
 	if runs_colonia >= RUNS_COLONIA_MADURA and ganada >= maxi(GANANCIA_MINIMA_DOBLE, 2 * Juego.legado):
 		return true
-	if trabado < RUNS_TRABADO:
+	if trabado < runs_trabado:
 		return false
 	var minimo := maxi(2, ceili(Juego.legado * FRACCION_LEGADO))
 	return Juego.jalea_por_fundar() >= minimo or trabado >= RUNS_TRABADO_MAXIMO
