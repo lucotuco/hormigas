@@ -79,6 +79,14 @@ func _viajes() -> void:
 		elif Juego.lugares_completados.has(id):
 			detalle = "CONQUISTADO · " + detalle + " disponibles otra vez"
 		columna.add_child(_texto(detalle, 12, Color("d1c490")))
+		columna.add_child(_texto(ReglasDestino.DESCRIPCIONES[id], 12))
+		for adaptacion in Juego.adaptaciones:
+			if adaptacion.destino == id:
+				columna.add_child(_texto(("✓ " if Juego.lugares_completados.has(id) else "Al conquistar: ") + adaptacion.nombre + " · " + adaptacion.descripcion, 12, Color("b8d89b")))
+		boton.custom_minimum_size.y = 230
+		var record: Dictionary = Juego.records_destino.get(id, {})
+		if not record.is_empty():
+			columna.add_child(_texto("Mejor intento %.0f%% · %s migas/s" % [float(record.objetivo) * 100, Juego.formatear_corto(record.produccion)], 12))
 
 ## Pestaña Jalea real: resumen, fundar con vista previa, árbol de la reina e hitos.
 func _legado() -> void:
@@ -126,6 +134,7 @@ func _resumen() -> Control:
 	derecha.add_child(_texto("SI FUNDÁS AHORA", 11, Estilo.TEXTO_SUAVE))
 	derecha.add_child(_texto("+%d jalea" % detalle.total, 24, Color("f0d277") if detalle.total > 0 else Estilo.TEXTO_SUAVE))
 	derecha.add_child(_texto("%d coronas × %d = %d · migas de esta colonia (%s) = %d" % [Juego.coronas, Juego.JALEA_POR_CORONA, detalle.coronas, Juego.formatear(Juego.migas_colonia), detalle.migas], 12, Estilo.TEXTO_SUAVE))
+	derecha.add_child(_texto(Juego.oportunidades_jalea(), 13, Color("cde0a3")))
 	var fundar := Estilo.boton("Fundar colonia…", 17, Color("56613e"), Color("bbcb8a"))
 	fundar.disabled = not Juego.puede_fundar()
 	fundar.tooltip_text = "Conquistá un gran objetivo o juntá más migas para ganar jalea." if fundar.disabled else "Reiniciar la colonia a cambio de jalea real"
@@ -199,5 +208,7 @@ func _pedir_fundacion() -> void:
 		" (conservás el %d%%)" % (25 * Juego.nivel_jalea("linaje")) if Juego.nivel_jalea("linaje") > 0 else ""])
 	lineas.append("Se conservan: destinos, hitos, el árbol de la reina y lo descubierto.")
 	lineas.append("Cada gran objetivo vuelve a dar sus coronas una vez.")
+	lineas.append("También conservás adaptaciones de viaje, récords y evoluciones.")
+	lineas.append(Juego.oportunidades_jalea())
 	_confirmar.dialog_text = "\n".join(lineas)
 	_confirmar.popup_centered(Vector2i(620, 260))

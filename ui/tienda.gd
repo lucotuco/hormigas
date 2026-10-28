@@ -496,6 +496,7 @@ func _valor_stat(stat: String, valor: float) -> String:
 		"materiales": return MaterialesCasa.NIVELES[clampi(int(valor), 0, 3)]
 		"velocidad": return "%.0f de velocidad" % valor
 		"radio_territorio": return "%.0f cm" % (valor / 10.0)
+		"entradas": return "%d accesos secundarios" % mini(6, int(valor))
 		"multiplicador_migas": return "×%.2f migas" % valor
 		"hormigas_iniciales": return "%d obreras" % int(valor)
 		"cria": return "%d crías / 10 s" % int(valor)

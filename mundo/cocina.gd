@@ -21,7 +21,7 @@ var _cambios: Dictionary = {}
 const SECTOR := 256.0
 ## Se reparten los pedidos, no se limita la cantidad de hormigas simuladas.
 var limite_rutas_por_cuadro := 6
-const PRESUPUESTO_RUTAS_USEC := 2000
+const PRESUPUESTO_RUTAS_USEC := 1200
 var _cuadro_rutas := -1
 var _pedidos_cuadro := 0
 var _tiempo_rutas_cuadro := 0

@@ -24,6 +24,38 @@ const ESCALA_EN_PANTALLA := 1.5
 ## Tope de hormigas vivas en una run (Rocco midió el rendimiento hasta 500).
 ## La cría y las miniobreras dejan de nacer al llegar; ver colonia_llena().
 const MAX_HORMIGAS := 500
+var exploracion := ExploracionHormigas.new()
+var _hallazgos: Array[Comida] = []
+const MAX_HALLAZGOS := 24
+
+func avistar(c: Comida) -> void:
+	if not is_instance_valid(c) or c.muerta or _hallazgos.has(c):
+		return
+	if _hallazgos.size() >= MAX_HALLAZGOS:
+		_hallazgos.pop_front()
+	_hallazgos.append(c)
+
+func trabajo_conocido(pos: Vector2, casta: String, excluidas: Dictionary) -> Comida:
+	var mejor: Comida
+	var distancia := INF
+	for i in range(_hallazgos.size() - 1, -1, -1):
+		var c = _hallazgos[i]
+		if not is_instance_valid(c) or c.muerta:
+			_hallazgos.remove_at(i)
+			continue
+		if not c.disponible() or excluidas.has(c.get_instance_id()) or c.trabajadoras >= c.cupos_trabajo() or not c.en_territorio(run.radio_actual):
+			continue
+		var afinidad := RolesHormiga.afinidad(casta, c)
+		if Juego.prioridad != "automatico":
+			var categoria := "alimentos" if not c is PiezaCasa else ("estructuras" if c.nivel_requerido >= 3 else "muebles")
+			afinidad *= 3.0 if categoria == Juego.prioridad else 0.35
+		if afinidad <= 0:
+			continue
+		var d := c.distancia_a(pos)
+		if d < 650 and d / afinidad < distancia:
+			mejor = c
+			distancia = d / afinidad
+	return mejor
 
 
 func iniciar(r: Run) -> void:

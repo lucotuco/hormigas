@@ -14,6 +14,9 @@ var _aviso: Label
 var _boton: Button
 var _stats: Dictionary = {}
 var _tween: Tween
+var _evoluciones: Dictionary = {}
+var _lbl_evoluciones: Label
+var _detalle_evolucion: Label
 
 
 func _ready() -> void:
@@ -146,6 +149,19 @@ func _crear_ficha() -> Control:
 	var herencia := Estilo.etiqueta("Estos valores incluyen tus mejoras del hormiguero. Las obreras varían levemente su velocidad al nacer.", 11, Estilo.TEXTO_SUAVE)
 	herencia.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ficha.add_child(herencia)
+	_lbl_evoluciones = Estilo.etiqueta("", 13, Color("d5cb96"))
+	ficha.add_child(_lbl_evoluciones)
+	for id in EvolucionesHormiga.DATOS:
+		var datos: Dictionary = EvolucionesHormiga.DATOS[id]
+		var boton := Estilo.boton(datos.nombre, 13, Color("303c2b"), Color("8eaa72"))
+		boton.toggle_mode = true
+		boton.tooltip_text = datos.detalle + "\nRequiere %d %s y Mandíbulas nivel %d. Elegí hasta dos sin perder lo desbloqueado." % [datos.unidades, Juego.castas_por_id[datos.casta].nombre, datos.mandibulas]
+		boton.pressed.connect(_alternar_evolucion.bind(id))
+		ficha.add_child(boton)
+		_evoluciones[id] = boton
+	_detalle_evolucion = Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
+	_detalle_evolucion.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ficha.add_child(_detalle_evolucion)
 	_boton = Estilo.boton("", 19, Color("46593e"), Color("94b47e"))
 	_boton.custom_minimum_size.y = 54
 	_boton.pressed.connect(_reclutar)
@@ -172,6 +188,20 @@ func _cambio_mejora(_id: String, _nivel: int) -> void:
 
 func _refrescar() -> void:
 	var c: Dictionary = Juego.castas_por_id[seleccion]
+	_lbl_evoluciones.text = "EVOLUCIONES · %d / %d activas · cambio gratuito" % [Juego.evoluciones_equipadas.size(), EvolucionesHormiga.MAX_EQUIPADAS]
+	_detalle_evolucion.text = ""
+	for id in _evoluciones:
+		var boton: Button = _evoluciones[id]
+		var datos: Dictionary = EvolucionesHormiga.DATOS[id]
+		boton.visible = datos.casta == seleccion
+		boton.disabled = not Juego.evoluciones_desbloqueadas.has(id)
+		boton.set_pressed_no_signal(Juego.evolucion_activa(id))
+		boton.text = ("✓ " if Juego.evolucion_activa(id) else "○ ") + datos.nombre + (" · bloqueada" if boton.disabled else "")
+		if boton.visible:
+			_detalle_evolucion.text = datos.detalle
+			if boton.disabled:
+				_detalle_evolucion.text += "\nRequiere %d %s y Mandíbulas nivel %d." % [datos.unidades, Juego.castas_por_id[datos.casta].nombre, datos.mandibulas]
+
 	_retrato.tipo = seleccion
 	_nombre.text = c.nombre
 	_nombre.label_settings.font_color = c.color
@@ -223,3 +253,9 @@ func _reclutar() -> void:
 	_retrato.scale = Vector2.ONE * 1.12
 	_tween = _retrato.create_tween()
 	_tween.tween_property(_retrato, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _alternar_evolucion(id: String) -> void:
+	var cambio := Juego.alternar_evolucion(id)
+	_refrescar()
+	if not cambio:
+		_aviso.text = "Hay dos evoluciones activas: desactivá una antes de equipar otra. No perdés ninguna compra."

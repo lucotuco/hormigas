@@ -3,7 +3,7 @@ extends Node2D
 ## Una hormiga obrera.
 ##
 ## Máquina de estados simple:
-##   EXPLORANDO     camina al azar por el territorio buscando comida
+##   EXPLORANDO     recorre sectores del territorio buscando comida
 ##   SIGUIENDO      se acerca al llamado que el jugador mantiene bajo el cursor
 ##   YENDO_A_COMIDA vio comida y va hacia ella
 ##   MORDIENDO      muerde hasta llenar el buche (stat "capacidad")
@@ -22,7 +22,18 @@ const COLOR_CUERPO := Color(0.16, 0.1, 0.07)
 var estado := Estado.EXPLORANDO
 var run: Run
 var objetivo := Vector2.ZERO
-var comida: Comida = null
+var comida: Comida = null:
+	set(nueva):
+		if comida == nueva:
+			return
+		if is_instance_valid(comida):
+			comida.trabajadoras = maxi(0, comida.trabajadoras - 1)
+		comida = nueva
+		_version_objetivo = -1
+		if is_instance_valid(comida):
+			comida.trabajadoras += 1
+			if is_instance_valid(run) and is_instance_valid(run.colonia):
+				run.colonia.exploracion.liberar(get_instance_id())
 var carga := 0.0          # migas que lleva encima
 var bocados := 0
 var casta := "obrera"
@@ -59,6 +70,19 @@ var _reloj_vida := 0.0
 var _fase := 0.0
 var _reloj_progreso := 0.0
 var _ultima_pos := Vector2.ZERO
+var _puesto := 0
+var _reloj_habilidad := 0.0
+var _corte := false
+var _contagio := false
+var _barrido := false
+var _camada := false
+var _proxima_memoria := 0.0
+var _animacion: Array[Rect2] = []
+var _tipo_animacion := ""
+var _evolucion_animacion := -1
+var _version_objetivo := -1
+var _entradas_fallidas: Dictionary = {}
+var _carga_origen: Array[float] = [0.0, 0.0, 0.0]
 
 # Stats copiadas al nacer (no cambian durante la run).
 var _velocidad := 60.0
@@ -80,12 +104,20 @@ func iniciar(r: Run, tipo := "obrera") -> void:
 	_dano = stats.dano
 	_intervalo_mordida = stats.intervalo_mordida
 	_capacidad = stats.capacidad
+	_puesto = get_instance_id() % 12
+	_corte = tipo == "carpintera" and Juego.evolucion_activa("corte")
+	_contagio = tipo == "roja" and Juego.evolucion_activa("contagio")
+	_barrido = tipo == "cargadora" and Juego.evolucion_activa("barrido")
+	_camada = tipo == "reina" and Juego.evolucion_activa("camada")
 	_evolucion = Juego.nivel_visual()
+	if _corte or _contagio or _barrido or _camada:
+		_evolucion = maxi(1, _evolucion)
 	if casta == "reina" and Juego.hitos.has("primer_monumento"):
 		_evolucion = 2
 	if casta == "voladora":
 		z_index = 2
 	_reloj_pensar = randf() * INTERVALO_PENSAR
+	_proxima_memoria = randf() * 0.6
 	_fase = randf() * TAU
 	_elegir_destino_al_azar()
 	if Graficos.listo:
@@ -97,6 +129,13 @@ func iniciar(r: Run, tipo := "obrera") -> void:
 func detener() -> void:
 	estado = Estado.QUIETA
 	_esperando_ruta = false
+	comida = null
+	run.colonia.exploracion.liberar(get_instance_id())
+
+func _exit_tree() -> void:
+	comida = null
+	if is_instance_valid(run) and is_instance_valid(run.colonia):
+		run.colonia.exploracion.liberar(get_instance_id())
 
 
 func _process(delta: float) -> void:
@@ -104,11 +143,12 @@ func _process(delta: float) -> void:
 		return
 	_reloj_vida += delta
 	_espera_ruta = maxf(0, _espera_ruta - delta)
+	_reloj_habilidad = maxf(0, _reloj_habilidad - delta)
 	if casta == "reina" and run.activa:
 		_reloj_reina += delta
 		while _reloj_reina >= INTERVALO_REINA and _minis_creadas < LIMITE_MINIS_REINA:
 			_reloj_reina -= INTERVALO_REINA
-			_minis_creadas += run.colonia.desplegar_minis(global_position, mini(MINIS_POR_TANDA, LIMITE_MINIS_REINA - _minis_creadas))
+			_minis_creadas += run.colonia.desplegar_minis(global_position, mini(3 if _camada else MINIS_POR_TANDA, LIMITE_MINIS_REINA - _minis_creadas))
 	_fase += delta * _velocidad * 0.24
 	_reloj_visual -= delta
 	if _reloj_visual <= 0 and en_pantalla:
@@ -125,9 +165,14 @@ func _process(delta: float) -> void:
 	# Recuperación ante objetivos inaccesibles o un cambio de territorio.
 	_reloj_progreso += delta
 	if _reloj_progreso >= 1.2:
-		if estado != Estado.MORDIENDO and estado != Estado.SIGUIENDO and global_position.distance_to(_ultima_pos) < 3.0:
+		var esperando_en_destino := estado == Estado.SIGUIENDO and global_position.distance_squared_to(objetivo) < 400
+		if estado != Estado.MORDIENDO and not esperando_en_destino and not _esperando_ruta and global_position.distance_to(_ultima_pos) < 3.0:
 			_meta_ruta = Vector2.INF
-			if estado != Estado.VOLVIENDO:
+			if estado == Estado.SIGUIENDO:
+				_espera_ruta = 0.3
+			elif estado != Estado.VOLVIENDO:
+				if _comida_valida(comida):
+					_comidas_sin_ruta[comida.get_instance_id()] = _reloj_vida + 3
 				comida = null
 				estado = Estado.EXPLORANDO
 				_elegir_destino_al_azar()
@@ -136,6 +181,12 @@ func _process(delta: float) -> void:
 
 
 func _pensar() -> void:
+	if run.retirando:
+		if carga <= 0:
+			detener()
+		elif estado != Estado.VOLVIENDO:
+			_volver()
+		return
 	if not _comidas_sin_ruta.is_empty():
 		for id in _comidas_sin_ruta.keys():
 			if _comidas_sin_ruta[id] <= _reloj_vida:
@@ -148,6 +199,7 @@ func _pensar() -> void:
 		_volver()
 		return
 	if run.feromonas.llama_a(self):
+		run.colonia.exploracion.liberar(get_instance_id())
 		_siguiendo_llamado = true
 		# Puede haberse liberado desde el último muestreo compartido del cursor.
 		var elegida = run.feromonas.objetivo_comida
@@ -161,9 +213,9 @@ func _pensar() -> void:
 				_reloj_mordida = _intervalo_mordida * 0.4
 			estado = Estado.MORDIENDO
 			return
-		comida = null
+		comida = elegida if _comida_valida(elegida) else null
 		estado = Estado.SIGUIENDO
-		objetivo = elegida.punto_mordida(global_position, run.radio_actual, casta == "voladora") if _comida_valida(elegida) else run.feromonas.destino_para(casta == "voladora")
+		objetivo = elegida.punto_trabajo(global_position, run.radio_actual, casta == "voladora", _puesto) if _comida_valida(elegida) else run.feromonas.destino_para(casta == "voladora")
 		return
 	if _siguiendo_llamado:
 		_siguiendo_llamado = false
@@ -178,9 +230,18 @@ func _pensar() -> void:
 			_volver()
 			return
 		comida = run.comidas.buscar_cercana(global_position, _olfato, run.radio_actual, _comidas_sin_ruta, casta)
+		if comida == null and _reloj_vida >= _proxima_memoria:
+			_proxima_memoria = _reloj_vida + 0.6
+			comida = run.colonia.trabajo_conocido(global_position, casta, _comidas_sin_ruta)
+		elif comida != null:
+			run.colonia.avistar(comida)
 	if comida != null:
+		# El puesto se conserva durante el viaje. Sólo cambia al abrir material
+		# o tomar otro recurso: no perseguir una proyección móvil cada 150 ms.
+		if estado != Estado.YENDO_A_COMIDA or _version_objetivo != run.cocina.version:
+			objetivo = comida.punto_trabajo(global_position, run.radio_actual, casta == "voladora", _puesto)
+			_version_objetivo = run.cocina.version
 		estado = Estado.YENDO_A_COMIDA
-		objetivo = comida.punto_mordida(global_position, run.radio_actual, casta == "voladora")
 		return
 	if estado != Estado.EXPLORANDO:
 		estado = Estado.EXPLORANDO
@@ -189,15 +250,20 @@ func _pensar() -> void:
 
 func _caminar(delta: float) -> void:
 	if estado == Estado.EXPLORANDO:
-		_reloj_vagar -= delta
-		if _reloj_vagar <= 0.0 or global_position.distance_squared_to(objetivo) < 64.0:
+		if not _esperando_ruta:
+			_reloj_vagar -= delta
+		if (_reloj_vagar <= 0.0 and not _esperando_ruta) or global_position.distance_squared_to(objetivo) < 64.0:
+			if global_position.distance_squared_to(objetivo) < 64.0:
+				run.colonia.exploracion.visitar(global_position)
 			_elegir_destino_al_azar()
 
 	# El desplazamiento sigue una ruta; la orientación visual gira suavemente.
 	# Así una hormiga rápida no orbita una miga ni sobrepasa el hormiguero.
 	if objetivo == Vector2.INF:
 		_esperando_ruta = false
-		if estado == Estado.SIGUIENDO:
+		if estado == Estado.SIGUIENDO or estado == Estado.EXPLORANDO:
+			# Sin una salida válida, la exploración reintenta al vencer su reloj,
+			# no doce pruebas geométricas por hormiga en cada cuadro.
 			return
 		if _comida_valida(comida):
 			_comidas_sin_ruta[comida.get_instance_id()] = _reloj_vida + 3
@@ -223,6 +289,11 @@ func _caminar(delta: float) -> void:
 		_version_ruta = run.cocina.version
 		_ruta_fallida = _ruta.is_empty()
 		_espera_ruta = randf_range(0.5, 0.8) if _ruta_fallida else (0.18 if estado == Estado.SIGUIENDO else 0.0)
+		if _ruta_fallida and estado == Estado.VOLVIENDO:
+			_entradas_fallidas[objetivo] = true
+			objetivo = run.entradas.elegir(global_position, _entradas_fallidas)
+			_meta_ruta = Vector2.INF
+			return
 	# Seguir avanzando por el recorrido seguro anterior mientras espera turno.
 	if _indice_ruta >= _ruta.size():
 		if necesita_ruta and (_espera_ruta > 0 or _meta_ruta == Vector2.INF):
@@ -262,11 +333,17 @@ func _caminar(delta: float) -> void:
 				estado = Estado.MORDIENDO
 				_reloj_mordida = _intervalo_mordida * randf_range(0.3, 1.0)
 		Estado.VOLVIENDO:
-			if global_position.length() <= Hormiguero.RADIO_ENTRADA:
+			if global_position.distance_squared_to(objetivo) <= Hormiguero.RADIO_ENTRADA * Hormiguero.RADIO_ENTRADA:
 				_descargar()
 
 
 func _morder(delta: float) -> void:
+	if run.retirando:
+		if carga > 0:
+			_volver()
+		else:
+			detener()
+		return
 	_esperando_ruta = false
 	if not _comida_valida(comida):
 		comida = null
@@ -290,32 +367,71 @@ func _morder(delta: float) -> void:
 		return
 	_reloj_mordida += _intervalo_mordida
 	var actual := comida
+	var carga_previa := carga
+	var corte_continuo: bool = _corte and actual is PiezaCasa and actual.nivel_requerido == 1
 	if actual is PiezaCasa:
-		carga += actual.morder_en(_dano * RolesHormiga.dano(casta, actual.nivel_requerido), global_position)
+		var dano := _dano * RolesHormiga.dano(casta, actual.nivel_requerido) * run.reglas.factor_dano(actual)
+		if _corte and actual.nivel_requerido == 1:
+			var segundo: Vector2 = actual.siguiente_seccion(global_position)
+			carga += actual.morder_en(dano * 0.75, global_position)
+			carga += actual.morder_en(dano * 0.25, segundo)
+			run.efectos.habilidad(global_position, segundo, Color("f1ce8c"))
+		else:
+			carga += actual.morder_en(dano, global_position)
 		_material_carga = actual.nivel_requerido
 	elif actual is FragmentoCasa:
+		for i in 3:
+			_carga_origen[i] += actual.origen[i]
 		carga += actual.morder(_dano)
 		_material_carga = actual.material_id
+		if _barrido:
+			var barrido := run.comidas.recoger_vecinos(global_position, RolesHormiga.peso_maximo(casta))
+			carga += barrido.valor
+			for i in 3:
+				_carga_origen[i] += barrido.origen[i]
+			if barrido.valor > 0:
+				run.efectos.habilidad(global_position - Vector2(48, 0), global_position + Vector2(48, 0), Color("dfcd91"))
+			_material_carga = maxi(_material_carga, barrido.material)
 	else:
 		carga += actual.morder(_dano)
 		_material_carga = -1
+	if corte_continuo:
+		# La carpintera evolucionada produce en el frente; la colonia transporta.
+		# El 35% ya cayó al morder: se agrega el 65% restante sin multiplicarlo.
+		run.comidas.soltar_fragmento(global_position, carga - carga_previa, 1)
+		carga = carga_previa
+	elif not actual is FragmentoCasa:
+		_carga_origen[0 if _material_carga <= 0 else (2 if _material_carga >= 3 else 1)] += carga - carga_previa
 	if casta == "roja" and not actual.muerta:
 		actual.aplicar_veneno(_dano * 0.8, 3.0, run)
+		if _contagio and _reloj_habilidad <= 0:
+			_reloj_habilidad = 1.5
+			run.comidas.contagiar(global_position, actual, _dano * 0.4, run)
+			run.efectos.habilidad(global_position, global_position + Vector2.from_angle(rotation) * 55, Color("acd870"))
 	bocados += 1
 	_color_carga = actual.color
-	run.efectos.chispas(global_position + Vector2.from_angle(rotation) * 4.0, actual.color, 2)
-	Sonido.tocar("mordida", randf_range(0.8, 1.3), 0.0)
+	run.efectos.chispas(global_position + Vector2.from_angle(rotation) * 4.0, actual.color, 2, _material_carga)
+	Sonido.tocar(["mordida", "mordida_madera", "mordida_metal", "mordida_piedra"][maxi(0, _material_carga)], randf_range(0.9, 1.1), 0.0)
+	if corte_continuo:
+		bocados = 0
+		if actual.muerta:
+			comida = null
+			estado = Estado.EXPLORANDO
+			_elegir_destino_al_azar()
+		return
 	if bocados >= _capacidad or actual.muerta:
 		_volver()
 
 
 func _volver() -> void:
+	run.colonia.exploracion.liberar(get_instance_id())
 	_siguiendo_llamado = false
 	_esperando_ruta = false
 	_recuerdo = comida
 	comida = null
 	estado = Estado.VOLVIENDO
-	objetivo = Vector2.ZERO
+	_entradas_fallidas.clear()
+	objetivo = run.entradas.elegir(global_position)
 	_meta_ruta = Vector2.INF
 	_ruta = PackedVector2Array()
 	_indice_ruta = 0
@@ -324,13 +440,17 @@ func _volver() -> void:
 
 
 func _descargar() -> void:
-	run.depositar(carga)
+	run.depositar(carga, objetivo, 0 if _material_carga <= 0 else (2 if _material_carga >= 3 else 1), _carga_origen)
+	_carga_origen.fill(0.0)
 	carga = 0.0
 	_material_carga = -1
 	bocados = 0
 	queue_redraw()
+	if run.retirando:
+		detener()
+		return
 	# Vuelve a la misma comida si sigue ahí: así se forman las filas de hormigas.
-	if _comida_valida(_recuerdo) and Comidas.en_territorio(_recuerdo, run.radio_actual):
+	if _comida_valida(_recuerdo) and _recuerdo.trabajadoras < _recuerdo.cupos_trabajo() and Comidas.en_territorio(_recuerdo, run.radio_actual):
 		comida = _recuerdo
 		estado = Estado.YENDO_A_COMIDA
 		objetivo = comida.punto_mordida(global_position, run.radio_actual, casta == "voladora")
@@ -342,17 +462,14 @@ func _descargar() -> void:
 
 func _elegir_destino_al_azar() -> void:
 	_esperando_ruta = false
-	for intento in 12:
-		var direccion := Vector2.from_angle(rotation + randf_range(-1.8, 1.8))
-		var candidato := (global_position + direccion * randf_range(40.0, 110.0)).limit_length(run.radio_actual - 10.0)
-		if run.cocina.libre(candidato, Cocina.MARGEN, casta == "voladora"):
-			objetivo = candidato
-			break
+	objetivo = run.colonia.exploracion.elegir(get_instance_id(), global_position, run.radio_actual, run.cocina, casta == "voladora")
 	_meta_ruta = Vector2.INF
 	_ruta = PackedVector2Array()
 	_indice_ruta = 0
 	_espera_ruta = 0
-	_reloj_vagar = randf_range(0.8, 2.0)
+	# La exploración dura lo necesario para llegar, no cambia de idea cada
+	# dos segundos. Esperar turno de navegación no consume este plazo.
+	_reloj_vagar = 2.0 + global_position.distance_to(objetivo) / maxf(_velocidad, 1) * 2.0 if objetivo != Vector2.INF else 1.0
 
 
 ## Sin tipo a propósito: la comida pudo haber sido destruida (liberada) y un
@@ -389,8 +506,13 @@ func _actualizar_sprite() -> void:
 			queue_redraw()
 		return
 	var cuadro := floori(fposmod(_fase, TAU) / TAU * Graficos.CUADROS)
-	_cuerpo.region_rect = Graficos.regiones["hormiga:%s:%d:%d" % [casta, _evolucion, cuadro]]
+	if _tipo_animacion != casta or _evolucion_animacion != _evolucion:
+		_tipo_animacion = casta
+		_evolucion_animacion = _evolucion
+		_animacion = Graficos.animacion(casta, _evolucion)
+	_cuerpo.region_rect = _animacion[cuadro]
+	_cuerpo.modulate = Color(1.18, 1.18, 1.05) if estado == Estado.MORDIENDO else Color.WHITE
 	_carga_sprite.visible = carga > 0
 	_carga_sprite.region_rect = Graficos.regiones["resto:%d" % _material_carga] if _material_carga >= 0 else Graficos.regiones.carga
-	_carga_sprite.scale = Vector2.ONE * (0.12 if _material_carga >= 0 else 0.16)
+	_carga_sprite.scale = Vector2.ONE * (0.12 if _material_carga >= 0 else 0.16) * (1.55 if casta == "cargadora" else 1.0)
 	_carga_sprite.modulate = Color.WHITE if _material_carga >= 0 else _color_carga

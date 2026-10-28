@@ -13,7 +13,6 @@ Incremental para PC hecho en **Godot 4.7.2**. Guiás a tu colonia manteniendo el
 
 | Acción | Cómo |
 |---|---|
-| Pisotón | Clic sobre la comida: la daña al instante y da la mitad de migas que una mordida |
 | Atraer las hormigas más cercanas | Mantener clic izquierdo en el destino; moverlo cambia el punto, soltar termina la orden |
 | Acercar o alejar el mapa | Rueda del mouse; el zoom apunta al cursor |
 | Moverse por el mapa | Arrastrar con botón derecho o central; también WASD o flechas |
@@ -103,15 +102,16 @@ Excavar permite abrir progresivamente el resto de la casa.
 Las feromonas son un **llamado al punto actual del cursor**, no un camino.
 Al mantener el clic, las 24 hormigas disponibles más cercanas se aproximan;
 la mejora Llamado potente aumenta esa cantidad de a tres y Coordinación de a una
-(máximo 64 a la vez). El antiguo Pisotón se convirtió en Coordinación conservando
-sus niveles y costos. Además, **el clic sobre comida es un pisotón**: la daña al
-instante (stat `dano_clic`, mejora Pisotón en el taller) y da la mitad de migas
-que una mordida. Sólo afecta alimentos; muebles, muros y restos son trabajo de
-las hormigas. Así los primeros minutos, con pocas hormigas, tienen acción directa. Si movés el cursor,
+(máximo 64 a la vez). **El clic no hace daño**: sólo da una orden a las hormigas.
+La compra antigua `pisoton` conserva sus niveles como Coordinación; `pisada`
+se convierte en Mandíbulas cooperativas (+0,5 de daño por nivel a las hormigas).
+Si movés el cursor,
 se actualizan el destino y la selección. Al soltar, termina la atracción sin
 dejar rastros anteriores. Sobre comida, las hormigas que llegan recolectan.
 Las que ya transportan una carga terminan su regreso antes de responder.
-No se puede dar órdenes fuera del territorio descubierto.
+No se puede dar órdenes fuera del territorio descubierto. Al abrir un hueco
+bajo el cursor, el llamado conserva el mueble hasta terminar de devorarlo.
+El contador del llamado diferencia atraídas, trabajando, cargando y buscando ruta.
 
 La cámara empieza encuadrando el territorio. Cuando usás la rueda o movés el
 mapa, conserva tu encuadre; `R` recupera la vista automática del hormiguero
@@ -134,7 +134,8 @@ reveladas quedan visibles para siempre, y lo nuevo se marca con "¡Nuevo!":
 | Pestaña Jalea real (árbol de la reina e hitos) | Con el primer hito o la primera corona |
 
 El HUD muestra siempre la **próxima meta** con una barra (`Juego.proxima_meta()`):
-primero subir Mandíbulas fuertes a nivel 4, después juntar las migas de cada
+primero desarmar un banquito de cartón accesible sin mejoras; luego subir
+Mandíbulas fuertes a nivel 4, juntar las migas de cada
 dieta, después el gran objetivo y por último el próximo viaje. Las migas de la
 run en curso ya cuentan, y avisa cuando alcanza para comprar.
 
@@ -149,23 +150,25 @@ El taller (rama **Mandíbulas**) tiene tres desbloqueos permanentes, en orden:
 |---|---|---|
 | Comida del piso | Los alimentos habituales | Desde el inicio |
 | Madera y telas | Sillas, mesas, muebles, sillones, cama y macetas | Mandíbulas fuertes 4; 900 migas |
-| Materiales resistentes | Electrodomésticos, mesadas y sanitarios | Madera y telas; 12.000 migas |
-| Paredes | Muros divididos en tramos de hasta 420 unidades | Materiales resistentes; 120.000 migas |
+| Materiales resistentes | Electrodomésticos, mesadas y sanitarios | Madera y telas; 150.000 migas |
+| Paredes | Muros divididos en tramos de hasta 420 unidades | Materiales resistentes; 4.000.000 migas |
 
 Mantené el clic sobre la pieza: las hormigas se acercan a su **borde accesible**,
 la muerden, transportan las migas y vuelven. Los materiales bloqueados no
 reciben daño. Sólo las hormigas y su corrosión extraen material de muebles y
-muros; el pisotón sólo afecta alimentos. Al señalar una pieza, el HUD muestra
+muros. Al señalar una pieza, el HUD muestra su fase, las trabajadoras,
 su resistencia y la dieta requerida. El daño recorta la silueta junto a la mordida:
 cada objeto tiene como máximo 16 celdas lógicas y una máscara de dibujo. Las
 celdas agotadas dejan huecos transitables. Al perder soportes, los restos caen
 por etapas, sin cientos de cuerpos físicos.
 
-Cada extracción entrega 65% del valor a la hormiga y deja 35% en fragmentos;
+Cada extracción normal entrega 65% del valor a la hormiga y deja 35% en fragmentos;
 el material que cae en un derrumbe queda como fragmentos para recoger. Los
 montones se agrupan por zona y material, hasta 64 activos, conservando su valor
 al fusionarse. No reciben otra vez el multiplicador ni el bonus de destrucción.
 Las cargadoras los priorizan y las voladoras no levantan montones pesados.
+Con Corte aserrado, la carpintera deja el 100% en montones y sigue cortando:
+el transporte queda a cargo de la colonia, sin multiplicar la recompensa.
 Alacenas, heladeras, bibliotecas y vitrinas revelan comida al abrirse; hay un
 máximo de 24 alimentos ocultos por expedición.
 
@@ -173,6 +176,51 @@ La resistencia escala con el tamaño del objeto. Las mejoras de daño, velocidad
 carga y recolección siguen teniendo efecto sobre estos objetivos. Cada nueva
 expedición reconstruye la casa, igual que repone los alimentos; **los desbloqueos
 y mejoras sí se guardan**. No se borra el progreso de partidas anteriores.
+
+### Un comportamiento propio por destino
+
+La rama Territorio permite comprar **cinco entradas secundarias**, desde 800
+migas y después de madera. Se abren automáticamente al descubrir sus puntos
+fijos: primero un acceso por ambiente y luego puntos separados en plazas o
+salones grandes. Conquistar la casa agrega un sexto acceso permanente. No se
+simulan túneles: las hormigas eligen el punto de entrega más cercano en línea
+recta, comprueban su ruta con la cola normal y prueban otro si está aislado.
+La selección sólo sucede al iniciar el regreso o fallar una ruta.
+
+Al terminar hay **hasta 6 segundos de retirada**: sólo las hormigas cargadas
+regresan; no hay nuevas mordidas, veneno, nacimientos ni cadenas de derrumbes.
+El cierre se adelanta si ya entregaron todas. Lo que no llega a tiempo se
+informa como carga pendiente y no se cobra. Eiffel extiende el plazo a 10 s.
+El resumen muestra ingresos por alimentos/muebles/estructuras, migas por
+segundo (incluye la retirada) y porcentaje del gran objetivo. Los mejores
+intentos por destino persisten al fundar y se guardan en partidas versión 6.
+
+Los depósitos próximos se agrupan en ventanas de 0,35 s; el total económico
+no se limita. El piso tiene menos contraste, parte de la comida forma grupos
+junto a muebles y los escondites llevan una señal dorada. Las mordidas de
+madera dejan astillas, la corrosión tiñe el material y el piso activo de Eiffel
+está marcado. Las habilidades comparten hasta 16 trazos de 0,35 s, con un
+intervalo global de 0,08 s, sin nodos ni físicas por efecto.
+
+| Destino | Regla |
+|---|---|
+| Casa | Banquito de cartón desde el inicio; los huecos abren atajos |
+| Restaurante | Un tesoro activa 8 s de carga de frenesí al doble |
+| Museo | Las vitrinas exponen cinco alimentos al perder un 20% de resistencia |
+| Obelisco | Cada fase del monumento suma un 15% de daño recibido |
+| Coliseo | Un arco devorado sacude hasta dos vecinos; la cadena se procesa por turnos, máximo 24 |
+| Torre Eiffel | Las mordidas y los puntos de acceso avanzan desde la base hacia los pisos superiores |
+
+No se simulan destinos inactivos. Las reglas usan las mismas piezas, fragmentos
+y límites del resto del juego; no agregan física ni enjambres extra.
+
+Cada conquista conserva una adaptación en **todos** los destinos, incluso al
+fundar. Sus valores están en `datos/adaptaciones.csv`: casa da un acceso,
+restaurante lleva festines de 11 s a otros mapas, museo agrega un alimento por
+escondite (mismo máximo de 24), Obelisco sube la corrosión a 30%, Coliseo lleva
+golpes de soporte de 10% a muebles vecinos (hasta 24 eslabones) y Eiffel agrega
+4 s de retirada. Viajes explica las reglas y premios; Jalea real muestra
+compras concretas que alcanzaría a pagar el saldo después de fundar.
 
 ### Viajes, grandes objetivos y jalea real
 
@@ -188,14 +236,14 @@ mejoras y castas y los convierte en **jalea real**: 3 por corona de la colonia
 más la raíz cuarta de (migas juntadas en la colonia / 100.000). La jalea se gasta en el
 **árbol de la reina** (`datos/jalea.csv`), que es permanente: atajos (nacer con
 las dietas aprendidas, conservar migas o castas), poder (daño, migas, obreras,
-tiempo) y reglas nuevas (pisotón automático, más niveles de tope, corona doble).
+tiempo) y reglas nuevas (hallazgos compartidos, más niveles de tope, corona doble).
 Toda la jalea ganada en la historia da además +3% de daño y migas por punto,
 aunque se gaste. Se conservan destinos, hitos y el árbol. Cada gran objetivo
 paga sus coronas una vez por colonia.
 
 Cada destino conquistado **sube el tope** de las mejoras (`tope_por_destino` en
 `mejoras.csv`) y trae **mejoras propias** (marcadas con ✦, columna `destino`).
-Mandíbulas fuertes y Pisotón duplican su efecto cada 25 niveles. El diseño
+Mandíbulas fuertes y Mandíbulas cooperativas duplican su stat cada 25 niveles. El diseño
 completo y sus razones están en [`docs/DISENO_PROGRESION.md`](docs/DISENO_PROGRESION.md).
 
 Los seis hitos son opcionales y tienen premios visibles en la tienda: primera
@@ -218,7 +266,7 @@ un monumento.
 - Selección de feromonas con un heap acotado, cada 0,2 segundos, sin ordenar
   toda la colonia. Cursor compartido por suelo/vuelo; anillos a 30 Hz.
 - Rutas con una cola justa: hasta seis pedidos por cuadro y un presupuesto
-  blando de 2 ms. Hasta dos turnos priorizan llamados y retornos; las demás
+  blando de 1,2 ms. Hasta dos turnos priorizan llamados y retornos; las demás
   conservan su lugar. Mientras esperan pueden continuar su ruta segura anterior.
   Mover unos pocos píxeles no obliga a recalcular; fallos se reintentan cada
   0,5–0,8 s y también tienen caché. Los giros se comprimen y el suavizado tiene
@@ -283,13 +331,44 @@ En automático, los roles influyen en la búsqueda. Las prioridades de la barra
 inferior cambian la preferencia del grupo sin prohibir otros trabajos; mantener
 el clic en un objetivo permite dar una orden directa por encima de esa prioridad.
 
+Las hormigas reservan puestos mientras van a trabajar: una miga admite pocas,
+un mueble tiene varios frentes. Las exploradoras comparten hasta 24 hallazgos;
+una hormiga sin tarea los consulta como máximo cada 0,6 s y a menos de 650 px.
+Las reservas se liberan al volver, cambiar de objetivo o terminar la expedición.
+No hay búsquedas de todas las hormigas contra todas las demás.
+
+Sin trabajo, reservan destinos de exploración en sectores de 320 px y prefieren
+zonas menos visitadas u ocupadas. Los recorridos de hasta unos 1.000 px duran
+lo necesario para llegar; no se reinician por esperar turno de navegación.
+Así una colonia numerosa se abre por el territorio en lugar de dar pasos
+cortos alrededor del nido. El alimento local y el llamado manual mantienen
+prioridad sobre la exploración. Si no existe una salida válida, reintenta con
+pausa sin conservar el objetivo anterior.
+
+### Evoluciones y equipo
+
+En la ficha de casta se desbloquean cuatro evoluciones persistentes. Se eligen
+**hasta dos por expedición**, sin pagar ni perder compras. Al desbloquearlas
+se equipan automáticamente si hay lugar. Las hormigas copian ese equipo al nacer.
+
+| Evolución | Requisitos | Cambia el trabajo |
+|---|---|---|
+| Corte aserrado | 1 carpintera, Mandíbulas 4 | Divide el daño 75/25 entre dos secciones de madera; deja la extracción en montones y sigue cortando sin volver al nido |
+| Nube corrosiva | 3 rojas, Mandíbulas 4 | Contagia hasta dos objetivos próximos cada 1,5 s |
+| Barrido de restos | 3 cargadoras, Mandíbulas 4 | Recoge hasta dos montones adicionales a menos de 48 px |
+| Camada real | 1 reina, Mandíbulas 8 | Tres minis por tanda; mantiene los topes de 24 por reina y 500 en la colonia |
+
+Se conservan al fundar una colonia y al cargar partidas anteriores. La variante
+activa usa al menos la primera evolución visual del atlas existente; no carga
+texturas adicionales por hormiga.
+
 `datos/castas.csv` define nombres, información, multiplicadores, colores,
 precios y límites. Las mejoras generales afectan a todas las castas. Las
 partidas anteriores conservan su progreso y comienzan sin especialistas.
 
 ## Balance: los CSV de `/datos`
 
-El balance se edita en cuatro CSV que pueden abrir en Google Sheets o Excel.
+El balance se edita en CSV que pueden abrir en Google Sheets o Excel.
 Los intervalos de las habilidades especiales están junto a su implementación.
 
 | Archivo | Qué define |
@@ -298,6 +377,8 @@ Los intervalos de las habilidades especiales están junto a su implementación.
 | `mejoras.csv` | Cada mejora: rama (columna del árbol), stat que afecta, si **suma** o **multiplica**, costo base, crecimiento del costo, nivel máximo y requisito (`otra_mejora:nivel`) |
 | `comidas.csv` | Cada comida: forma, color, vida, recompensa, tamaño, distancia del hormiguero, cantidad y ambientes preferidos (`zonas`) |
 | `castas.csv` | Castas, descripción de habilidades, multiplicadores, color, tamaño, precio y límite de reclutamiento |
+| `jalea.csv` | Mejoras permanentes del árbol de la reina, costos y requisitos |
+| `adaptaciones.csv` | Beneficios permanentes por conquistar cada destino |
 
 **Flujo recomendado:** suban los CSV a una planilla compartida, balanceen ahí y cuando les guste hagan *Archivo → Descargar → CSV* de cada hoja y reemplacen el archivo. La coma decimal (`1,5`) también se acepta. Una fila que empieza con `#` se ignora.
 
@@ -307,44 +388,47 @@ Los intervalos de las habilidades especiales están junto a su implementación.
 
 ### Medir el ritmo con el bot
 
-`tests/bot_balance.tscn` juega solo, como un jugador activo (3 pisotones por
-segundo, llamado sobre el gran objetivo, compra lo más barato y ahorra para
+`tests/bot_balance.tscn` juega solo, como un jugador activo (actualiza el llamado
+tres veces por segundo, sin daño por clic, compra lo más barato y ahorra para
 cada dieta), y anota el minuto de juego de cada desbloqueo y de cada destino:
 
 ```bash
 godot --headless --fixed-fps 60 --path . res://tests/bot_balance.tscn
 ```
 
-Juega a velocidad ×8, así que una hora de juego tarda un par de minutos. Con
+Usa pasos de 1/60 s, `Engine.time_scale = 1` y FPS ilimitados: acelera por
+cantidad de cuadros procesados, no agrandando el delta. Con
 `BOT_ESTADO=archivo.json` se puede cortar y retomar por tandas; con `BOT_LOG`
 también escribe el registro en un archivo. No corre en CI.
 
-Medición actual (28/10). Primera hora: dos corridas; campaña: una corrida en
-modo calibración desde la casa conquistada (`BOT_CALIBRAR=1`, ver abajo).
+Las mediciones anteriores a esta revisión usaban tiempo ×8 y daño por clic.
+No son comparables: cambiaban los presupuestos de navegación y mordida por
+segundo simulado. Piloto final de esta revisión (28/10, desde cero, con
+dispersión por sectores, entradas, retirada y Corte aserrado continuo, sin
+guardado real ni compras prefijadas). Los minutos incluyen la retirada:
 
 | Hito | Momento | Fundaciones |
 |---|---|---|
-| Mandíbulas fuertes 4 | 1,5–3,5 min | — |
-| Madera y telas (8.000 migas) | ~10 min | — |
-| Materiales resistentes (150.000) | ~26 min | — |
-| Paredes (4.000.000) | ~42 min | — |
-| Casa conquistada | ~45 min | 0 |
-| Primera fundación (trabado en el restaurante) | ~1 h 47 min | 1 |
-| Restaurante | ~3 h 27 min | 2 |
-| Museo | ~4 h 45 min | 4 |
-| Obelisco | ~6 h 27 min | 8 |
-| Coliseo | ~7 h 47 min | 10 |
-| Torre Eiffel | ~10 h 43 min | 12 |
+| Mandíbulas fuertes 4 y primera casta | 4,3 min | 0 |
+| Madera y telas (900 migas) | 7,3 min | 0 |
+| Materiales resistentes (150.000) | 26,1 min | 0 |
+| Paredes (4.000.000) y casa conquistada | 33,1 min | 0 |
+| Restaurante conquistado | 38,2 min | 0 |
+| Primera fundación (+23 jalea) | 38,2 min | 1 |
+| Museo conquistado | 58,1 min | 1 |
+| Segunda fundación (+48 jalea) | 60,8 min | 2 |
 
-La jalea por fundación sube de 14 a 406 a lo largo de la campaña. Cada
-colonia nueva dura entre 17 y 90 minutos: las primeras y las del Obelisco son
-cortas, las de la Torre Eiffel las más largas.
+El límite de 65 minutos termina la última expedición en 66,6. Es un piloto,
+no una duración certificada de la campaña ni una estrategia óptima: el bot
+compra barato y no optimiza su equipo. Falta calibrar los destinos tardíos y
+probar con jugadores. La comparación controlada de castas y sus límites está
+en `docs/DISENO_PROGRESION.md`.
 
 El gran objetivo pide la dieta completa (`PiezaCasa.NIVEL_META`) y su
 resistencia se multiplica por `Mundos.vida_meta(destino)` (`vida_meta` en
 `mundo/mundos.gd`). Como la casa se reconstruye en cada expedición, es un
 chequeo de daño dentro de una sola run. Desde el restaurante, cada destino
-pide entre una y cuatro colonias nuevas.
+está diseñado para pedir nuevas fundaciones; la cantidad debe volver a medirse.
 
 **Calibrar todo de una:** con `BOT_CALIBRAR=1` los destinos después de la casa
 arrancan invulnerables; cuando una colonia se traba y decide fundar, el bot fija
@@ -475,12 +559,26 @@ godot --headless --fixed-fps 60 --path . res://tests/prueba_campana.tscn
 `tests/revision_campana.tscn` captura los seis escenarios, los nuevos menús y la
 confirmación de legado, también en 1000×620. Todas las revisiones desactivan el guardado.
 
-Primeros minutos: mecánicas que aparecen de a una, próxima meta, pisotón y
+Primeros minutos: mecánicas que aparecen de a una, próxima meta, llamado sin daño y
 tamaño de las hormigas en pantalla:
 
 ```bash
 godot --headless --fixed-fps 60 --path . res://tests/prueba_progresion.tscn
 ```
+
+IA cooperativa, reservas, cuatro evoluciones, migración del equipo, reglas de
+los seis destinos y tutorial completado por ocho obreras con el llamado fijo:
+
+```bash
+godot --headless --fixed-fps 60 --path . res://tests/prueba_enjambre.tscn
+```
+
+`tests/revision_enjambre.tscn` captura el tutorial, el llamado, las roturas,
+las evoluciones en 1280×720 y 1000×620 y las fases de los grandes objetivos.
+
+`tests/prueba_dispersion.tscn` reproduce 40 s con 500 hormigas sin feromonas,
+verifica el cambio de objetivos agotados, la exploración y las reservas. Con
+renderer real guarda capturas a los 10 y 40 s en `.godot/qa/dispersion_*.png`.
 
 ## Exportar
 

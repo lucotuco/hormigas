@@ -7,6 +7,9 @@ extends Node
 
 const SONIDOS := {
 	"mordida":   {"volumen": -22.0, "intervalo": 0.13},
+	"mordida_madera": {"volumen": -24.0, "intervalo": 0.13},
+	"mordida_metal": {"volumen": -26.0, "intervalo": 0.13},
+	"mordida_piedra": {"volumen": -24.0, "intervalo": 0.13},
 	"clic":      {"volumen": -8.0,  "intervalo": 0.02},
 	"deposito":  {"volumen": -12.0, "intervalo": 0.09},
 	"romper":    {"volumen": -8.0,  "intervalo": 0.1},
@@ -60,9 +63,10 @@ func tocar(nombre: String, tono: float = 1.0, variacion: float = 0.05) -> void:
 		return
 	var ahora := Time.get_ticks_msec() / 1000.0
 	var configuracion: Dictionary = SONIDOS[nombre]
-	if ahora - float(_ultimo.get(nombre, -10.0)) < configuracion.intervalo:
+	var canal := "mordida" if nombre.begins_with("mordida") else nombre
+	if ahora - float(_ultimo.get(canal, -10.0)) < configuracion.intervalo:
 		return
-	_ultimo[nombre] = ahora
+	_ultimo[canal] = ahora
 	var reproductor := _reproductores[_siguiente]
 	_siguiente = (_siguiente + 1) % TAMANO_POOL
 	reproductor.stream = _streams[nombre]

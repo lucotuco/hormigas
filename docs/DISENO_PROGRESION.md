@@ -30,7 +30,7 @@ qué gastar**. Lo lento tiene que venir de sumar capas, no de esperar más.
   conquistado en la partida. Los destinos conquistados no se pierden al
   fundar, así que el techo sólo crece.
 - **Hitos de nivel.** Algunas mejoras (`bonus_cada`, `bonus_mult`) multiplican
-  su stat cada N niveles: Mandíbulas fuertes y Pisotón duplican el daño
+  su stat cada N niveles: Mandíbulas fuertes y Mandíbulas cooperativas duplican el daño
   cada 25 niveles. Esos saltos se anuncian en la tarjeta ("hito en nivel 25").
 - **Mejoras de destino.** Cada destino agrega mejoras propias a las ramas del
   hormiguero (columna `destino`). Se ven bloqueadas ("Se descubre en el
@@ -61,46 +61,127 @@ El árbol de la reina mezcla tres tipos de premio:
 |---|---|---|
 | Atajos | Memoria de la madera / del metal / de la piedra (empezar con la dieta aprendida), Reservas de la reina (conservar % de migas), Linaje (conservar % de castas) | Que cada colonia nueva arranque más arriba y la primera hora no se repita igual |
 | Poder | Mandíbulas de jalea, Despensa real, Obreras reales, Reloj de arena | Multiplicadores que hacen viable el destino siguiente |
-| Nuevas reglas | Cámaras más hondas (+5 niveles de tope), Guardia de la reina (pisotón automático), Corona doble | Cambian cómo se juega, no sólo los números |
+| Nuevas reglas | Cámaras más hondas (+5 niveles de tope), Guardia de la reina (comparte hallazgos), Corona doble | Cambian cómo se juega, no sólo los números |
 
 ### 3. Destinos
 
 Cada gran objetivo es un chequeo de daño **dentro de una sola run** (la casa se
 reconstruye en cada expedición). Su resistencia (`vida_meta` en `mundo/mundos.gd`)
-está calibrada para que a partir del restaurante haga falta fundar al menos
-una vez. El ritmo lo marca el ciclo **conquistar → fundar → volver más fuerte**.
+mantiene por ahora los valores de la calibración anterior. El ciclo buscado es
+**conquistar → fundar → volver más fuerte**; los tiempos tardíos deben recalibrarse
+con el bot corregido antes de afirmar una duración de campaña.
 
 ## Ritmo (jugador activo, medido con el bot)
 
-| Hito | Buscado | Medido | Fundaciones |
-|---|---|---|---|
-| Madera | ~10 min | ~10 min | — |
-| Casa conquistada (sin fundar) | ~50 min | ~45 min | 0 |
-| Restaurante | 1,5–3 h | ~3,5 h | 2 |
-| Museo | — | ~4,75 h | 4 |
-| Obelisco | — | ~6,5 h | 8 |
-| Coliseo | — | ~7,8 h | 10 |
-| Torre Eiffel | 10–20 h | ~10,7 h | 12 |
+El bot anterior usaba `Engine.time_scale = 8`, mordidas limitadas por cuadro y
+seis rutas por cuadro. Eso le daba ocho veces menos oportunidades por segundo
+simulado y distorsionaba la progresión; además hacía daño por clic. Sus tiempos
+de campaña de ~10,7 h no son una medición válida de esta revisión.
 
-Un jugador real pisa menos que el bot (3 por segundo) y no compra perfecto,
-así que la campaña real debería estar más cerca de 12–15 h.
+Ahora avanza pasos de 1/60 s, tiempo ×1 y FPS ilimitados. Un piloto desde cero
+(28/10, límite de 65 minutos, termina la última run en 66,6, sin partida prefijada,
+con la IA, entradas y Corte continuo actuales) obtuvo, incluyendo la retirada:
 
-La medición completa está en el README (sección del bot de balance) y se rehace
-con `tests/bot_balance.tscn`, que también funda y compra jalea.
+| Hito | Minuto | Fundaciones |
+|---|---:|---:|
+| Mandíbulas 4 / primera casta | 4,3 | 0 |
+| Madera (900 migas) | 7,3 | 0 |
+| Resistentes (150.000 migas) | 26,1 | 0 |
+| Paredes (4.000.000 migas) / casa conquistada | 33,1 | 0 |
+| Restaurante conquistado | 38,2 | 0 |
+| Primera fundación (+23 jalea) | 38,2 | 1 |
+| Museo conquistado | 58,1 | 1 |
+| Segunda fundación (+48 jalea) | 60,8 | 2 |
+
+No es una predicción de cuánto tarda un jugador ni una calibración de todos
+los destinos. El bot compra barato, ahorra dietas y sostiene el llamado; no
+optimiza el equipo de evoluciones. Se repite con `tests/bot_balance.tscn`.
+La semilla inicial es fija, pero la admisión temporal de rutas puede variar con
+el equipo: los resultados no son una promesa de tiempos exactos.
+
+## Comportamientos y sinergias, sin costo cuadrático
+
+- Cuatro evoluciones persistentes, dos equipadas gratis entre expediciones.
+  Cambian una conducta (dos cortes, contagio acotado, barrido o camada), no sólo
+  multiplican números. Sus requisitos se muestran en la ficha de casta.
+- Los hallazgos compartidos son una memoria de 24 objetivos; consulta cada
+  0,6 s sólo cuando falla el olfato local. Las reservas de trabajo evitan
+  amontonar toda la colonia en una miga, sin colisiones entre hormigas.
+- El tutorial tiene un banquito de cartón de 20 de vida y 180 de valor:
+  ocho obreras pueden mostrar mordidas y derrumbe antes de comprar madera.
+- Cada destino tiene una regla sobre el mismo sistema: festín, vitrinas,
+  fases vulnerables, dominó limitado o desmontaje desde la base.
+- Se mantiene el reinicio del mapa en cada expedición. Las reglas no guardan
+  mundos en segundo plano; las evoluciones desbloqueadas sí persisten al fundar.
+
+## Logística, claridad y ritmo (28/10)
+
+La madera baja de 3.000 a **900 migas** para que el primer material nuevo
+aparezca antes. No se bajaron las resistencias tardías ni se agregaron monedas.
+El tutorial de cartón sigue accesible desde el inicio. La nueva mejora Entradas
+secundarias cuesta 800 inicialmente (×4 por nivel), con cinco niveles y una
+sexta entrada permanente por conquistar la casa. Se habilita después de madera.
+
+Los accesos se colocan una vez por escenario en puntos libres, separados y
+deterministas. Primero se cubren ambientes; plazas y salones grandes reciben
+puntos adicionales. Sólo abren dentro del territorio. Al regresar se elige por
+distancia euclídea entre hasta siete puntos; la navegación normal confirma el
+camino y descarta una entrada si falla. No se garantiza el trayecto de menor
+longitud global ni se ejecutan búsquedas fuera del presupuesto de rutas.
+
+La retirada dura hasta seis segundos, diez con la adaptación de Eiffel.
+Las hormigas que ya regresaban conservan su ruta y posición en la cola;
+no se solicitan cientos de rutas nuevas al cambiar de fase.
+No genera recursos: sólo entrega cargas ya extraídas. Un regreso inaccesible
+no prolonga el cierre ni cobra mágicamente; se informa lo que quedó en camino.
+Migas/s incluye el tiempo de retirada y el desglose conserva los materiales
+originales incluso al fusionar montones. Los acumuladores usan flotantes de
+64 bits, no vectores de precisión simple. Récords de producción y daño máximo
+por destino sobreviven a fundar; el daño físico del mapa se sigue reiniciando.
+
+Las seis conquistas conceden adaptaciones permanentes, definidas en
+`datos/adaptaciones.csv`: acceso, festín, hallazgos, corrosión, soportes y
+retirada. Modifican el escenario activo, sin simular los anteriores. El dominó
+heredado usa la misma cola limitada a 24 eslabones del Coliseo, con golpes del
+10% fuera de los arcos del Coliseo. El premio por hallazgos conserva el máximo
+de 24 alimentos ocultos. La vista previa de jalea muestra opciones alcanzables
+individualmente y aclara que no constituye una compra conjunta.
+
+El piso, marcas de materiales, señales de escondites y trazos de habilidades
+usan el atlas/shader y efectos compartidos. Ninguna mejora requiere física por
+fragmento ni aumentar el límite de 500 hormigas. Los objetivos de acercamiento
+se conservan hasta cambiar de recurso o geometría, reduciendo cambios de ruta.
+
+Las pruebas y mediciones gráficas están en `tests/RENDIMIENTO.md`.
+
+### Especialistas que cambian el trabajo
+
+Corte aserrado reparte el mismo daño entre dos secciones de madera, pero ahora
+deja también su porción de la extracción en montones y continúa trabajando.
+No multiplica el recurso ni lo acredita: la colonia debe transportarlo.
+Esto permite combinar carpinteras productoras con cargadoras y Barrido.
+
+`tests/comparar_castas.tscn` compara una expedición con presupuesto de 1.200,
+las mismas mejoras base, semilla y órdenes sobre madera. Resultado local:
+
+| Compra | Gasto | Migas entregadas | Piezas destruidas | Migas/s |
+|---|---:|---:|---:|---:|
+| 28 obreras | 1.145 | 6.825 | 3 | 103,3 |
+| 24 obreras + carpintera + cargadora | 1.076 | 7.235 | 4 | 109,5 |
+
+El equipo mixto entrega aproximadamente 6% más, con menos gasto y una pieza
+adicional. Es una prueba de esa sinergia en ese escenario, no evidencia de
+que todas las castas estén balanceadas ni de que sea siempre la mejor compra.
 
 ## Preguntas abiertas
 
-- **El final se estira.** Del Coliseo a la Torre Eiffel van casi 3 h (dos
-  colonias, de 90 y 45 minutos), contra 17–25 minutos por colonia en el Obelisco. La jalea crece rápido, pero el
-  bonus de legado es aditivo (+3% por punto) y ya no hay destino nuevo que
-  suba topes. Si se siente pesado: una mejora de destino propia de la Torre
-  que multiplique, o un hito del árbol que escale con la jalea gastada.
+- **Campaña tardía.** Volver a medir desde el restaurante hasta la Torre
+  Eiffel con paso correcto y sin daño por clic antes de tocar sus resistencias.
 - **¿El árbol tiene decisiones?** El bot compra siempre lo más barato y llega
   igual. Conviene probar si un jugador que prioriza poder sobre atajos
   termina mucho antes; si no hay diferencia, el árbol es una lista de
   compras y no una elección.
-- **Restaurante.** Pide la primera fundación pasada la hora y media; es el
-  momento en que el jugador aprende la capa nueva. Hay que mirar con gente
+- **Restaurante.** Es donde se pretende enseñar la primera fundación. Hay que mirar con gente
   real si se entiende que conviene fundar o si parece que el juego se trabó.
 
 ## Qué se puede tocar sin programar

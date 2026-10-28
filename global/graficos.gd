@@ -15,6 +15,16 @@ var _mueble_claves: Dictionary = {}
 var _mueble_medidas: Dictionary = {}
 var _alturas := PackedInt32Array()
 var _alto_atlas := 4
+var _animaciones: Dictionary = {}
+
+func animacion(tipo: String, evolucion: int) -> Array[Rect2]:
+	var clave := "%s:%d" % [tipo, evolucion]
+	if not _animaciones.has(clave):
+		var cuadros: Array[Rect2] = []
+		for i in CUADROS:
+			cuadros.append(regiones["hormiga:%s:%d:%d" % [tipo, evolucion, i]])
+		_animaciones[clave] = cuadros
+	return _animaciones[clave]
 
 class Pintura extends Node2D:
 	var tipo := ""

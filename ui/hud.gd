@@ -47,6 +47,7 @@ var _lbl_meta_progreso: Label
 var _barra_meta: ProgressBar
 var _relleno_meta: StyleBoxFlat
 var _meta_lista := false
+var _lbl_llamado: Label
 
 var _migas_mostradas := 0.0
 var _volando := 0
@@ -76,6 +77,10 @@ func _ready() -> void:
 	_crear_progresion(raiz)
 	_crear_proxima_meta(raiz)
 	_crear_prioridades(raiz)
+	_lbl_llamado = Estilo.etiqueta("", 13, Color("c2ecd2"), 4)
+	_lbl_llamado.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lbl_llamado.visible = false
+	raiz.add_child(_lbl_llamado)
 	_hitos_vistos = Juego.hitos.size()
 	Juego.progreso_cambio.connect(_notificar_hito)
 	_actualizar_revelados()
@@ -93,6 +98,8 @@ func _process(delta: float) -> void:
 
 	var restante := run.tiempo_restante
 	_lbl_tiempo.text = "%d s" % int(ceil(restante))
+	if run.retirando:
+		_lbl_tiempo.text = "Regreso · %d s" % ceili(run.retiro_restante)
 	_barra_tiempo.value = restante / maxf(run.duracion_total, 0.01) * 100.0
 	if restante <= 5.0 and run.activa:
 		var parpadeo := 0.5 + 0.5 * sin(_reloj * 14.0)
@@ -113,6 +120,15 @@ func _process(delta: float) -> void:
 		_barra_frenesi.value = run.frenesi_restante / 6.0 * 100 if run.frenesi_restante > 0 else run.frenesi
 		var c := run.comidas.comida_en(run.get_global_mouse_position(), run.radio_actual, true)
 		mostrar_inspeccion(c)
+		_lbl_llamado.visible = run.feromonas.activa
+		if _lbl_llamado.visible:
+			var datos := run.feromonas.resumen()
+			_lbl_llamado.text = "%d atraídas · %d trabajando · %d cargando" % [datos.atraidas, datos.trabajando, datos.cargando]
+			if datos.esperando > 0:
+				_lbl_llamado.text += "\n%d buscando un camino" % datos.esperando
+			if run.feromonas.posicion.length() > run.radio_actual:
+				_lbl_llamado.text = "Fuera del territorio descubierto"
+			_lbl_llamado.position = (run.a_pantalla(run.feromonas.posicion) + Vector2(20, -50)).clamp(Vector2(12, 100), get_viewport().get_visible_rect().size - Vector2(340, 120))
 
 	_lbl_hormigas.text = "Hormigas: %d%s" % [run.colonia.cantidad(), " · colonia llena" if run.colonia.colonia_llena() else ""]
 	_reloj_descubrimiento -= delta
@@ -201,9 +217,19 @@ func mostrar_aviso(texto: String) -> void:
 
 
 func mostrar_fin() -> void:
+	_lbl_aviso.hide()
 	_lbl_fin_migas.text = "+%s migas" % Juego.formatear(Juego.migas_run)
 	_lbl_fin_detalle.text = "Comidas: %d · Partes de la casa: %d\nMejor combo: x%d\nTotal en el hormiguero: %s" % [
 		Juego.comidas_destruidas_run, Juego.partes_destruidas_run, Juego.mejor_combo_run, Juego.formatear(Juego.migas)]
+	_lbl_fin_detalle.text += "\n%s migas/s · %s" % [Juego.formatear_corto(run.produccion_run), ("%+.0f%% frente al récord anterior" % run.mejora_produccion) if run.tenia_record else "primer registro en este destino"]
+	_lbl_fin_detalle.text += "\nAlimentos %s · Muebles %s · Estructuras %s" % [Juego.formatear_corto(run.ingresos[0]), Juego.formatear_corto(run.ingresos[1]), Juego.formatear_corto(run.ingresos[2])]
+	var record: Dictionary = Juego.records_destino.get(Juego.lugar_actual, {})
+	_lbl_fin_detalle.text += "\nGran objetivo: %.0f%% · mejor intento %.0f%%" % [run.progreso_objetivo * 100, float(record.get("objetivo", 0)) * 100]
+	if run.cargas_pendientes > 0:
+		_lbl_fin_detalle.text += "\nQuedaron %s en camino: más velocidad o entradas acortan la vuelta." % Juego.formatear_corto(run.cargas_pendientes)
+	var meta := Juego.proxima_meta()
+	if meta.tipo == "migas" and Juego.migas >= meta.objetivo:
+		_lbl_fin_detalle.text += "\n¡Ya podés comprar tu próxima dieta en el taller!"
 	# El prestigio a la vista: cuánto daría fundar ahora (ver pestaña Jalea real).
 	if Juego.revelado("legado") and Juego.puede_fundar():
 		_lbl_fin_detalle.text += "\nFundar ahora daría +%d de jalea real" % Juego.jalea_por_fundar()
@@ -302,7 +328,7 @@ func _crear_avisos(raiz: Control) -> void:
 	raiz.add_child(_lbl_aviso)
 
 	_lbl_ayuda = Estilo.etiqueta(
-		"Clic sobre la comida: pisotón · Mantené el clic: llamar a las hormigas cercanas\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: ver la casa · Esc: terminar",
+		"Mantené clic: llamar a las hormigas cercanas · Sólo las hormigas hacen daño\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: mapa · Esc: terminar",
 		13, Estilo.TEXTO, 4)
 	_lbl_ayuda.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_lbl_ayuda.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -339,6 +365,8 @@ func _crear_panel_fin(raiz: Control) -> void:
 	_lbl_fin_migas.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(_lbl_fin_migas)
 	_lbl_fin_detalle = Estilo.etiqueta("", 17, Estilo.TEXTO_SUAVE)
+	_lbl_fin_detalle.custom_minimum_size.x = 620
+	_lbl_fin_detalle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_lbl_fin_detalle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(_lbl_fin_detalle)
 	var espacio := Control.new()
@@ -448,10 +476,17 @@ func _crear_proxima_meta(raiz: Control) -> void:
 
 func _actualizar_meta() -> void:
 	var meta := Juego.proxima_meta()
+	var practica := run.objetivo_practica
+	if is_instance_valid(practica) and not practica.muerta and not Juego.hitos.has("primer_derrumbe"):
+		meta = {"tipo": "practica", "nombre": "Desarmá el banquito de cartón"}
 	var actual := 0.0
 	var objetivo := 1.0
 	var texto := ""
 	match meta.tipo:
+		"practica":
+			actual = practica.vida_max - practica.vida
+			objetivo = practica.vida_max
+			texto = "Mantené clic sobre el banquito · no requiere mejoras"
 		"migas":
 			actual = meta.actual
 			objetivo = maxf(1.0, meta.objetivo)
@@ -531,9 +566,9 @@ func _notificar_hito() -> void:
 		mostrar_aviso("¡Hito! " + Juego.HITOS[id].nombre)
 
 func mostrar_inspeccion(c: Comida) -> void:
-	_lbl_objetivo.text = ""
+	_lbl_objetivo.text = ReglasDestino.DESCRIPCIONES[Juego.lugar_actual]
 	if c is PiezaCasa:
-		_lbl_objetivo.text = "%s · %s / %s de resistencia\n%s" % [c.nombre, Juego.formatear(c.vida), Juego.formatear(c.vida_max), "Mantené clic para llamar hormigas · recompensa %s" % Juego.formatear(c.recompensa) if c.disponible() else "Requiere: " + MaterialesCasa.NIVELES[c.nivel_requerido]]
+		_lbl_objetivo.text = "%s · %s\n%s / %s de resistencia · %d trabajadoras\n%s" % [c.nombre, c.nombre_etapa(), Juego.formatear(c.vida), Juego.formatear(c.vida_max), c.trabajadoras, "Mantené clic para llamar hormigas" if c.disponible() else "Requiere: " + MaterialesCasa.NIVELES[c.nivel_requerido]]
 	elif c is FragmentoCasa:
 		_lbl_objetivo.text = "%s · %s migas\nPeso %d · las cargadoras priorizan estos restos" % [c.nombre, Juego.formatear(c.recompensa), c.peso]
 

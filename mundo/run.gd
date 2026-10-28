@@ -11,8 +11,7 @@ const ESCENA_TIENDA := "res://ui/tienda.tscn"
 const DURACION_EXPANSION := 1.8   # segundos que tarda en crecer el territorio al empezar
 const VENTANA_COMBO := 1.2        # segundos entre depósitos para que el combo siga
 const BONUS_DESTRUIR := 0.25      # migas extra al destruir una comida (proporción de su recompensa)
-const PROPORCION_PISOTON := 0.5   # el pisotón da la mitad de migas que una mordida de hormiga
-const INTERVALO_GUARDIA := 2.0    # segundos entre pisotones automáticos con Guardia de la reina nivel 1
+const INTERVALO_GUARDIA := 2.0    # segundos entre hallazgos compartidos
 const ALCANCE_GUARDIA := 400.0
 
 @onready var comidas: Comidas = $Comidas
@@ -33,6 +32,20 @@ var activa := false
 var terminada := false
 var combo := 0
 var objetivo_mapa: PiezaCasa
+var objetivo_practica: PiezaCasa
+var reglas: ReglasDestino
+var entradas: EntradasHormiguero
+var retirando := false
+var retiro_restante := 0.0
+var ingresos: Array[float] = [0.0, 0.0, 0.0]
+var tiempo_jugado := 0.0
+var mejora_produccion := 0.0
+var progreso_objetivo := 0.0
+var cargas_pendientes := 0.0
+var _reloj_retiro := 0.0
+var tiempo_retirada := 0.0
+var produccion_run := 0.0
+var tenia_record := false
 var objetivo_completado := false
 var resistencia_total := 1.0
 var resistencia_extraida := 0.0
@@ -63,10 +76,15 @@ func _ready() -> void:
 	radio_actual = radio_inicio
 
 	comidas.generar()
+	reglas = ReglasDestino.new()
+	add_child(reglas)
+	reglas.run = self
 	for parte in comidas.partes:
 		resistencia_total += parte.vida_max
 		if parte.pieza.get("meta", false):
 			objetivo_mapa = parte
+		if parte.pieza.get("practica", false):
+			objetivo_practica = parte
 	for c in comidas.lista:
 		resistencia_total += c.vida_max
 	comidas.comida_destruida.connect(_on_comida_destruida)
@@ -82,7 +100,11 @@ func _ready() -> void:
 		Sonido.tocar("crecer", 1.0, 0.0)
 
 	colonia.iniciar(self)
+	entradas = EntradasHormiguero.new()
+	add_child(entradas)
+	entradas.iniciar(self)
 	activa = true
+	hud._actualizar_meta()
 
 
 func _exit_tree() -> void:
@@ -93,11 +115,24 @@ func _process(delta: float) -> void:
 	_reloj += delta
 	niebla.radio = radio_actual
 	camara.ajustar_a_radio(radio_actual)
+	if retirando:
+		tiempo_retirada += delta
+		retiro_restante = maxf(0, retiro_restante - delta)
+		_reloj_retiro -= delta
+		if _reloj_retiro <= 0:
+			_reloj_retiro = 0.2
+			cargas_pendientes = 0
+			for h in colonia.hormigas:
+				cargas_pendientes += h.carga
+			if cargas_pendientes <= 0 or retiro_restante <= 0:
+				_terminar()
+		return
 	if not activa:
 		return
+	tiempo_jugado += delta
 	frenesi_restante = maxf(0, frenesi_restante - delta)
 	_descanso_frenesi = maxf(0, _descanso_frenesi - delta)
-	_pisotones_guardia(delta)
+	_guardia_compartir(delta)
 	tiempo_restante -= delta
 	var segundos := int(ceil(tiempo_restante))
 	if segundos <= 5 and segundos != _ultimo_tic and segundos > 0:
@@ -105,7 +140,7 @@ func _process(delta: float) -> void:
 		Sonido.tocar("tic", 1.0 + (5 - segundos) * 0.08, 0.0)
 	if tiempo_restante <= 0.0:
 		tiempo_restante = 0.0
-		_terminar()
+		_iniciar_retirada()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -121,13 +156,19 @@ func _unhandled_input(event: InputEvent) -> void:
 # =====================================================================
 
 ## Lo llaman las hormigas al llegar al hormiguero con comida.
-func depositar(cantidad: float) -> void:
+func depositar(cantidad: float, origen := Vector2.ZERO, categoria := 0, desglose: Array[float] = []) -> void:
 	if cantidad <= 0.0 or terminada:
 		return
-	Juego.sumar_migas_run(cantidad)
+	if desglose.size() == 3 and desglose[0] + desglose[1] + desglose[2] > 0:
+		for i in 3:
+			ingresos[i] += desglose[i]
+		Juego.sumar_migas_run(cantidad)
+	else:
+		registrar_ingreso(cantidad, categoria)
+	efectos.numero(origen + Vector2(0, -24), cantidad, Color(1.0, 0.93, 0.6))
 	# El frenesí aparece desde la segunda run (ver Juego.REVELABLES).
 	if frenesi_restante <= 0 and _descanso_frenesi <= 0 and Juego.revelado("frenesi"):
-		frenesi = minf(100, frenesi + 5)
+		frenesi = minf(100, frenesi + reglas.carga_frenesi())
 		if frenesi >= 100:
 			frenesi = 0
 			frenesi_restante = 6
@@ -145,9 +186,7 @@ func depositar(cantidad: float) -> void:
 	_ultimo_efecto_deposito = ahora
 
 	hormiguero.latir()
-	var pos := hormiguero.global_position + Vector2(randf_range(-14.0, 14.0), -12.0)
-	efectos.numero(pos, cantidad, Color(1.0, 0.93, 0.6))
-	hud.migas_voladoras(a_pantalla(hormiguero.global_position), 1)
+	hud.migas_voladoras(a_pantalla(origen), 1)
 	hud.mostrar_combo(combo)
 	# Pentatónica: los depósitos progresan musicalmente sin volverse agudos.
 	var notas := [1.0, 1.125, 1.25, 1.5, 1.3333]
@@ -158,6 +197,7 @@ func _on_comida_destruida(comida: Comida) -> void:
 	if comida is FragmentoCasa:
 		return
 	if comida is PiezaCasa:
+		reglas.parte_devorada(comida)
 		Juego.partes_destruidas_run += 1
 		hud.mostrar_aviso("¡La colonia devoró: %s!" % comida.nombre)
 		if comida.pieza.tipo == "silla":
@@ -185,7 +225,7 @@ func _on_comida_destruida(comida: Comida) -> void:
 	else:
 		Juego.comidas_destruidas_run += 1
 	var bonus := comida.recompensa * BONUS_DESTRUIR * Juego.stat("multiplicador_migas")
-	Juego.sumar_migas_run(bonus)
+	registrar_ingreso(bonus, 2 if comida is PiezaCasa and comida.nivel_requerido >= 3 else (1 if comida is PiezaCasa else 0))
 
 	var pos := comida.global_position
 	efectos.explosion(pos, comida.color, comida.radio)
@@ -196,39 +236,13 @@ func _on_comida_destruida(comida: Comida) -> void:
 	camara.sacudir(clampf(comida.radio * 0.35, 2.0, 18.0))
 	Sonido.tocar("romper", clampf(1.7 - comida.radio / 45.0, 0.5, 1.7))
 
-## Pisotón: un clic sobre comida la daña al instante y da la mitad de migas
-## que una mordida. Sólo afecta alimentos; muebles, muros y restos son trabajo
-## de las hormigas. Mantener el clic sigue siendo el llamado (ver Feromonas).
-## Devuelve las migas obtenidas.
-func pisar(pos: Vector2, automatico := false) -> float:
-	if not activa:
-		return 0.0
-	var comida := comidas.comida_en(pos, radio_actual)
-	if comida == null or comida is PiezaCasa or comida is FragmentoCasa:
-		return 0.0
-	var color := comida.color
-	var lugar := comida.global_position
-	var migas := comida.morder(Juego.stat("dano_clic")) * PROPORCION_PISOTON
-	if migas > 0.0:
-		Juego.sumar_migas_run(migas)
-		efectos.numero(lugar + Vector2(0, -comida.radio), migas, Color(1.0, 0.97, 0.8), 0.9)
-		hud.migas_voladoras(a_pantalla(lugar), 1)
-	efectos.chispas(lugar, color, 6)
-	if not automatico:
-		camara.sacudir(1.5)
-	Sonido.tocar("clic", randf_range(0.7, 0.85) if automatico else randf_range(0.9, 1.15), 0.0)
-	return migas
-
-
-## Guardia de la reina (árbol de jalea): pisotones automáticos cerca del
-## cursor, o cerca del hormiguero si el cursor está lejos de la comida.
-## Devuelve el intervalo actual (0 si no hay guardia).
+## Guardia comparte información, nunca aplica daño ni simula otra colonia.
 func intervalo_guardia() -> float:
 	var nivel := Juego.nivel_jalea("guardia")
 	return INTERVALO_GUARDIA / nivel if nivel > 0 else 0.0
 
 
-func _pisotones_guardia(delta: float) -> void:
+func _guardia_compartir(delta: float) -> void:
 	var intervalo := intervalo_guardia()
 	if intervalo <= 0.0:
 		return
@@ -239,7 +253,7 @@ func _pisotones_guardia(delta: float) -> void:
 	for centro in [get_global_mouse_position(), Vector2.ZERO]:
 		var objetivo := _comida_para_guardia(centro)
 		if objetivo != null:
-			pisar(objetivo.global_position, true)
+			colonia.avistar(objetivo)
 			return
 
 
@@ -250,7 +264,7 @@ func _comida_para_guardia(centro: Vector2) -> Comida:
 		if c is PiezaCasa or c is FragmentoCasa or not c.en_territorio(radio_actual):
 			continue
 		var d := c.global_position.distance_squared_to(centro)
-		if d < mejor_distancia:
+		if d < ALCANCE_GUARDIA * ALCANCE_GUARDIA and d < mejor_distancia:
 			mejor = c
 			mejor_distancia = d
 	return mejor
@@ -265,12 +279,45 @@ func registrar_derrumbe() -> void:
 func factor_ritmo() -> float:
 	return 1.5 if frenesi_restante > 0 else 1.0
 
+func registrar_ingreso(cantidad: float, categoria := 0) -> void:
+	if terminada or cantidad <= 0:
+		return
+	ingresos[clampi(categoria, 0, 2)] += cantidad
+	Juego.sumar_migas_run(cantidad)
+
+func _iniciar_retirada() -> void:
+	if retirando or terminada:
+		return
+	activa = false
+	retirando = true
+	feromonas.soltar()
+	colonia._activa = false
+	retiro_restante = Juego.stat("retirada")
+	for h in colonia.hormigas:
+		if h.carga > 0:
+			# Las que ya vuelven conservan el recorrido y su turno de navegación.
+			# No disparar hasta 500 rutas nuevas justo al cerrar la expedición.
+			if h.estado != Hormiga.Estado.VOLVIENDO:
+				h._volver()
+		else:
+			h.detener()
+	hud.mostrar_aviso("¡A casa! Últimas entregas · no se extrae más material")
+
 
 func _terminar() -> void:
+	if terminada:
+		return
 	activa = false
+	retirando = false
 	feromonas.soltar()
 	terminada = true
 	colonia.detener()
+	progreso_objetivo = 1.0 if objetivo_completado else (clampf(1.0 - objetivo_mapa.vida / objetivo_mapa.vida_max, 0, 1) if is_instance_valid(objetivo_mapa) else 0.0)
+	produccion_run = Juego.migas_run / maxf(1, tiempo_jugado + tiempo_retirada)
+	var previa := float(Juego.records_destino.get(Juego.lugar_actual, {}).get("produccion", 0.0))
+	tenia_record = previa > 0
+	mejora_produccion = (produccion_run / previa - 1) * 100 if previa > 0 else 0.0
+	Juego.registrar_record(produccion_run, progreso_objetivo)
 	Juego.terminar_run()
 	Sonido.tocar("fin", 1.0, 0.0)
 	# Cámara lenta un instante antes de mostrar el resultado.

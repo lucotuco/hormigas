@@ -1,0 +1,7 @@
+destino,nombre,stat,valor,descripcion
+casa,Red de túneles,entradas,1,Un acceso secundario gratuito en todos los destinos.
+restaurante,Memoria del festín,festin_duracion,3,Los tesoros activan festines de 11 segundos en cualquier destino.
+museo,Ojo de curadora,tesoros_extra,1,Cada escondite revela un alimento adicional dentro del límite de 24.
+obelisco,Corrosión profunda,corrosion_factor,0.1,Las rojas ablandan los materiales un 30% en todos los destinos.
+coliseo,Memoria de los soportes,domino,0.1,Los muebles destruidos golpean dos vecinos por el 10% de su vida; hasta 24 eslabones.
+eiffel,Retirada organizada,retirada,4,Cuatro segundos extra para entregar cargas al terminar cualquier expedición.

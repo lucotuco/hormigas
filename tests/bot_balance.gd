@@ -14,8 +14,8 @@ extends Node
 ##   BOT_LOG      archivo donde agregar el registro (además de imprimirlo)
 ##   BOT_CALIBRAR si existe, modo calibración (ver más abajo)
 ##
-## Cómo juega: 3 pisotones por segundo sobre la comida más cercana al
-## hormiguero; cuando el gran objetivo se puede comer, mantiene el llamado
+## Cómo juega: actualiza el llamado tres veces por segundo, sin daño por clic.
+## Primero dirige al banquito de práctica; cuando el gran objetivo se puede comer, mantiene el llamado
 ## sobre él. Entre runs ahorra para la próxima dieta si ya tiene la mitad;
 ## si no, compra lo más barato (mejoras o castas).
 ##
@@ -34,7 +34,8 @@ extends Node
 ## destino pide una colonia más. Los valores salen en el registro como
 ## "calibrado" y al final; se copian a mundo/mundos.gd.
 const RUN := preload("res://mundo/run.tscn")
-const VELOCIDAD := 8.0
+## Acelerar con --fixed-fps 60 y FPS ilimitados, nunca agrandando el paso.
+const VELOCIDAD := 1.0
 const CLICS_POR_SEGUNDO := 3.0
 const RUNS_TRABADO := 5          # runs sin conquistar antes de pensar en fundar
 const RUNS_TRABADO_MAXIMO := 20  # funda igual, aunque dé poca jalea
@@ -70,6 +71,7 @@ func _ready() -> void:
 	Juego.guardado_habilitado = false
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()
+	seed(417)
 	# Para calibrar: un vida_meta.json junto al estado fuerza resistencias.
 	var forzada := estado_ruta.get_base_dir().path_join("vida_meta.json") if estado_ruta != "" else ""
 	if forzada != "" and FileAccess.file_exists(forzada):
@@ -141,22 +143,24 @@ func jugar_run() -> float:
 		await get_tree().process_frame
 		reloj += get_process_delta_time()
 		if reloj >= 1.0 / CLICS_POR_SEGUNDO and run.activa:
-			reloj = 0.0
+			reloj = fposmod(reloj, 1.0 / CLICS_POR_SEGUNDO)
 			var mejor: Comida = null
 			for c in run.comidas.lista:
 				if not c.muerta and c.en_territorio(run.radio_actual) and (mejor == null or c.position.length() < mejor.position.length()):
 					mejor = c
-			if mejor:
-				run.pisar(mejor.position)
 			var meta := run.objetivo_mapa
 			if is_instance_valid(meta) and not meta.muerta and meta.disponible() and meta.en_territorio(run.radio_actual):
 				var punto := meta.punto_mordida(Vector2.ZERO, run.radio_actual)
 				if punto != Vector2.INF:
 					run.feromonas.mantener_en(punto)
-			elif run.feromonas.activa:
+			elif is_instance_valid(run.objetivo_practica) and not run.objetivo_practica.muerta:
+				run.feromonas.mantener_en(run.objetivo_practica.position)
+			elif mejor:
+				run.feromonas.mantener_en(mejor.position)
+			else:
 				run.feromonas.soltar()
 	Engine.time_scale = 1.0
-	minutos += run.duracion_total / 60.0
+	minutos += (run.tiempo_jugado + run.tiempo_retirada) / 60.0
 	var ganado := Juego.migas_run
 	var partes := Juego.partes_destruidas_run
 	# Daño hecho al gran objetivo en esta run (para calibrar vida_meta).

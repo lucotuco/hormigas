@@ -17,6 +17,15 @@ var vida_max := 1.0
 var recompensa := 1.0
 var radio := 5.0
 var muerta := false
+## Reserva liviana de trabajo; no hay colisiones entre hormigas ni escaneos N².
+var trabajadoras := 0
+
+func cupos_trabajo() -> int:
+	return clampi(ceili(radio / 10.0), 1, 12)
+
+func punto_trabajo(desde: Vector2, territorio: float, volando: bool, puesto: int) -> Vector2:
+	var centro := punto_mordida(desde, territorio, volando)
+	return (centro + Vector2.from_angle((puesto % 12) * TAU / 12) * radio * 0.65).limit_length(territorio - 6)
 
 var _sacudida := 0.0
 var _destello := 0.0
@@ -135,7 +144,7 @@ func _process(delta: float) -> void:
 			if _veneno_acumulado >= 0.5 or veneno_restante <= 0:
 				var migas := morder(_veneno_dps * _veneno_acumulado)
 				_veneno_acumulado = 0
-				Juego.sumar_migas_run(migas)
+				_run_veneno.registrar_ingreso(migas, 2 if self is PiezaCasa and self.nivel_requerido >= 3 else (1 if self is PiezaCasa else 0))
 				_run_veneno.efectos.numero(global_position + Vector2(0, -radio), migas, Color("b7d68b"), 0.7)
 				if veneno_restante <= 0:
 					_veneno_dps = 0

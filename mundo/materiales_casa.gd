@@ -17,7 +17,7 @@ static func piezas() -> Array[Dictionary]:
 	for i in muebles.size():
 		var m: Dictionary = muebles[i]
 		var clave := "mueble:%d" % i
-		resultado.append({"clave": clave, "tipo": m.tipo, "rect": m.rect, "color": m.color, "mueble": i, "pared": false, "dibujo": m, "meta": clave == Mundos.plano(Juego.lugar_actual).meta})
+		resultado.append({"clave": clave, "tipo": m.tipo, "rect": m.rect, "color": m.color, "mueble": i, "pared": false, "dibujo": m, "meta": clave == Mundos.plano(Juego.lugar_actual).meta, "practica": m.get("practica", false)})
 	# Los muros se comen por tramos; no desaparece una habitación de un bocado.
 	var paredes := PlanoCasa.paredes()
 	for i in paredes.size():

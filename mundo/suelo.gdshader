@@ -37,7 +37,7 @@ void fragment() {
 	vec3 baldosa = base + (variacion - 0.5) * (patron == 1 ? 0.055 : 0.012);
 	if (patron == 1) { baldosa += sin(posicion_mundo.x * 0.035 + sin(posicion_mundo.y * 0.05)) * 0.007; }
 	float detalle = smoothstep(5.0, 18.0, min(tamano.x, tamano.y) / pixel);
-	vec3 color = mix(baldosa, base * 0.76, junta * 0.65 * detalle);
+	vec3 color = mix(baldosa, base * 0.88, junta * 0.38 * detalle);
 	COLOR = vec4(color, 1.0);
 	}
 }

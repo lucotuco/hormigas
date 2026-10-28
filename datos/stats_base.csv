@@ -2,7 +2,6 @@ stat,valor,descripcion
 hormigas_iniciales,8,Hormigas que salen al empezar la run
 velocidad,95,Píxeles por segundo que camina una hormiga
 dano,1,Daño de cada mordida
-dano_clic,2,Daño del pisotón: clic sobre la comida (da la mitad de migas que una mordida)
 intervalo_mordida,0.6,Segundos entre mordidas
 capacidad,1,Mordidas que junta una hormiga antes de volver al hormiguero
 olfato,45,Distancia en píxeles a la que una hormiga detecta comida
@@ -12,3 +11,9 @@ radio_territorio,620,Radio en píxeles del territorio explorable
 multiplicador_migas,1,Multiplicador de todas las migas recolectadas
 cria,0,Hormigas nuevas que nacen cada 10 segundos durante la run
 materiales,0,Etapa de materiales que la colonia puede devorar
+entradas,0,Entradas secundarias en ambientes descubiertos (hasta seis)
+retirada,6,Segundos finales para entregar la carga sin nuevas mordidas
+festin_duracion,8,Duración del festín al abrir un tesoro
+tesoros_extra,0,Alimentos extra en cada tesoro
+corrosion_factor,0.2,Daño adicional sobre materiales corroídos
+domino,0,Fracción de resistencia afectada por derrumbes fuera del Coliseo

@@ -16,6 +16,7 @@ class Particula:
 	var vida_max: float
 	var color: Color
 	var tamano: float
+	var material_id := -1
 
 
 class Onda:
@@ -34,20 +35,34 @@ class TextoFlotante:
 	var vida: float
 	var vida_max: float
 	var ancho := 0.0
+	var cantidad := 0.0
+	var origen := Vector2.INF
 
 
 var _particulas: Array[Particula] = []
 var _ondas: Array[Onda] = []
 var _textos: Array[TextoFlotante] = []
+var _marcas: Array[Dictionary] = []
+const MAX_MARCAS := 16
+var _pausa_marca := 0.0
+
+## Una señal breve por habilidad, con límite global; no un emisor por hormiga.
+func habilidad(desde: Vector2, hasta: Vector2, color: Color) -> void:
+	if _pausa_marca > 0 or _marcas.size() >= MAX_MARCAS or not _en_vista(desde):
+		return
+	_pausa_marca = 0.08
+	_marcas.append({"a": desde, "b": hasta, "color": color, "vida": 0.35})
+	queue_redraw()
 
 
 ## Chispitas rápidas de las mordidas. No generar efectos fuera de cámara.
-func chispas(pos: Vector2, color: Color, cantidad: int) -> void:
+func chispas(pos: Vector2, color: Color, cantidad: int, material_id := -1) -> void:
 	if not _en_vista(pos):
 		return
 	for i in mini(cantidad, MAX_PARTICULAS - _particulas.size()):
 		_agregar_particula(pos, Vector2.from_angle(randf() * TAU) * randf_range(30.0, 90.0),
 			randf_range(0.2, 0.4), color.lightened(randf_range(0.0, 0.3)), randf_range(1.0, 1.8))
+		_particulas.back().material_id = material_id
 
 
 ## Explosión al destruir una comida: pedazos + onda expansiva.
@@ -74,7 +89,19 @@ func explosion(pos: Vector2, color: Color, radio: float) -> void:
 
 ## "+12" flotando hacia arriba.
 func numero(pos: Vector2, cantidad: float, color: Color, escala := 1.0) -> void:
+	if cantidad <= 0 or not _en_vista(pos):
+		return
+	# Agrupar durante una ventana fija: el texto termina aunque siga habiendo
+	# depósitos. Se suman los valores, no se descartan ingresos visuales.
+	for t in _textos:
+		if t.cantidad > 0 and t.vida > 0.55 and t.origen.distance_squared_to(pos) < 96 * 96 and t.color == color:
+			t.cantidad += cantidad
+			t.texto = "+" + Juego.formatear_corto(t.cantidad)
+			t.ancho = ThemeDB.fallback_font.get_string_size(t.texto, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+			return
 	texto(pos, "+" + Juego.formatear_corto(cantidad), color, escala)
+	_textos.back().cantidad = cantidad
+	_textos.back().origen = pos
 
 
 func texto(pos: Vector2, contenido: String, color: Color, escala := 1.0) -> void:
@@ -107,8 +134,13 @@ func _agregar_particula(pos: Vector2, vel: Vector2, vida: float, color: Color, t
 
 
 func _process(delta: float) -> void:
-	if _particulas.is_empty() and _ondas.is_empty() and _textos.is_empty():
+	_pausa_marca = maxf(0, _pausa_marca - delta)
+	if _particulas.is_empty() and _ondas.is_empty() and _textos.is_empty() and _marcas.is_empty():
 		return
+	for i in range(_marcas.size() - 1, -1, -1):
+		_marcas[i].vida -= delta
+		if _marcas[i].vida <= 0:
+			_marcas.remove_at(i)
 	var zoom := _zoom()
 	var friccion := pow(0.03, delta)
 	for i in range(_particulas.size() - 1, -1, -1):
@@ -141,7 +173,12 @@ func _draw() -> void:
 	for p in _particulas:
 		var alfa := clampf(p.vida / p.vida_max * 1.5, 0.0, 1.0)
 		var lado := p.tamano * escala_minima
-		draw_rect(Rect2(p.pos - Vector2.ONE * lado * 0.5, Vector2.ONE * lado), Color(p.color, alfa))
+		if p.material_id == 1:
+			draw_line(p.pos, p.pos + p.vel.normalized() * lado * 4, Color(p.color, alfa), lado)
+		else:
+			draw_rect(Rect2(p.pos - Vector2.ONE * lado * 0.5, Vector2.ONE * lado), Color(p.color, alfa))
+	for marca in _marcas:
+		draw_line(marca.a, marca.b, Color(marca.color, marca.vida / 0.35), 3 / zoom, true)
 	for o in _ondas:
 		var progreso := 1.0 - o.vida / o.vida_max
 		draw_arc(o.pos, o.radio_max * ease(progreso, 0.4), 0, TAU, 40,

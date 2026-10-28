@@ -167,11 +167,11 @@ func probar_guardia() -> void:
 	add_child(run)
 	run.colonia.set_process(false)
 	await get_tree().process_frame
-	verificar(is_equal_approx(run.intervalo_guardia(), 1.0), "Guardia nivel 2 pisa cada 1 segundo")
+	verificar(is_equal_approx(run.intervalo_guardia(), 1.0), "Guardia nivel 2 comparte hallazgos cada 1 segundo")
 	var antes := Juego.migas_run
 	for i in 30:
-		run._pisotones_guardia(0.1)
-	verificar(Juego.migas_run > antes, "la guardia pisa comida sola y da migas")
+		run._guardia_compartir(0.1)
+	verificar(Juego.migas_run == antes and not run.colonia._hallazgos.is_empty(), "la guardia comparte comida sin hacer daño ni regalar migas")
 	for i in Colonia.MAX_HORMIGAS + 50:
 		run.colonia._nacer()
 	verificar(run.colonia.cantidad() == Colonia.MAX_HORMIGAS and run.colonia.colonia_llena(), "la colonia no pasa de %d hormigas (rendimiento)" % Colonia.MAX_HORMIGAS)

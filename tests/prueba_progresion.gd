@@ -1,6 +1,6 @@
 extends Node
 ## Primeros minutos: mecánicas que aparecen de a una, la próxima meta siempre
-## visible, el pisotón y hormigas legibles en pantalla.
+## visible, extracción sólo por hormigas y unidades legibles en pantalla.
 ##   godot --headless --fixed-fps 60 --path . res://tests/prueba_progresion.tscn
 var fallas := 0
 var total := 0
@@ -14,7 +14,7 @@ func _ready() -> void:
 	probar_proxima_meta()
 	await probar_hud()
 	await probar_tienda()
-	await probar_pisoton()
+	await probar_llamado_sin_dano()
 	await probar_escala()
 	Juego.reiniciar_estado()
 	print("Progresión de los primeros minutos: %d verificaciones; %d fallas." % [total, fallas])
@@ -69,6 +69,7 @@ func probar_proxima_meta() -> void:
 	Juego._cache_stats.clear()
 	verificar(Juego.proxima_meta().tipo == "objetivo", "con todas las dietas, la meta es el gran objetivo")
 	Juego.lugares_completados["casa"] = true
+	Juego.coronas_cobradas["casa"] = true
 	meta = Juego.proxima_meta()
 	verificar(meta.tipo == "viaje" and "restaurante" in meta.nombre.to_lower(), "con la casa conquistada, la meta es viajar")
 
@@ -78,12 +79,13 @@ func probar_hud() -> void:
 	var run := crear_run()
 	await get_tree().process_frame
 	var hud := run.hud
-	verificar(hud._panel_meta.visible and hud._lbl_meta_nombre.text.begins_with("Mandíbulas fuertes"), "el HUD muestra la próxima meta desde la primera run")
+	verificar(hud._panel_meta.visible and "banquito" in hud._lbl_meta_nombre.text, "el HUD invita a desarmar el banquito desde la primera run")
 	verificar(not hud._panel_inferior.visible, "la primera run no muestra prioridades, frenesí ni gran objetivo")
 	run.queue_free()
 	await get_tree().process_frame
 	Juego.runs_jugadas = 4
 	Juego.niveles = {"mandibulas": 4}
+	Juego.hitos.primer_derrumbe = true
 	Juego.migas = Juego.costo("mordida_madera") + 100
 	Juego._cache_stats.clear()
 	run = crear_run()
@@ -112,12 +114,12 @@ func probar_tienda() -> void:
 	tienda._cambiar_pestana("castas")
 	tienda._refrescar()
 	verificar(not "Nuevo" in tienda._pestanas.castas.text, "abrir la pestaña quita la marca de nuevo")
-	verificar(tienda._tarjetas.has("pisada"), "el taller ofrece la mejora Pisotón")
+	verificar(tienda._tarjetas.has("pisada"), "el taller conserva la mejora migrada Mandíbulas cooperativas")
 	tienda.queue_free()
 	await get_tree().process_frame
 
 
-func probar_pisoton() -> void:
+func probar_llamado_sin_dano() -> void:
 	Juego.reiniciar_estado()
 	var run := crear_run()
 	await get_tree().process_frame
@@ -126,18 +128,15 @@ func probar_pisoton() -> void:
 		if c.id == "miga" and c.position.length() < 400:
 			miga = c
 			break
-	verificar(miga != null, "hay migas cerca del hormiguero para pisar")
-	var golpes := 0
-	var migas := 0.0
-	while is_instance_valid(miga) and not miga.muerta and golpes < 10:
-		migas += run.pisar(miga.position)
-		golpes += 1
-	verificar(golpes == 2 and migas > 0 and Juego.migas_run > migas, "dos pisotones rompen una miga y dan migas más el bonus")
-	verificar(run.pisar(Vector2(99999, 99999)) == 0.0, "pisar el piso vacío no da nada")
+	verificar(miga != null, "hay migas cerca del hormiguero para dar la orden")
+	var vida := miga.vida
+	run.feromonas.mantener_en(miga.position)
+	verificar(miga.vida == vida and Juego.migas_run == 0, "llamar sin hormigas no extrae alimento ni da migas")
+	verificar(not run.has_method("pisar"), "no queda ningún método de daño directo por clic")
 	Juego.migas = 1000
-	var antes := Juego.stat("dano_clic")
+	var antes := Juego.stat("dano")
 	Juego.comprar("pisada")
-	verificar(Juego.stat("dano_clic") == antes + 2, "la mejora Pisotón suma daño al clic")
+	verificar(Juego.stat("dano") == antes + 0.5, "Mandíbulas cooperativas suma daño a las hormigas")
 	run.queue_free()
 	await get_tree().process_frame
 

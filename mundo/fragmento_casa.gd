@@ -4,11 +4,14 @@ extends Comida
 var peso := 1
 var material_id := 1
 var clave_apilado := ""
+var origen: Array[float] = [0.0, 0.0, 0.0]
 
 func iniciar(pos: Vector2, valor: float, material_tipo: int) -> void:
 	position = pos
 	material_id = material_tipo
-	peso = 1 if material_tipo == 1 else 2
+	origen.fill(0.0)
+	origen[0 if material_tipo <= 0 else (2 if material_tipo >= 3 else 1)] = valor
+	peso = 1 if material_tipo <= 1 else 2
 	var tonos := [Color("e7c77d"), Color("bc9364"), Color("9cb5ac"), Color("c8bba2")]
 	configurar({"id": "fragmento", "nombre": "Fragmentos de " + ["comida", "madera y tela", "material resistente", "muro"][material_tipo], "forma": "fragmento", "color": tonos[material_tipo], "vida": 1, "recompensa": valor, "radio": 8}, 17)
 	rotation = 0
@@ -16,11 +19,19 @@ func iniciar(pos: Vector2, valor: float, material_tipo: int) -> void:
 func sumar(valor: float, nuevo_material := -1) -> void:
 	# La recompensa de los fragmentos ya incluye el multiplicador al extraerse.
 	recompensa += valor
+	var tipo := material_id if nuevo_material < 0 else nuevo_material
+	origen[0 if tipo <= 0 else (2 if tipo >= 3 else 1)] += valor
 	if nuevo_material > material_id:
 		material_id = nuevo_material
-		peso = 1 if material_id == 1 else 2
+		peso = 1 if material_id <= 1 else 2
 		nombre = "Montón mixto de fragmentos"
 	queue_redraw()
+
+func cupos_trabajo() -> int:
+	return 1
+
+func punto_trabajo(desde: Vector2, territorio: float, volando: bool, _puesto: int) -> Vector2:
+	return punto_mordida(desde, territorio, volando)
 
 func morder(dano: float) -> float:
 	if muerta or dano <= 0:

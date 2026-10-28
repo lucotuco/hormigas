@@ -35,7 +35,9 @@ static func plano(id: String) -> Dictionary:
 	var p := {"limites": PlanoCasa.LIMITES, "ambientes": [], "muebles": [], "paredes": [], "ventanas": [], "banquete": Vector2(3900, 1040), "meta": "mueble:10"}
 	if id == "casa":
 		p.ambientes = PlanoCasa.AMBIENTES
-		p.muebles = PlanoCasa.MUEBLES
+		p.muebles = PlanoCasa.MUEBLES.duplicate()
+		_poner(p, "silla", Rect2(-360, 190, 110, 130))
+		p.muebles.back()["practica"] = true
 		p.paredes = PlanoCasa.PAREDES
 		p.ventanas = PlanoCasa.VENTANAS
 	else:

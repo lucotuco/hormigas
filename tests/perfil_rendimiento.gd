@@ -12,6 +12,10 @@ func _ready() -> void:
 	run = preload("res://mundo/run.tscn").instantiate()
 	add_child(run)
 	run.set_process(false)
+	run.set_process_unhandled_input(false)
+	run.feromonas.set_process_unhandled_input(false)
+	run.camara.set_process_input(false)
+	run.camara.set_process_unhandled_input(false)
 	run.colonia.set_process(false)
 	run.radio_actual = 9500
 	run.niebla.radio = 9500
@@ -38,11 +42,16 @@ func _ready() -> void:
 		h._velocidad = 300
 		h._olfato = 180
 		h.carga = 0
+		h._carga_origen.fill(0.0)
 		h.comida = null
 		h.estado = Hormiga.Estado.EXPLORANDO
 		h._meta_ruta = Vector2.INF
 		i += 1
 	await medir("demolicion_500")
+	for h in run.colonia.hormigas:
+		h._contagio = h.casta == "roja"
+		h._barrido = h.casta == "cargadora"
+	await medir("evoluciones_500")
 	print("COTAS restos %d/%d · partículas %d/%d · textos %d/%d" % [run.comidas.fragmentos.size(), Comidas.MAX_FRAGMENTOS, run.efectos._particulas.size(), Efectos.MAX_PARTICULAS, run.efectos._textos.size(), Efectos.MAX_TEXTOS])
 	get_tree().quit()
 
@@ -53,7 +62,7 @@ func medir(nombre: String) -> void:
 	var dibujos := 0.0
 	var anterior := Time.get_ticks_usec()
 	for i in 300:
-		if nombre == "demolicion_500" and i % 30 == 0:
+		if nombre in ["demolicion_500", "evoluciones_500"] and i % 30 == 0:
 			for parte in run.comidas.partes:
 				if parte.disponible() and parte.position.length() < 1800:
 					run.feromonas.mantener_en(parte.position)

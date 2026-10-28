@@ -40,6 +40,7 @@ func generar() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = SEMILLA_MAPA
 	var ocupados: Array[Vector3] = []  # x, y, radio
+	var muebles := PlanoCasa.muebles()
 	for tipo in Juego.comidas:
 		var radio: float = tipo.radio
 		var dmin: float = tipo.distancia_min
@@ -60,6 +61,14 @@ func generar() -> void:
 						zona = ambientes[rng.randi_range(0, ambientes.size() - 1)].rect
 					zona = zona.grow(-60)
 					pos = Vector2(rng.randf_range(zona.position.x, zona.end.x), rng.randf_range(zona.position.y, zona.end.y))
+					if pos.length() < dmin or pos.length() > dmax:
+						continue
+				# Parte de las migas forma pequeños grupos junto a muebles: pistas
+				# del ambiente. Misma cantidad y valor, colocación sólo al generar.
+				if i % 3 == 0 and intento < 10 and not muebles.is_empty():
+					var m: Dictionary = muebles[rng.randi_range(0, muebles.size() - 1)]
+					var rect: Rect2 = m.rect
+					pos = Vector2(rect.position.x - radio - 25 - rng.randf_range(0, 55), rect.position.y + rect.size.y * rng.randf())
 					if pos.length() < dmin or pos.length() > dmax:
 						continue
 				if _hay_lugar(pos, radio, ocupados):
@@ -179,8 +188,10 @@ func revelar_tesoro(pos: Vector2, nivel: int) -> void:
 	if _tesoros >= 24:
 		return
 	var run: Run = get_parent()
-	for i in 3:
-		var lugar := run.cocina.ajustar_destino(pos + Vector2.from_angle(i * TAU / 3) * 65, run.radio_actual)
+	run.reglas.tesoro_abierto()
+	var cantidad := run.reglas.cantidad_tesoro()
+	for i in mini(cantidad, 24 - _tesoros):
+		var lugar := run.cocina.ajustar_destino(pos + Vector2.from_angle(i * TAU / cantidad) * 65, run.radio_actual)
 		if lugar != Vector2.INF:
 			_crear(_tipo_comida("galletita" if nivel == 1 else "sandwich"), lugar, 405 + i)
 			_tesoros += 1
@@ -209,6 +220,8 @@ func buscar_cercana(pos: Vector2, alcance: float, radio_territorio: float, exclu
 	for c in _candidatas(pos, alcance):
 		if not c.disponible() or excluidas.has(c.get_instance_id()):
 			continue
+		if casta != "" and c.trabajadoras >= c.cupos_trabajo():
+			continue
 		var d := c.distancia_a(pos)
 		var afinidad := 1.0
 		if casta != "":
@@ -218,11 +231,39 @@ func buscar_cercana(pos: Vector2, alcance: float, radio_territorio: float, exclu
 				afinidad *= 3.0 if categoria == Juego.prioridad else 0.35
 		if afinidad <= 0:
 			continue
-		var puntaje := d / afinidad
+		# Una miga no necesita veinte obreras; un mueble sí admite varios frentes.
+		var ocupacion := 1.0 + float(c.trabajadoras) / c.cupos_trabajo() * 2.0 if casta != "" else 1.0
+		var puntaje := (d + 8.0) / afinidad * ocupacion if casta != "" else d
 		if d < alcance and puntaje < mejor_distancia and en_territorio(c, radio_territorio):
 			mejor = c
 			mejor_distancia = puntaje
 	return mejor
+
+func recoger_vecinos(pos: Vector2, peso_maximo: int, maximo := 2) -> Dictionary:
+	var valor := 0.0
+	var origen: Array[float] = [0.0, 0.0, 0.0]
+	var material_id := -1
+	var recogidos := 0
+	for c in _candidatas(pos, 48):
+		if c is FragmentoCasa and c.peso <= peso_maximo and c.position.distance_squared_to(pos) <= 48 * 48:
+			for i in 3:
+				origen[i] += c.origen[i]
+			valor += c.morder(1)
+			material_id = maxi(material_id, c.material_id)
+			recogidos += 1
+			if recogidos >= maximo:
+				break
+	return {"valor": valor, "material": material_id, "cantidad": recogidos, "origen": origen}
+
+func contagiar(pos: Vector2, original: Comida, dano: float, run: Run) -> int:
+	var total := 0
+	for c in _candidatas(pos, 80):
+		if c != original and c.disponible() and c.distancia_a(pos) <= 55 and c.en_territorio(run.radio_actual):
+			c.aplicar_veneno(dano, 2.0, run)
+			total += 1
+			if total >= 2:
+				break
+	return total
 
 
 ## La comida que está debajo del cursor (con un margen para que sea fácil acertar).
@@ -234,7 +275,10 @@ func comida_en(pos: Vector2, radio_territorio: float, incluir_bloqueadas := fals
 		if (not incluir_bloqueadas and not c.disponible()) or not en_territorio(c, radio_territorio):
 			continue
 		var d := c.distancia_a(pos)
-		if c.contiene_punto(pos, margen) and d < mejor_distancia:
+		# El cursor puede quedar sobre un hueco recién devorado. La orden sigue
+		# apuntando al mueble mientras quede material dentro de su silueta original.
+		var bajo_cursor: bool = c.rect_mundo.grow(margen).has_point(pos) if c is PiezaCasa else c.contiene_punto(pos, margen)
+		if bajo_cursor and d < mejor_distancia:
 			mejor = c
 			mejor_distancia = d
 	return mejor

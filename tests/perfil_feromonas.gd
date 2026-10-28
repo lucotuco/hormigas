@@ -14,6 +14,10 @@ func _ready() -> void:
 	run = preload("res://mundo/run.tscn").instantiate()
 	add_child(run)
 	run.set_process(false)
+	run.set_process_unhandled_input(false)
+	run.feromonas.set_process_unhandled_input(false)
+	run.camara.set_process_input(false)
+	run.camara.set_process_unhandled_input(false)
 	run.colonia.set_process(false)
 	run.radio_actual = 9500
 	run.niebla.radio = 9500

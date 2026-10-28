@@ -114,3 +114,155 @@ Repetición del benchmark general con la cola final:
 Son resultados locales de una prueba de estrés acotada, no una promesa de cero
 tirones en cualquier PC o en cualquier partida. El juego normal conserva su
 límite de 60 FPS; las pruebas no modifican el archivo de partida.
+
+## IA cooperativa y evoluciones — 28/10/2026
+
+Revisión sobre `d57d022`, misma RTX 3060, Godot 4.7.2 GL Compatibility,
+1280×720, VSync apagado y paso fijo 1/60. Ambas pruebas se ejecutaron
+separadas, sin el bot de balance en paralelo. No incluye carga inicial.
+
+| Escenario | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Casa, 5 hormigas | 1,68 ms | 2,12 ms | 2,87 ms |
+| Casa, 150 hormigas | 2,99 ms | 3,52 ms | 4,03 ms |
+| Casa, 500 hormigas | 5,24 ms | 6,76 ms | 9,30 ms |
+| Demolición, 500 de varios roles | 6,00 ms | 7,71 ms | 9,67 ms |
+| Continuación con contagio y barrido, 500 | 5,11 ms | 6,19 ms | 8,54 ms |
+| Colonia repartida, sin llamado, 500 | 6,55 ms | 8,37 ms | 9,39 ms |
+| Cursor móvil, 24 llamadas | 6,75 ms | 8,46 ms | 9,74 ms |
+| Cursor móvil, 64 llamadas | 8,19 ms | 9,86 ms | 17,68 ms |
+| Cursor pasando sobre muebles, 64 llamadas | 9,29 ms | 11,52 ms | 13,66 ms |
+
+La fase con evoluciones continúa después de la demolición: queda menos
+material en pie. Su menor costo no demuestra que activar habilidades acelere
+el juego. El atlas sigue en 33 MiB y los topes no cambiaron: 500 hormigas,
+64 montones, 600 partículas, 40 textos y 24 ondas.
+
+La IA agrega reservas de puestos, hallazgos compartidos y destinos repartidos;
+además el llamado sigue trabajando cuando se abre un hueco bajo el cursor.
+Esto cuesta más que la anterior versión optimizada: el escenario de cursor
+sobre muebles pasó de 6,69 a 9,29 ms de media. No se presenta como una mejora
+de FPS respecto de aquella versión. Mantiene margen medio para 60 FPS en
+esta PC, pero hubo un cuadro de 17,68 ms: no se garantiza ausencia de tirones.
+
+Para contener ese costo:
+
+- Navegación con corte blando de **1,2 ms**, seis rutas/cuadro y dos turnos
+  prioritarios. Un A* en curso no se interrumpe; el límite no es duro.
+- Memoria común de **24 objetivos**, consultada a lo sumo cada **0,6 s** sólo
+  cuando no hay alimento local; sin comparaciones entre pares de hormigas.
+- Reservas enteras en cada recurso y liberación al cambiar objetivo o salir.
+- Animaciones compartidas sin formatear claves del atlas por hormiga/cuadro.
+- Indicadores de selección agrupados en puntos rellenos, hasta 16 guías;
+  contador a 8,3 Hz. La primera variante con 64 arcos intercalados se descartó.
+- Contagio hasta dos vecinos cada 1,5 s; dominó hasta 24 piezas, un evento
+  cada 0,12 s. No hay física por fragmento ni otros destinos procesándose.
+
+`prueba_enjambre.tscn` verifica también ocho obreras desmontando el tutorial
+con el cursor fijo: los huecos no dejan la colonia detenida. Las once suites
+suman 347 verificaciones sin fallos. Falta medir en una GPU integrada y en
+expediciones largas reales; los tiempos del bot headless no sirven como FPS.
+
+## Dispersión autónoma — corrección del amontonamiento
+
+La primera reproducción sin llamado (`prueba_dispersion.tscn`, semilla 519,
+territorio 3.500, 500 obreras, velocidad 240, daño 200, capacidad 6 y olfato
+100) dejaba 451 exploradoras cerca del nido a los 10 s. Sólo 49 de las 500
+habían pasado de 1.000 px del nido a los 40 s: no era principalmente un bloqueo
+al liberar comida, sino una caminata aleatoria de pasos de 40–110 px.
+
+El reparto nuevo reserva sectores de 320 px y elige entre hasta doce destinos
+de recorrido más largo. Prefiere sectores menos visitados/ocupados y conserva
+la meta durante la espera de rutas. No compara pares de hormigas. Las consultas
+geométricas se hacen sólo si el candidato mejora el puntaje; el caso sin salida
+reintenta con pausa y no conserva una meta vieja. Trabajo, regreso y llamado
+liberan las reservas de exploración.
+
+En las últimas corridas entre 486 y 493 de 500 visitaron zonas a más de 1.000
+px a los 40 s, con unos 7.800–8.300 pedidos de ruta en lugar de 9.245. La cuota
+temporal de producción y el generador aleatorio compartido hacen variar las
+trayectorias entre corridas; no son posiciones idénticas por cuadro. El test
+verifica además cambio de alimento agotado, destinos estables, pausa ante falta
+de salida, ausencia de grupos ociosos inmóviles y liberación de reservas.
+
+Última medición con renderer real, misma RTX 3060 y condiciones anteriores:
+
+| Escenario | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Casa, 5 hormigas | 1,66 ms | 1,87 ms | 2,19 ms |
+| Casa, 150 hormigas | 2,96 ms | 3,50 ms | 4,06 ms |
+| Casa, 500 hormigas | 5,39 ms | 6,25 ms | 7,02 ms |
+| Demolición, 500 | 8,56 ms | 10,53 ms | 13,81 ms |
+| Continuación con evoluciones, 500 | 6,93 ms | 8,53 ms | 10,66 ms |
+| Colonia repartida sin llamado, 500 | 6,46 ms | 8,27 ms | 9,04 ms |
+| Cursor móvil, 24 llamadas | 7,61 ms | 9,02 ms | 10,96 ms |
+| Cursor móvil, 64 llamadas | 8,62 ms | 9,91 ms | 11,26 ms |
+| Cursor sobre muebles, 64 llamadas | 8,87 ms | 11,19 ms | 14,24 ms |
+
+Hay más actividad, desplazamiento y trabajo que antes; no se afirma que esta
+corrección mejore todos los tiempos de cuadro. Conserva la cuota de seis rutas
+y corte blando de 1,2 ms, el atlas y los límites de entidades. Los resultados
+siguen siendo locales, no una garantía en GPU integrada. Las doce suites suman
+357 verificaciones sin fallos. La escena de dispersión con renderer guarda
+capturas de los segundos 10 y 40 con cámara fija, sin afectar el guardado.
+
+## Logística y progresión — 28/10
+
+Godot 4.7.2 GL Compatibility, RTX 3060, 1280×720, paso 1/60 s, VSync y límite
+de FPS desactivados sólo en el benchmark. Escenas gráficas ejecutadas de a una,
+sin bot de balance simultáneo. Los controles de mouse reales quedan desactivados
+en las pruebas para no cambiar la cámara o el llamado durante la medición.
+
+| Escenario | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Casa, 5 hormigas | 1,62 ms | 1,79 ms | 1,96 ms |
+| Casa, 150 hormigas | 3,02 ms | 3,58 ms | 4,33 ms |
+| Casa, 500 hormigas | 5,26 ms | 6,14 ms | 7,22 ms |
+| Demolición, 500 | 8,05 ms | 10,00 ms | 11,73 ms |
+| Continuación con evoluciones, 500 | 7,03 ms | 8,48 ms | 10,41 ms |
+| Cursor móvil, 24 llamadas | 7,18 ms | 8,39 ms | 9,69 ms |
+| Cursor móvil, 64 llamadas | 8,30 ms | 9,68 ms | 10,59 ms |
+| Cursor sobre muebles, 64 llamadas | 8,25 ms | 10,23 ms | 13,80 ms |
+
+`perfil_logistica.tscn` agrega una prueba independiente de los seis escenarios:
+500 hormigas de seis castas, seis entradas secundarias, adaptaciones de todos
+los destinos, Corte aserrado continuo y Barrido, cursor en movimiento. 90 cuadros de
+calentamiento y 360 medidos por mapa; se recrea la escena entre destinos.
+
+| Destino | Media | p95 | Peor cuadro | Máximo rutas/cuadro |
+|---|---:|---:|---:|---:|
+| Casa | 7,25 ms | 8,88 ms | 11,81 ms | 6 |
+| Restaurante | 7,15 ms | 9,25 ms | 11,34 ms | 6 |
+| Museo | 7,20 ms | 9,48 ms | 11,90 ms | 6 |
+| Obelisco | 6,44 ms | 8,61 ms | 10,57 ms | 6 |
+| Coliseo | 6,79 ms | 8,96 ms | 9,66 ms | 6 |
+| Eiffel | 7,49 ms | 9,80 ms | 11,83 ms | 6 |
+
+El atlas sigue en 33 MiB. No cambian los topes de 500 hormigas, 64 montones,
+600 partículas, 40 textos y 24 ondas. Hay hasta 16 trazos de habilidades con
+enfriamiento global de 0,08 s. Los accesos se preparan al generar el mapa,
+se habilitan a 2 Hz al crecer el territorio y se consultan sólo al regresar.
+No simulan túneles ni usan búsquedas de rutas adicionales al presupuesto.
+La IA conserva el puesto de acercamiento hasta cambiar el recurso o geometría.
+Al iniciar la retirada conserva los recorridos y turnos de las hormigas que
+ya estaban regresando, evitando una nueva oleada de solicitudes.
+
+Las **13 suites suman 389 verificaciones**, sin errores de script. La suite
+`prueba_logistica` agrega 31: migración v5→v6, récords y adaptaciones conservados
+al fundar, depósitos por accesos secundarios, recuperación de una entrada
+encerrada por paredes usando A* real, retirada sin nuevos recursos ni doble
+cobro, cierre acotado, efectos agrupados y desglose de montones mixtos con
+flotantes de 64 bits. La prueba de contagio usa objetivos aislados para que
+la nueva distribución de comida no altere su escenario de regresión.
+`prueba_enjambre` suma 32 verificaciones, incluyendo conservación del valor y
+trabajo continuo de la carpintera sin viajes ni acreditaciones gratuitas.
+
+`revision_logistica.tscn` verifica mapa, corrosión y entradas, resumen de fin
+de expedición, viajes y jalea en 1280×720 y 1000×620. Capturas locales:
+`.godot/qa/logistica_*.png`. Guardado real desactivado en todas estas escenas.
+
+Estas mediciones conservan margen para 60 FPS en esta PC; no certifican GPU
+integrada ni sesiones prolongadas. El presupuesto temporal de A* sigue siendo
+blando (1,2 ms): una búsqueda en curso no puede interrumpirse. Cambiar comida,
+objetivos y entradas también cambia la actividad; las diferencias con versiones
+anteriores no se atribuyen exclusivamente a optimizaciones de código.

@@ -42,7 +42,7 @@ func _ready() -> void:
 	Juego.reiniciar_estado()
 	Juego.restaurar_partida(guardado)
 	verificar(Juego.nivel_de("pisoton") == 25 and Juego.mejoras_por_id.pisoton.stat == "feromona_cantidad", "el antiguo Pisotón conserva sus compras como Coordinación")
-	verificar(Juego.mejoras_por_id.has("pisada") and Juego.mejoras_por_id.pisada.stat == "dano_clic" and run.has_method("pisar"), "el pisotón nuevo es una mejora aparte y no toca los niveles de Coordinación")
+	verificar(Juego.mejoras_por_id.pisada.stat == "dano" and not run.has_method("pisar"), "el viejo pisotón mejora mordidas: el cursor no hace daño")
 	f._notification(NOTIFICATION_WM_WINDOW_FOCUS_OUT)
 	verificar(not f.activa and f.seleccionadas.is_empty(), "perder foco cancela el llamado sin dejar hormigas seleccionadas")
 	run.queue_free()
@@ -92,14 +92,14 @@ func probar_clic_real() -> void:
 		if c is PiezaCasa:
 			mueble_intacto = mueble_intacto and c.vida == vida and Juego.migas_run == migas
 		else:
-			pisa_comida = c.vida < vida or c.muerta
-			paga_comida = Juego.migas_run > migas
+			pisa_comida = c.vida == vida and not c.muerta
+			paga_comida = Juego.migas_run == migas
 		boton = boton.duplicate()
 		boton.pressed = false
 		Input.parse_input_event(boton)
 		await get_tree().process_frame
 	verificar(llama, "el clic real activa el llamado de hormigas")
-	verificar(pisa_comida and paga_comida, "el clic real pisa la comida y da migas al instante")
+	verificar(pisa_comida and paga_comida, "el clic real no hace daño ni entrega migas")
 	verificar(mueble_intacto, "el pisotón no rompe muebles: eso es trabajo de las hormigas")
 	run.queue_free()
 	await get_tree().process_frame
@@ -109,10 +109,11 @@ func probar_inaccesible() -> void:
 	var run := crear_run()
 	run.comidas._indice.clear()
 	run.cocina.limite_rutas_por_cuadro = 0 # Aislar reintentos de la cuota por cuadro.
-	var centro := Vector2(-300, 300)
+	var centro := Vector2(-100, 400)
 	var paredes := [Rect2(-476, 124, 352, 32), Rect2(-476, 444, 352, 32), Rect2(-476, 124, 32, 352), Rect2(-156, 124, 32, 352)]
 	for i in paredes.size():
 		var rect: Rect2 = paredes[i]
+		rect.position += Vector2(200, 100) # Evitar el nuevo banquito de práctica.
 		var clave := "prueba:%d" % i
 		run.cocina._obstaculos[clave] = {"rect": rect, "pared": true}
 		for x in range(floori(rect.position.x / Cocina.SECTOR), floori(rect.end.x / Cocina.SECTOR) + 1):

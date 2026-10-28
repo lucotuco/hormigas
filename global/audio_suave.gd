@@ -12,6 +12,18 @@ static func crear(nombre: String) -> AudioStreamWAV:
 			notas = [320.0]
 			duracion = 0.065
 			ruido = 0.32
+		"mordida_madera":
+			notas = [260.0, 390.0]
+			duracion = 0.085
+			ruido = 0.5
+		"mordida_metal":
+			notas = [620.0, 930.0]
+			duracion = 0.12
+			ruido = 0.06
+		"mordida_piedra":
+			notas = [145.0, 217.5]
+			duracion = 0.11
+			ruido = 0.28
 		"clic":
 			notas = [520.0, 780.0]
 			duracion = 0.09

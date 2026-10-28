@@ -26,7 +26,7 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] Tienda con árbol de mejoras (18 mejoras en 6 ramas, las bloqueadas en sombra)
 - [x] Comprar mejoras y castas en cantidades ×1, ×10 o Máx, con indicadores de disponibilidad por rama
 - [x] Guardado y carga automáticos
-- [x] Pisotón: el clic sobre comida pega al instante; mantenerlo sigue llamando hormigas
+- [x] Clic exclusivamente para llamar; compras de Pisotón migradas a daño de hormigas sin perder niveles
 - [x] Mecánicas que aparecen de a una (frenesí, castas, prioridades, viajes, legado)
 - [x] Próxima meta siempre visible en el HUD, con barra y aviso cuando alcanza
 - [x] Hormigas más grandes en pantalla y 8 obreras iniciales
@@ -66,6 +66,10 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 
 - [x] **A:** siete castas con roles, carpintera y demoledora, corrosión compartida y prioridades de trabajo
 - [x] **A:** evolución visual de mandíbulas, abdomen y corona de la reina
+- [x] **A:** cuatro evoluciones de comportamiento; dos equipadas gratuitamente y conservadas al fundar
+- [x] **A:** puestos de trabajo, hallazgos compartidos y continuidad del llamado sobre huecos
+- [x] **A:** exploración por sectores, destinos estables y prueba de dispersión sin feromonas con 500 hormigas
+- [x] **B:** banquito inicial y seis reglas de destino con procesos acotados
 - [ ] **A:** castas de combate y vuelo hacia superficies elevadas
 - [ ] **A:** enemigos: araña que caza hormigas sueltas, humano con insecticida
 - [x] **A:** atlas compartido, búsqueda espacial, navegación incremental y benchmark gráfico con 5/150/500 hormigas
@@ -75,7 +79,14 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] **B:** hitos opcionales con premios permanentes explícitos
 - [x] **B:** seis destinos con objetivos: casa, restaurante, museo, Obelisco, Coliseo y Torre Eiffel
 - [x] **B:** árbol de mejoras como hormiguero en corte con seis cámaras interactivas
-- [x] Bot de balance (tests/bot_balance.tscn) y primera hora calibrada: madera ~10 min, paredes ~42, casa ~50
+- [x] Bot de balance con paso 1/60 y tiempo ×1; piloto final con retirada: madera 7,3 min, paredes/casa 33,1, restaurante 38,2; comparación controlada de castas (ver limitaciones en diseño)
+- [x] Puestos de trabajo estables durante el acercamiento; regresos alternativos si una entrada queda aislada
+- [x] Hasta seis entradas secundarias por destino, sin simulación subterránea y con navegación compartida
+- [x] Retirada acotada, desglose de ingresos y récords por destino persistentes
+- [x] Seis adaptaciones permanentes de viaje y vista previa de compras con jalea
+- [x] Piso menos contrastado, alimentos agrupados, señales de escondites y habilidades con efectos acotados
+- [x] Regresiones de logística y benchmark de 500 hormigas en los seis destinos
+- [ ] Recalibrar la campaña tardía: los tiempos anteriores con tiempo ×8 y daño por clic ya no son válidos
 - [x] Progresión larga: jalea real y árbol de la reina, topes por destino, mejoras de cada viaje, hitos cada 25 niveles (docs/DISENO_PROGRESION.md)
 - [x] Tope de 500 hormigas y runs de hasta ~3,5 min
 - [ ] **Los dos:** jugar una colonia completa y ver si el árbol de la reina tiene decisiones interesantes (no sólo "comprar lo más barato")

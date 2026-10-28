@@ -25,7 +25,7 @@ const HITOS := {
 var cantidad_compra := 1 # 0 = máximo que alcanza
 
 const RUTA_PARTIDA := "user://partida.json"
-const VERSION_PARTIDA := 4
+const VERSION_PARTIDA := 6
 const RUTA_STATS := "res://datos/stats_base.csv"
 const RUTA_MEJORAS := "res://datos/mejoras.csv"
 const RUTA_COMIDAS := "res://datos/comidas.csv"
@@ -82,6 +82,52 @@ var prioridad := "automatico"
 ## Mecánicas de la interfaz que ya se revelaron: id -> true si el jugador ya
 ## las vio, false si son nuevas. Ver REVELABLES.
 var descubiertos: Dictionary = {}
+var evoluciones_desbloqueadas: Dictionary = {}
+var evoluciones_equipadas: Array[String] = []
+var records_destino: Dictionary = {}
+var adaptaciones: Array[Dictionary] = []
+
+func registrar_record(produccion: float, objetivo: float) -> void:
+	var anterior: Dictionary = records_destino.get(lugar_actual, {})
+	records_destino[lugar_actual] = {
+		"produccion": maxf(float(anterior.get("produccion", 0)), produccion),
+		"objetivo": maxf(float(anterior.get("objetivo", 0)), objetivo),
+	}
+
+## Vista previa de compras independientes; no implica que alcance para todas.
+func oportunidades_jalea() -> String:
+	var saldo := jalea + jalea_por_fundar()
+	var opciones := PackedStringArray()
+	for id in ["herencia_madera", "herencia_resistente", "herencia_muros", "linaje", "guardia", "jalea_dano"]:
+		if not jalea_al_maximo(id) and jalea_desbloqueada(id) and costo_jalea(id) <= saldo:
+			opciones.append("%s (%d)" % [jalea_por_id[id].nombre, costo_jalea(id)])
+			if opciones.size() == 3:
+				break
+	return "Con tu saldo tras fundar podrías elegir: " + "; ".join(opciones) + ". Precios en jalea; cada opción por separado." if not opciones.is_empty() else "La jalea se conserva para tu próxima mejora permanente."
+
+func actualizar_evoluciones() -> void:
+	for id in EvolucionesHormiga.DATOS:
+		var datos: Dictionary = EvolucionesHormiga.DATOS[id]
+		if cantidad_casta(datos.casta) >= datos.unidades and nivel_de("mandibulas") >= datos.mandibulas and not evoluciones_desbloqueadas.has(id):
+			evoluciones_desbloqueadas[id] = true
+			if evoluciones_equipadas.size() < EvolucionesHormiga.MAX_EQUIPADAS:
+				evoluciones_equipadas.append(id)
+
+func evolucion_activa(id: String) -> bool:
+	return evoluciones_desbloqueadas.has(id) and evoluciones_equipadas.has(id)
+
+func alternar_evolucion(id: String) -> bool:
+	if not evoluciones_desbloqueadas.has(id):
+		return false
+	if evoluciones_equipadas.has(id):
+		evoluciones_equipadas.erase(id)
+	elif evoluciones_equipadas.size() < EvolucionesHormiga.MAX_EQUIPADAS:
+		evoluciones_equipadas.append(id)
+	else:
+		return false
+	guardar()
+	progreso_cambio.emit()
+	return true
 
 ## Las mecánicas aparecen de a una para no abrumar al empezar.
 ## Cada una se revela cuando se cumple su condición (ver _condicion_revelar)
@@ -183,6 +229,9 @@ func _calcular(nombre: String, id_extra := "", niveles_extra := 0) -> float:
 	return _aplicar_legado(nombre, valor * multiplicador)
 
 func _aplicar_legado(nombre: String, resultado: float) -> float:
+	for adaptacion in adaptaciones:
+		if adaptacion.stat == nombre and lugares_completados.has(adaptacion.destino):
+			resultado += float(adaptacion.valor)
 	if nombre in ["dano", "multiplicador_migas"]:
 		resultado *= 1.0 + legado * BONUS_LEGADO
 	if nombre == "olfato" and hitos.has("primer_tesoro"):
@@ -282,6 +331,7 @@ func comprar_lote(id: String, cantidad := 1) -> int:
 	migas -= oferta.costo
 	niveles[id] = nivel_de(id) + int(oferta.cantidad)
 	_cache_stats.clear()
+	actualizar_evoluciones()
 	guardar()
 	migas_cambiaron.emit(migas)
 	mejora_comprada.emit(id, niveles[id])
@@ -326,6 +376,7 @@ func comprar_castas_lote(id: String, cantidad := 1) -> int:
 		return 0
 	migas -= oferta.costo
 	reclutadas[id] = cantidad_casta(id) + int(oferta.cantidad)
+	actualizar_evoluciones()
 	guardar()
 	migas_cambiaron.emit(migas)
 	casta_comprada.emit(id, cantidad_casta(id))
@@ -403,7 +454,7 @@ func proxima_meta() -> Dictionary:
 				"detalle": "habilita: " + m.nombre, "actual": float(nivel_de(previa.id)), "objetivo": float(m.requiere_nivel)}
 		return {"tipo": "migas", "nombre": m.nombre, "detalle": m.descripcion,
 			"actual": migas + migas_run, "objetivo": costo(id)}
-	if not lugares_completados.has(lugar_actual):
+	if not coronas_cobradas.has(lugar_actual):
 		return {"tipo": "objetivo", "nombre": Mundos.INFO[lugar_actual].meta, "detalle": "gran objetivo · %d coronas" % int(Mundos.INFO[lugar_actual].coronas)}
 	var indice := Mundos.ORDEN.find(lugar_actual)
 	if indice + 1 < Mundos.ORDEN.size():
@@ -440,6 +491,7 @@ func elegir_destino(id: String) -> bool:
 ## Devuelve las coronas entregadas (0 si ya se habían cobrado).
 func completar_destino() -> int:
 	lugares_completados[lugar_actual] = true
+	_cache_stats.clear()
 	var entregadas := 0
 	if not coronas_cobradas.has(lugar_actual):
 		coronas_cobradas[lugar_actual] = true
@@ -549,6 +601,7 @@ func comprar_jalea(id: String) -> bool:
 # =====================================================================
 
 func iniciar_run() -> void:
+	actualizar_evoluciones()
 	migas_run = 0.0
 	comidas_destruidas_run = 0
 	partes_destruidas_run = 0
@@ -599,6 +652,8 @@ func datos_partida() -> Dictionary:
 		"legado": legado, "coronas": coronas, "fundaciones": fundaciones, "prioridad": prioridad,
 		"descubiertos": descubiertos,
 		"jalea": jalea, "niveles_jalea": niveles_jalea, "migas_colonia": migas_colonia,
+		"evoluciones": evoluciones_desbloqueadas, "equipadas": evoluciones_equipadas,
+		"records_destino": records_destino,
 	}
 
 
@@ -613,6 +668,15 @@ func cargar() -> void:
 
 
 func restaurar_partida(datos: Dictionary) -> void:
+	records_destino = {}
+	var records = datos.get("records_destino", {})
+	if records is Dictionary:
+		for id in records:
+			if Mundos.INFO.has(id) and records[id] is Dictionary:
+				var produccion := float(records[id].get("produccion", 0))
+				var objetivo := float(records[id].get("objetivo", 0))
+				if is_finite(produccion) and is_finite(objetivo):
+					records_destino[id] = {"produccion": maxf(0, produccion), "objetivo": clampf(objetivo, 0, 1)}
 	migas = float(datos.get("migas", 0.0))
 	runs_jugadas = int(datos.get("runs_jugadas", 0))
 	mejor_run = float(datos.get("mejor_run", 0.0))
@@ -676,6 +740,19 @@ func restaurar_partida(datos: Dictionary) -> void:
 				reclutadas[id] = clampi(int(castas_guardadas[id]), 0, int(castas_por_id[id].maximo))
 	_cache_stats.clear()
 	descubiertos = {}
+	evoluciones_desbloqueadas = {}
+	evoluciones_equipadas = []
+	var evoluciones = datos.get("evoluciones", {})
+	if evoluciones is Dictionary:
+		for id in evoluciones:
+			if EvolucionesHormiga.DATOS.has(id) and evoluciones[id] == true:
+				evoluciones_desbloqueadas[id] = true
+	var equipadas = datos.get("equipadas", [])
+	if equipadas is Array:
+		for id in equipadas:
+			if evoluciones_desbloqueadas.has(id) and not evoluciones_equipadas.has(id) and evoluciones_equipadas.size() < EvolucionesHormiga.MAX_EQUIPADAS:
+				evoluciones_equipadas.append(id)
+	actualizar_evoluciones()
 	var vistos = datos.get("descubiertos", null)
 	if vistos is Dictionary:
 		for id in vistos:
@@ -690,6 +767,7 @@ func restaurar_partida(datos: Dictionary) -> void:
 
 
 func reiniciar_estado() -> void:
+	records_destino.clear()
 	migas = 0.0
 	niveles = {}
 	reclutadas = {}
@@ -709,6 +787,8 @@ func reiniciar_estado() -> void:
 	prioridad = "automatico"
 	descubiertos = {}
 	_cache_stats.clear()
+	evoluciones_desbloqueadas.clear()
+	evoluciones_equipadas.clear()
 
 
 func borrar_partida() -> void:
@@ -758,6 +838,7 @@ func formatear_corto(n: float) -> String:
 # =====================================================================
 
 func _cargar_datos() -> void:
+	adaptaciones = _leer_csv("res://datos/adaptaciones.csv")
 	castas.clear()
 	castas_por_id.clear()
 	for fila in _leer_csv(RUTA_CASTAS):

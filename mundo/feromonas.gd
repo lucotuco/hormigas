@@ -109,6 +109,24 @@ func _actualizar_cercanas() -> void:
 				i = hijo
 	for h in _candidatas:
 		seleccionadas[h.get_instance_id()] = h
+		# Respuesta rápida sin sincronizar las 64 decisiones en un solo cuadro.
+		h._reloj_pensar = minf(h._reloj_pensar, (seleccionadas.size() % 4) / 60.0)
+	if is_instance_valid(objetivo_comida):
+		run.colonia.avistar(objetivo_comida)
+
+func resumen() -> Dictionary:
+	var datos := {"atraidas": 0, "trabajando": 0, "cargando": 0, "esperando": 0}
+	for h in seleccionadas.values():
+		if not is_instance_valid(h):
+			continue
+		datos.atraidas += 1
+		if h.carga > 0 or h.estado == Hormiga.Estado.VOLVIENDO:
+			datos.cargando += 1
+		elif h.estado == Hormiga.Estado.MORDIENDO:
+			datos.trabajando += 1
+		elif h._esperando_ruta or h._ruta_fallida:
+			datos.esperando += 1
+	return datos
 
 
 func _intercambiar(a: int, b: int) -> void:
@@ -140,7 +158,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.pressed:
 			_pantalla = event.position
 			var punto := get_canvas_transform().affine_inverse() * _pantalla
-			run.pisar(punto)  # el clic pega al instante; mantenerlo llama hormigas
 			mantener_en(punto, true)
 		else:
 			soltar()
@@ -192,6 +209,14 @@ func _draw() -> void:
 	draw_circle(posicion, 4 / zoom, Color(color, _desvanecer))
 	# Guías tenues hacia las elegidas; nunca queda un camino al soltar.
 	if activa:
+		var guias := 0
 		for h in seleccionadas.values():
 			if is_instance_valid(h) and h.en_pantalla and h.carga <= 0 and h.estado != Hormiga.Estado.VOLVIENDO:
 				draw_line(h.global_position, posicion, Color(color, 0.12), 1 / zoom, true)
+				guias += 1
+				if guias >= 16:
+					break
+		# Agrupar puntos rellenos: intercalar arcos y líneas cortaba el batching.
+		for h in seleccionadas.values():
+			if is_instance_valid(h) and h.en_pantalla and h.carga <= 0:
+				draw_circle(h.global_position - Vector2(0, 8 / zoom), 2.2 / zoom, Color("c6e6b8"))
