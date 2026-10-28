@@ -1,6 +1,7 @@
 extends Node
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Juego.usar_idioma(OS.get_environment("IDIOMA") if OS.has_environment("IDIOMA") else "es")  # IDIOMA=en para revisar en inglés
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()
 	DirAccess.make_dir_recursive_absolute("res://.godot/qa")

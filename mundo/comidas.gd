@@ -185,7 +185,7 @@ func revelar_tesoro(pos: Vector2, nivel: int) -> void:
 			_crear(_tipo_comida("galletita" if nivel == 1 else "sandwich"), lugar, 405 + i)
 			_tesoros += 1
 	if Juego.obtener_hito("primer_tesoro"):
-		run.hud.mostrar_aviso("¡Hallazgo! Olfato +10 permanente")
+		run.hud.mostrar_aviso(tr("¡Hallazgo! Olfato +10 permanente"))
 
 
 ## Busca un tipo de comida por id (no por posición en el CSV, que puede reordenarse).

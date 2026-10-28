@@ -10,7 +10,8 @@ func iniciar(pos: Vector2, valor: float, material_tipo: int) -> void:
 	material_id = material_tipo
 	peso = 1 if material_tipo == 1 else 2
 	var tonos := [Color("e7c77d"), Color("bc9364"), Color("9cb5ac"), Color("c8bba2")]
-	configurar({"id": "fragmento", "nombre": "Fragmentos de " + ["comida", "madera y tela", "material resistente", "muro"][material_tipo], "forma": "fragmento", "color": tonos[material_tipo], "vida": 1, "recompensa": valor, "radio": 8}, 17)
+	var nombres := [tr("Fragmentos de comida"), tr("Fragmentos de madera y tela"), tr("Fragmentos de material resistente"), tr("Fragmentos de muro")]
+	configurar({"id": "fragmento", "nombre": nombres[material_tipo], "forma": "fragmento", "color": tonos[material_tipo], "vida": 1, "recompensa": valor, "radio": 8}, 17)
 	rotation = 0
 
 func sumar(valor: float, nuevo_material := -1) -> void:
@@ -19,7 +20,7 @@ func sumar(valor: float, nuevo_material := -1) -> void:
 	if nuevo_material > material_id:
 		material_id = nuevo_material
 		peso = 1 if material_id == 1 else 2
-		nombre = "Montón mixto de fragmentos"
+		nombre = tr("Montón mixto de fragmentos")
 	queue_redraw()
 
 func morder(dano: float) -> float:

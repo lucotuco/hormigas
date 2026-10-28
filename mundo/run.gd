@@ -78,7 +78,7 @@ func _ready() -> void:
 		tween.tween_interval(0.4)
 		tween.tween_property(self, "radio_actual", radio_objetivo, DURACION_EXPANSION) \
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-		hud.mostrar_aviso("¡El territorio creció!")
+		hud.mostrar_aviso(tr("¡El territorio creció!"))
 		Sonido.tocar("crecer", 1.0, 0.0)
 
 	colonia.iniciar(self)
@@ -132,7 +132,7 @@ func depositar(cantidad: float) -> void:
 			frenesi = 0
 			frenesi_restante = 6
 			_descanso_frenesi = 18
-			hud.mostrar_aviso("¡FRENESÍ! La colonia trabaja más rápido")
+			hud.mostrar_aviso(tr("¡FRENESÍ! La colonia trabaja más rápido"))
 	if _reloj - _ultimo_deposito <= VENTANA_COMBO:
 		combo += 1
 	else:
@@ -159,7 +159,7 @@ func _on_comida_destruida(comida: Comida) -> void:
 		return
 	if comida is PiezaCasa:
 		Juego.partes_destruidas_run += 1
-		hud.mostrar_aviso("¡La colonia devoró: %s!" % comida.nombre)
+		hud.mostrar_aviso(tr("¡La colonia devoró: %s!") % comida.nombre)
 		if comida.pieza.tipo == "silla":
 			_sillas_devoradas += 1
 			Juego.obtener_hito("primera_silla")
@@ -171,9 +171,9 @@ func _on_comida_destruida(comida: Comida) -> void:
 			if Juego.lugar_actual in ["obelisco", "coliseo", "eiffel"]:
 				Juego.obtener_hito("primer_monumento")
 			if entregadas > 0:
-				hud.mostrar_aviso("¡Gran objetivo! +%d %s" % [entregadas, "corona" if entregadas == 1 else "coronas"])
+				hud.mostrar_aviso(tr("¡Gran objetivo! +1 corona") if entregadas == 1 else tr("¡Gran objetivo! +%d coronas") % entregadas)
 			else:
-				hud.mostrar_aviso("¡Gran objetivo! (las coronas de este destino ya se cobraron en esta colonia)")
+				hud.mostrar_aviso(tr("¡Gran objetivo! (las coronas de este destino ya se cobraron en esta colonia)"))
 		if Juego.lugar_actual == "casa" and PlanoCasa.ambiente_en(comida.position) == "cocina":
 			var queda := false
 			for parte in comidas.partes:
@@ -191,7 +191,7 @@ func _on_comida_destruida(comida: Comida) -> void:
 	efectos.explosion(pos, comida.color, comida.radio)
 	efectos.numero(pos, bonus, Color(1.0, 0.82, 0.3), clampf(0.9 + comida.radio / 30.0, 1.0, 2.4))
 	if comida.radio >= 12.0:
-		efectos.texto(pos + Vector2(0, -comida.radio - 10.0), "¡%s!" % comida.nombre, Color.WHITE, 1.1)
+		efectos.texto(pos + Vector2(0, -comida.radio - 10.0), tr("¡%s!") % comida.nombre, Color.WHITE, 1.1)
 	hud.migas_voladoras(a_pantalla(pos), int(clampf(comida.radio / 2.5, 2, 16)))
 	camara.sacudir(clampf(comida.radio * 0.35, 2.0, 18.0))
 	Sonido.tocar("romper", clampf(1.7 - comida.radio / 45.0, 0.5, 1.7))

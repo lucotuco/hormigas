@@ -16,9 +16,9 @@ func _ready() -> void:
 	_contenido.add_theme_constant_override("separation", 14)
 	scroll.add_child(_contenido)
 	_confirmar = ConfirmationDialog.new()
-	_confirmar.title = "Fundar una nueva colonia"
-	_confirmar.ok_button_text = "Fundar la nueva colonia"
-	_confirmar.cancel_button_text = "Seguir creciendo"
+	_confirmar.title = tr("Fundar una nueva colonia")
+	_confirmar.ok_button_text = tr("Fundar la nueva colonia")
+	_confirmar.cancel_button_text = tr("Seguir creciendo")
 	_confirmar.confirmed.connect(Juego.fundar_colonia)
 	add_child(_confirmar)
 	Juego.progreso_cambio.connect(refrescar)
@@ -42,8 +42,8 @@ func _texto(texto: String, tamano := 14, color := Color("b8baa9")) -> Label:
 	return label
 
 func _viajes() -> void:
-	_contenido.add_child(_texto("El mundo es un banquete", 28, Estilo.TEXTO))
-	_contenido.add_child(_texto("Devorá el gran objetivo de un destino para abrir el siguiente. Cada expedición empieza con el escenario completo; tu colonia y sus descubrimientos se conservan."))
+	_contenido.add_child(_texto(tr("El mundo es un banquete"), 28, Estilo.TEXTO))
+	_contenido.add_child(_texto(tr("Devorá el gran objetivo de un destino para abrir el siguiente. Cada expedición empieza con el escenario completo; tu colonia y sus descubrimientos se conservan.")))
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 14)
@@ -68,24 +68,24 @@ func _viajes() -> void:
 		var columna := VBoxContainer.new()
 		columna.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		margen.add_child(columna)
-		columna.add_child(_texto(("● " if actual else "") + datos.nombre, 19, Estilo.TEXTO if abierto else Estilo.TEXTO_SUAVE))
-		columna.add_child(_texto(datos.subtitulo, 13))
-		var detalle := "Gran objetivo: %s · %d coronas" % [datos.meta, datos.coronas]
+		columna.add_child(_texto(("● " if actual else "") + tr(datos.nombre), 19, Estilo.TEXTO if abierto else Estilo.TEXTO_SUAVE))
+		columna.add_child(_texto(tr(datos.subtitulo), 13))
+		var detalle := tr("Gran objetivo: %s · %d coronas") % [tr(datos.meta), datos.coronas]
 		if not abierto:
 			var anterior: String = Mundos.ORDEN[Mundos.ORDEN.find(id) - 1]
-			detalle = "Requiere devorar: " + Mundos.INFO[anterior].meta
+			detalle = tr("Requiere devorar: %s") % tr(Mundos.INFO[anterior].meta)
 		elif Juego.coronas_cobradas.has(id):
-			detalle = "CONQUISTADO · Gran objetivo: %s · coronas ya cobradas en esta colonia" % datos.meta
+			detalle = tr("CONQUISTADO · Gran objetivo: %s · coronas ya cobradas en esta colonia") % tr(datos.meta)
 		elif Juego.lugares_completados.has(id):
-			detalle = "CONQUISTADO · " + detalle + " disponibles otra vez"
+			detalle = tr("CONQUISTADO · Gran objetivo: %s · %d coronas disponibles otra vez") % [tr(datos.meta), datos.coronas]
 		columna.add_child(_texto(detalle, 12, Color("d1c490")))
 
 ## Pestaña Jalea real: resumen, fundar con vista previa, árbol de la reina e hitos.
 func _legado() -> void:
-	_contenido.add_child(_texto("La reina y la jalea real", 28, Estilo.TEXTO))
-	_contenido.add_child(_texto("Fundar una colonia reinicia migas, mejoras y castas, y convierte lo logrado en jalea real. La jalea se gasta en el árbol de la reina, que es permanente, y toda la jalea que ganes da +%d%% de daño y migas por punto aunque la gastes." % roundi(Juego.BONUS_LEGADO * 100)))
+	_contenido.add_child(_texto(tr("La reina y la jalea real"), 28, Estilo.TEXTO))
+	_contenido.add_child(_texto(tr("Fundar una colonia reinicia migas, mejoras y castas, y convierte lo logrado en jalea real. La jalea se gasta en el árbol de la reina, que es permanente, y toda la jalea que ganes da +%d%% de daño y migas por punto aunque la gastes.") % roundi(Juego.BONUS_LEGADO * 100)))
 	_contenido.add_child(_resumen())
-	_contenido.add_child(_texto("EL ÁRBOL DE LA REINA", 12, Color("c9b779")))
+	_contenido.add_child(_texto(tr("EL ÁRBOL DE LA REINA"), 12, Color("c9b779")))
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 12)
@@ -93,7 +93,7 @@ func _legado() -> void:
 	_contenido.add_child(grid)
 	for n in Juego.nodos_jalea:
 		grid.add_child(_nodo_jalea(n))
-	_contenido.add_child(_texto("HITOS", 12, Color("c9b779")))
+	_contenido.add_child(_texto(tr("HITOS"), 12, Color("c9b779")))
 	for id in Juego.HITOS:
 		var datos: Dictionary = Juego.HITOS[id]
 		var obtenido := Juego.hitos.has(id)
@@ -102,8 +102,8 @@ func _legado() -> void:
 		_contenido.add_child(tarjeta)
 		var columna := VBoxContainer.new()
 		tarjeta.add_child(columna)
-		columna.add_child(_texto(("✓ " if obtenido else "○ ") + datos.nombre, 18, Estilo.TEXTO))
-		columna.add_child(_texto(datos.detalle + " · " + datos.premio, 13, Color("b8c993") if obtenido else Estilo.TEXTO_SUAVE))
+		columna.add_child(_texto(("✓ " if obtenido else "○ ") + tr(datos.nombre), 18, Estilo.TEXTO))
+		columna.add_child(_texto(tr(datos.detalle) + " · " + tr(datos.premio), 13, Color("b8c993") if obtenido else Estilo.TEXTO_SUAVE))
 
 
 func _resumen() -> Control:
@@ -115,20 +115,20 @@ func _resumen() -> Control:
 	var izquierda := VBoxContainer.new()
 	izquierda.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fila.add_child(izquierda)
-	izquierda.add_child(_texto("JALEA DISPONIBLE", 11, Estilo.TEXTO_SUAVE))
+	izquierda.add_child(_texto(tr("JALEA DISPONIBLE"), 11, Estilo.TEXTO_SUAVE))
 	izquierda.add_child(_texto("%d" % Juego.jalea, 32, Color("f0d277")))
-	var colonias := "1 colonia fundada" if Juego.fundaciones == 1 else "%d colonias fundadas" % Juego.fundaciones
-	izquierda.add_child(_texto("Ganada en total: %d · bonus pasivo +%d%% de daño y migas · %s" % [Juego.legado, roundi(Juego.legado * Juego.BONUS_LEGADO * 100), colonias], 13, Estilo.TEXTO))
+	var colonias := tr("1 colonia fundada") if Juego.fundaciones == 1 else tr("%d colonias fundadas") % Juego.fundaciones
+	izquierda.add_child(_texto(tr("Ganada en total: %d · bonus pasivo +%d%% de daño y migas · %s") % [Juego.legado, roundi(Juego.legado * Juego.BONUS_LEGADO * 100), colonias], 13, Estilo.TEXTO))
 	var derecha := VBoxContainer.new()
 	derecha.custom_minimum_size.x = 330
 	fila.add_child(derecha)
 	var detalle := Juego.detalle_fundar()
-	derecha.add_child(_texto("SI FUNDÁS AHORA", 11, Estilo.TEXTO_SUAVE))
-	derecha.add_child(_texto("+%d jalea" % detalle.total, 24, Color("f0d277") if detalle.total > 0 else Estilo.TEXTO_SUAVE))
-	derecha.add_child(_texto("%d coronas × %d = %d · migas de esta colonia (%s) = %d" % [Juego.coronas, Juego.JALEA_POR_CORONA, detalle.coronas, Juego.formatear(Juego.migas_colonia), detalle.migas], 12, Estilo.TEXTO_SUAVE))
-	var fundar := Estilo.boton("Fundar colonia…", 17, Color("56613e"), Color("bbcb8a"))
+	derecha.add_child(_texto(tr("SI FUNDÁS AHORA"), 11, Estilo.TEXTO_SUAVE))
+	derecha.add_child(_texto(tr("+%d jalea") % detalle.total, 24, Color("f0d277") if detalle.total > 0 else Estilo.TEXTO_SUAVE))
+	derecha.add_child(_texto(tr("%d coronas × %d = %d · migas de esta colonia (%s) = %d") % [Juego.coronas, Juego.JALEA_POR_CORONA, detalle.coronas, Juego.formatear(Juego.migas_colonia), detalle.migas], 12, Estilo.TEXTO_SUAVE))
+	var fundar := Estilo.boton(tr("Fundar colonia…"), 17, Color("56613e"), Color("bbcb8a"))
 	fundar.disabled = not Juego.puede_fundar()
-	fundar.tooltip_text = "Conquistá un gran objetivo o juntá más migas para ganar jalea." if fundar.disabled else "Reiniciar la colonia a cambio de jalea real"
+	fundar.tooltip_text = tr("Conquistá un gran objetivo o juntá más migas para ganar jalea.") if fundar.disabled else tr("Reiniciar la colonia a cambio de jalea real")
 	fundar.pressed.connect(_pedir_fundacion)
 	derecha.add_child(fundar)
 	return panel
@@ -162,15 +162,15 @@ func _nodo_jalea(n: Dictionary) -> Control:
 	var fila := HBoxContainer.new()
 	fila.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	columna.add_child(fila)
-	var nombre := _texto(n.nombre, 15, Estilo.TEXTO)
+	var nombre := _texto(tr(n.nombre), 15, Estilo.TEXTO)
 	nombre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fila.add_child(nombre)
 	# Sin ajuste de línea: con autowrap y sin ancho propio se partía letra por letra.
 	fila.add_child(Estilo.etiqueta("%d / %d" % [nivel, n.nivel_max], 12, Estilo.TEXTO_SUAVE))
-	columna.add_child(_texto(n.descripcion, 12, Estilo.TEXTO_SUAVE))
-	var pie := "COMPLETO" if completo else ("Cuesta %d jalea" % Juego.costo_jalea(n.id))
+	columna.add_child(_texto(tr(n.descripcion), 12, Estilo.TEXTO_SUAVE))
+	var pie := tr("COMPLETO") if completo else (tr("Cuesta %d jalea") % Juego.costo_jalea(n.id))
 	if not abierto:
-		pie = "Requiere %s nivel %d" % [Juego.jalea_por_id[n.requiere_id].nombre, n.requiere_nivel]
+		pie = tr("Requiere %s nivel %d") % [tr(Juego.jalea_por_id[n.requiere_id].nombre), n.requiere_nivel]
 	columna.add_child(_texto(pie, 13, color if puede else Estilo.TEXTO_SUAVE))
 	for hijo in columna.get_children():
 		hijo.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -191,13 +191,13 @@ func _pedir_fundacion() -> void:
 		return
 	var detalle := Juego.detalle_fundar()
 	var lineas := PackedStringArray()
-	lineas.append("Ganás %d de jalea real (bonus pasivo: +%d%% → +%d%%)." % [detalle.total, roundi(Juego.legado * Juego.BONUS_LEGADO * 100), roundi((Juego.legado + detalle.total) * Juego.BONUS_LEGADO * 100)])
+	lineas.append(tr("Ganás %d de jalea real (bonus pasivo: +%d%% → +%d%%).") % [detalle.total, roundi(Juego.legado * Juego.BONUS_LEGADO * 100), roundi((Juego.legado + detalle.total) * Juego.BONUS_LEGADO * 100)])
 	lineas.append("")
 	var conserva := 10 * Juego.nivel_jalea("despensa")
-	lineas.append("Se reinician: migas%s, mejoras y castas%s." % [
-		" (conservás el %d%%)" % conserva if conserva > 0 else "",
-		" (conservás el %d%%)" % (25 * Juego.nivel_jalea("linaje")) if Juego.nivel_jalea("linaje") > 0 else ""])
-	lineas.append("Se conservan: destinos, hitos, el árbol de la reina y lo descubierto.")
-	lineas.append("Cada gran objetivo vuelve a dar sus coronas una vez.")
+	lineas.append(tr("Se reinician: migas%s, mejoras y castas%s.") % [
+		tr(" (conservás el %d%%)") % conserva if conserva > 0 else "",
+		tr(" (conservás el %d%%)") % (25 * Juego.nivel_jalea("linaje")) if Juego.nivel_jalea("linaje") > 0 else ""])
+	lineas.append(tr("Se conservan: destinos, hitos, el árbol de la reina y lo descubierto."))
+	lineas.append(tr("Cada gran objetivo vuelve a dar sus coronas una vez."))
 	_confirmar.dialog_text = "\n".join(lineas)
 	_confirmar.popup_centered(Vector2i(620, 260))

@@ -113,7 +113,7 @@ func desplegar_minis(pos: Vector2, cantidad_solicitada: int) -> int:
 	minis_nacidas += cantidad_real
 	if cantidad_real > 0:
 		run.efectos.chispas(pos, Color("c9a7df"), 6)
-		run.efectos.texto(pos + Vector2(0, -12), "+%d miniobreras" % cantidad_real, Color("e1c1f3"), 0.8)
+		run.efectos.texto(pos + Vector2(0, -12), tr("+%d miniobreras") % cantidad_real, Color("e1c1f3"), 0.8)
 	return cantidad_real
 
 
