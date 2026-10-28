@@ -31,6 +31,7 @@ const RUTA_MEJORAS := "res://datos/mejoras.csv"
 const RUTA_COMIDAS := "res://datos/comidas.csv"
 const RUTA_CASTAS := "res://datos/castas.csv"
 const RUTA_JALEA := "res://datos/jalea.csv"
+const RUTA_DECRETOS := "res://datos/decretos.csv"
 
 # --- Prestigio (ver docs/DISENO_PROGRESION.md) ---
 ## Jalea al fundar = JALEA_POR_CORONA × coronas + ⌊(migas de la colonia / DIVISOR_JALEA_MIGAS) ^ EXPONENTE_JALEA_MIGAS⌋
@@ -44,7 +45,9 @@ const BONUS_LEGADO := 0.03
 ## Niveles extra de tope por cada nivel de "Cámaras más hondas".
 const NIVELES_POR_TECHO := 5
 ## Efectos especiales del árbol de la reina (columna "efecto" de jalea.csv).
-const EFECTOS_JALEA := ["stat", "herencia", "despensa", "techo", "guardia", "linaje", "corona"]
+const EFECTOS_JALEA := ["stat", "herencia", "despensa", "techo", "linaje", "corona"]
+## Ninguna expedición dura menos que esto, aunque un decreto reste tiempo.
+const DURACION_MINIMA := 20.0
 
 const SUFIJOS: Array[String] = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"]
 
@@ -58,6 +61,9 @@ var castas: Array[Dictionary] = []
 var castas_por_id: Dictionary = {}
 var nodos_jalea: Array[Dictionary] = []  # árbol de la reina, en el orden del CSV
 var jalea_por_id: Dictionary = {}
+## Decretos de la reina: al fundar se elige uno, que rige toda la colonia nueva.
+var decretos: Array[Dictionary] = []
+var decretos_por_id: Dictionary = {}
 
 # --- Partida guardada ---
 var migas: float = 0.0
@@ -78,6 +84,8 @@ var niveles_jalea: Dictionary = {}       # id de nodo -> nivel (permanente)
 var migas_colonia: float = 0.0           # migas juntadas desde la última fundación
 var coronas := 0
 var fundaciones := 0
+## Decreto de la colonia actual ("" en la primera colonia).
+var decreto := ""
 var prioridad := "automatico"
 ## Mecánicas de la interfaz que ya se revelaron: id -> true si el jugador ya
 ## las vio, false si son nuevas. Ver REVELABLES.
@@ -100,10 +108,10 @@ func oportunidades_jalea() -> String:
 	var opciones := PackedStringArray()
 	for id in ["herencia_madera", "herencia_resistente", "herencia_muros", "linaje", "guardia", "jalea_dano"]:
 		if not jalea_al_maximo(id) and jalea_desbloqueada(id) and costo_jalea(id) <= saldo:
-			opciones.append("%s (%d)" % [jalea_por_id[id].nombre, costo_jalea(id)])
+			opciones.append("%s (%d)" % [tr(jalea_por_id[id].nombre), costo_jalea(id)])
 			if opciones.size() == 3:
 				break
-	return "Con tu saldo tras fundar podrías elegir: " + "; ".join(opciones) + ". Precios en jalea; cada opción por separado." if not opciones.is_empty() else "La jalea se conserva para tu próxima mejora permanente."
+	return tr("Con tu saldo tras fundar podrías elegir: %s. Precios en jalea; cada opción por separado.") % "; ".join(opciones) if not opciones.is_empty() else tr("La jalea se conserva para tu próxima mejora permanente.")
 
 func actualizar_evoluciones() -> void:
 	for id in EvolucionesHormiga.DATOS:
@@ -140,6 +148,8 @@ const REVELABLES := {
 	"prioridades": "Prioridades: elegí qué come la colonia",
 	"viajes": "Viajes: nuevos destinos",
 	"legado": "Jalea real: fundá colonias y mejorá a la reina",
+	"doradas": "Migas doradas: pisalas antes de que desaparezcan",
+	"amenazas": "Amenazas: cada destino tiene la suya; pisalas para salvar a la colonia",
 }
 ## Desbloqueos clave que marcan la progresión; el HUD muestra el próximo.
 const DIETAS := ["mordida_madera", "mordida_resistente", "mordida_muros"]
@@ -154,13 +164,49 @@ var ultima_run_fue_record := false
 ## Ponerlo en false evita escribir el archivo de partida (lo usan las pruebas).
 var guardado_habilitado := true
 
+## Estadísticas de toda la partida: no se reinician al fundar una colonia.
+## Las muestra la pantalla de estadísticas (ui/panel_estadisticas.gd).
+const ESTADISTICAS := ["migas_totales", "migas_gastadas", "tiempo_total", "tiempo_en_runs",
+	"comidas_devoradas", "partes_devoradas", "pisotones", "derrumbes", "hormigas_nacidas",
+	"mayor_colonia", "mejor_combo", "objetivos_conquistados", "coronas_ganadas",
+	"niveles_comprados", "castas_reclutadas", "jalea_gastada",
+	"amenazas_vencidas", "hormigas_perdidas", "migas_doradas"]
+var estadisticas: Dictionary = {}
+var _inicio_run := 0.0
+
 var _cache_stats: Dictionary = {}
 
 
 func _ready() -> void:
 	Engine.max_fps = 60
+	# Todo texto visible pasa por tr() a mano (ver idiomas/LEEME.md): sin la
+	# traducción automática de los nodos, lo que falte traducir se nota.
+	get_tree().root.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	usar_idioma(idioma_del_sistema())
 	_cargar_datos()
 	cargar()
+
+
+# =====================================================================
+# Idioma
+# =====================================================================
+
+## Los textos se escriben en español en el código; idiomas/en.po trae el inglés.
+const IDIOMAS := ["es", "en"]
+var idioma := "es"
+
+
+func idioma_del_sistema() -> String:
+	return "es" if OS.get_locale_language() == "es" else "en"
+
+
+func _process(delta: float) -> void:
+	estadisticas.tiempo_total = estadistica("tiempo_total") + delta
+
+
+func usar_idioma(codigo: String) -> void:
+	idioma = codigo if codigo in IDIOMAS else "es"
+	TranslationServer.set_locale(idioma)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -226,7 +272,17 @@ func _calcular(nombre: String, id_extra := "", niveles_extra := 0) -> float:
 			valor += n.valor * nivel
 		else:
 			multiplicador *= pow(n.valor, nivel)
-	return _aplicar_legado(nombre, valor * multiplicador)
+	if decretos_por_id.has(decreto):
+		for efecto in decretos_por_id[decreto].efectos:
+			if efecto.stat == nombre:
+				if efecto.tipo == "suma":
+					valor += efecto.valor
+				else:
+					multiplicador *= efecto.valor
+	var resultado := valor * multiplicador
+	if nombre == "duracion_run":
+		resultado = maxf(resultado, DURACION_MINIMA)
+	return _aplicar_legado(nombre, resultado)
 
 func _aplicar_legado(nombre: String, resultado: float) -> float:
 	for adaptacion in adaptaciones:
@@ -330,6 +386,8 @@ func comprar_lote(id: String, cantidad := 1) -> int:
 		return 0
 	migas -= oferta.costo
 	niveles[id] = nivel_de(id) + int(oferta.cantidad)
+	sumar_estadistica("migas_gastadas", oferta.costo)
+	sumar_estadistica("niveles_comprados", oferta.cantidad)
 	_cache_stats.clear()
 	actualizar_evoluciones()
 	guardar()
@@ -377,6 +435,8 @@ func comprar_castas_lote(id: String, cantidad := 1) -> int:
 	migas -= oferta.costo
 	reclutadas[id] = cantidad_casta(id) + int(oferta.cantidad)
 	actualizar_evoluciones()
+	sumar_estadistica("migas_gastadas", oferta.costo)
+	sumar_estadistica("castas_reclutadas", oferta.cantidad)
 	guardar()
 	migas_cambiaron.emit(migas)
 	casta_comprada.emit(id, cantidad_casta(id))
@@ -437,6 +497,10 @@ func _condicion_revelar(id: String) -> bool:
 			return not lugares_completados.is_empty()
 		"legado":
 			return not hitos.is_empty() or coronas > 0 or legado > 0 or fundaciones > 0
+		"doradas":
+			return runs_jugadas >= 3
+		"amenazas":
+			return runs_jugadas >= 6
 	return true
 
 
@@ -450,16 +514,16 @@ func proxima_meta() -> Dictionary:
 		var m: Dictionary = mejoras_por_id[id]
 		if not esta_desbloqueada(id):
 			var previa: Dictionary = mejoras_por_id[m.requiere_id]
-			return {"tipo": "nivel", "nombre": "%s nivel %d" % [previa.nombre, m.requiere_nivel],
-				"detalle": "habilita: " + m.nombre, "actual": float(nivel_de(previa.id)), "objetivo": float(m.requiere_nivel)}
-		return {"tipo": "migas", "nombre": m.nombre, "detalle": m.descripcion,
+			return {"tipo": "nivel", "nombre": tr("%s nivel %d") % [tr(previa.nombre), m.requiere_nivel],
+				"detalle": tr("habilita: %s") % tr(m.nombre), "actual": float(nivel_de(previa.id)), "objetivo": float(m.requiere_nivel)}
+		return {"tipo": "migas", "nombre": tr(m.nombre), "detalle": tr(m.descripcion),
 			"actual": migas + migas_run, "objetivo": costo(id)}
 	if not coronas_cobradas.has(lugar_actual):
-		return {"tipo": "objetivo", "nombre": Mundos.INFO[lugar_actual].meta, "detalle": "gran objetivo · %d coronas" % int(Mundos.INFO[lugar_actual].coronas)}
+		return {"tipo": "objetivo", "nombre": tr(Mundos.INFO[lugar_actual].meta), "detalle": tr("gran objetivo · %d coronas") % int(Mundos.INFO[lugar_actual].coronas)}
 	var indice := Mundos.ORDEN.find(lugar_actual)
 	if indice + 1 < Mundos.ORDEN.size():
-		return {"tipo": "viaje", "nombre": "Viajar a " + Mundos.INFO[Mundos.ORDEN[indice + 1]].nombre, "detalle": "desde la pestaña Viajes"}
-	return {"tipo": "viaje", "nombre": "Fundar una colonia nueva", "detalle": "convertí coronas y migas en jalea real"}
+		return {"tipo": "viaje", "nombre": tr("Viajar a %s") % tr(Mundos.INFO[Mundos.ORDEN[indice + 1]].nombre), "detalle": tr("desde la pestaña Viajes")}
+	return {"tipo": "viaje", "nombre": tr("Fundar una colonia nueva"), "detalle": tr("convertí coronas y migas en jalea real")}
 
 
 func nivel_visual() -> int:
@@ -497,6 +561,8 @@ func completar_destino() -> int:
 		coronas_cobradas[lugar_actual] = true
 		entregadas = int(Mundos.INFO[lugar_actual].coronas) + nivel_jalea("corona_doble")
 		coronas += entregadas
+		sumar_estadistica("coronas_ganadas", entregadas)
+	sumar_estadistica("objetivos_conquistados")
 	guardar()
 	progreso_cambio.emit()
 	return entregadas
@@ -522,10 +588,12 @@ func puede_fundar() -> bool:
 
 ## Reinicia la economía de la colonia y la convierte en jalea real.
 ## Se conservan destinos, hitos, jalea, el árbol de la reina y lo revelado.
-func fundar_colonia() -> bool:
+## `decreto_nuevo` rige la colonia que nace ("" = sin decreto).
+func fundar_colonia(decreto_nuevo := "") -> bool:
 	var ganada := jalea_por_fundar()
 	if ganada < 1:
 		return false
+	decreto = decreto_nuevo if decretos_por_id.has(decreto_nuevo) else ""
 	var conservar_migas := migas * 0.1 * nivel_jalea("despensa")
 	var porcion_castas := 0.25 * nivel_jalea("linaje")
 	legado += ganada
@@ -585,6 +653,7 @@ func puede_comprar_jalea(id: String) -> bool:
 func comprar_jalea(id: String) -> bool:
 	if not puede_comprar_jalea(id):
 		return false
+	sumar_estadistica("jalea_gastada", costo_jalea(id))
 	jalea -= costo_jalea(id)
 	niveles_jalea[id] = nivel_jalea(id) + 1
 	if jalea_por_id[id].efecto == "herencia":
@@ -594,6 +663,22 @@ func comprar_jalea(id: String) -> bool:
 	progreso_cambio.emit()
 	migas_cambiaron.emit(migas)
 	return true
+
+
+# =====================================================================
+# Estadísticas
+# =====================================================================
+
+func estadistica(clave: String) -> float:
+	return float(estadisticas.get(clave, 0.0))
+
+
+func sumar_estadistica(clave: String, cantidad: float = 1.0) -> void:
+	estadisticas[clave] = estadistica(clave) + cantidad
+
+
+func registrar_maximo(clave: String, valor: float) -> void:
+	estadisticas[clave] = maxf(estadistica(clave), valor)
 
 
 # =====================================================================
@@ -607,6 +692,7 @@ func iniciar_run() -> void:
 	partes_destruidas_run = 0
 	mejor_combo_run = 0
 	ultima_run_fue_record = false
+	_inicio_run = estadistica("tiempo_total")
 
 
 func sumar_migas_run(cantidad: float) -> void:
@@ -616,6 +702,11 @@ func sumar_migas_run(cantidad: float) -> void:
 func terminar_run() -> void:
 	migas += migas_run
 	migas_colonia += migas_run
+	sumar_estadistica("migas_totales", migas_run)
+	sumar_estadistica("comidas_devoradas", comidas_destruidas_run)
+	sumar_estadistica("partes_devoradas", partes_destruidas_run)
+	sumar_estadistica("tiempo_en_runs", maxf(0.0, estadistica("tiempo_total") - _inicio_run))
+	registrar_maximo("mejor_combo", mejor_combo_run)
 	runs_jugadas += 1
 	ultima_run_fue_record = runs_jugadas > 1 and migas_run > mejor_run
 	mejor_run = maxf(mejor_run, migas_run)
@@ -654,6 +745,7 @@ func datos_partida() -> Dictionary:
 		"jalea": jalea, "niveles_jalea": niveles_jalea, "migas_colonia": migas_colonia,
 		"evoluciones": evoluciones_desbloqueadas, "equipadas": evoluciones_equipadas,
 		"records_destino": records_destino,
+		"estadisticas": estadisticas, "decreto": decreto,
 	}
 
 
@@ -719,6 +811,9 @@ func restaurar_partida(datos: Dictionary) -> void:
 	_cache_stats.clear()
 	coronas = clampi(int(datos.get("coronas", 0)), 0, 1000000)
 	fundaciones = maxi(0, int(datos.get("fundaciones", 0)))
+	decreto = str(datos.get("decreto", ""))
+	if not decretos_por_id.has(decreto):
+		decreto = ""
 	lugar_actual = str(datos.get("lugar", "casa"))
 	if not destino_desbloqueado(lugar_actual):
 		lugar_actual = "casa"
@@ -739,6 +834,15 @@ func restaurar_partida(datos: Dictionary) -> void:
 			if castas_por_id.has(id) and castas_por_id[id].comprable:
 				reclutadas[id] = clampi(int(castas_guardadas[id]), 0, int(castas_por_id[id].maximo))
 	_cache_stats.clear()
+	estadisticas = {}
+	var guardadas = datos.get("estadisticas", null)
+	if guardadas is Dictionary:
+		for clave in guardadas:
+			if clave in ESTADISTICAS and typeof(guardadas[clave]) in [TYPE_INT, TYPE_FLOAT]:
+				estadisticas[clave] = maxf(0.0, float(guardadas[clave]))
+	else:
+		# Partida anterior a las estadísticas: lo que se sabe de antes.
+		estadisticas.migas_totales = migas_colonia
 	descubiertos = {}
 	evoluciones_desbloqueadas = {}
 	evoluciones_equipadas = []
@@ -784,8 +888,10 @@ func reiniciar_estado() -> void:
 	migas_colonia = 0.0
 	coronas = 0
 	fundaciones = 0
+	decreto = ""
 	prioridad = "automatico"
 	descubiertos = {}
+	estadisticas = {}
 	_cache_stats.clear()
 	evoluciones_desbloqueadas.clear()
 	evoluciones_equipadas.clear()
@@ -921,6 +1027,19 @@ func _cargar_datos() -> void:
 		nodos_jalea.append(n)
 		jalea_por_id[n.id] = n
 
+	decretos.clear()
+	decretos_por_id.clear()
+	for fila in _leer_csv(RUTA_DECRETOS):
+		var d := {"id": fila.id, "nombre": fila.nombre, "descripcion": fila.descripcion, "efectos": []}
+		for texto in String(fila.efectos).split(";", false):
+			var partes := texto.strip_edges().split(":")
+			if partes.size() != 3 or not stats_base.has(partes[0]) or partes[1] not in ["suma", "multiplica"]:
+				push_error("Decreto '%s': efecto mal escrito '%s' (stat:suma|multiplica:valor)" % [d.id, texto])
+				continue
+			d.efectos.append({"stat": partes[0], "tipo": partes[1], "valor": _num(partes[2])})
+		decretos.append(d)
+		decretos_por_id[d.id] = d
+
 	comidas.clear()
 	for fila in _leer_csv(RUTA_COMIDAS):
 		comidas.append({
@@ -935,8 +1054,19 @@ func _cargar_datos() -> void:
 			"distancia_max": _num(fila.distancia_max),
 			"cantidad": int(_num(fila.cantidad)),
 			"zonas": fila.get("zonas", ""),
+			# Destinos donde aparece ("" = en todos). Cada destino tiene sus comidas.
+			"destinos": Array(String(fila.get("destinos", "")).split("|", false)),
 		})
+	for c in comidas:
+		for d in c.destinos:
+			if not Mundos.INFO.has(d):
+				push_error("Comida '%s': el destino '%s' no existe" % [c.id, d])
 	_cache_stats.clear()
+
+
+## ¿La comida aparece en este destino?
+func comida_en_destino(tipo: Dictionary, lugar: String) -> bool:
+	return tipo.destinos.is_empty() or lugar in tipo.destinos
 
 
 ## Lee un CSV con encabezado y devuelve una lista de diccionarios (columna -> texto).

@@ -4,6 +4,7 @@ extends Node
 
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Juego.usar_idioma(OS.get_environment("IDIOMA") if OS.has_environment("IDIOMA") else "es")  # IDIOMA=en para revisar en inglés
 	Juego.reiniciar_estado()
 	Sonido.silenciado = true
 	seed(731)

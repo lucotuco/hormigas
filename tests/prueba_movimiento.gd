@@ -5,6 +5,7 @@ var fallas := 0
 
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Juego.usar_idioma("es")  # las verificaciones leen textos en español
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()
 	seed(731)

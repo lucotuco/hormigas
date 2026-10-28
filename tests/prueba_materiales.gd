@@ -4,6 +4,7 @@ var fallas := 0
 
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Juego.usar_idioma("es")  # las verificaciones leen textos en español
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()
 	seed(445)
@@ -25,7 +26,8 @@ func _ready() -> void:
 	verificar(Juego.stat("materiales") == 0 and not silla.disponible() and not heladera.disponible() and not muro.disponible(), "la colonia inicial sólo puede comer alimentos")
 	var vida := silla.vida
 	verificar(silla.morder(10000) == 0 and silla.vida == vida, "el daño no permite saltarse un material bloqueado")
-	verificar(not run.has_method("pisar") and silla.vida == vida, "no existe el daño por clic")
+	run.pisar(silla.position)
+	verificar(silla.vida == vida, "no existe el daño por clic sobre muebles")
 	Juego.migas = 1e8
 	verificar(not Juego.comprar("mordida_madera"), "madera requiere primero mejorar las mandíbulas")
 	Juego.comprar_lote("mandibulas", 4)

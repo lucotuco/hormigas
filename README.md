@@ -20,8 +20,15 @@ Incremental para PC hecho en **Godot 4.7.2**. Guiás a tu colonia manteniendo el
 | Ver el plano de la casa completa | H |
 | Enfocar el gran objetivo del destino | G o botón Gran objetivo |
 | Priorizar alimentos, muebles o estructuras | Botones de la barra inferior; el llamado manual siempre manda |
-| Terminar la run antes | Esc |
+| Pausa (seguir, configuración, estadísticas, terminar o salir al menú) | Esc |
 | Silenciar sonido | M |
+| Pantalla completa | F11 |
+
+El juego arranca en el **menú principal** (Jugar o Continuar, Estadísticas,
+Configuración y Salir). La configuración (idioma, sonido, volumen, pantalla
+completa, temblor de cámara, pausar al cambiar de ventana y borrar la partida)
+se guarda aparte de la partida, en `user://ajustes.cfg`. La expedición se pausa
+sola cuando la ventana pierde el foco.
 
 ### Atajos de desarrollo (solo al correr desde el editor)
 
@@ -39,11 +46,12 @@ res://
     juego.gd       "Juego": estado, partida guardada, stats, mejoras, lectura de /datos
     sonido.gd      "Sonido": efectos con pool de reproductores
     graficos.gd    "Graficos": atlas generado una sola vez para hormigas, comida y muebles
+    ajustes.gd     "Ajustes": configuración del jugador (user://ajustes.cfg)
   hormigas/
     hormiga.gd     Máquina de estados de una hormiga (explorar, responder al llamado, morder, volver)
     colonia.gd     Hace nacer hormigas y ajusta su tamaño al zoom
   mundo/
-    run.tscn       ESCENA PRINCIPAL: una run completa
+    run.tscn       Una run completa
     run.gd         Coordina la run: inicio, fin, combos y comida destruida
     comidas.gd     Genera el mapa (siempre igual, semilla fija) y busca comida cercana
     comida.gd      Una comida: vida, grietas, sacudida, dibujo por forma
@@ -62,10 +70,14 @@ res://
     camara.gd      Zoom según el territorio + sacudidas
     suelo.gd       Pisos de madera, cerámica y baldosas por ambiente
   ui/
-    hud.gd         Migas, tiempo, combo, avisos, panel de fin de run
+    menu.tscn      ESCENA PRINCIPAL: menú con el destino actual de fondo
+    hud.gd         Migas, tiempo, combo, avisos, pausa y panel de fin de run
+    ventana_modal.gd  Base de las ventanas (configuración, estadísticas, pausa)
+    panel_configuracion.gd / panel_estadisticas.gd
     tienda.gd      Árbol de mejoras entre runs
     estilo.gd      Colores y helpers de interfaz compartidos
   datos/         Tablas de balance (CSV)
+  idiomas/       en.po: el inglés de todos los textos (ver idiomas/LEEME.md)
   sonidos/       Efectos .wav
   tests/         Prueba de humo
 ```
@@ -241,6 +253,11 @@ Toda la jalea ganada en la historia da además +3% de daño y migas por punto,
 aunque se gaste. Se conservan destinos, hitos y el árbol. Cada gran objetivo
 paga sus coronas una vez por colonia.
 
+Al fundar se elige un **decreto de la reina** para la colonia nueva
+(`datos/decretos.csv`): numerosa, guerrera, recolectora o exploradora, cada uno
+con una ventaja y un costo. La **Pisada automática** (taller, desde Pisotón 2)
+pisa sola la comida más cercana al cursor.
+
 Cada destino conquistado **sube el tope** de las mejoras (`tope_por_destino` en
 `mejoras.csv`) y trae **mejoras propias** (marcadas con ✦, columna `destino`).
 Mandíbulas fuertes y Mandíbulas cooperativas duplican su stat cada 25 niveles. El diseño
@@ -401,6 +418,8 @@ cantidad de cuadros procesados, no agrandando el delta. Con
 `BOT_ESTADO=archivo.json` se puede cortar y retomar por tandas; con `BOT_LOG`
 también escribe el registro en un archivo. No corre en CI.
 
+**Referencia previa a la integración de menú, eventos y decretos:**
+
 Las mediciones anteriores a esta revisión usaban tiempo ×8 y daño por clic.
 No son comparables: cambiaban los presupuestos de navegación y mordida por
 segundo simulado. Piloto final de esta revisión (28/10, desde cero, con
@@ -424,6 +443,8 @@ compra barato y no optimiza su equipo. Falta calibrar los destinos tardíos y
 probar con jugadores. La comparación controlada de castas y sus límites está
 en `docs/DISENO_PROGRESION.md`.
 
+Los valores tardíos de `main` se conservan; este piloto no mide la versión integrada.
+
 El gran objetivo pide la dieta completa (`PiezaCasa.NIVEL_META`) y su
 resistencia se multiplica por `Mundos.vida_meta(destino)` (`vida_meta` en
 `mundo/mundos.gd`). Como la casa se reconstruye en cada expedición, es un
@@ -432,7 +453,8 @@ está diseñado para pedir nuevas fundaciones; la cantidad debe volver a medirse
 
 **Calibrar todo de una:** con `BOT_CALIBRAR=1` los destinos después de la casa
 arrancan invulnerables; cuando una colonia se traba y decide fundar, el bot fija
-la resistencia de ese destino en 3 × el mayor daño que le hizo y la colonia
+la resistencia de ese destino en `FACTOR_CALIBRACION` (1,3)
+× el mayor daño que le hizo y la colonia
 siguiente lo conquista. Al final imprime `CALIBRADO {...}` con los valores para
 `mundo/mundos.gd`.
 
@@ -441,6 +463,40 @@ al conquistar el anterior, poné un `vida_meta.json` junto al estado (por
 ejemplo `{"coliseo": 1e30}`) para hacerlo invulnerable, mirá en el registro
 el daño por run (`meta X/Y`) y elegí una resistencia entre la meseta de una
 colonia y la siguiente.
+
+## Destinos con identidad
+
+Cada destino tiene **sus comidas** (columna `destinos` de `datos/comidas.csv`;
+vacía = en todos) y **su amenaza**, que se resuelve a clics y da botín:
+
+| Destino | Comidas propias | Amenaza | Cómo se juega |
+|---|---|---|---|
+| Casa | las de siempre | Araña | Caza hormigas sueltas; 6 pisotones la vencen |
+| Restaurante | ravioles, flan, pizza entera | El mozo | Avisa con su sombra y pisa; 3 clics en la sombra lo hacen tropezar y suelta la bandeja |
+| Museo | canapé, bombón, torta de gala | Aspiradora robot | Se traga comida chica y hormigas; romperla (6) devuelve lo tragado |
+| Obelisco | alfajor, medialuna, choripán | Palomas | Picotean lo mejor; un clic espanta a cada una |
+| Coliseo | aceituna, uvas, pan romano | Gato | Duerme sobre la mejor comida y salta si lo molestan; 4 clics y se va |
+| Torre Eiffel | macaron, croissant, baguette | Rata | Corre a robarse lo más rico; 5 clics la atrapan |
+
+Devorar un gran objetivo es el clímax de cada destino (`mundo/conquista.gd`):
+cámara lenta, la cámara encuadra el derrumbe, estallidos por todo el mueble,
+lluvia de migas y un cartel con las coronas y el destino que se abre. Sin
+pantalla (pruebas y bot) no hay cámara lenta.
+
+Además, la **miga dorada** aparece cada tanto: pisala antes de que se apague y
+da migas, frenesí o +8 s. Las amenazas llegan desde la sexta expedición y las
+migas doradas desde la tercera; una flecha en el borde de la pantalla señala
+las que quedan fuera de la vista. Los pisotones automáticos no las resuelven:
+son el momento de clickear. Código en `mundo/eventos.gd` y `mundo/evento.gd`;
+revisión visual en `tests/revision_eventos.tscn` y `tests/revision_comidas.tscn`.
+
+## Idiomas
+
+Español e inglés. El juego arranca en el idioma del sistema (español si el
+sistema está en español; si no, inglés). Los textos se escriben en español con
+`tr("…")` y el inglés vive en `idiomas/en.po`; `tests/prueba_idiomas.tscn`
+avisa qué falta traducir y revisa que la interfaz en inglés no tenga restos en
+español. Detalle en [`idiomas/LEEME.md`](idiomas/LEEME.md).
 
 ## Trabajar de a dos con Git
 

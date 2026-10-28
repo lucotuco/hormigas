@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/revision_menu.gd" id="1_revision"]
+
+[node name="RevisionMenu" type="Node"]
+script = ExtResource("1_revision")

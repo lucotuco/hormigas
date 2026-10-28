@@ -52,7 +52,7 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 		# de madera. Si no, se comía apenas se desbloqueaba la madera.
 		mat.nivel = maxi(int(mat.nivel), NIVEL_META)
 	if datos.get("practica", false):
-		mat.nombre = "Banquito de cartón"
+		mat.nombre = tr("Banquito de cartón")
 		mat.vida = 20.0
 		mat.recompensa = 180.0
 		mat.nivel = 0
@@ -129,10 +129,10 @@ func punto_trabajo(desde: Vector2, territorio: float, volando: bool, puesto: int
 
 func nombre_etapa() -> String:
 	if pieza.get("meta", false) and Juego.lugar_actual == "eiffel":
-		return ["Base", "Primer piso", "Plataforma", "Cima"][etapa]
+		return [tr("Base"), tr("Primer piso"), tr("Plataforma"), tr("Cima")][etapa]
 	if pieza.tipo == "vitrina":
-		return ["Cubierta intacta", "Contenido expuesto", "Bastidor roto", "Últimos soportes"][etapa]
-	return ["Intacto", "Primeras roturas", "Estructura debilitada", "Sin soportes"][etapa]
+		return [tr("Cubierta intacta"), tr("Contenido expuesto"), tr("Bastidor roto"), tr("Últimos soportes")][etapa]
+	return [tr("Intacto"), tr("Primeras roturas"), tr("Estructura debilitada"), tr("Sin soportes")][etapa]
 
 func siguiente_seccion(pos: Vector2) -> Vector2:
 	# Sólo al morder con Corte aserrado: dos recorridos de hasta 16 celdas.

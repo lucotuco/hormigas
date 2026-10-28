@@ -3,6 +3,8 @@
 Incremental 2D para PC en **Godot 4.7.2** (GDScript, renderer GL Compatibility).
 Lo hacen dos personas. Todo el código, los comentarios y los textos del juego
 van en **español rioplatense**: nombres de variables, funciones, commits y PRs.
+El juego además se traduce al inglés: todo texto visible va con `tr("…")` y su
+inglés en `idiomas/en.po` (ver `idiomas/LEEME.md`; `prueba_idiomas` lo verifica).
 
 El detalle de mecánicas, controles y pruebas está en `README.md`. Las tareas
 pendientes y quién hace qué, en `TAREAS.md`.
@@ -28,14 +30,23 @@ pendientes y quién hace qué, en `TAREAS.md`.
 - `global/graficos.gd` (autoload `Graficos`): atlas generado una vez al iniciar.
   En headless no se genera; el código tiene que funcionar sin él.
 - `global/sonido.gd` y `global/audio_suave.gd`: efectos sintetizados.
+- `global/ajustes.gd` (autoload `Ajustes`): configuración del jugador, aparte
+  de la partida. Las pruebas no la escriben (respeta `guardado_habilitado`).
 - `hormigas/`: hormiga (máquina de estados), colonia (nacimientos, castas) y aspecto.
 - `mundo/`: la run y el mapa. `cocina.gd` es la navegación (AStarGrid2D con cola
   y presupuesto por cuadro); `plano_casa.gd` y `mundos.gd` definen los planos;
   `pieza_casa.gd` son muebles y muros comestibles por celdas.
-- `ui/`: HUD, tienda y paneles, todo por código. Colores en `ui/estilo.gd`.
+- `mundo/eventos.gd` y `mundo/evento.gd`: la amenaza de cada destino y la
+  miga dorada. Se crean por código desde `run.gd`; reciben los clics antes que
+  la comida.
+- `ui/`: menú (escena principal), HUD con pausa, tienda y paneles, todo por
+  código. Las ventanas heredan de `VentanaModal`. Colores en `ui/estilo.gd`.
+  Las estadísticas de la partida van en `Juego.estadisticas`
+  (`Juego.sumar_estadistica`); una nueva se agrega a `Juego.ESTADISTICAS`.
 - `datos/*.csv`: **todo el balance**. Costos, stats base, comidas y castas van
   en los CSV, no en el código. Una mejora nueva es una fila en `mejoras.csv`.
-  El árbol de la reina (prestigio) está en `jalea.csv`. El porqué de la
+  El árbol de la reina (prestigio) está en `jalea.csv`; los decretos que se
+  eligen al fundar, en `decretos.csv` (efectos `stat:suma|multiplica:valor`). El porqué de la
   economía está en `docs/DISENO_PROGRESION.md`: leelo antes de tocar el balance,
   y medí con `tests/bot_balance.tscn` después.
 
@@ -58,7 +69,8 @@ guardan capturas en `.godot/qa/`. Benchmarks: `tests/perfil_*.tscn`, ver
 `tests/RENDIMIENTO.md`. No se miden FPS en headless.
 
 Las pruebas nunca tocan la partida del jugador: ponen
-`Juego.guardado_habilitado = false` al empezar. Hacé lo mismo en pruebas nuevas.
+`Juego.guardado_habilitado = false` al empezar, y `Juego.usar_idioma("es")` si
+leen textos (CI corre con el sistema en inglés). Hacé lo mismo en pruebas nuevas.
 
 ## Convenciones de código
 

@@ -8,6 +8,7 @@ var total := 0
 
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Juego.usar_idioma("es")  # las verificaciones leen textos en español
 	Sonido.silenciado = true
 	probar_revelado()
 	probar_partida_vieja()
@@ -132,7 +133,8 @@ func probar_llamado_sin_dano() -> void:
 	var vida := miga.vida
 	run.feromonas.mantener_en(miga.position)
 	verificar(miga.vida == vida and Juego.migas_run == 0, "llamar sin hormigas no extrae alimento ni da migas")
-	verificar(not run.has_method("pisar"), "no queda ningún método de daño directo por clic")
+	run.pisar(miga.position)
+	verificar(miga.vida == vida, "el clic manual no extrae alimento")
 	Juego.migas = 1000
 	var antes := Juego.stat("dano")
 	Juego.comprar("pisada")

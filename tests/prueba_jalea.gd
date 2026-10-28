@@ -8,6 +8,7 @@ var total := 0
 
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Juego.usar_idioma("es")  # las verificaciones leen textos en español
 	Sonido.silenciado = true
 	probar_datos()
 	probar_formula()
@@ -163,15 +164,18 @@ func probar_partida_vieja() -> void:
 func probar_guardia() -> void:
 	Juego.reiniciar_estado()
 	Juego.niveles_jalea = {"guardia": 2}
+	Juego._cache_stats.clear()
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
 	add_child(run)
 	run.colonia.set_process(false)
 	await get_tree().process_frame
-	verificar(is_equal_approx(run.intervalo_guardia(), 1.0), "Guardia nivel 2 comparte hallazgos cada 1 segundo")
+	verificar(is_equal_approx(Juego.stat("pisotones_auto"), 2.0), "Guardia nivel 2 da 2 pisotones automáticos por segundo")
 	var antes := Juego.migas_run
+	var pisotones := Juego.estadistica("pisotones")
 	for i in 30:
-		run._guardia_compartir(0.1)
-	verificar(Juego.migas_run == antes and not run.colonia._hallazgos.is_empty(), "la guardia comparte comida sin hacer daño ni regalar migas")
+		run._pisotones_automaticos(0.1)
+	verificar(Juego.migas_run > antes, "la guardia pisa comida sola y da migas")
+	verificar(Juego.estadistica("pisotones") - pisotones == 6, "a 2 por segundo, en 3 segundos pisa 6 veces (%d)" % (Juego.estadistica("pisotones") - pisotones))
 	for i in Colonia.MAX_HORMIGAS + 50:
 		run.colonia._nacer()
 	verificar(run.colonia.cantidad() == Colonia.MAX_HORMIGAS and run.colonia.colonia_llena(), "la colonia no pasa de %d hormigas (rendimiento)" % Colonia.MAX_HORMIGAS)

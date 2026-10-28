@@ -4,6 +4,7 @@ var fallas := 0
 
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Juego.usar_idioma("es")  # las verificaciones leen textos en español
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()
 	seed(71)
@@ -27,6 +28,12 @@ func _ready() -> void:
 		var coronas := Juego.coronas
 		meta.morder(meta.vida + 1)
 		verificar(run.objetivo_completado and Juego.lugares_completados.has(id) and Juego.coronas == coronas + int(Mundos.INFO[id].coronas), "%s entrega coronas una sola vez" % id)
+		var titulo: String = run.hud._lbl_cartel_titulo.text
+		var esperado: String = "conquistó el mundo" if id == Mundos.ORDEN.back() else "conquistado"
+		var detalle: String = run.hud._lbl_cartel_detalle.text
+		verificar(run.hud._cartel.visible and esperado in titulo and Mundos.INFO[id].nombre in detalle and "corona" in detalle, "%s: el derrumbe muestra el cartel de conquista (%s)" % [id, titulo])
+		verificar(run.camara._manual and run.camara.position.distance_to(meta.rect_mundo.get_center()) < 1.0, "%s: la cámara mira el derrumbe" % id)
+		verificar(is_equal_approx(Engine.time_scale, 1.0), "%s: sin pantalla no hay cámara lenta" % id)
 		var idx := Mundos.ORDEN.find(id)
 		if idx + 1 < Mundos.ORDEN.size():
 			verificar(Juego.elegir_destino(Mundos.ORDEN[idx + 1]), "el gran objetivo abre el siguiente destino")

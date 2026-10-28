@@ -5,6 +5,7 @@ var fallas := 0
 
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Juego.usar_idioma("es")  # las verificaciones leen textos en español
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()
 	Engine.max_fps = 0
@@ -42,7 +43,10 @@ func _ready() -> void:
 	Juego.reiniciar_estado()
 	Juego.restaurar_partida(guardado)
 	verificar(Juego.nivel_de("pisoton") == 25 and Juego.mejoras_por_id.pisoton.stat == "feromona_cantidad", "el antiguo Pisotón conserva sus compras como Coordinación")
-	verificar(Juego.mejoras_por_id.pisada.stat == "dano" and not run.has_method("pisar"), "el viejo pisotón mejora mordidas: el cursor no hace daño")
+	var comida := run.comidas.lista[0]
+	var vida := comida.vida
+	run.pisar(comida.position)
+	verificar(Juego.mejoras_por_id.pisada.stat == "dano" and comida.vida == vida, "el viejo pisotón mejora mordidas: el cursor no hace daño")
 	f._notification(NOTIFICATION_WM_WINDOW_FOCUS_OUT)
 	verificar(not f.activa and f.seleccionadas.is_empty(), "perder foco cancela el llamado sin dejar hormigas seleccionadas")
 	run.queue_free()

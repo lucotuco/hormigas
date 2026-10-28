@@ -41,9 +41,9 @@ func _crear_catalogo() -> Control:
 	var columna := VBoxContainer.new()
 	columna.add_theme_constant_override("separation", 8)
 	panel.add_child(columna)
-	columna.add_child(Estilo.etiqueta("UNA COLONIA CON PERSONALIDAD", 11, Color("b9ad94")))
-	columna.add_child(Estilo.etiqueta("Conocé a tus hormigas", 24))
-	var ayuda := Estilo.etiqueta("Elegí una casta para ver su habilidad y reclutarla.", 13, Estilo.TEXTO_SUAVE)
+	columna.add_child(Estilo.etiqueta(tr("UNA COLONIA CON PERSONALIDAD"), 11, Color("b9ad94")))
+	columna.add_child(Estilo.etiqueta(tr("Conocé a tus hormigas"), 24))
+	var ayuda := Estilo.etiqueta(tr("Elegí una casta para ver su habilidad y reclutarla."), 13, Estilo.TEXTO_SUAVE)
 	ayuda.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	columna.add_child(ayuda)
 	var scroll := ScrollContainer.new()
@@ -80,12 +80,12 @@ func _crear_catalogo() -> Control:
 		textos.alignment = BoxContainer.ALIGNMENT_CENTER
 		textos.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		fila.add_child(textos)
-		textos.add_child(Estilo.etiqueta(c.nombre, 17, c.color))
-		textos.add_child(Estilo.etiqueta(c.rol, 12, Estilo.TEXTO_SUAVE))
+		textos.add_child(Estilo.etiqueta(tr(c.nombre), 17, c.color))
+		textos.add_child(Estilo.etiqueta(tr(c.rol), 12, Estilo.TEXTO_SUAVE))
 		var cantidad := Estilo.etiqueta("", 12)
 		textos.add_child(cantidad)
 		_filas[c.id] = {"boton": boton, "cantidad": cantidad}
-	var base := Estilo.etiqueta("Las obreras de siempre siguen saliendo del hormiguero. Las miniobreras nacen de las reinas.", 12, Estilo.TEXTO_SUAVE)
+	var base := Estilo.etiqueta(tr("Las obreras de siempre siguen saliendo del hormiguero. Las miniobreras nacen de las reinas."), 12, Estilo.TEXTO_SUAVE)
 	base.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	columna.add_child(base)
 	return panel
@@ -117,7 +117,7 @@ func _crear_ficha() -> Control:
 	titulos.alignment = BoxContainer.ALIGNMENT_CENTER
 	titulos.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cabecera.add_child(titulos)
-	titulos.add_child(Estilo.etiqueta("FICHA DE CASTA", 11, Estilo.TEXTO_SUAVE))
+	titulos.add_child(Estilo.etiqueta(tr("FICHA DE CASTA"), 11, Estilo.TEXTO_SUAVE))
 	_nombre = Estilo.etiqueta("", 25)
 	_nombre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	titulos.add_child(_nombre)
@@ -142,11 +142,11 @@ func _crear_ficha() -> Control:
 		var valor := Estilo.etiqueta("", 14)
 		caja.add_child(valor)
 		_stats[clave] = valor
-	ficha.add_child(Estilo.etiqueta("SU HABILIDAD", 11, Color("9db196")))
+	ficha.add_child(Estilo.etiqueta(tr("SU HABILIDAD"), 11, Color("9db196")))
 	_habilidad = Estilo.etiqueta("", 13)
 	_habilidad.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ficha.add_child(_habilidad)
-	var herencia := Estilo.etiqueta("Estos valores incluyen tus mejoras del hormiguero. Las obreras varían levemente su velocidad al nacer.", 11, Estilo.TEXTO_SUAVE)
+	var herencia := Estilo.etiqueta(tr("Estos valores incluyen tus mejoras del hormiguero. Las obreras varían levemente su velocidad al nacer."), 11, Estilo.TEXTO_SUAVE)
 	herencia.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ficha.add_child(herencia)
 	_lbl_evoluciones = Estilo.etiqueta("", 13, Color("d5cb96"))
@@ -155,7 +155,7 @@ func _crear_ficha() -> Control:
 		var datos: Dictionary = EvolucionesHormiga.DATOS[id]
 		var boton := Estilo.boton(datos.nombre, 13, Color("303c2b"), Color("8eaa72"))
 		boton.toggle_mode = true
-		boton.tooltip_text = datos.detalle + "\nRequiere %d %s y Mandíbulas nivel %d. Elegí hasta dos sin perder lo desbloqueado." % [datos.unidades, Juego.castas_por_id[datos.casta].nombre, datos.mandibulas]
+		boton.tooltip_text = tr(datos.detalle) + tr("\nRequiere %d %s y Mandíbulas nivel %d. Elegí hasta dos sin perder lo desbloqueado.") % [datos.unidades, tr(Juego.castas_por_id[datos.casta].nombre), datos.mandibulas]
 		boton.pressed.connect(_alternar_evolucion.bind(id))
 		ficha.add_child(boton)
 		_evoluciones[id] = boton
@@ -188,7 +188,7 @@ func _cambio_mejora(_id: String, _nivel: int) -> void:
 
 func _refrescar() -> void:
 	var c: Dictionary = Juego.castas_por_id[seleccion]
-	_lbl_evoluciones.text = "EVOLUCIONES · %d / %d activas · cambio gratuito" % [Juego.evoluciones_equipadas.size(), EvolucionesHormiga.MAX_EQUIPADAS]
+	_lbl_evoluciones.text = tr("EVOLUCIONES · %d / %d activas · cambio gratuito") % [Juego.evoluciones_equipadas.size(), EvolucionesHormiga.MAX_EQUIPADAS]
 	_detalle_evolucion.text = ""
 	for id in _evoluciones:
 		var boton: Button = _evoluciones[id]
@@ -196,42 +196,42 @@ func _refrescar() -> void:
 		boton.visible = datos.casta == seleccion
 		boton.disabled = not Juego.evoluciones_desbloqueadas.has(id)
 		boton.set_pressed_no_signal(Juego.evolucion_activa(id))
-		boton.text = ("✓ " if Juego.evolucion_activa(id) else "○ ") + datos.nombre + (" · bloqueada" if boton.disabled else "")
+		boton.text = ("✓ " if Juego.evolucion_activa(id) else "○ ") + tr(datos.nombre) + (tr(" · bloqueada") if boton.disabled else "")
 		if boton.visible:
-			_detalle_evolucion.text = datos.detalle
+			_detalle_evolucion.text = tr(datos.detalle)
 			if boton.disabled:
-				_detalle_evolucion.text += "\nRequiere %d %s y Mandíbulas nivel %d." % [datos.unidades, Juego.castas_por_id[datos.casta].nombre, datos.mandibulas]
+				_detalle_evolucion.text += tr("\nRequiere %d %s y Mandíbulas nivel %d.") % [datos.unidades, tr(Juego.castas_por_id[datos.casta].nombre), datos.mandibulas]
 
 	_retrato.tipo = seleccion
-	_nombre.text = c.nombre
+	_nombre.text = tr(c.nombre)
 	_nombre.label_settings.font_color = c.color
-	_rol.text = c.rol
-	_cantidad.text = "En tu colonia: %d / %d" % [Juego.cantidad_casta(seleccion), c.maximo]
-	_descripcion.text = c.descripcion
-	_habilidad.text = c.habilidad
+	_rol.text = tr(c.rol)
+	_cantidad.text = tr("En tu colonia: %d / %d") % [Juego.cantidad_casta(seleccion), c.maximo]
+	_descripcion.text = tr(c.descripcion)
+	_habilidad.text = tr(c.habilidad)
 	_habilidad.label_settings.font_color = c.color.lightened(0.2)
 	var stats := Juego.stats_casta(seleccion)
-	_stats.velocidad.text = "Velocidad · %.0f px/s" % stats.velocidad
-	_stats.dano.text = "Mordida · %.2f daño" % stats.dano
-	_stats.capacidad.text = "Carga · %d bocados" % stats.capacidad
-	_stats.olfato.text = "Olfato · %.0f px" % stats.olfato
+	_stats.velocidad.text = tr("Velocidad · %.0f px/s") % stats.velocidad
+	_stats.dano.text = tr("Mordida · %.2f daño") % stats.dano
+	_stats.capacidad.text = tr("Carga · %d bocados") % stats.capacidad
+	_stats.olfato.text = tr("Olfato · %.0f px") % stats.olfato
 	var maximo: bool = Juego.cantidad_casta(seleccion) >= c.maximo
 	var oferta := Juego.cotizar_casta(seleccion, Juego.cantidad_compra)
 	var disponible: bool = oferta.puede
 	_boton.disabled = not disponible
-	_boton.text = "Colonia completa" if maximo else "Reclutar ×%d · %s migas" % [maxi(1, oferta.cantidad), Juego.formatear(oferta.costo)]
+	_boton.text = tr("Colonia completa") if maximo else tr("Reclutar ×%d · %s migas") % [maxi(1, oferta.cantidad), Juego.formatear(oferta.costo)]
 	_boton.add_theme_stylebox_override("disabled", Estilo.caja(Color("30372e"), 10, Color("4e5848"), 1, 14))
-	_aviso.text = "Compra permanente: esta unidad saldrá en cada expedición."
+	_aviso.text = tr("Compra permanente: esta unidad saldrá en cada expedición.")
 	if not disponible and not maximo:
-		_aviso.text = "Faltan %s migas para este lote. Las unidades son permanentes." % Juego.formatear(maxf(0, oferta.costo - Juego.migas))
+		_aviso.text = tr("Faltan %s migas para este lote. Las unidades son permanentes.") % Juego.formatear(maxf(0, oferta.costo - Juego.migas))
 	if not Juego.casta_desbloqueada(seleccion):
-		_aviso.text = "Requiere aprender a devorar " + ("madera y telas." if seleccion == "carpintera" else "paredes.")
+		_aviso.text = tr("Requiere aprender a devorar madera y telas.") if seleccion == "carpintera" else tr("Requiere aprender a devorar paredes.")
 	for id in _filas:
 		var fila: Dictionary = _filas[id]
 		var datos: Dictionary = Juego.castas_por_id[id]
-		fila.cantidad.text = "%d en la colonia · desde %s migas" % [Juego.cantidad_casta(id), Juego.formatear(Juego.costo_casta(id))]
+		fila.cantidad.text = tr("%d en la colonia · desde %s migas") % [Juego.cantidad_casta(id), Juego.formatear(Juego.costo_casta(id))]
 		if not Juego.casta_desbloqueada(id):
-			fila.cantidad.text = "Bloqueada · requiere nueva dieta"
+			fila.cantidad.text = tr("Bloqueada · requiere nueva dieta")
 		var color: Color = datos.color
 		fila.boton.add_theme_stylebox_override("normal", Estilo.caja(Color(color, 0.12) if id == seleccion else Color("28271f"), 12, Color(color, 0.8 if id == seleccion else 0.14), 1, 0))
 		fila.boton.add_theme_stylebox_override("hover", Estilo.caja(Color(color, 0.15), 12, color, 1, 0))
@@ -246,7 +246,7 @@ func _reclutar() -> void:
 		_refrescar()
 		return
 	Sonido.tocar("comprar", 0.95)
-	_aviso.text = "¡%s ×%d! Salen en todas las próximas expediciones." % [Juego.castas_por_id[seleccion].nombre, compradas]
+	_aviso.text = tr("¡%s ×%d! Salen en todas las próximas expediciones.") % [tr(Juego.castas_por_id[seleccion].nombre), compradas]
 	if _tween and _tween.is_running():
 		_tween.kill()
 	_retrato.pivot_offset = _retrato.size * 0.5
@@ -258,4 +258,4 @@ func _alternar_evolucion(id: String) -> void:
 	var cambio := Juego.alternar_evolucion(id)
 	_refrescar()
 	if not cambio:
-		_aviso.text = "Hay dos evoluciones activas: desactivá una antes de equipar otra. No perdés ninguna compra."
+		_aviso.text = tr("Hay dos evoluciones activas: desactivá una antes de equipar otra. No perdés ninguna compra.")

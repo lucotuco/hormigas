@@ -13,10 +13,12 @@ extends Node
 ##                (por defecto no guarda: empieza siempre de cero)
 ##   BOT_LOG      archivo donde agregar el registro (además de imprimirlo)
 ##   BOT_CALIBRAR si existe, modo calibración (ver más abajo)
+##   BOT_FACTOR   factor de calibración (por defecto FACTOR_CALIBRACION)
+##   BOT_TRABADO  runs sin progreso antes de pensar en fundar (por defecto RUNS_TRABADO)
 ##
-## Cómo juega: actualiza el llamado tres veces por segundo, sin daño por clic.
-## Primero dirige al banquito de práctica; cuando el gran objetivo se puede comer, mantiene el llamado
-## sobre él. Entre runs ahorra para la próxima dieta si ya tiene la mitad;
+## Cómo juega: dos órdenes por segundo, sin daño manual a la comida.
+## Atiende eventos y dirige al tutorial o al gran objetivo cuando puede comerlo.
+## Entre runs ahorra para la próxima dieta si ya tiene la mitad;
 ## si no, compra lo más barato (mejoras o castas).
 ##
 ## Ciclo de prestigio: cada colonia recorre los destinos en orden, cobrando
@@ -34,10 +36,14 @@ extends Node
 ## destino pide una colonia más. Los valores salen en el registro como
 ## "calibrado" y al final; se copian a mundo/mundos.gd.
 const RUN := preload("res://mundo/run.tscn")
-## Acelerar con --fixed-fps 60 y FPS ilimitados, nunca agrandando el paso.
 const VELOCIDAD := 1.0
-const CLICS_POR_SEGUNDO := 3.0
-const RUNS_TRABADO := 5          # runs sin conquistar antes de pensar en fundar
+## Una persona no clickea 3 veces por segundo durante horas; con la pisada
+## automática tampoco hace falta.
+const CLICS_POR_SEGUNDO := 2.0
+const RUNS_TRABADO := 4          # runs sin conquistar antes de pensar en fundar
+## Decreto que elige al fundar: el bot se traba en grandes objetivos, que piden
+## daño de mordida sostenido, y para eso conviene una colonia numerosa.
+const DECRETO := "numerosa"
 const RUNS_TRABADO_MAXIMO := 20  # funda igual, aunque dé poca jalea
 const FRACCION_LEGADO := 0.25    # fundar si da al menos este % de la jalea histórica
 const MEJORA_MINIMA := 1.10      # una run que supera la mejor en 10% cuenta como progreso
@@ -47,7 +53,12 @@ const RUNS_COLONIA_MADURA := 10
 const GANANCIA_MINIMA_DOBLE := 20
 
 var trabado := 0
-const FACTOR_CALIBRACION := 3.0
+var runs_trabado := RUNS_TRABADO
+## Cuánto más fuerte tiene que ser la colonia siguiente que la que se trabó.
+## Con 3 la campaña duraba ~11 h de bot; con 1,3, cada destino pide una
+## fundación y no dos o cuatro (~3 h 53 min, ver README).
+const FACTOR_CALIBRACION := 1.3
+var factor_calibracion := FACTOR_CALIBRACION
 const INVULNERABLE := 1e40
 var calibrar := false
 var calibrado: Dictionary = {}
@@ -69,6 +80,7 @@ func _ready() -> void:
 	var runs := int(OS.get_environment("BOT_RUNS")) if OS.has_environment("BOT_RUNS") else 200
 	var max_min := float(OS.get_environment("BOT_MAX_MIN")) if OS.has_environment("BOT_MAX_MIN") else 240.0
 	Juego.guardado_habilitado = false
+	Juego.usar_idioma("es")  # las verificaciones leen textos en español
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()
 	seed(417)
@@ -80,6 +92,10 @@ func _ready() -> void:
 			Mundos.vida_meta_forzada = valores
 			anotar("(vida_meta forzada: %s)" % str(valores))
 	calibrar = OS.has_environment("BOT_CALIBRAR")
+	if OS.has_environment("BOT_TRABADO"):
+		runs_trabado = int(OS.get_environment("BOT_TRABADO"))
+	if OS.has_environment("BOT_FACTOR"):
+		factor_calibracion = float(OS.get_environment("BOT_FACTOR"))
 	if estado_ruta != "" and FileAccess.file_exists(estado_ruta):
 		var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(estado_ruta))
 		Juego.restaurar_partida(d.partida)
@@ -118,7 +134,7 @@ func _ready() -> void:
 			break
 		if conviene_fundar():
 			if calibrar and donde != "casa" and not calibrado.has(donde) and max_dano_destino > 0.0 and _base_meta > 0.0:
-				calibrado[donde] = FACTOR_CALIBRACION * max_dano_destino / _base_meta
+				calibrado[donde] = factor_calibracion * max_dano_destino / _base_meta
 				Mundos.vida_meta_forzada[donde] = calibrado[donde]
 				anotar("== calibrado %s: vida_meta %s (máximo daño de la colonia %s)" % [donde, str(calibrado[donde]), Juego.formatear(max_dano_destino)])
 			fundar()
@@ -143,7 +159,12 @@ func jugar_run() -> float:
 		await get_tree().process_frame
 		reloj += get_process_delta_time()
 		if reloj >= 1.0 / CLICS_POR_SEGUNDO and run.activa:
-			reloj = fposmod(reloj, 1.0 / CLICS_POR_SEGUNDO)
+			reloj = 0.0
+			# Un jugador activo atiende primero las amenazas y las migas doradas.
+			var evento := run.eventos.mas_urgente()
+			if evento != null:
+				run.pisar(run.eventos.punto_de_clic(evento))
+				continue
 			var mejor: Comida = null
 			for c in run.comidas.lista:
 				if not c.muerta and c.en_territorio(run.radio_actual) and (mejor == null or c.position.length() < mejor.position.length()):
@@ -201,7 +222,7 @@ func conviene_fundar() -> bool:
 	var ganada := Juego.jalea_por_fundar()
 	if runs_colonia >= RUNS_COLONIA_MADURA and ganada >= maxi(GANANCIA_MINIMA_DOBLE, 2 * Juego.legado):
 		return true
-	if trabado < RUNS_TRABADO:
+	if trabado < runs_trabado:
 		return false
 	var minimo := maxi(2, ceili(Juego.legado * FRACCION_LEGADO))
 	return Juego.jalea_por_fundar() >= minimo or trabado >= RUNS_TRABADO_MAXIMO
@@ -210,7 +231,7 @@ func conviene_fundar() -> bool:
 func fundar() -> void:
 	var ganada := Juego.jalea_por_fundar()
 	var donde := Juego.lugar_actual
-	Juego.fundar_colonia()
+	Juego.fundar_colonia(DECRETO)
 	trabado = 0
 	mejor_run_colonia = 0.0
 	runs_colonia = 0

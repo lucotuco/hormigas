@@ -30,8 +30,8 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] Mecánicas que aparecen de a una (frenesí, castas, prioridades, viajes, legado)
 - [x] Próxima meta siempre visible en el HUD, con barra y aviso cuando alcanza
 - [x] Hormigas más grandes en pantalla y 8 obreras iniciales
-- [ ] **B:** pantalla de título
-- [ ] **B:** menú de pausa con volumen
+- [x] Menú principal, pausa con Esc, configuración (idioma, volumen, pantalla completa, temblor) y estadísticas
+- [x] Todo el juego en español e inglés (idiomas/en.po)
 
 ## Paso 3 — El jugo
 
@@ -71,7 +71,9 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] **A:** exploración por sectores, destinos estables y prueba de dispersión sin feromonas con 500 hormigas
 - [x] **B:** banquito inicial y seis reglas de destino con procesos acotados
 - [ ] **A:** castas de combate y vuelo hacia superficies elevadas
-- [ ] **A:** enemigos: araña que caza hormigas sueltas, humano con insecticida
+- [x] Una amenaza por destino: araña, mozo, aspiradora, palomas, gato y rata (mundo/eventos.gd)
+- [x] Comidas propias en cada destino y miga dorada
+- [ ] **A:** humano con insecticida (¿amenaza de la casa avanzada?)
 - [x] **A:** atlas compartido, búsqueda espacial, navegación incremental y benchmark gráfico con 5/150/500 hormigas
 - [x] **A:** cola justa de rutas con prioridad manual, caché de fallos, giros comprimidos y prueba de cursor móvil con 500 hormigas
 - [ ] **Los dos:** probar rendimiento en otras PCs y balancear los tiempos de desbloqueo y resistencia de materiales
@@ -89,6 +91,8 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [ ] Recalibrar la campaña tardía: los tiempos anteriores con tiempo ×8 y daño por clic ya no son válidos
 - [x] Progresión larga: jalea real y árbol de la reina, topes por destino, mejoras de cada viaje, hitos cada 25 niveles (docs/DISENO_PROGRESION.md)
 - [x] Tope de 500 hormigas y runs de hasta ~3,5 min
-- [ ] **Los dos:** jugar una colonia completa y ver si el árbol de la reina tiene decisiones interesantes (no sólo "comprar lo más barato")
-- [ ] **Los dos:** el prestigio tardío acelera mucho (×1000 por colonia): decidir si se amortigua más o se suman destinos
+- [x] Decretos de la reina: al fundar se elige uno de cuatro (numerosa, guerrera, recolectora, exploradora)
+- [x] Pisada automática temprana (y la Guardia de la reina la da desde el comienzo de cada colonia)
+- [ ] **Los dos:** jugar varias colonias y ver si los decretos se sienten distintos
+- [x] Campaña más corta: ~3 h 53 min de bot (4,5–5,5 h para una persona), una fundación por destino desde el museo
 - [ ] **B:** pasar los CSV a una planilla compartida

@@ -4,6 +4,7 @@ extends Node
 ##   godot --path . res://tests/revision_jalea.tscn
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Juego.usar_idioma(OS.get_environment("IDIOMA") if OS.has_environment("IDIOMA") else "es")  # IDIOMA=en para revisar en inglés
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()
 	DirAccess.make_dir_recursive_absolute("res://.godot/qa")
@@ -35,7 +36,7 @@ func _ready() -> void:
 	await captura("jalea_panel")
 	tienda._panel_legado._pedir_fundacion()
 	await captura("jalea_confirmar")
-	tienda._panel_legado._confirmar.hide()
+	tienda._panel_legado._confirmar.queue_free()
 	get_window().size = Vector2i(1000, 620)
 	await captura("jalea_panel_1000")
 	get_window().size = Vector2i(1280, 720)

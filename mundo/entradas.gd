@@ -51,7 +51,7 @@ func actualizar() -> void:
 			continue
 		puntos.append(pos)
 		queue_redraw()
-		run.hud.mostrar_aviso("Nueva entrada · " + candidata.nombre.to_lower())
+		run.hud.mostrar_aviso(tr("Nueva entrada · %s") % tr(candidata.nombre).to_lower())
 
 func elegir(desde: Vector2, excluidas: Dictionary = {}) -> Vector2:
 	var mejor := Vector2.ZERO
@@ -85,5 +85,5 @@ func _draw() -> void:
 		draw_circle(pos, 26, Color("766041"))
 		draw_circle(pos, 14, Color("211b15"))
 		draw_arc(pos, 42, 0, TAU, 20, Color("9bb879"), 4)
-		draw_string(ThemeDB.fallback_font, pos + Vector2(-42, -52), "ENTRADA", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("f3e4b9"))
+		draw_string(ThemeDB.fallback_font, pos + Vector2(-42, -52), tr("ENTRADA"), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("f3e4b9"))
 	draw_set_transform(Vector2.ZERO)

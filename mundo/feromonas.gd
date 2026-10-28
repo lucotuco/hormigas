@@ -158,6 +158,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.pressed:
 			_pantalla = event.position
 			var punto := get_canvas_transform().affine_inverse() * _pantalla
+			if run.eventos.pisar(punto):
+				return
 			mantener_en(punto, true)
 		else:
 			soltar()

@@ -2,6 +2,7 @@ stat,valor,descripcion
 hormigas_iniciales,8,Hormigas que salen al empezar la run
 velocidad,95,Píxeles por segundo que camina una hormiga
 dano,1,Daño de cada mordida
+dano_clic,2,Daño de la mejora automática (el clic manual no daña alimentos)
 intervalo_mordida,0.6,Segundos entre mordidas
 capacidad,1,Mordidas que junta una hormiga antes de volver al hormiguero
 olfato,45,Distancia en píxeles a la que una hormiga detecta comida
@@ -17,3 +18,4 @@ festin_duracion,8,Duración del festín al abrir un tesoro
 tesoros_extra,0,Alimentos extra en cada tesoro
 corrosion_factor,0.2,Daño adicional sobre materiales corroídos
 domino,0,Fracción de resistencia afectada por derrumbes fuera del Coliseo
+pisotones_auto,0,Pisotones automáticos por segundo sobre la comida más cercana al cursor

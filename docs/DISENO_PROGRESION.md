@@ -61,13 +61,39 @@ El árbol de la reina mezcla tres tipos de premio:
 |---|---|---|
 | Atajos | Memoria de la madera / del metal / de la piedra (empezar con la dieta aprendida), Reservas de la reina (conservar % de migas), Linaje (conservar % de castas) | Que cada colonia nueva arranque más arriba y la primera hora no se repita igual |
 | Poder | Mandíbulas de jalea, Despensa real, Obreras reales, Reloj de arena | Multiplicadores que hacen viable el destino siguiente |
-| Nuevas reglas | Cámaras más hondas (+5 niveles de tope), Guardia de la reina (comparte hallazgos), Corona doble | Cambian cómo se juega, no sólo los números |
+| Nuevas reglas | Cámaras más hondas (+5 niveles de tope), Guardia de la reina (+1 pisotón automático por segundo desde el comienzo de cada colonia), Corona doble | Cambian cómo se juega, no sólo los números |
+
+#### Decretos de la reina: una decisión por colonia
+
+El árbol solo era una lista de compras: el bot compraba lo más barato y llegaba
+igual. Ahora, al fundar, se elige **un decreto** que rige toda la colonia nueva
+(`datos/decretos.csv`). Cada uno tiene una ventaja y un costo, y sirve para
+otro plan:
+
+| Decreto | Ventaja | Costo | Para qué |
+|---|---|---|---|
+| Numerosa | +50% obreras, +2 crías cada 10 s | muerden 25% más lento | Más daño sostenido: grandes objetivos |
+| Guerrera | Pisotón ×3, mordidas ×1.5 | 30% menos obreras | Jugar activo; las comidas caen rápido |
+| Recolectora | Migas ×2 | 15 s menos por expedición | Juntar migas (y jalea por migas) |
+| Exploradora | Territorio +35%, velocidad +25%, olfato +30% | mordidas 25% más débiles | Llegar lejos con pocas mejoras |
+
+La primera colonia no tiene decreto. La ventana de fundar propone el decreto
+vigente, para que repetir sea un clic.
+
+#### Pisada automática
+
+Una mejora barata del taller (Pisada automática, desde Pisotón 2) suma 0,5
+pisotones por segundo sobre la comida más cercana al cursor, hasta 3 por
+segundo. Así, horas de clic seguido no son obligatorias: clickear suma, pero
+el juego avanza igual. La Guardia de la reina hace lo mismo desde el comienzo de
+cada colonia.
 
 ### 3. Destinos
 
 Cada gran objetivo es un chequeo de daño **dentro de una sola run** (la casa se
 reconstruye en cada expedición). Su resistencia (`vida_meta` en `mundo/mundos.gd`)
-mantiene por ahora los valores de la calibración anterior. El ciclo buscado es
+conserva los valores más recientes de `main`. El piloto de abajo precede a la
+integración de eventos, decretos y esos valores; no mide la versión integrada. El ciclo buscado es
 **conquistar → fundar → volver más fuerte**; los tiempos tardíos deben recalibrarse
 con el bot corregido antes de afirmar una duración de campaña.
 
@@ -183,6 +209,24 @@ que todas las castas estén balanceadas ni de que sea siempre la mejor compra.
   compras y no una elección.
 - **Restaurante.** Es donde se pretende enseñar la primera fundación. Hay que mirar con gente
   real si se entiende que conviene fundar o si parece que el juego se trabó.
+
+### Eventos incorporados desde main
+
+
+Con la misma comida y los muebles de la casa reacomodados, los destinos se
+sentían iguales (es la queja más común contra Idle Ants, el juego de celular
+con la misma idea). Ahora cada destino trae tres comidas propias y una amenaza
+con su propia regla. Las amenazas cumplen dos funciones:
+
+- **Una decisión en la run.** Clickear la amenaza o seguir pisando comida. La
+  pisada automática no las resuelve, así que el jugador que mira la pantalla
+  gana más que el que la deja sola.
+- **Riesgo en un género tranquilo.** Perder hormigas o una comida grande duele
+  un poco, pero vencerlas paga un botín (12% de lo juntado en la run, o lo que
+  la amenaza se había llevado ×1,5).
+
+La miga dorada es el estímulo corto clásico de los incrementales (la galleta
+dorada de Cookie Clicker): aparece cerca de lo que se mira y dura 9 s.
 
 ## Qué se puede tocar sin programar
 

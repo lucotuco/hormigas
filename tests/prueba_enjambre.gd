@@ -237,6 +237,9 @@ func probar_tutorial() -> void:
 		for h in r.colonia.hormigas:
 			print("  H ", h.position, " estado ", h.estado, " meta ", h.objetivo, " ruta ", h._ruta_fallida, " espera ", h._esperando_ruta, " carga ", h.carga)
 	verificar(inicio == 20 and Juego.hitos.has("primer_derrumbe"), "el tutorial enseña roturas y un derrumbe con premio permanente")
-	verificar(not r.has_method("pisar"), "la extracción depende de las hormigas, nunca de clics")
+	var alimento := r.comidas.lista[0]
+	var vida_antes := alimento.vida
+	r.pisar(alimento.position)
+	verificar(alimento.vida == vida_antes, "el clic manual no daña comida; sólo interactúa con eventos")
 	r.queue_free()
 	await get_tree().process_frame

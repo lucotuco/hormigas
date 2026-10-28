@@ -32,7 +32,7 @@ func tesoro_abierto() -> void:
 	if Juego.lugar_actual == "restaurante" or Juego.lugares_completados.has("restaurante"):
 		festin = Juego.stat("festin_duracion")
 		set_process(true)
-		run.hud.mostrar_aviso("¡Servicio en cadena! Frenesí se carga al doble")
+		run.hud.mostrar_aviso(tr("¡Servicio en cadena! Frenesí se carga al doble"))
 
 func cantidad_tesoro() -> int:
 	return (5 if Juego.lugar_actual == "museo" else 3) + int(Juego.stat("tesoros_extra"))

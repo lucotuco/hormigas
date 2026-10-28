@@ -115,6 +115,33 @@ func colonia_llena() -> bool:
 	return hormigas.size() >= MAX_HORMIGAS
 
 
+## Una hormiga atrapada por una amenaza: deja de contar y se esconde. No se
+## libera hasta que termina la run, porque la cola de rutas o el llamado
+## pueden tener referencias a ella. Devuelve false si ya no estaba.
+func perder(h: Hormiga) -> bool:
+	if not is_instance_valid(h) or not hormigas.has(h):
+		return false
+	hormigas.erase(h)
+	h.detener()
+	h.carga = 0.0
+	h.visible = false
+	Juego.sumar_estadistica("hormigas_perdidas")
+	return true
+
+
+## Hasta `maximo` hormigas a menos de `radio` de `pos`. Para eventos (pocas
+## veces por segundo), no para cada hormiga en cada cuadro.
+func hormigas_cerca(pos: Vector2, radio: float, maximo: int) -> Array[Hormiga]:
+	var cerca: Array[Hormiga] = []
+	var radio2 := radio * radio
+	for h in hormigas:
+		if h.position.distance_squared_to(pos) <= radio2:
+			cerca.append(h)
+			if cerca.size() >= maximo:
+				break
+	return cerca
+
+
 func _nacer(tipo := "obrera", donde := Vector2.INF) -> Hormiga:
 	if colonia_llena():
 		return null
@@ -126,6 +153,7 @@ func _nacer(tipo := "obrera", donde := Vector2.INF) -> Hormiga:
 	h.iniciar(run, tipo)
 	h.scale = Vector2.ONE * _escala * h.escala_casta
 	hormigas.append(h)
+	Juego.sumar_estadistica("hormigas_nacidas")
 	return h
 
 
@@ -145,7 +173,7 @@ func desplegar_minis(pos: Vector2, cantidad_solicitada: int) -> int:
 	minis_nacidas += cantidad_real
 	if cantidad_real > 0:
 		run.efectos.chispas(pos, Color("c9a7df"), 6)
-		run.efectos.texto(pos + Vector2(0, -12), "+%d miniobreras" % cantidad_real, Color("e1c1f3"), 0.8)
+		run.efectos.texto(pos + Vector2(0, -12), tr("+%d miniobreras") % cantidad_real, Color("e1c1f3"), 0.8)
 	return cantidad_real
 
 
