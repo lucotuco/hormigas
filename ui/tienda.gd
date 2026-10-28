@@ -179,7 +179,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_migas_mostradas = lerpf(_migas_mostradas, Juego.migas, 1.0 - exp(-10.0 * delta))
-	_lbl_migas.text = Juego.formatear(_migas_mostradas) + " migas"
+	_lbl_migas.text = tr("%s migas") % Juego.formatear(_migas_mostradas)
 	_audio.set_pressed_no_signal(not Sonido.silenciado)
 
 
@@ -188,18 +188,18 @@ func _encabezado() -> Control:
 	fila.add_theme_constant_override("separation", 24)
 	var titulos := VBoxContainer.new()
 	titulos.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	titulos.add_child(Estilo.etiqueta("ENTRE RAÍCES Y MIGAS", 11, Color("9db196")))
-	titulos.add_child(Estilo.etiqueta("Un hogar que crece", 32, Estilo.TEXTO))
+	titulos.add_child(Estilo.etiqueta(tr("ENTRE RAÍCES Y MIGAS"), 11, Color("9db196")))
+	titulos.add_child(Estilo.etiqueta(tr("Un hogar que crece"), 32, Estilo.TEXTO))
 	_lbl_proxima = Estilo.etiqueta("", 13, Estilo.TEXTO_SUAVE)
 	titulos.add_child(_lbl_proxima)
 	fila.add_child(titulos)
 	var caja := VBoxContainer.new()
 	caja.alignment = BoxContainer.ALIGNMENT_CENTER
-	caja.add_child(Estilo.etiqueta("EN LA DESPENSA", 11, Estilo.TEXTO_SUAVE))
+	caja.add_child(Estilo.etiqueta(tr("EN LA DESPENSA"), 11, Estilo.TEXTO_SUAVE))
 	_lbl_migas = Estilo.etiqueta("", 26, Estilo.ACENTO)
 	caja.add_child(_lbl_migas)
 	fila.add_child(caja)
-	_boton_run = Estilo.boton("Explorar la casa  →", 18, Color("46593e"), Color("94b47e"))
+	_boton_run = Estilo.boton(tr("Explorar") + "  →", 18, Color("46593e"), Color("94b47e"))
 	_boton_run.custom_minimum_size = Vector2(235, 56)
 	_boton_run.pressed.connect(_nueva_run)
 	fila.add_child(_boton_run)
@@ -218,7 +218,7 @@ func _crear_mapa() -> Control:
 	mapa.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	base.add_child(mapa)
 	mapa.resized.connect(mapa.queue_redraw)
-	var ayuda := Estilo.etiqueta("EL HORMIGUERO  /  Elegí una cámara", 12, Color("b9ad94"))
+	var ayuda := Estilo.etiqueta(tr("EL HORMIGUERO  /  Elegí una cámara"), 12, Color("b9ad94"))
 	ayuda.position = Vector2(18, 15)
 	base.add_child(ayuda)
 	for rama in SALAS:
@@ -232,7 +232,7 @@ func _crear_mapa() -> Control:
 		boton.offset_right = 85
 		boton.offset_top = -44
 		boton.offset_bottom = 54
-		boton.tooltip_text = datos.titulo + ": " + datos.detalle
+		boton.tooltip_text = tr(datos.titulo) + ": " + tr(datos.detalle)
 		boton.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 		boton.add_theme_stylebox_override("hover", Estilo.caja(Color(datos.color, 0.06), 16, Color(datos.color, 0.2), 1, 0))
 		boton.add_theme_stylebox_override("pressed", Estilo.caja(Color(datos.color, 0.1), 16, Color(datos.color, 0.4), 1, 0))
@@ -246,7 +246,7 @@ func _crear_mapa() -> Control:
 		icono.position = Vector2(45, 0)
 		icono.size = Vector2(80, 80)
 		boton.add_child(icono)
-		var etiqueta := Estilo.etiqueta(datos.titulo, 13, datos.color)
+		var etiqueta := Estilo.etiqueta(tr(datos.titulo), 13, datos.color)
 		etiqueta.position = Vector2(0, 77)
 		etiqueta.size.x = 170
 		etiqueta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -264,22 +264,22 @@ func _crear_pestanas() -> Control:
 	var fila := HBoxContainer.new()
 	fila.add_theme_constant_override("separation", 10)
 	for id in ["hogar", "castas", "viajes", "legado"]:
-		var boton := Estilo.boton(NOMBRES_PESTANAS[id], 15, Color("282f26"), Color("52634a"))
+		var boton := Estilo.boton(tr(NOMBRES_PESTANAS[id]), 15, Color("282f26"), Color("52634a"))
 		boton.pressed.connect(_cambiar_pestana.bind(id))
 		fila.add_child(boton)
 		_pestanas[id] = boton
 	var espacio := Control.new()
 	espacio.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fila.add_child(espacio)
-	var texto := Estilo.etiqueta("COMPRAR", 11, Estilo.TEXTO_SUAVE)
+	var texto := Estilo.etiqueta(tr("COMPRAR"), 11, Estilo.TEXTO_SUAVE)
 	texto.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	fila.add_child(texto)
 	_lbl_comprar = texto
 	for cantidad in [1, 10, 0]:
-		var boton := Estilo.boton("Máx" if cantidad == 0 else "×%d" % cantidad, 15, Color("282f26"), Color("52634a"))
+		var boton := Estilo.boton(tr("Máx") if cantidad == 0 else "×%d" % cantidad, 15, Color("282f26"), Color("52634a"))
 		boton.custom_minimum_size.x = 64
 		boton.pressed.connect(Juego.cambiar_cantidad_compra.bind(cantidad))
-		boton.tooltip_text = "Todo lo que alcance" if cantidad == 0 else "Compra hasta el límite de nivel; requiere pagar el lote completo."
+		boton.tooltip_text = tr("Todo lo que alcance") if cantidad == 0 else tr("Compra hasta el límite de nivel; requiere pagar el lote completo.")
 		fila.add_child(boton)
 		_cantidades[cantidad] = boton
 	return fila
@@ -308,7 +308,7 @@ func _crear_detalles() -> Control:
 	var columna := VBoxContainer.new()
 	columna.add_theme_constant_override("separation", 10)
 	panel.add_child(columna)
-	columna.add_child(Estilo.etiqueta("CUIDÁ TU COLONIA", 11, Color("9db196")))
+	columna.add_child(Estilo.etiqueta(tr("CUIDÁ TU COLONIA"), 11, Color("9db196")))
 	_lbl_sala = Estilo.etiqueta("", 27)
 	columna.add_child(_lbl_sala)
 	_lbl_detalle = Estilo.etiqueta("", 13, Estilo.TEXTO_SUAVE)
@@ -324,7 +324,7 @@ func _crear_detalles() -> Control:
 	scroll.add_child(_lista)
 	for m in Juego.mejoras:
 		_crear_tarjeta(m)
-	_lbl_estado = Estilo.etiqueta("Las mejoras se guardan al comprar.", 12, Estilo.TEXTO_SUAVE)
+	_lbl_estado = Estilo.etiqueta(tr("Las mejoras se guardan al comprar."), 12, Estilo.TEXTO_SUAVE)
 	_lbl_estado.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	columna.add_child(_lbl_estado)
 	return panel
@@ -349,13 +349,13 @@ func _crear_tarjeta(m: Dictionary) -> void:
 	fila.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	contenido.add_child(fila)
 	# Las mejoras de destino llevan una estrella: se traen de un viaje.
-	var nombre := Estilo.etiqueta(("✦ " if m.destino != "" else "") + m.nombre, 16)
+	var nombre := Estilo.etiqueta(("✦ " if m.destino != "" else "") + tr(m.nombre), 16)
 	nombre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	nombre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	fila.add_child(nombre)
 	var nivel := Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
 	fila.add_child(nivel)
-	var descripcion := Estilo.etiqueta(m.descripcion, 12, Estilo.TEXTO_SUAVE)
+	var descripcion := Estilo.etiqueta(tr(m.descripcion), 12, Estilo.TEXTO_SUAVE)
 	descripcion.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	contenido.add_child(descripcion)
 	var cambio := Estilo.etiqueta("", 14, Estilo.VERDE)
@@ -369,12 +369,12 @@ func _crear_tarjeta(m: Dictionary) -> void:
 func _pie() -> Control:
 	var fila := HBoxContainer.new()
 	fila.add_theme_constant_override("separation", 12)
-	var nota := Estilo.etiqueta("Cada miga construye algo más grande.", 13, Estilo.TEXTO_SUAVE)
+	var nota := Estilo.etiqueta(tr("Cada miga construye algo más grande."), 13, Estilo.TEXTO_SUAVE)
 	nota.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fila.add_child(nota)
 	var audio := CheckButton.new()
 	_audio = audio
-	audio.text = "Sonido"
+	audio.text = tr("Sonido")
 	audio.button_pressed = not Sonido.silenciado
 	audio.toggled.connect(func(valor: bool) -> void: Sonido.silenciado = not valor)
 	fila.add_child(audio)
@@ -383,7 +383,7 @@ func _pie() -> Control:
 	volumen.max_value = 1
 	volumen.step = 0.05
 	volumen.value = Sonido.volumen
-	volumen.tooltip_text = "Volumen de los efectos"
+	volumen.tooltip_text = tr("Volumen de los efectos")
 	volumen.value_changed.connect(func(valor: float) -> void: Sonido.volumen = valor)
 	fila.add_child(volumen)
 	return fila
@@ -400,15 +400,15 @@ func _on_migas_cambiaron(_total: float) -> void:
 
 
 func _refrescar() -> void:
-	_boton_run.text = "Explorar  →"
+	_boton_run.text = tr("Explorar") + "  →"
 	_actualizar_revelados()
-	_boton_run.tooltip_text = "Destino: " + Mundos.INFO[Juego.lugar_actual].nombre
+	_boton_run.tooltip_text = tr("Destino: %s") % tr(Mundos.INFO[Juego.lugar_actual].nombre)
 	for cantidad in _cantidades:
 		_cantidades[cantidad].add_theme_stylebox_override("normal", Estilo.caja(Color("536649") if cantidad == Juego.cantidad_compra else Color("282f26"), 10, Color("94b47e") if cantidad == Juego.cantidad_compra else Color("46503f"), 1, 10))
-	_lbl_sala.text = SALAS[_rama].titulo
+	_lbl_sala.text = tr(SALAS[_rama].titulo)
 	_lbl_sala.label_settings.font_color = SALAS[_rama].color
-	_lbl_detalle.text = SALAS[_rama].detalle
-	_lbl_proxima.text = "%d obreras + %d especialistas  ·  %d s  ·  %d cm" % [int(Juego.stat("hormigas_iniciales")), Juego.total_especialistas(), int(Juego.stat("duracion_run")), int(Juego.stat("radio_territorio") / 10.0)]
+	_lbl_detalle.text = tr(SALAS[_rama].detalle)
+	_lbl_proxima.text = tr("%d obreras + %d especialistas  ·  %d s  ·  %d cm") % [int(Juego.stat("hormigas_iniciales")), Juego.total_especialistas(), int(Juego.stat("duracion_run")), int(Juego.stat("radio_territorio") / 10.0)]
 	for rama in _salas:
 		var total := 0
 		var disponibles := 0
@@ -418,7 +418,7 @@ func _refrescar() -> void:
 				if Juego.cotizar_mejora(m.id, Juego.cantidad_compra).puede:
 					disponibles += 1
 		_salas[rama].icono.disponibles = disponibles
-		_salas[rama].aviso.text = "%d disponible%s" % [disponibles, "s" if disponibles != 1 else ""] if disponibles > 0 else ""
+		_salas[rama].aviso.text = (tr("1 disponible") if disponibles == 1 else tr("%d disponibles") % disponibles) if disponibles > 0 else ""
 		_salas[rama].icono.nivel = total
 		_salas[rama].icono.seleccionada = rama == _rama
 		_salas[rama].icono.queue_redraw()
@@ -435,28 +435,28 @@ func _refrescar() -> void:
 		t.nivel.text = "%d / %d" % [Juego.nivel_de(id), Juego.nivel_maximo(id)]
 		if not abierta:
 			if m.destino != "" and not Juego.destino_desbloqueado(m.destino):
-				t.cambio.text = "Se descubre al llegar a %s" % Mundos.INFO[m.destino].nombre
+				t.cambio.text = tr("Se descubre al llegar a %s") % tr(Mundos.INFO[m.destino].nombre)
 			else:
-				t.cambio.text = "Requiere %s · nivel %d" % [Juego.mejoras_por_id[m.requiere_id].nombre, m.requiere_nivel]
+				t.cambio.text = tr("Requiere %s · nivel %d") % [tr(Juego.mejoras_por_id[m.requiere_id].nombre), m.requiere_nivel]
 		elif maxima:
 			if m.tope_por_destino > 0 and Juego.lugares_completados.size() < Mundos.ORDEN.size():
-				t.cambio.text = "Tope alcanzado: cada destino conquistado suma %d niveles." % m.tope_por_destino
+				t.cambio.text = tr("Tope alcanzado: cada destino conquistado suma %d niveles.") % m.tope_por_destino
 			elif m.elevable and not Juego.jalea_al_maximo("techo"):
-				t.cambio.text = "Tope alcanzado: las Cámaras más hondas de la reina suman niveles."
+				t.cambio.text = tr("Tope alcanzado: las Cámaras más hondas de la reina suman niveles.")
 			else:
-				t.cambio.text = "Tu colonia domina esta habilidad."
+				t.cambio.text = tr("Tu colonia domina esta habilidad.")
 		else:
 			if m.stat == "materiales":
-				t.cambio.text = "Nueva dieta: " + _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))
+				t.cambio.text = tr("Nueva dieta: %s") % _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))
 			else:
 				t.cambio.text = "%s  →  %s" % [_valor_stat(m.stat, Juego.stat(m.stat)), _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))]
 			var hito := Juego.proximo_hito_nivel(id)
 			if hito > 0:
-				t.cambio.text += "\nHito en nivel %d: %s ×%s" % [hito, "daño" if m.stat.begins_with("dano") else m.stat, _numero_corto(m.bonus_mult)]
+				t.cambio.text += "\n" + tr("Hito en nivel %d: daño ×%s") % [hito, _numero_corto(m.bonus_mult)]
 		t.cambio.label_settings.font_color = color if abierta else Estilo.TEXTO_SUAVE
-		t.costo.text = "COMPLETA" if maxima else ("Comprar ×%d · %s migas" % [oferta.cantidad, Juego.formatear(oferta.costo)] if disponible else "Faltan %s migas" % Juego.formatear(maxf(0, oferta.costo - Juego.migas)))
+		t.costo.text = tr("COMPLETA") if maxima else (tr("Comprar ×%d · %s migas") % [oferta.cantidad, Juego.formatear(oferta.costo)] if disponible else tr("Faltan %s migas") % Juego.formatear(maxf(0, oferta.costo - Juego.migas)))
 		if not abierta:
-			t.costo.text = "Cámara por desarrollar"
+			t.costo.text = tr("Cámara por desarrollar")
 		t.costo.label_settings.font_color = color if disponible else Estilo.TEXTO_SUAVE
 		var fondo := Color("333c2d") if disponible else Color("252b24")
 		boton.add_theme_stylebox_override("normal", Estilo.caja(fondo, 12, Color(color, 0.55 if disponible else 0.12), 1, 0))
@@ -481,7 +481,7 @@ func _actualizar_revelados() -> void:
 	for id in ["castas", "viajes", "legado"]:
 		var boton: Button = _pestanas[id]
 		boton.visible = Juego.revelado(id)
-		boton.text = NOMBRES_PESTANAS[id] + ("  ● ¡Nuevo!" if Juego.es_nuevo(id) else "")
+		boton.text = tr(NOMBRES_PESTANAS[id]) + ("  ● " + tr("¡Nuevo!") if Juego.es_nuevo(id) else "")
 	var lotes := Juego.revelado("compra_lote")
 	_lbl_comprar.visible = lotes
 	for cantidad in _cantidades:
@@ -491,28 +491,28 @@ func _actualizar_revelados() -> void:
 func _valor_stat(stat: String, valor: float) -> String:
 	match stat:
 		"duracion_run": return "%.0f s" % valor
-		"intervalo_mordida": return "%.2f s entre mordidas" % valor
-		"feromona_cantidad": return "%d hormigas" % int(valor)
-		"materiales": return MaterialesCasa.NIVELES[clampi(int(valor), 0, 3)]
-		"velocidad": return "%.0f de velocidad" % valor
+		"intervalo_mordida": return tr("%.2f s entre mordidas") % valor
+		"feromona_cantidad": return tr("%d hormigas") % int(valor)
+		"materiales": return tr(MaterialesCasa.NIVELES[clampi(int(valor), 0, 3)])
+		"velocidad": return tr("%.0f de velocidad") % valor
 		"radio_territorio": return "%.0f cm" % (valor / 10.0)
-		"multiplicador_migas": return "×%.2f migas" % valor
-		"hormigas_iniciales": return "%d obreras" % int(valor)
-		"cria": return "%d crías / 10 s" % int(valor)
-		"olfato": return "%.0f de alcance" % valor
-		"capacidad": return "%d bocados" % int(valor)
-		"dano_clic": return Juego.formatear(valor) + " de daño por pisotón"
-	return ("%.1f" % valor if valor < 1000.0 else Juego.formatear(valor)) + " de daño"
+		"multiplicador_migas": return tr("×%.2f migas") % valor
+		"hormigas_iniciales": return tr("%d obreras") % int(valor)
+		"cria": return tr("%d crías / 10 s") % int(valor)
+		"olfato": return tr("%.0f de alcance") % valor
+		"capacidad": return tr("%d bocados") % int(valor)
+		"dano_clic": return tr("%s de daño por pisotón") % Juego.formatear(valor)
+	return tr("%s de daño") % ("%.1f" % valor if valor < 1000.0 else Juego.formatear(valor))
 
 
 func _comprar(id: String) -> void:
 	var compradas := Juego.comprar_lote(id, Juego.cantidad_compra)
 	if compradas == 0:
 		Sonido.tocar("no")
-		_lbl_estado.text = "Te faltan migas o una mejora previa. ¡Otra expedición!"
+		_lbl_estado.text = tr("Te faltan migas o una mejora previa. ¡Otra expedición!")
 		return
 	Sonido.tocar("comprar", 1.0, 0.01)
-	_lbl_estado.text = "¡%s +%d niveles!" % [Juego.mejoras_por_id[id].nombre, compradas]
+	_lbl_estado.text = tr("¡%s +%d niveles!") % [tr(Juego.mejoras_por_id[id].nombre), compradas]
 	var icono: Control = _salas[_rama].icono
 	if _tween_compra and _tween_compra.is_running():
 		_tween_compra.kill()

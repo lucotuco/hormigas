@@ -1,0 +1,1207 @@
+# Traducción al inglés de Hormigas.
+# El texto original (msgid) es el español que está en el código y en /datos.
+# Para agregar un texto: copiá el bloque que imprime tests/prueba_idiomas.tscn y completá msgstr.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+msgid "Mejoras"
+msgstr "Upgrades"
+
+msgid "%s nivel %d"
+msgstr "%s level %d"
+
+msgid "habilita: %s"
+msgstr "unlocks: %s"
+
+msgid "gran objetivo · %d coronas"
+msgstr "grand target · %d crowns"
+
+msgid "Viajar a %s"
+msgstr "Travel to %s"
+
+msgid "desde la pestaña Viajes"
+msgstr "from the Travel tab"
+
+msgid "Fundar una colonia nueva"
+msgstr "Found a new colony"
+
+msgid "convertí coronas y migas en jalea real"
+msgstr "turn crowns and crumbs into royal jelly"
+
+msgid "+%d miniobreras"
+msgstr "+%d mini workers"
+
+msgid "¡Hallazgo! Olfato +10 permanente"
+msgstr "Discovery! Permanent smell +10"
+
+msgid "Fragmentos de comida"
+msgstr "Food scraps"
+
+msgid "Fragmentos de madera y tela"
+msgstr "Wood and fabric scraps"
+
+msgid "Fragmentos de material resistente"
+msgstr "Tough material scraps"
+
+msgid "Fragmentos de muro"
+msgstr "Wall rubble"
+
+msgid "Montón mixto de fragmentos"
+msgstr "Mixed pile of scraps"
+
+msgid "¡El territorio creció!"
+msgstr "Your territory grew!"
+
+msgid "¡FRENESÍ! La colonia trabaja más rápido"
+msgstr "FRENZY! The colony works faster"
+
+msgid "¡La colonia devoró: %s!"
+msgstr "The colony devoured: %s!"
+
+msgid "¡Gran objetivo! +1 corona"
+msgstr "Grand target! +1 crown"
+
+msgid "¡Gran objetivo! +%d coronas"
+msgstr "Grand target! +%d crowns"
+
+msgid "¡Gran objetivo! (las coronas de este destino ya se cobraron en esta colonia)"
+msgstr "Grand target! (this colony already claimed this destination's crowns)"
+
+msgid "¡%s!"
+msgstr "%s!"
+
+msgid "DIETA %d/4 · %s"
+msgstr "DIET %d/4 · %s"
+
+msgid "✓ Gran objetivo completado"
+msgstr "✓ Grand target devoured"
+
+msgid "Gran objetivo: %s"
+msgstr "Grand target: %s"
+
+msgid "¡FRENESÍ! %.1f s"
+msgstr "FRENZY! %.1f s"
+
+msgid "Frenesí · depósitos consecutivos"
+msgstr "Frenzy · deliveries in a row"
+
+msgid "Hormigas: %d · colonia llena"
+msgstr "Ants: %d · colony full"
+
+msgid "Hormigas: %d"
+msgstr "Ants: %d"
+
+msgid "Obreras"
+msgstr "Workers"
+
+msgid "Reinas"
+msgstr "Queens"
+
+msgid "Rojas"
+msgstr "Reds"
+
+msgid "Voladoras"
+msgstr "Flyers"
+
+msgid "Veloces"
+msgstr "Scouts"
+
+msgid "Cargadoras"
+msgstr "Haulers"
+
+msgid "Minis"
+msgstr "Minis"
+
+msgid "Carpinteras"
+msgstr "Carpenters"
+
+msgid "Demoledoras"
+msgstr "Wreckers"
+
+msgid "COMBO x%d"
+msgstr "COMBO x%d"
+
+msgid "+%s migas"
+msgstr "+%s crumbs"
+
+msgid "Comidas: %d · Partes de la casa: %d\nMejor combo: x%d\nTotal en el hormiguero: %s"
+msgstr "Food: %d · House parts: %d\nBest combo: x%d\nTotal in the nest: %s"
+
+msgid "Fundar ahora daría +%d de jalea real"
+msgstr "Founding now would give +%d royal jelly"
+
+msgid "MIGAS DE ESTA RUN"
+msgstr "CRUMBS THIS RUN"
+
+msgid "Clic sobre la comida: pisotón · Mantené el clic: llamar a las hormigas cercanas\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: ver la casa · Esc: terminar"
+msgstr "Click on food: stomp · Hold click: call nearby ants\nWheel: zoom · Right or middle button / WASD: move · R: nest · H: whole map · Esc: end run"
+
+msgid "¡Se acabó el tiempo!"
+msgstr "Time's up!"
+
+msgid "¡NUEVO RÉCORD!"
+msgstr "NEW RECORD!"
+
+msgid "Mejorar el hormiguero"
+msgstr "Upgrade the nest"
+
+msgid "PRIORIDAD"
+msgstr "PRIORITY"
+
+msgid "Auto"
+msgstr "Auto"
+
+msgid "Alimentos"
+msgstr "Food"
+
+msgid "Muebles"
+msgstr "Furniture"
+
+msgid "Estructuras"
+msgstr "Structures"
+
+msgid "Prioridad de búsqueda. El llamado manual siempre manda."
+msgstr "What the colony looks for first. Your call always wins."
+
+msgid "Gran objetivo"
+msgstr "Grand target"
+
+msgid "PRÓXIMO DESBLOQUEO"
+msgstr "NEXT UNLOCK"
+
+msgid "%s / %s migas"
+msgstr "%s / %s crumbs"
+
+msgid "nivel %d / %d · %s"
+msgstr "level %d / %d · %s"
+
+msgid "%d%% devorado · %s"
+msgstr "%d%% devoured · %s"
+
+msgid "GRAN OBJETIVO"
+msgstr "GRAND TARGET"
+
+msgid "SIGUIENTE PASO"
+msgstr "NEXT STEP"
+
+msgid "¡Ya te alcanza! Compralo en el taller al terminar"
+msgstr "You can afford it! Buy it in the workshop after the run"
+
+msgid "¡Ya podés comprar: %s!"
+msgstr "Ready to buy: %s!"
+
+msgid "Nuevo · %s"
+msgstr "New · %s"
+
+msgid "¡Hito! %s"
+msgstr "Milestone! %s"
+
+msgid "%s · %s / %s de resistencia"
+msgstr "%s · %s / %s toughness"
+
+msgid "Mantené clic para llamar hormigas · recompensa %s"
+msgstr "Hold click to call ants · reward %s"
+
+msgid "Requiere: %s"
+msgstr "Requires: %s"
+
+msgid "%s · %s migas\nPeso %d · las cargadoras priorizan estos restos"
+msgstr "%s · %s crumbs\nWeight %d · haulers pick these scraps first"
+
+msgid "Fundar una nueva colonia"
+msgstr "Found a new colony"
+
+msgid "Fundar la nueva colonia"
+msgstr "Found the new colony"
+
+msgid "Seguir creciendo"
+msgstr "Keep growing"
+
+msgid "El mundo es un banquete"
+msgstr "The world is a feast"
+
+msgid "Devorá el gran objetivo de un destino para abrir el siguiente. Cada expedición empieza con el escenario completo; tu colonia y sus descubrimientos se conservan."
+msgstr "Devour a destination's grand target to open the next one. Every expedition starts with the whole place rebuilt; your colony and its discoveries are kept."
+
+msgid "Gran objetivo: %s · %d coronas"
+msgstr "Grand target: %s · %d crowns"
+
+msgid "Requiere devorar: %s"
+msgstr "Requires devouring: %s"
+
+msgid "CONQUISTADO · Gran objetivo: %s · coronas ya cobradas en esta colonia"
+msgstr "CONQUERED · Grand target: %s · crowns already claimed by this colony"
+
+msgid "CONQUISTADO · Gran objetivo: %s · %d coronas disponibles otra vez"
+msgstr "CONQUERED · Grand target: %s · %d crowns available again"
+
+msgid "La reina y la jalea real"
+msgstr "The queen and the royal jelly"
+
+msgid "Fundar una colonia reinicia migas, mejoras y castas, y convierte lo logrado en jalea real. La jalea se gasta en el árbol de la reina, que es permanente, y toda la jalea que ganes da +%d%% de daño y migas por punto aunque la gastes."
+msgstr "Founding a colony resets crumbs, upgrades and castes, and turns your progress into royal jelly. Jelly is spent on the queen's tree, which is permanent, and every point of jelly you ever earn gives +%d%% damage and crumbs, even after you spend it."
+
+msgid "EL ÁRBOL DE LA REINA"
+msgstr "THE QUEEN'S TREE"
+
+msgid "HITOS"
+msgstr "MILESTONES"
+
+msgid "JALEA DISPONIBLE"
+msgstr "JELLY AVAILABLE"
+
+msgid "1 colonia fundada"
+msgstr "1 colony founded"
+
+msgid "%d colonias fundadas"
+msgstr "%d colonies founded"
+
+msgid "Ganada en total: %d · bonus pasivo +%d%% de daño y migas · %s"
+msgstr "Earned in total: %d · passive bonus +%d%% damage and crumbs · %s"
+
+msgid "SI FUNDÁS AHORA"
+msgstr "IF YOU FOUND NOW"
+
+msgid "+%d jalea"
+msgstr "+%d jelly"
+
+msgid "%d coronas × %d = %d · migas de esta colonia (%s) = %d"
+msgstr "%d crowns × %d = %d · this colony's crumbs (%s) = %d"
+
+msgid "Fundar colonia…"
+msgstr "Found colony…"
+
+msgid "Conquistá un gran objetivo o juntá más migas para ganar jalea."
+msgstr "Conquer a grand target or gather more crumbs to earn jelly."
+
+msgid "Reiniciar la colonia a cambio de jalea real"
+msgstr "Restart the colony in exchange for royal jelly"
+
+msgid "COMPLETO"
+msgstr "MAXED"
+
+msgid "Cuesta %d jalea"
+msgstr "Costs %d jelly"
+
+msgid "Requiere %s nivel %d"
+msgstr "Requires %s level %d"
+
+msgid "Ganás %d de jalea real (bonus pasivo: +%d%% → +%d%%)."
+msgstr "You get %d royal jelly (passive bonus: +%d%% → +%d%%)."
+
+msgid "Se reinician: migas%s, mejoras y castas%s."
+msgstr "Reset: crumbs%s, upgrades and castes%s."
+
+msgid " (conservás el %d%%)"
+msgstr " (you keep %d%%)"
+
+msgid "Se conservan: destinos, hitos, el árbol de la reina y lo descubierto."
+msgstr "Kept: destinations, milestones, the queen's tree and everything discovered."
+
+msgid "Cada gran objetivo vuelve a dar sus coronas una vez."
+msgstr "Each grand target gives its crowns once again."
+
+msgid "UNA COLONIA CON PERSONALIDAD"
+msgstr "A COLONY WITH CHARACTER"
+
+msgid "Conocé a tus hormigas"
+msgstr "Meet your ants"
+
+msgid "Elegí una casta para ver su habilidad y reclutarla."
+msgstr "Pick a caste to see its ability and recruit it."
+
+msgid "Las obreras de siempre siguen saliendo del hormiguero. Las miniobreras nacen de las reinas."
+msgstr "Your regular workers still leave the nest. Mini workers are born from queens."
+
+msgid "FICHA DE CASTA"
+msgstr "CASTE PROFILE"
+
+msgid "SU HABILIDAD"
+msgstr "ITS ABILITY"
+
+msgid "Estos valores incluyen tus mejoras del hormiguero. Las obreras varían levemente su velocidad al nacer."
+msgstr "These values include your nest upgrades. Workers vary slightly in speed when born."
+
+msgid "En tu colonia: %d / %d"
+msgstr "In your colony: %d / %d"
+
+msgid "Velocidad · %.0f px/s"
+msgstr "Speed · %.0f px/s"
+
+msgid "Mordida · %.2f daño"
+msgstr "Bite · %.2f damage"
+
+msgid "Carga · %d bocados"
+msgstr "Load · %d bites"
+
+msgid "Olfato · %.0f px"
+msgstr "Smell · %.0f px"
+
+msgid "Colonia completa"
+msgstr "Colony full"
+
+msgid "Reclutar ×%d · %s migas"
+msgstr "Recruit ×%d · %s crumbs"
+
+msgid "Compra permanente: esta unidad saldrá en cada expedición."
+msgstr "Permanent purchase: this unit joins every expedition."
+
+msgid "Faltan %s migas para este lote. Las unidades son permanentes."
+msgstr "%s crumbs short for this batch. Units are permanent."
+
+msgid "Requiere aprender a devorar madera y telas."
+msgstr "Requires learning to devour wood and fabric."
+
+msgid "Requiere aprender a devorar paredes."
+msgstr "Requires learning to devour walls."
+
+msgid "%d en la colonia · desde %s migas"
+msgstr "%d in the colony · from %s crumbs"
+
+msgid "Bloqueada · requiere nueva dieta"
+msgstr "Locked · requires a new diet"
+
+msgid "¡%s ×%d! Salen en todas las próximas expediciones."
+msgstr "%s ×%d! They join every future expedition."
+
+msgid "%s migas"
+msgstr "%s crumbs"
+
+msgid "ENTRE RAÍCES Y MIGAS"
+msgstr "AMONG ROOTS AND CRUMBS"
+
+msgid "Un hogar que crece"
+msgstr "A growing home"
+
+msgid "EN LA DESPENSA"
+msgstr "IN THE PANTRY"
+
+msgid "Explorar"
+msgstr "Explore"
+
+msgid "EL HORMIGUERO  /  Elegí una cámara"
+msgstr "THE NEST  /  Pick a chamber"
+
+msgid "COMPRAR"
+msgstr "BUY"
+
+msgid "Máx"
+msgstr "Max"
+
+msgid "Todo lo que alcance"
+msgstr "As many as you can afford"
+
+msgid "Compra hasta el límite de nivel; requiere pagar el lote completo."
+msgstr "Buys up to the level cap; you must afford the whole batch."
+
+msgid "CUIDÁ TU COLONIA"
+msgstr "TEND YOUR COLONY"
+
+msgid "Las mejoras se guardan al comprar."
+msgstr "Upgrades are saved when you buy them."
+
+msgid "Cada miga construye algo más grande."
+msgstr "Every crumb builds something bigger."
+
+msgid "Sonido"
+msgstr "Sound"
+
+msgid "Volumen de los efectos"
+msgstr "Effects volume"
+
+msgid "Destino: %s"
+msgstr "Destination: %s"
+
+msgid "%d obreras + %d especialistas  ·  %d s  ·  %d cm"
+msgstr "%d workers + %d specialists  ·  %d s  ·  %d cm"
+
+msgid "1 disponible"
+msgstr "1 available"
+
+msgid "%d disponibles"
+msgstr "%d available"
+
+msgid "Se descubre al llegar a %s"
+msgstr "Discovered on reaching %s"
+
+msgid "Requiere %s · nivel %d"
+msgstr "Requires %s · level %d"
+
+msgid "Tope alcanzado: cada destino conquistado suma %d niveles."
+msgstr "Cap reached: each conquered destination adds %d levels."
+
+msgid "Tope alcanzado: las Cámaras más hondas de la reina suman niveles."
+msgstr "Cap reached: the queen's Deeper chambers add levels."
+
+msgid "Tu colonia domina esta habilidad."
+msgstr "Your colony has mastered this."
+
+msgid "Nueva dieta: %s"
+msgstr "New diet: %s"
+
+msgid "Hito en nivel %d: daño ×%s"
+msgstr "Milestone at level %d: damage ×%s"
+
+msgid "COMPLETA"
+msgstr "MAXED"
+
+msgid "Comprar ×%d · %s migas"
+msgstr "Buy ×%d · %s crumbs"
+
+msgid "Faltan %s migas"
+msgstr "%s crumbs short"
+
+msgid "Cámara por desarrollar"
+msgstr "Chamber still to dig"
+
+msgid "¡Nuevo!"
+msgstr "New!"
+
+msgid "%.2f s entre mordidas"
+msgstr "%.2f s between bites"
+
+msgid "%d hormigas"
+msgstr "%d ants"
+
+msgid "%.0f de velocidad"
+msgstr "%.0f speed"
+
+msgid "×%.2f migas"
+msgstr "×%.2f crumbs"
+
+msgid "%d obreras"
+msgstr "%d workers"
+
+msgid "%d crías / 10 s"
+msgstr "%d hatchlings / 10 s"
+
+msgid "%.0f de alcance"
+msgstr "%.0f range"
+
+msgid "%d bocados"
+msgstr "%d bites"
+
+msgid "%s de daño por pisotón"
+msgstr "%s damage per stomp"
+
+msgid "%s de daño"
+msgstr "%s damage"
+
+msgid "Te faltan migas o una mejora previa. ¡Otra expedición!"
+msgstr "You need more crumbs or an earlier upgrade. Another expedition!"
+
+msgid "¡%s +%d niveles!"
+msgstr "%s +%d levels!"
+
+msgid "Más obreras"
+msgstr "More workers"
+
+msgid "+2 hormigas al empezar cada run."
+msgstr "+2 ants at the start of every run."
+
+msgid "Patas largas"
+msgstr "Long legs"
+
+msgid "Las hormigas caminan un 12% más rápido."
+msgstr "Ants walk 12% faster."
+
+msgid "Cría acelerada"
+msgstr "Fast brood"
+
+msgid "Nace 1 hormiga más cada 10 segundos durante la run."
+msgstr "1 more ant hatches every 10 seconds during the run."
+
+msgid "Mandíbulas fuertes"
+msgstr "Strong mandibles"
+
+msgid "+1 de daño por mordida."
+msgstr "+1 damage per bite."
+
+msgid "Pisotón"
+msgstr "Stomp"
+
+msgid "+2 de daño al hacer clic sobre la comida."
+msgstr "+2 damage when you click on food."
+
+msgid "Coordinación"
+msgstr "Coordination"
+
+msgid "Responde 1 hormiga más al llamado. Conserva los niveles del antiguo Pisotón."
+msgstr "1 more ant answers your call. Keeps the levels of the old Stomp."
+
+msgid "Mordida rápida"
+msgstr "Quick bite"
+
+msgid "Muerden un 12% más seguido."
+msgstr "They bite 12% more often."
+
+msgid "Mandíbulas de acero"
+msgstr "Steel mandibles"
+
+msgid "Daño de mordida x1.5."
+msgstr "Bite damage x1.5."
+
+msgid "Devorar madera y telas"
+msgstr "Devour wood and fabric"
+
+msgid "Desbloquea sillas mesas camas sillones y muebles de madera."
+msgstr "Unlocks chairs, tables, beds, armchairs and wooden furniture."
+
+msgid "Devorar materiales resistentes"
+msgstr "Devour tough materials"
+
+msgid "Desbloquea electrodomésticos mesadas y sanitarios."
+msgstr "Unlocks appliances, countertops and bathroom fixtures."
+
+msgid "Devorar paredes"
+msgstr "Devour walls"
+
+msgid "Desbloquea los muros por tramos y abre nuevos caminos."
+msgstr "Unlocks walls section by section and opens new paths."
+
+msgid "Buche grande"
+msgstr "Big crop"
+
+msgid "Cada hormiga junta 1 mordida más antes de volver."
+msgstr "Each ant gathers 1 more bite before heading home."
+
+msgid "Recolección eficiente"
+msgstr "Efficient foraging"
+
+msgid "Todas las migas x1.15."
+msgstr "All crumbs x1.15."
+
+msgid "Huevos dorados"
+msgstr "Golden eggs"
+
+msgid "Todas las migas x1.5."
+msgstr "All crumbs x1.5."
+
+msgid "Llamado potente"
+msgstr "Loud call"
+
+msgid "Responden 3 hormigas más al llamado."
+msgstr "3 more ants answer your call."
+
+msgid "Antenas sensibles"
+msgstr "Sensitive antennae"
+
+msgid "Detectan comida 15 píxeles más lejos."
+msgstr "They smell food 15 pixels farther away."
+
+msgid "Reservas de energía"
+msgstr "Energy reserves"
+
+msgid "+5 segundos por run."
+msgstr "+5 seconds per run."
+
+msgid "Segundo aire"
+msgstr "Second wind"
+
+msgid "+10 segundos por run."
+msgstr "+10 seconds per run."
+
+msgid "Explorar la casa"
+msgstr "Explore the house"
+
+msgid "+240 de territorio para alcanzar nuevos ambientes."
+msgstr "+240 territory to reach new rooms."
+
+msgid "Mandíbulas de titanio"
+msgstr "Titanium mandibles"
+
+msgid "Daño de mordida x2. Afiladas con los cubiertos del restaurante."
+msgstr "Bite damage x2. Sharpened on the restaurant's cutlery."
+
+msgid "Bandeja de mozo"
+msgstr "Waiter's tray"
+
+msgid "Cada hormiga junta 2 mordidas más antes de volver."
+msgstr "Each ant gathers 2 more bites before heading home."
+
+msgid "Visión de curadora"
+msgstr "Curator's eye"
+
+msgid "Detectan comida 40 píxeles más lejos."
+msgstr "They smell food 40 pixels farther away."
+
+msgid "Restauradoras"
+msgstr "Restorers"
+
+msgid "Las hormigas caminan un 15% más rápido."
+msgstr "Ants walk 15% faster."
+
+msgid "Colonia porteña"
+msgstr "Buenos Aires colony"
+
+msgid "+8 hormigas al empezar cada run."
+msgstr "+8 ants at the start of every run."
+
+msgid "Mate cocido"
+msgstr "Mate tea"
+
+msgid "Muerden un 10% más seguido."
+msgstr "They bite 10% more often."
+
+msgid "Legión"
+msgstr "Legion"
+
+msgid "Daño de mordida x1.6."
+msgstr "Bite damage x1.6."
+
+msgid "Cuadrigas"
+msgstr "Chariots"
+
+msgid "Haute cuisine"
+msgstr "Haute cuisine"
+
+msgid "Todas las migas x2."
+msgstr "All crumbs x2."
+
+msgid "Mirador de la torre"
+msgstr "Tower lookout"
+
+msgid "Nacen 2 hormigas más cada 10 segundos durante la run."
+msgstr "2 more ants hatch every 10 seconds during the run."
+
+msgid "Obrera"
+msgstr "Worker"
+
+msgid "Recolección equilibrada"
+msgstr "All-round forager"
+
+msgid "El corazón del hormiguero. Explora y lleva comida de vuelta a casa."
+msgstr "The heart of the nest. Explores and carries food back home."
+
+msgid "Se suma con la mejora Más obreras."
+msgstr "Added with the More workers upgrade."
+
+msgid "Exploradora veloz"
+msgstr "Swift scout"
+
+msgid "Velocidad y viajes cortos"
+msgstr "Speed and short trips"
+
+msgid "Ligera e incansable. Ideal para juntar migas lejanas antes de que termine la expedición."
+msgstr "Light and tireless. Ideal for grabbing far-off crumbs before the expedition ends."
+
+msgid "Corre a 2.2 veces la velocidad de una obrera; su mordida es más débil."
+msgstr "Runs at 2.2 times a worker's speed; its bite is weaker."
+
+msgid "Hormiga roja"
+msgstr "Red ant"
+
+msgid "Veneno y corrosión"
+msgstr "Venom and corrosion"
+
+msgid "Su abdomen rojo guarda un veneno que ablanda materiales resistentes para todo el grupo."
+msgstr "Its red abdomen holds a venom that softens tough materials for the whole group."
+
+msgid "Daño x2.2 contra resistentes. Envenena durante 3 s y deja corrosión que aumenta 20% el daño de todas las hormigas contra esa pieza. No acumula veneno sin límite."
+msgstr "Damage x2.2 against tough materials. Poisons for 3 s and leaves corrosion that raises every ant's damage against that piece by 20%. Venom doesn't stack forever."
+
+msgid "Hormiga voladora"
+msgstr "Flying ant"
+
+msgid "Atajos por el aire"
+msgstr "Shortcuts through the air"
+
+msgid "Sus alas le permiten cruzar sobre los muebles para entregar fragmentos livianos antes."
+msgstr "Its wings let it fly over furniture to deliver light scraps sooner."
+
+msgid "Vuela sobre muebles pero usa puertas para cruzar paredes. Corre 45% más rápido y huele 70% más lejos. Sólo levanta restos de peso 1."
+msgstr "Flies over furniture but uses doors to get past walls. Moves 45% faster and smells 70% farther. Only lifts weight-1 scraps."
+
+msgid "Hormiga cargadora"
+msgstr "Hauler ant"
+
+msgid "Retiro de fragmentos"
+msgstr "Scrap removal"
+
+msgid "Robusta y paciente. Prioriza los restos que dejan carpinteras y demoledoras para liberar el trabajo del grupo."
+msgstr "Sturdy and patient. Goes for the scraps left by carpenters and wreckers so the group can keep working."
+
+msgid "Junta 4 veces más bocados antes de volver. Puede transportar peso 4; las voladoras sólo peso 1. Camina 25% más lento."
+msgstr "Gathers 4 times more bites before heading home. Can carry weight 4; flyers only weight 1. Walks 25% slower."
+
+msgid "Hormiga reina"
+msgstr "Queen ant"
+
+msgid "Refuerzos durante la expedición"
+msgstr "Reinforcements during the expedition"
+
+msgid "La matriarca acompaña a la colonia. Despliega pequeñas obreras mientras recorre la cocina."
+msgstr "The matriarch travels with the colony, releasing little workers as she goes."
+
+msgid "Despliega 2 miniobreras cada 6 s desde su posición; hasta 24 por reina en cada expedición. Las minis duran esa expedición."
+msgstr "Releases 2 mini workers every 6 s where she stands; up to 24 per queen each expedition. Minis last for that expedition."
+
+msgid "Miniobrera"
+msgstr "Mini worker"
+
+msgid "Refuerzo de la reina"
+msgstr "The queen's reinforcement"
+
+msgid "Pequeña pero trabajadora. Nace junto a la reina y ayuda hasta el final de la expedición."
+msgstr "Small but hard-working. Born next to the queen and helps until the expedition ends."
+
+msgid "Solo aparece gracias a una reina; no se compra ni se guarda como unidad permanente."
+msgstr "Only appears thanks to a queen; it can't be bought or kept as a permanent unit."
+
+msgid "Hormiga carpintera"
+msgstr "Carpenter ant"
+
+msgid "Madera y telas"
+msgstr "Wood and fabric"
+
+msgid "Su mandíbula aserrada arranca grandes pedazos de muebles. Trabaja mejor con cargadoras que retiren sus restos."
+msgstr "Its serrated jaw tears big chunks off furniture. Works best with haulers clearing its scraps."
+
+msgid "Daño x3 contra madera y telas; daño x0.5 a alimentos. Desbloqueada al aprender a devorar madera."
+msgstr "Damage x3 against wood and fabric; x0.5 against food. Unlocked when you learn to devour wood."
+
+msgid "Hormiga demoledora"
+msgstr "Wrecker ant"
+
+msgid "Muros y soportes"
+msgstr "Walls and supports"
+
+msgid "Robusta y lenta. Se especializa en mampostería y materiales duros; la corrosión de las rojas le abre camino."
+msgstr "Sturdy and slow. Specialises in masonry and hard materials; the reds' corrosion clears its way."
+
+msgid "Daño x3 contra muros y x1.5 contra resistentes; daño x0.35 a alimentos. Requiere devorar paredes."
+msgstr "Damage x3 against walls and x1.5 against tough materials; x0.35 against food. Requires devouring walls."
+
+msgid "Miga"
+msgstr "Crumb"
+
+msgid "Terrón de azúcar"
+msgstr "Sugar cube"
+
+msgid "Galletita"
+msgstr "Cookie"
+
+msgid "Queso"
+msgstr "Cheese"
+
+msgid "Sándwich"
+msgstr "Sandwich"
+
+msgid "Torta"
+msgstr "Cake"
+
+msgid "Arito de cereal"
+msgstr "Cereal ring"
+
+msgid "Fideo"
+msgstr "Noodle"
+
+msgid "Frutilla"
+msgstr "Strawberry"
+
+msgid "Dona"
+msgstr "Donut"
+
+msgid "Porción de pizza"
+msgstr "Slice of pizza"
+
+msgid "El gran banquete"
+msgstr "The great feast"
+
+msgid "Obreras reales"
+msgstr "Royal workers"
+
+msgid "+4 obreras al empezar cada run."
+msgstr "+4 workers at the start of every run."
+
+msgid "Mandíbulas de jalea"
+msgstr "Jelly mandibles"
+
+msgid "Daño de mordida x1.25."
+msgstr "Bite damage x1.25."
+
+msgid "Despensa real"
+msgstr "Royal pantry"
+
+msgid "Todas las migas x1.25."
+msgstr "All crumbs x1.25."
+
+msgid "Memoria de la madera"
+msgstr "Memory of wood"
+
+msgid "Cada colonia nueva nace sabiendo devorar madera y telas."
+msgstr "Every new colony is born knowing how to devour wood and fabric."
+
+msgid "Reloj de arena real"
+msgstr "Royal hourglass"
+
+msgid "Reservas de la reina"
+msgstr "Queen's reserves"
+
+msgid "Al fundar conservás el 10% de tus migas."
+msgstr "Keep 10% of your crumbs when you found a colony."
+
+msgid "Cámaras más hondas"
+msgstr "Deeper chambers"
+
+msgid "+5 niveles máximos en las mejoras que crecen con los destinos."
+msgstr "+5 max levels on upgrades that grow with destinations."
+
+msgid "Guardia de la reina"
+msgstr "Queen's guard"
+
+msgid "Un pisotón automático cerca del cursor cada 2 s (más seguido por nivel)."
+msgstr "An automatic stomp near the cursor every 2 s (more often per level)."
+
+msgid "Memoria del metal"
+msgstr "Memory of metal"
+
+msgid "Cada colonia nueva nace sabiendo devorar materiales resistentes."
+msgstr "Every new colony is born knowing how to devour tough materials."
+
+msgid "Linaje"
+msgstr "Lineage"
+
+msgid "Al fundar conservás el 25% de cada casta."
+msgstr "Keep 25% of each caste when you found a colony."
+
+msgid "Corona doble"
+msgstr "Double crown"
+
+msgid "Cada gran objetivo da 1 corona más."
+msgstr "Each grand target gives 1 more crown."
+
+msgid "Memoria de la piedra"
+msgstr "Memory of stone"
+
+msgid "Cada colonia nueva nace sabiendo devorar paredes."
+msgstr "Every new colony is born knowing how to devour walls."
+
+msgid "La primera silla"
+msgstr "The first chair"
+
+msgid "Devorá una silla"
+msgstr "Devour a chair"
+
+msgid "Carpinteras: daño +20%"
+msgstr "Carpenters: damage +20%"
+
+msgid "Efecto dominó"
+msgstr "Domino effect"
+
+msgid "Provocá un derrumbe al quitar soportes"
+msgstr "Cause a collapse by removing supports"
+
+msgid "Demoledoras: daño +20%"
+msgstr "Wreckers: damage +20%"
+
+msgid "Sin dónde sentarse"
+msgstr "Nowhere to sit"
+
+msgid "Devorá 4 sillas en una expedición"
+msgstr "Devour 4 chairs in one expedition"
+
+msgid "Cargadoras: +2 bocados"
+msgstr "Haulers: +2 bites"
+
+msgid "¿Qué había adentro?"
+msgstr "What was inside?"
+
+msgid "Abrí un mueble con comida escondida"
+msgstr "Open a piece of furniture with hidden food"
+
+msgid "Toda la colonia: olfato +10"
+msgstr "Whole colony: smell +10"
+
+msgid "Cocina desmantelada"
+msgstr "Kitchen stripped bare"
+
+msgid "Devorá los muebles de la cocina en una expedición"
+msgstr "Devour the kitchen furniture in one expedition"
+
+msgid "Migas +10% permanentes"
+msgstr "Crumbs +10% permanently"
+
+msgid "Una colonia monumental"
+msgstr "A monumental colony"
+
+msgid "Devorá tu primer monumento"
+msgstr "Devour your first monument"
+
+msgid "Migas +15% y corona evolucionada"
+msgstr "Crumbs +15% and an evolved crown"
+
+msgid "Comprar de a 10 o el máximo"
+msgstr "Buy 10 at a time or the max"
+
+msgid "Frenesí: 20 depósitos seguidos aceleran a la colonia"
+msgstr "Frenzy: 20 deliveries in a row speed up the colony"
+
+msgid "Gran objetivo: buscalo con G"
+msgstr "Grand target: find it with G"
+
+msgid "Castas: hormigas especialistas"
+msgstr "Castes: specialist ants"
+
+msgid "Prioridades: elegí qué come la colonia"
+msgstr "Priorities: choose what the colony eats"
+
+msgid "Viajes: nuevos destinos"
+msgstr "Travel: new destinations"
+
+msgid "Jalea real: fundá colonias y mejorá a la reina"
+msgstr "Royal jelly: found colonies and empower the queen"
+
+msgid "La casa"
+msgstr "The house"
+
+msgid "De las migas a los muebles"
+msgstr "From crumbs to furniture"
+
+msgid "La gran mesa familiar"
+msgstr "The big family table"
+
+msgid "COCINA"
+msgstr "KITCHEN"
+
+msgid "COMEDOR"
+msgstr "DINING ROOM"
+
+msgid "LIVING"
+msgstr "LIVING ROOM"
+
+msgid "PASILLO"
+msgstr "HALLWAY"
+
+msgid "DORMITORIO"
+msgstr "BEDROOM"
+
+msgid "ESTUDIO"
+msgstr "STUDY"
+
+msgid "BAÑO Y LAVADERO"
+msgstr "BATHROOM AND LAUNDRY"
+
+msgid "El restaurante"
+msgstr "The restaurant"
+
+msgid "Salón, barra y cocina industrial"
+msgstr "Dining hall, bar and industrial kitchen"
+
+msgid "La barra del chef"
+msgstr "The chef's counter"
+
+msgid "COCINA INDUSTRIAL"
+msgstr "INDUSTRIAL KITCHEN"
+
+msgid "EL SALÓN"
+msgstr "DINING HALL"
+
+msgid "LA BARRA"
+msgstr "THE BAR"
+
+msgid "El museo"
+msgstr "The museum"
+
+msgid "Galerías, vitrinas y una estatua monumental"
+msgstr "Galleries, display cases and a monumental statue"
+
+msgid "La gran escultura"
+msgstr "The great sculpture"
+
+msgid "VESTÍBULO"
+msgstr "LOBBY"
+
+msgid "GALERÍA PRINCIPAL"
+msgstr "MAIN GALLERY"
+
+msgid "ARCHIVO"
+msgstr "ARCHIVE"
+
+msgid "Obelisco · Buenos Aires"
+msgstr "Obelisk · Buenos Aires"
+
+msgid "La colonia conquista la avenida"
+msgstr "The colony takes the avenue"
+
+msgid "El Obelisco"
+msgstr "The Obelisk"
+
+msgid "AVENIDA 9 DE JULIO"
+msgstr "9 DE JULIO AVENUE"
+
+msgid "Coliseo · Roma"
+msgstr "Colosseum · Rome"
+
+msgid "Arena, arcos y piedra antigua"
+msgstr "Sand, arches and ancient stone"
+
+msgid "El gran arco imperial"
+msgstr "The great imperial arch"
+
+msgid "ACCESO A LA ARENA"
+msgstr "ARENA ENTRANCE"
+
+msgid "ARENA DEL COLISEO"
+msgstr "COLOSSEUM ARENA"
+
+msgid "Torre Eiffel · París"
+msgstr "Eiffel Tower · Paris"
+
+msgid "Jardines y una estructura de hierro"
+msgstr "Gardens and an iron structure"
+
+msgid "La Torre Eiffel"
+msgstr "The Eiffel Tower"
+
+msgid "CHAMP DE MARS"
+msgstr "CHAMP DE MARS"
+
+msgid "ESPLANADA DE PARÍS"
+msgstr "PARIS ESPLANADE"
+
+msgid "Comida del piso"
+msgstr "Food on the floor"
+
+msgid "Materiales resistentes"
+msgstr "Tough materials"
+
+msgid "Paredes"
+msgstr "Walls"
+
+msgid "Silla"
+msgstr "Chair"
+
+msgid "Mesa de cocina"
+msgstr "Kitchen table"
+
+msgid "Mesa del comedor"
+msgstr "Dining table"
+
+msgid "Mesa ratona"
+msgstr "Coffee table"
+
+msgid "Escritorio"
+msgstr "Desk"
+
+msgid "Mesa de luz"
+msgstr "Nightstand"
+
+msgid "Sofá"
+msgstr "Sofa"
+
+msgid "Sillón"
+msgstr "Armchair"
+
+msgid "Cama"
+msgstr "Bed"
+
+msgid "Biblioteca"
+msgstr "Bookcase"
+
+msgid "Ropero"
+msgstr "Wardrobe"
+
+msgid "Alacena"
+msgstr "Cupboard"
+
+msgid "Aparador"
+msgstr "Sideboard"
+
+msgid "Consola"
+msgstr "Console table"
+
+msgid "Maceta"
+msgstr "Flowerpot"
+
+msgid "Pileta"
+msgstr "Sink"
+
+msgid "Mesada"
+msgstr "Countertop"
+
+msgid "Cocina"
+msgstr "Stove"
+
+msgid "Heladera"
+msgstr "Fridge"
+
+msgid "Televisor"
+msgstr "TV"
+
+msgid "Bañera"
+msgstr "Bathtub"
+
+msgid "Lavabo"
+msgstr "Washbasin"
+
+msgid "Inodoro"
+msgstr "Toilet"
+
+msgid "Lavarropas"
+msgstr "Washing machine"
+
+msgid "Tramo de pared"
+msgstr "Wall section"
+
+msgid "Vitrina"
+msgstr "Display case"
+
+msgid "Escultura"
+msgstr "Sculpture"
+
+msgid "Obelisco"
+msgstr "Obelisk"
+
+msgid "Arco"
+msgstr "Arch"
+
+msgid "Torre"
+msgstr "Tower"
+
+msgid "El criadero"
+msgstr "The nursery"
+
+msgid "Una familia cada vez más grande."
+msgstr "An ever-growing family."
+
+msgid "El taller"
+msgstr "The workshop"
+
+msgid "Comida → madera y telas → materiales resistentes → paredes."
+msgstr "Food → wood and fabric → tough materials → walls."
+
+msgid "La despensa"
+msgstr "The pantry"
+
+msgid "Pequeños viajes, grandes tesoros."
+msgstr "Small trips, great treasures."
+
+msgid "El observatorio"
+msgstr "The observatory"
+
+msgid "Todos los caminos llevan a casa."
+msgstr "All roads lead home."
+
+msgid "El refugio"
+msgstr "The shelter"
+
+msgid "Siempre hay tiempo para otro bocado."
+msgstr "There's always time for one more bite."
+
+msgid "La excavación"
+msgstr "The dig"
+
+msgid "La cocina es solo el comienzo."
+msgstr "The kitchen is only the beginning."
+
+msgid "Castas"
+msgstr "Castes"
+
+msgid "Viajes"
+msgstr "Travel"
+
+msgid "Jalea real"
+msgstr "Royal jelly"

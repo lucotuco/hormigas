@@ -113,8 +113,30 @@ var _cache_stats: Dictionary = {}
 
 func _ready() -> void:
 	Engine.max_fps = 60
+	# Todo texto visible pasa por tr() a mano (ver idiomas/LEEME.md): sin la
+	# traducción automática de los nodos, lo que falte traducir se nota.
+	get_tree().root.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	usar_idioma(idioma_del_sistema())
 	_cargar_datos()
 	cargar()
+
+
+# =====================================================================
+# Idioma
+# =====================================================================
+
+## Los textos se escriben en español en el código; idiomas/en.po trae el inglés.
+const IDIOMAS := ["es", "en"]
+var idioma := "es"
+
+
+func idioma_del_sistema() -> String:
+	return "es" if OS.get_locale_language() == "es" else "en"
+
+
+func usar_idioma(codigo: String) -> void:
+	idioma = codigo if codigo in IDIOMAS else "es"
+	TranslationServer.set_locale(idioma)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -399,16 +421,16 @@ func proxima_meta() -> Dictionary:
 		var m: Dictionary = mejoras_por_id[id]
 		if not esta_desbloqueada(id):
 			var previa: Dictionary = mejoras_por_id[m.requiere_id]
-			return {"tipo": "nivel", "nombre": "%s nivel %d" % [previa.nombre, m.requiere_nivel],
-				"detalle": "habilita: " + m.nombre, "actual": float(nivel_de(previa.id)), "objetivo": float(m.requiere_nivel)}
-		return {"tipo": "migas", "nombre": m.nombre, "detalle": m.descripcion,
+			return {"tipo": "nivel", "nombre": tr("%s nivel %d") % [tr(previa.nombre), m.requiere_nivel],
+				"detalle": tr("habilita: %s") % tr(m.nombre), "actual": float(nivel_de(previa.id)), "objetivo": float(m.requiere_nivel)}
+		return {"tipo": "migas", "nombre": tr(m.nombre), "detalle": tr(m.descripcion),
 			"actual": migas + migas_run, "objetivo": costo(id)}
 	if not lugares_completados.has(lugar_actual):
-		return {"tipo": "objetivo", "nombre": Mundos.INFO[lugar_actual].meta, "detalle": "gran objetivo · %d coronas" % int(Mundos.INFO[lugar_actual].coronas)}
+		return {"tipo": "objetivo", "nombre": tr(Mundos.INFO[lugar_actual].meta), "detalle": tr("gran objetivo · %d coronas") % int(Mundos.INFO[lugar_actual].coronas)}
 	var indice := Mundos.ORDEN.find(lugar_actual)
 	if indice + 1 < Mundos.ORDEN.size():
-		return {"tipo": "viaje", "nombre": "Viajar a " + Mundos.INFO[Mundos.ORDEN[indice + 1]].nombre, "detalle": "desde la pestaña Viajes"}
-	return {"tipo": "viaje", "nombre": "Fundar una colonia nueva", "detalle": "convertí coronas y migas en jalea real"}
+		return {"tipo": "viaje", "nombre": tr("Viajar a %s") % tr(Mundos.INFO[Mundos.ORDEN[indice + 1]].nombre), "detalle": tr("desde la pestaña Viajes")}
+	return {"tipo": "viaje", "nombre": tr("Fundar una colonia nueva"), "detalle": tr("convertí coronas y migas en jalea real")}
 
 
 func nivel_visual() -> int:

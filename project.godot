@@ -31,6 +31,11 @@ window/size/min_height=620
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://idiomas/en.po")
+locale/fallback="es"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

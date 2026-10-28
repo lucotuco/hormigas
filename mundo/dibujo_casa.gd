@@ -38,7 +38,7 @@ static func dibujar(l: CanvasItem, incluir_piezas := true) -> void:
 	# Nombres integrados al plano; no son mensajes superpuestos del HUD.
 	for a in PlanoCasa.AMBIENTES:
 		var r: Rect2 = a.rect
-		l.draw_string(ThemeDB.fallback_font, r.position + Vector2(120, r.size.y - 110), a.nombre, HORIZONTAL_ALIGNMENT_LEFT, -1, 68, Color(0.25, 0.24, 0.21, 0.38))
+		l.draw_string(ThemeDB.fallback_font, r.position + Vector2(120, r.size.y - 110), l.tr(a.nombre), HORIZONTAL_ALIGNMENT_LEFT, -1, 68, Color(0.25, 0.24, 0.21, 0.38))
 	if incluir_piezas:
 		for m in PlanoCasa.MUEBLES:
 			mueble(l, m)
@@ -210,7 +210,7 @@ static func mueble(l: CanvasItem, m: Dictionary) -> void:
 static func _destino(l: CanvasItem) -> void:
 	for a in PlanoCasa.ambientes():
 		var r: Rect2 = a.rect
-		l.draw_string(ThemeDB.fallback_font, r.position + Vector2(120, r.size.y - 120), a.nombre, HORIZONTAL_ALIGNMENT_LEFT, -1, 72, Color(0.2, 0.2, 0.17, 0.35))
+		l.draw_string(ThemeDB.fallback_font, r.position + Vector2(120, r.size.y - 120), l.tr(a.nombre), HORIZONTAL_ALIGNMENT_LEFT, -1, 72, Color(0.2, 0.2, 0.17, 0.35))
 	if Juego.lugar_actual == "obelisco":
 		for y in [-250, 2850]:
 			l.draw_rect(Rect2(1750, y, 3200, 300), Color("8b8e82"))

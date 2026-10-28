@@ -358,6 +358,14 @@ ejemplo `{"coliseo": 1e30}`) para hacerlo invulnerable, mirá en el registro
 el daño por run (`meta X/Y`) y elegí una resistencia entre la meseta de una
 colonia y la siguiente.
 
+## Idiomas
+
+Español e inglés. El juego arranca en el idioma del sistema (español si el
+sistema está en español; si no, inglés). Los textos se escriben en español con
+`tr("…")` y el inglés vive en `idiomas/en.po`; `tests/prueba_idiomas.tscn`
+avisa qué falta traducir y revisa que la interfaz en inglés no tenga restos en
+español. Detalle en [`idiomas/LEEME.md`](idiomas/LEEME.md).
+
 ## Trabajar de a dos con Git
 
 **Reglas:**

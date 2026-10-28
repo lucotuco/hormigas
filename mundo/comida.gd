@@ -32,7 +32,7 @@ var _usar_cache := true
 
 func configurar(tipo: Dictionary, semilla: int) -> void:
 	id = tipo.id
-	nombre = tipo.nombre
+	nombre = tr(tipo.nombre)
 	forma = tipo.forma
 	color = tipo.color
 	vida_max = maxf(1.0, tipo.vida)

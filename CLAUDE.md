@@ -3,6 +3,8 @@
 Incremental 2D para PC en **Godot 4.7.2** (GDScript, renderer GL Compatibility).
 Lo hacen dos personas. Todo el código, los comentarios y los textos del juego
 van en **español rioplatense**: nombres de variables, funciones, commits y PRs.
+El juego además se traduce al inglés: todo texto visible va con `tr("…")` y su
+inglés en `idiomas/en.po` (ver `idiomas/LEEME.md`; `prueba_idiomas` lo verifica).
 
 El detalle de mecánicas, controles y pruebas está en `README.md`. Las tareas
 pendientes y quién hace qué, en `TAREAS.md`.
@@ -58,7 +60,8 @@ guardan capturas en `.godot/qa/`. Benchmarks: `tests/perfil_*.tscn`, ver
 `tests/RENDIMIENTO.md`. No se miden FPS en headless.
 
 Las pruebas nunca tocan la partida del jugador: ponen
-`Juego.guardado_habilitado = false` al empezar. Hacé lo mismo en pruebas nuevas.
+`Juego.guardado_habilitado = false` al empezar, y `Juego.usar_idioma("es")` si
+leen textos (CI corre con el sistema en inglés). Hacé lo mismo en pruebas nuevas.
 
 ## Convenciones de código
 

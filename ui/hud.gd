@@ -105,23 +105,23 @@ func _process(delta: float) -> void:
 	_tiempo_inspeccion -= delta
 	if _tiempo_inspeccion <= 0:
 		_tiempo_inspeccion = 0.12
-		_lbl_etapa.text = "DIETA %d/4 · %s" % [int(Juego.stat("materiales")) + 1, MaterialesCasa.NIVELES[clampi(int(Juego.stat("materiales")), 0, 3)]]
-		_lbl_lugar.text = Mundos.INFO[Juego.lugar_actual].nombre
+		_lbl_etapa.text = tr("DIETA %d/4 · %s") % [int(Juego.stat("materiales")) + 1, tr(MaterialesCasa.NIVELES[clampi(int(Juego.stat("materiales")), 0, 3)])]
+		_lbl_lugar.text = tr(Mundos.INFO[Juego.lugar_actual].nombre)
 		_actualizar_meta()
-		_lbl_meta.text = ("✓ Gran objetivo completado" if run.objetivo_completado else "Gran objetivo: " + Mundos.INFO[Juego.lugar_actual].meta) + "  [G]"
-		_lbl_frenesi.text = "¡FRENESÍ! %.1f s" % run.frenesi_restante if run.frenesi_restante > 0 else "Frenesí · depósitos consecutivos"
+		_lbl_meta.text = (tr("✓ Gran objetivo completado") if run.objetivo_completado else tr("Gran objetivo: %s") % tr(Mundos.INFO[Juego.lugar_actual].meta)) + "  [G]"
+		_lbl_frenesi.text = tr("¡FRENESÍ! %.1f s") % run.frenesi_restante if run.frenesi_restante > 0 else tr("Frenesí · depósitos consecutivos")
 		_barra_frenesi.value = run.frenesi_restante / 6.0 * 100 if run.frenesi_restante > 0 else run.frenesi
 		var c := run.comidas.comida_en(run.get_global_mouse_position(), run.radio_actual, true)
 		mostrar_inspeccion(c)
 
-	_lbl_hormigas.text = "Hormigas: %d%s" % [run.colonia.cantidad(), " · colonia llena" if run.colonia.colonia_llena() else ""]
+	_lbl_hormigas.text = (tr("Hormigas: %d · colonia llena") if run.colonia.colonia_llena() else tr("Hormigas: %d")) % run.colonia.cantidad()
 	_reloj_descubrimiento -= delta
 	if _reloj_descubrimiento <= 0:
 		_reloj_descubrimiento = 0.5
 		var conteo := run.colonia.conteo_castas()
 		var lineas := PackedStringArray()
 		var grupo := PackedStringArray()
-		var nombres := {"obrera": "Obreras", "reina": "Reinas", "roja": "Rojas", "voladora": "Voladoras", "veloz": "Veloces", "cargadora": "Cargadoras", "mini": "Minis", "carpintera": "Carpinteras", "demoledora": "Demoledoras"}
+		var nombres := {"obrera": tr("Obreras"), "reina": tr("Reinas"), "roja": tr("Rojas"), "voladora": tr("Voladoras"), "veloz": tr("Veloces"), "cargadora": tr("Cargadoras"), "mini": tr("Minis"), "carpintera": tr("Carpinteras"), "demoledora": tr("Demoledoras")}
 		for tipo in nombres:
 			if conteo.has(tipo):
 				grupo.append("%s %d" % [nombres[tipo], conteo[tipo]])
@@ -172,7 +172,7 @@ func mostrar_combo(combo: int) -> void:
 	if combo < 3:
 		return
 	_tiempo_combo = _reloj
-	_lbl_combo.text = "COMBO x%d" % combo
+	_lbl_combo.text = tr("COMBO x%d") % combo
 	_lbl_combo.visible = true
 	_lbl_combo.modulate.a = 1.0
 	_lbl_combo.pivot_offset = Vector2(0.0, _lbl_combo.size.y / 2.0)
@@ -201,12 +201,12 @@ func mostrar_aviso(texto: String) -> void:
 
 
 func mostrar_fin() -> void:
-	_lbl_fin_migas.text = "+%s migas" % Juego.formatear(Juego.migas_run)
-	_lbl_fin_detalle.text = "Comidas: %d · Partes de la casa: %d\nMejor combo: x%d\nTotal en el hormiguero: %s" % [
+	_lbl_fin_migas.text = tr("+%s migas") % Juego.formatear(Juego.migas_run)
+	_lbl_fin_detalle.text = tr("Comidas: %d · Partes de la casa: %d\nMejor combo: x%d\nTotal en el hormiguero: %s") % [
 		Juego.comidas_destruidas_run, Juego.partes_destruidas_run, Juego.mejor_combo_run, Juego.formatear(Juego.migas)]
 	# El prestigio a la vista: cuánto daría fundar ahora (ver pestaña Jalea real).
 	if Juego.revelado("legado") and Juego.puede_fundar():
-		_lbl_fin_detalle.text += "\nFundar ahora daría +%d de jalea real" % Juego.jalea_por_fundar()
+		_lbl_fin_detalle.text += "\n" + tr("Fundar ahora daría +%d de jalea real") % Juego.jalea_por_fundar()
 	_lbl_fin_record.visible = Juego.ultima_run_fue_record
 	_lbl_ayuda.visible = false
 	_panel_fin.visible = true
@@ -235,7 +235,7 @@ func _crear_migas(raiz: Control) -> void:
 	columna.add_theme_constant_override("separation", 0)
 	columna.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_caja_migas.add_child(columna)
-	columna.add_child(Estilo.etiqueta("MIGAS DE ESTA RUN", 11, Estilo.TEXTO_SUAVE))
+	columna.add_child(Estilo.etiqueta(tr("MIGAS DE ESTA RUN"), 11, Estilo.TEXTO_SUAVE))
 	var fila := HBoxContainer.new()
 	fila.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	columna.add_child(fila)
@@ -282,7 +282,7 @@ func _crear_hormigas(raiz: Control) -> void:
 	caja.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	caja.position = Vector2(-16, 16)
 	raiz.add_child(caja)
-	_lbl_hormigas = Estilo.etiqueta("Hormigas: 0", 18, Estilo.TEXTO)
+	_lbl_hormigas = Estilo.etiqueta(tr("Hormigas: %d") % 0, 18, Estilo.TEXTO)
 	caja.add_child(_lbl_hormigas)
 	_lbl_composicion = Estilo.etiqueta("", 12, Estilo.TEXTO, 3)
 	_lbl_composicion.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -302,7 +302,7 @@ func _crear_avisos(raiz: Control) -> void:
 	raiz.add_child(_lbl_aviso)
 
 	_lbl_ayuda = Estilo.etiqueta(
-		"Clic sobre la comida: pisotón · Mantené el clic: llamar a las hormigas cercanas\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: ver la casa · Esc: terminar",
+		tr("Clic sobre la comida: pisotón · Mantené el clic: llamar a las hormigas cercanas\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: ver la casa · Esc: terminar"),
 		13, Estilo.TEXTO, 4)
 	_lbl_ayuda.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_lbl_ayuda.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -329,13 +329,13 @@ func _crear_panel_fin(raiz: Control) -> void:
 	columna.add_theme_constant_override("separation", 10)
 	columna.custom_minimum_size = Vector2(420, 0)
 	_panel_fin.add_child(columna)
-	var titulo := Estilo.etiqueta("¡Se acabó el tiempo!", 30, Estilo.TEXTO, 4)
+	var titulo := Estilo.etiqueta(tr("¡Se acabó el tiempo!"), 30, Estilo.TEXTO, 4)
 	titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(titulo)
-	_lbl_fin_record = Estilo.etiqueta("¡NUEVO RÉCORD!", 18, Estilo.VERDE, 3)
+	_lbl_fin_record = Estilo.etiqueta(tr("¡NUEVO RÉCORD!"), 18, Estilo.VERDE, 3)
 	_lbl_fin_record.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(_lbl_fin_record)
-	_lbl_fin_migas = Estilo.etiqueta("+0 migas", 44, Estilo.ACENTO, 6)
+	_lbl_fin_migas = Estilo.etiqueta(tr("+%s migas") % "0", 44, Estilo.ACENTO, 6)
 	_lbl_fin_migas.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(_lbl_fin_migas)
 	_lbl_fin_detalle = Estilo.etiqueta("", 17, Estilo.TEXTO_SUAVE)
@@ -344,7 +344,7 @@ func _crear_panel_fin(raiz: Control) -> void:
 	var espacio := Control.new()
 	espacio.custom_minimum_size = Vector2(0, 8)
 	columna.add_child(espacio)
-	_boton_tienda = Estilo.boton("Mejorar el hormiguero  ▸", 22, Color(0.45, 0.3, 0.12), Estilo.ACENTO)
+	_boton_tienda = Estilo.boton(tr("Mejorar el hormiguero") + "  ▸", 22, Color(0.45, 0.3, 0.12), Estilo.ACENTO)
 	_boton_tienda.pressed.connect(run.ir_a_tienda)
 	columna.add_child(_boton_tienda)
 
@@ -381,15 +381,15 @@ func _crear_prioridades(raiz: Control) -> void:
 	var fila := HBoxContainer.new()
 	fila.add_theme_constant_override("separation", 8)
 	panel.add_child(fila)
-	var titulo := Estilo.etiqueta("PRIORIDAD", 11, Estilo.TEXTO_SUAVE)
+	var titulo := Estilo.etiqueta(tr("PRIORIDAD"), 11, Estilo.TEXTO_SUAVE)
 	fila.add_child(titulo)
 	_nodos_prioridad.append(titulo)
 	for id in ["automatico", "alimentos", "muebles", "estructuras"]:
-		var nombres := {"automatico": "Auto", "alimentos": "Alimentos", "muebles": "Muebles", "estructuras": "Estructuras"}
+		var nombres := {"automatico": tr("Auto"), "alimentos": tr("Alimentos"), "muebles": tr("Muebles"), "estructuras": tr("Estructuras")}
 		var boton := Estilo.boton(nombres[id], 13, Color("303d2b"), Color("78936a"))
 		boton.toggle_mode = true
 		boton.button_pressed = Juego.prioridad == id
-		boton.tooltip_text = "Prioridad de búsqueda. El llamado manual siempre manda."
+		boton.tooltip_text = tr("Prioridad de búsqueda. El llamado manual siempre manda.")
 		boton.pressed.connect(_cambiar_prioridad.bind(id))
 		fila.add_child(boton)
 		_prioridades[id] = boton
@@ -397,7 +397,7 @@ func _crear_prioridades(raiz: Control) -> void:
 	var espacio := Control.new()
 	espacio.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fila.add_child(espacio)
-	var objetivo := Estilo.boton("Gran objetivo [G]", 13, Color("303d2b"), Color("78936a"))
+	var objetivo := Estilo.boton(tr("Gran objetivo") + " [G]", 13, Color("303d2b"), Color("78936a"))
 	objetivo.pressed.connect(func() -> void: run.camara.ver_objetivo())
 	fila.add_child(objetivo)
 	_boton_objetivo = objetivo
@@ -427,7 +427,7 @@ func _crear_proxima_meta(raiz: Control) -> void:
 	columna.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	columna.add_theme_constant_override("separation", 3)
 	_panel_meta.add_child(columna)
-	_lbl_meta_titulo = Estilo.etiqueta("PRÓXIMO DESBLOQUEO", 11, Estilo.TEXTO_SUAVE)
+	_lbl_meta_titulo = Estilo.etiqueta(tr("PRÓXIMO DESBLOQUEO"), 11, Estilo.TEXTO_SUAVE)
 	columna.add_child(_lbl_meta_titulo)
 	_lbl_meta_nombre = Estilo.etiqueta("", 15, Estilo.TEXTO, 3)
 	_lbl_meta_nombre.custom_minimum_size.x = 276
@@ -455,11 +455,11 @@ func _actualizar_meta() -> void:
 		"migas":
 			actual = meta.actual
 			objetivo = maxf(1.0, meta.objetivo)
-			texto = "%s / %s migas" % [Juego.formatear(actual), Juego.formatear(objetivo)]
+			texto = tr("%s / %s migas") % [Juego.formatear(actual), Juego.formatear(objetivo)]
 		"nivel":
 			actual = meta.actual
 			objetivo = maxf(1.0, meta.objetivo)
-			texto = "nivel %d / %d · %s" % [int(actual), int(objetivo), meta.detalle]
+			texto = tr("nivel %d / %d · %s") % [int(actual), int(objetivo), meta.detalle]
 		"objetivo":
 			var gran := run.objetivo_mapa
 			if is_instance_valid(gran) and not gran.muerta:
@@ -467,21 +467,21 @@ func _actualizar_meta() -> void:
 				actual = objetivo - gran.vida
 			else:
 				actual = objetivo
-			texto = "%d%% devorado · %s" % [int(actual / objetivo * 100.0), meta.detalle]
+			texto = tr("%d%% devorado · %s") % [int(actual / objetivo * 100.0), meta.detalle]
 		_:
 			actual = 1.0
 			texto = meta.detalle
-	_lbl_meta_titulo.text = "GRAN OBJETIVO" if meta.tipo == "objetivo" else ("SIGUIENTE PASO" if meta.tipo == "viaje" else "PRÓXIMO DESBLOQUEO")
+	_lbl_meta_titulo.text = tr("GRAN OBJETIVO") if meta.tipo == "objetivo" else (tr("SIGUIENTE PASO") if meta.tipo == "viaje" else tr("PRÓXIMO DESBLOQUEO"))
 	_lbl_meta_nombre.text = meta.nombre
 	_barra_meta.value = clampf(actual / objetivo, 0.0, 1.0) * 100.0
 	var lista: bool = meta.tipo == "migas" and actual >= objetivo
 	if lista:
-		texto = "¡Ya te alcanza! Compralo en el taller al terminar"
+		texto = tr("¡Ya te alcanza! Compralo en el taller al terminar")
 	_lbl_meta_progreso.text = texto
 	_relleno_meta.bg_color = Estilo.VERDE if lista else Estilo.ACENTO
 	if lista and not _meta_lista:
 		Sonido.tocar("comprar", 1.2, 0.0)
-		mostrar_aviso("¡Ya podés comprar: %s!" % meta.nombre)
+		mostrar_aviso(tr("¡Ya podés comprar: %s!") % meta.nombre)
 	_meta_lista = lista
 
 
@@ -504,13 +504,13 @@ func _anunciar_novedades() -> void:
 	var nuevas := PackedStringArray()
 	for id in ["frenesi", "gran_objetivo", "prioridades"]:
 		if Juego.revelado(id) and Juego.es_nuevo(id):
-			nuevas.append(Juego.REVELABLES[id])
+			nuevas.append(tr(Juego.REVELABLES[id]))
 			Juego.marcar_visto(id)
 	if nuevas.is_empty():
 		return
 	await get_tree().create_timer(2.6).timeout  # después del aviso de territorio
 	if is_inside_tree():
-		mostrar_aviso("Nuevo · " + "\n".join(nuevas))
+		mostrar_aviso(tr("Nuevo · %s") % "\n".join(nuevas))
 
 
 func _cambiar_prioridad(id: String) -> void:
@@ -528,14 +528,14 @@ func _notificar_hito() -> void:
 	if Juego.hitos.size() > _hitos_vistos:
 		_hitos_vistos = Juego.hitos.size()
 		var id: String = Juego.hitos.keys().back()
-		mostrar_aviso("¡Hito! " + Juego.HITOS[id].nombre)
+		mostrar_aviso(tr("¡Hito! %s") % tr(Juego.HITOS[id].nombre))
 
 func mostrar_inspeccion(c: Comida) -> void:
 	_lbl_objetivo.text = ""
 	if c is PiezaCasa:
-		_lbl_objetivo.text = "%s · %s / %s de resistencia\n%s" % [c.nombre, Juego.formatear(c.vida), Juego.formatear(c.vida_max), "Mantené clic para llamar hormigas · recompensa %s" % Juego.formatear(c.recompensa) if c.disponible() else "Requiere: " + MaterialesCasa.NIVELES[c.nivel_requerido]]
+		_lbl_objetivo.text = tr("%s · %s / %s de resistencia") % [c.nombre, Juego.formatear(c.vida), Juego.formatear(c.vida_max)] + "\n" + (tr("Mantené clic para llamar hormigas · recompensa %s") % Juego.formatear(c.recompensa) if c.disponible() else tr("Requiere: %s") % tr(MaterialesCasa.NIVELES[c.nivel_requerido]))
 	elif c is FragmentoCasa:
-		_lbl_objetivo.text = "%s · %s migas\nPeso %d · las cargadoras priorizan estos restos" % [c.nombre, Juego.formatear(c.recompensa), c.peso]
+		_lbl_objetivo.text = tr("%s · %s migas\nPeso %d · las cargadoras priorizan estos restos") % [c.nombre, Juego.formatear(c.recompensa), c.peso]
 
 
 func _miga_llego(miga: Control) -> void:
