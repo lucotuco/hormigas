@@ -106,7 +106,8 @@ func _probar_tienda() -> void:
 		var visibles := 0
 		var esperadas := 0
 		for m in Juego.mejoras:
-			if m.rama == rama:
+			# Las mejoras de destino aparecen recién con la pestaña Viajes.
+			if m.rama == rama and (m.destino == "" or Juego.revelado("viajes")):
 				esperadas += 1
 			if tienda._tarjetas[m.id].boton.visible:
 				visibles += 1

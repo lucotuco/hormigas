@@ -1,0 +1,13 @@
+id,nombre,descripcion,efecto,stat,tipo,valor,costo_base,crecimiento,nivel_max,requiere
+obreras_reales,Obreras reales,+4 obreras al empezar cada run.,stat,hormigas_iniciales,suma,4,1,1.6,10,
+jalea_dano,Mandíbulas de jalea,Daño de mordida x1.25.,stat,dano,multiplica,1.25,2,1.7,15,
+jalea_migas,Despensa real,Todas las migas x1.25.,stat,multiplicador_migas,multiplica,1.25,2,1.7,15,
+herencia_madera,Memoria de la madera,Cada colonia nueva nace sabiendo devorar madera y telas.,herencia,,,,3,1,1,
+reloj_real,Reloj de arena real,+5 segundos por run.,stat,duracion_run,suma,5,3,2,5,
+despensa,Reservas de la reina,Al fundar conservás el 10% de tus migas.,despensa,,,,4,2,5,herencia_madera:1
+techo,Cámaras más hondas,+5 niveles máximos en las mejoras que crecen con los destinos.,techo,,,,5,1.8,10,jalea_dano:1
+guardia,Guardia de la reina,Un pisotón automático cerca del cursor cada 2 s (más seguido por nivel).,guardia,,,,3,1.8,5,
+herencia_resistente,Memoria del metal,Cada colonia nueva nace sabiendo devorar materiales resistentes.,herencia,,,,10,1,1,herencia_madera:1
+linaje,Linaje,Al fundar conservás el 25% de cada casta.,linaje,,,,8,2.5,2,obreras_reales:2
+corona_doble,Corona doble,Cada gran objetivo da 1 corona más.,corona,,,,15,3,3,jalea_migas:2
+herencia_muros,Memoria de la piedra,Cada colonia nueva nace sabiendo devorar paredes.,herencia,,,,30,1,1,herencia_resistente:1

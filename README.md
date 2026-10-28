@@ -131,7 +131,7 @@ reveladas quedan visibles para siempre, y lo nuevo se marca con "¡Nuevo!":
 | Pestaña Castas | Desde la cuarta run (o al tener una especialista) |
 | Barra de prioridades | Al desbloquear la dieta de madera |
 | Pestaña Viajes | Al conquistar el primer destino |
-| Pestaña Hitos y legado | Con el primer hito o la primera corona |
+| Pestaña Jalea real (árbol de la reina e hitos) | Con el primer hito o la primera corona |
 
 El HUD muestra siempre la **próxima meta** con una barra (`Juego.proxima_meta()`):
 primero subir Mandíbulas fuertes a nivel 4, después juntar las migas de cada
@@ -174,19 +174,29 @@ carga y recolección siguen teniendo efecto sobre estos objetivos. Cada nueva
 expedición reconstruye la casa, igual que repone los alimentos; **los desbloqueos
 y mejoras sí se guardan**. No se borra el progreso de partidas anteriores.
 
-### Viajes, grandes objetivos y legado
+### Viajes, grandes objetivos y jalea real
 
-La tienda tiene pestañas **Mejoras**, **Castas**, **Viajes** e **Hitos y legado**.
+La tienda tiene pestañas **Mejoras**, **Castas**, **Viajes** y **Jalea real**.
 Los destinos son casa, restaurante, museo, Obelisco, Coliseo y Torre Eiffel.
 Cada uno tiene su propio plano y un gran objetivo: mesa familiar, barra del
 chef, escultura, Obelisco, arco imperial y torre. Devorar ese objetivo abre el
 destino siguiente y entrega de 1 a 6 coronas. `G` permite localizarlo; la niebla
 y los requisitos de material siguen vigentes.
 
-Las coronas se convierten en legado mediante **Fundar colonia**, con confirmación:
-se reinician migas, niveles de mejoras y reclutas; se conservan hitos, destinos
-y legado. Cada punto de legado da +10% permanente a daño y migas. Nunca se
-conservan muebles destruidos entre expediciones.
+**Fundar colonia** (pestaña Jalea real, con confirmación) reinicia migas,
+mejoras y castas y los convierte en **jalea real**: 3 por corona de la colonia
+más la raíz cuarta de (migas juntadas en la colonia / 100.000). La jalea se gasta en el
+**árbol de la reina** (`datos/jalea.csv`), que es permanente: atajos (nacer con
+las dietas aprendidas, conservar migas o castas), poder (daño, migas, obreras,
+tiempo) y reglas nuevas (pisotón automático, más niveles de tope, corona doble).
+Toda la jalea ganada en la historia da además +3% de daño y migas por punto,
+aunque se gaste. Se conservan destinos, hitos y el árbol. Cada gran objetivo
+paga sus coronas una vez por colonia.
+
+Cada destino conquistado **sube el tope** de las mejoras (`tope_por_destino` en
+`mejoras.csv`) y trae **mejoras propias** (marcadas con ✦, columna `destino`).
+Mandíbulas fuertes y Pisotón duplican su efecto cada 25 niveles. El diseño
+completo y sus razones están en [`docs/DISENO_PROGRESION.md`](docs/DISENO_PROGRESION.md).
 
 Los seis hitos son opcionales y tienen premios visibles en la tienda: primera
 silla (+20% daño de carpinteras), primer derrumbe (+20% daño de demoledoras),
@@ -309,28 +319,44 @@ Juega a velocidad ×8, así que una hora de juego tarda un par de minutos. Con
 `BOT_ESTADO=archivo.json` se puede cortar y retomar por tandas; con `BOT_LOG`
 también escribe el registro en un archivo. No corre en CI.
 
-Medición actual (27/10, dos corridas):
+Medición actual (28/10). Primera hora: dos corridas; campaña: una corrida en
+modo calibración desde la casa conquistada (`BOT_CALIBRAR=1`, ver abajo).
 
-| Desbloqueo | Minuto de juego |
-|---|---|
-| Mandíbulas fuertes 4 | 1,5–2,5 |
-| Primera casta | 3,5 |
-| Madera y telas (8.000 migas) | ~9,5 |
-| Materiales resistentes (150.000) | 24–27 |
-| Paredes (4.000.000) | 40–43 |
-| Casa conquistada | 46–61 |
-| Restaurante a Torre Eiffel | ~2 min cada uno |
+| Hito | Momento | Fundaciones |
+|---|---|---|
+| Mandíbulas fuertes 4 | 1,5–3,5 min | — |
+| Madera y telas (8.000 migas) | ~10 min | — |
+| Materiales resistentes (150.000) | ~26 min | — |
+| Paredes (4.000.000) | ~42 min | — |
+| Casa conquistada | ~45 min | 0 |
+| Primera fundación (trabado en el restaurante) | ~1 h 47 min | 1 |
+| Restaurante | ~3 h 27 min | 2 |
+| Museo | ~4 h 45 min | 4 |
+| Obelisco | ~6 h 27 min | 8 |
+| Coliseo | ~7 h 47 min | 10 |
+| Torre Eiffel | ~10 h 43 min | 12 |
+
+La jalea por fundación sube de 14 a 406 a lo largo de la campaña. Cada
+colonia nueva dura entre 17 y 90 minutos: las primeras y las del Obelisco son
+cortas, las de la Torre Eiffel las más largas.
 
 El gran objetivo pide la dieta completa (`PiezaCasa.NIVEL_META`) y su
-resistencia se multiplica por `vida_meta` de cada destino en `mundo/mundos.gd`
-(la casa usa 1000; el resto, 3). Como la casa se reconstruye en cada
-expedición, es un chequeo de daño dentro de una sola run.
+resistencia se multiplica por `Mundos.vida_meta(destino)` (`vida_meta` en
+`mundo/mundos.gd`). Como la casa se reconstruye en cada expedición, es un
+chequeo de daño dentro de una sola run. Desde el restaurante, cada destino
+pide entre una y cuatro colonias nuevas.
 
-**Pendiente de diseño:** el bot compra todas las mejoras y castas antes del
-minuto 60. Después de la casa no queda en qué gastar, y los cinco destinos
-siguientes caen en una run cada uno. Hay que decidir cómo progresa esa
-parte (topes de mejoras más altos, mejoras nuevas por destino, o exigir
-fundar colonia antes de viajar) y medirlo con el bot.
+**Calibrar todo de una:** con `BOT_CALIBRAR=1` los destinos después de la casa
+arrancan invulnerables; cuando una colonia se traba y decide fundar, el bot fija
+la resistencia de ese destino en 3 × el mayor daño que le hizo y la colonia
+siguiente lo conquista. Al final imprime `CALIBRADO {...}` con los valores para
+`mundo/mundos.gd`.
+
+Para recalibrar un solo destino: copiá el `estado_<destino>.json` que el bot guarda
+al conquistar el anterior, poné un `vida_meta.json` junto al estado (por
+ejemplo `{"coliseo": 1e30}`) para hacerlo invulnerable, mirá en el registro
+el daño por run (`meta X/Y`) y elegí una resistencia entre la meseta de una
+colonia y la siguiente.
 
 ## Trabajar de a dos con Git
 

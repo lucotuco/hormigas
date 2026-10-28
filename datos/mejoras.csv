@@ -1,20 +1,30 @@
-id,nombre,rama,descripcion,stat,tipo,valor,costo_base,crecimiento,nivel_max,requiere
-mas_obreras,Más obreras,Colonia,+2 hormigas al empezar cada run.,hormigas_iniciales,suma,2,8,1.55,30,
-patas_largas,Patas largas,Colonia,Las hormigas caminan un 12% más rápido.,velocidad,multiplica,1.12,15,1.7,15,mas_obreras:1
-cria_acelerada,Cría acelerada,Colonia,Nace 1 hormiga más cada 10 segundos durante la run.,cria,suma,1,150,2.0,10,mas_obreras:4
-mandibulas,Mandíbulas fuertes,Mandíbulas,+1 de daño por mordida.,dano,suma,1,12,1.6,25,
-pisada,Pisotón,Mandíbulas,+2 de daño al hacer clic sobre la comida.,dano_clic,suma,2,10,1.5,25,
-pisoton,Coordinación,Feromonas,Responde 1 hormiga más al llamado. Conserva los niveles del antiguo Pisotón.,feromona_cantidad,suma,1,10,1.5,25,
-mordida_rapida,Mordida rápida,Mandíbulas,Muerden un 12% más seguido.,intervalo_mordida,multiplica,0.88,40,1.8,12,mandibulas:2
-mandibulas_acero,Mandíbulas de acero,Mandíbulas,Daño de mordida x1.5.,dano,multiplica,1.5,2000,3.0,5,mandibulas:10
-mordida_madera,Devorar madera y telas,Mandíbulas,Desbloquea sillas mesas camas sillones y muebles de madera.,materiales,suma,1,8000,1,1,mandibulas:4
-mordida_resistente,Devorar materiales resistentes,Mandíbulas,Desbloquea electrodomésticos mesadas y sanitarios.,materiales,suma,1,150000,1,1,mordida_madera:1
-mordida_muros,Devorar paredes,Mandíbulas,Desbloquea los muros por tramos y abre nuevos caminos.,materiales,suma,1,4000000,1,1,mordida_resistente:1
-buche,Buche grande,Recolección,Cada hormiga junta 1 mordida más antes de volver.,capacidad,suma,1,30,1.75,10,mandibulas:1
-recoleccion_eficiente,Recolección eficiente,Recolección,Todas las migas x1.15.,multiplicador_migas,multiplica,1.15,100,1.9,20,buche:2
-huevos_dorados,Huevos dorados,Recolección,Todas las migas x1.5.,multiplicador_migas,multiplica,1.5,5000,3.0,5,recoleccion_eficiente:5
-rastro_persistente,Llamado potente,Feromonas,Responden 3 hormigas más al llamado.,feromona_cantidad,suma,3,10,1.6,10,
-antenas,Antenas sensibles,Feromonas,Detectan comida 15 píxeles más lejos.,olfato,suma,15,20,1.65,10,rastro_persistente:1
-reservas,Reservas de energía,Tiempo,+5 segundos por run.,duracion_run,suma,5,20,1.7,12,
-segundo_aire,Segundo aire,Tiempo,+10 segundos por run.,duracion_run,suma,10,1500,2.5,5,reservas:5
-excavar,Explorar la casa,Territorio,+240 de territorio para alcanzar nuevos ambientes.,radio_territorio,suma,240,25,1.75,36,mas_obreras:1
+id,nombre,rama,descripcion,stat,tipo,valor,costo_base,crecimiento,nivel_max,requiere,destino,tope_por_destino,elevable,bonus_cada,bonus_mult
+mas_obreras,Más obreras,Colonia,+2 hormigas al empezar cada run.,hormigas_iniciales,suma,2,8,1.55,30,,,6,0,,
+patas_largas,Patas largas,Colonia,Las hormigas caminan un 12% más rápido.,velocidad,multiplica,1.12,15,1.7,15,mas_obreras:1,,1,0,,
+cria_acelerada,Cría acelerada,Colonia,Nace 1 hormiga más cada 10 segundos durante la run.,cria,suma,1,150,2.0,10,mas_obreras:4,,0,0,,
+mandibulas,Mandíbulas fuertes,Mandíbulas,+1 de daño por mordida.,dano,suma,1,12,1.6,25,,,15,1,25,2
+pisada,Pisotón,Mandíbulas,+2 de daño al hacer clic sobre la comida.,dano_clic,suma,2,10,1.5,25,,,15,1,25,2
+pisoton,Coordinación,Feromonas,Responde 1 hormiga más al llamado. Conserva los niveles del antiguo Pisotón.,feromona_cantidad,suma,1,10,1.5,25,,,0,0,,
+mordida_rapida,Mordida rápida,Mandíbulas,Muerden un 12% más seguido.,intervalo_mordida,multiplica,0.88,40,1.8,12,mandibulas:2,,1,0,,
+mandibulas_acero,Mandíbulas de acero,Mandíbulas,Daño de mordida x1.5.,dano,multiplica,1.5,2000,3.0,5,mandibulas:10,,1,0,,
+mordida_madera,Devorar madera y telas,Mandíbulas,Desbloquea sillas mesas camas sillones y muebles de madera.,materiales,suma,1,8000,1,1,mandibulas:4,,0,0,,
+mordida_resistente,Devorar materiales resistentes,Mandíbulas,Desbloquea electrodomésticos mesadas y sanitarios.,materiales,suma,1,150000,1,1,mordida_madera:1,,0,0,,
+mordida_muros,Devorar paredes,Mandíbulas,Desbloquea los muros por tramos y abre nuevos caminos.,materiales,suma,1,4000000,1,1,mordida_resistente:1,,0,0,,
+buche,Buche grande,Recolección,Cada hormiga junta 1 mordida más antes de volver.,capacidad,suma,1,30,1.75,10,mandibulas:1,,3,1,,
+recoleccion_eficiente,Recolección eficiente,Recolección,Todas las migas x1.15.,multiplicador_migas,multiplica,1.15,100,1.9,20,buche:2,,1,0,,
+huevos_dorados,Huevos dorados,Recolección,Todas las migas x1.5.,multiplicador_migas,multiplica,1.5,5000,3.0,5,recoleccion_eficiente:5,,1,0,,
+rastro_persistente,Llamado potente,Feromonas,Responden 3 hormigas más al llamado.,feromona_cantidad,suma,3,10,1.6,10,,,0,0,,
+antenas,Antenas sensibles,Feromonas,Detectan comida 15 píxeles más lejos.,olfato,suma,15,20,1.65,10,rastro_persistente:1,,2,1,,
+reservas,Reservas de energía,Tiempo,+5 segundos por run.,duracion_run,suma,5,20,1.7,12,,,0,0,,
+segundo_aire,Segundo aire,Tiempo,+10 segundos por run.,duracion_run,suma,10,1500,2.5,5,reservas:5,,0,0,,
+excavar,Explorar la casa,Territorio,+240 de territorio para alcanzar nuevos ambientes.,radio_territorio,suma,240,25,1.75,36,mas_obreras:1,,0,0,,
+titanio,Mandíbulas de titanio,Mandíbulas,Daño de mordida x2. Afiladas con los cubiertos del restaurante.,dano,multiplica,2,2e7,4,4,,restaurante,1,0,,
+bandeja,Bandeja de mozo,Recolección,Cada hormiga junta 2 mordidas más antes de volver.,capacidad,suma,2,1e7,2.6,6,,restaurante,1,1,,
+curadora,Visión de curadora,Feromonas,Detectan comida 40 píxeles más lejos.,olfato,suma,40,2e8,2.8,5,,museo,1,1,,
+restauradoras,Restauradoras,Colonia,Las hormigas caminan un 15% más rápido.,velocidad,multiplica,1.15,3e8,3,5,,museo,0,0,,
+portenas,Colonia porteña,Colonia,+8 hormigas al empezar cada run.,hormigas_iniciales,suma,8,3e9,3.5,5,,obelisco,0,0,,
+mate,Mate cocido,Mandíbulas,Muerden un 10% más seguido.,intervalo_mordida,multiplica,0.9,5e9,3.2,5,,obelisco,0,0,,
+legion,Legión,Mandíbulas,Daño de mordida x1.6.,dano,multiplica,1.6,6e10,3.5,6,,coliseo,1,0,,
+cuadrigas,Cuadrigas,Tiempo,+10 segundos por run.,duracion_run,suma,10,4e10,3,3,,coliseo,0,0,,
+haute,Haute cuisine,Recolección,Todas las migas x2.,multiplicador_migas,multiplica,2,8e11,4,6,,eiffel,1,0,,
+mirador,Mirador de la torre,Colonia,Nacen 2 hormigas más cada 10 segundos durante la run.,cria,suma,2,1e12,3.2,5,,eiffel,0,0,,

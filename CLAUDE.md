@@ -35,6 +35,9 @@ pendientes y quién hace qué, en `TAREAS.md`.
 - `ui/`: HUD, tienda y paneles, todo por código. Colores en `ui/estilo.gd`.
 - `datos/*.csv`: **todo el balance**. Costos, stats base, comidas y castas van
   en los CSV, no en el código. Una mejora nueva es una fila en `mejoras.csv`.
+  El árbol de la reina (prestigio) está en `jalea.csv`. El porqué de la
+  economía está en `docs/DISENO_PROGRESION.md`: leelo antes de tocar el balance,
+  y medí con `tests/bot_balance.tscn` después.
 
 ## Pruebas
 

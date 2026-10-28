@@ -54,10 +54,11 @@ func _ready() -> void:
 	Juego._cache_stats.clear()
 	Juego.migas = 9999
 	Juego.reclutadas.carpintera = 3
-	var previas := Juego.coronas
-	verificar(Juego.fundar_colonia() and Juego.legado == previas and Juego.coronas == 0 and Juego.migas == 0 and Juego.niveles.is_empty() and Juego.reclutadas.is_empty(), "fundar reinicia economía y reclutas a cambio de legado")
+	var esperada := Juego.jalea_por_fundar()
+	verificar(esperada == Juego.coronas * Juego.JALEA_POR_CORONA + Juego.detalle_fundar().migas, "la jalea por fundar suma coronas y migas de la colonia")
+	verificar(Juego.fundar_colonia() and Juego.legado == esperada and Juego.jalea == esperada and Juego.coronas == 0 and Juego.migas == 0 and Juego.niveles.is_empty() and Juego.reclutadas.is_empty(), "fundar reinicia economía y reclutas a cambio de jalea real")
 	verificar(Juego.lugares_completados.size() == 6 and Juego.hitos.has("primer_monumento") and Juego.destino_desbloqueado("eiffel"), "fundar conserva hitos y destinos, no objetos destruidos")
-	verificar(is_equal_approx(Juego.stat("dano"), 3.1) and not Juego.fundar_colonia(), "el legado mejora daño y no se puede cobrar dos veces")
+	verificar(is_equal_approx(Juego.stat("dano"), 1.0 + Juego.legado * Juego.BONUS_LEGADO) and not Juego.fundar_colonia(), "la jalea ganada mejora el daño y no se puede cobrar dos veces")
 	Juego.migas = 1000
 	var previa := Juego.stat_tras_comprar("mandibulas")
 	Juego.comprar("mandibulas")

@@ -4,13 +4,23 @@ extends RefCounted
 const ORDEN := ["casa", "restaurante", "museo", "obelisco", "coliseo", "eiffel"]
 const INFO := {
 	"casa": {"nombre": "La casa", "subtitulo": "De las migas a los muebles", "meta": "La gran mesa familiar", "factor": 1.0, "coronas": 1, "vida_meta": 1000.0},
-	"restaurante": {"nombre": "El restaurante", "subtitulo": "Salón, barra y cocina industrial", "meta": "La barra del chef", "factor": 1.7, "coronas": 2},
-	"museo": {"nombre": "El museo", "subtitulo": "Galerías, vitrinas y una estatua monumental", "meta": "La gran escultura", "factor": 2.8, "coronas": 3},
-	"obelisco": {"nombre": "Obelisco · Buenos Aires", "subtitulo": "La colonia conquista la avenida", "meta": "El Obelisco", "factor": 4.5, "coronas": 4},
-	"coliseo": {"nombre": "Coliseo · Roma", "subtitulo": "Arena, arcos y piedra antigua", "meta": "El gran arco imperial", "factor": 7.0, "coronas": 5},
-	"eiffel": {"nombre": "Torre Eiffel · París", "subtitulo": "Jardines y una estructura de hierro", "meta": "La Torre Eiffel", "factor": 11.0, "coronas": 6},
+	"restaurante": {"nombre": "El restaurante", "subtitulo": "Salón, barra y cocina industrial", "meta": "La barra del chef", "factor": 1.7, "coronas": 2, "vida_meta": 1.25e4},
+	"museo": {"nombre": "El museo", "subtitulo": "Galerías, vitrinas y una estatua monumental", "meta": "La gran escultura", "factor": 2.8, "coronas": 3, "vida_meta": 2.1e4},
+	"obelisco": {"nombre": "Obelisco · Buenos Aires", "subtitulo": "La colonia conquista la avenida", "meta": "El Obelisco", "factor": 4.5, "coronas": 4, "vida_meta": 4.8e5},
+	"coliseo": {"nombre": "Coliseo · Roma", "subtitulo": "Arena, arcos y piedra antigua", "meta": "El gran arco imperial", "factor": 7.0, "coronas": 5, "vida_meta": 6.0e7},
+	"eiffel": {"nombre": "Torre Eiffel · París", "subtitulo": "Jardines y una estructura de hierro", "meta": "La Torre Eiffel", "factor": 11.0, "coronas": 6, "vida_meta": 1.45e9},
 }
 static var _cache: Dictionary = {}
+## Multiplicador de resistencia del gran objetivo cuando el destino no define
+## "vida_meta".
+const VIDA_META_BASE := 3.0
+## Sólo para el bot de balance: fuerza la resistencia de un destino sin tocar INFO.
+static var vida_meta_forzada: Dictionary = {}
+
+
+static func vida_meta(id: String) -> float:
+	return float(vida_meta_forzada.get(id, INFO[id].get("vida_meta", VIDA_META_BASE)))
+
 const ESPECIALES := [
 	{"tipo": "vitrina", "rect": Rect2(0, 0, 700, 350), "color": Color("8faeaa")},
 	{"tipo": "escultura", "rect": Rect2(0, 0, 950, 1150), "color": Color("d4c9b0")},

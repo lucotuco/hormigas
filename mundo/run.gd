@@ -12,6 +12,8 @@ const DURACION_EXPANSION := 1.8   # segundos que tarda en crecer el territorio a
 const VENTANA_COMBO := 1.2        # segundos entre depósitos para que el combo siga
 const BONUS_DESTRUIR := 0.25      # migas extra al destruir una comida (proporción de su recompensa)
 const PROPORCION_PISOTON := 0.5   # el pisotón da la mitad de migas que una mordida de hormiga
+const INTERVALO_GUARDIA := 2.0    # segundos entre pisotones automáticos con Guardia de la reina nivel 1
+const ALCANCE_GUARDIA := 400.0
 
 @onready var comidas: Comidas = $Comidas
 @onready var cocina: Cocina = $Cocina
@@ -41,6 +43,7 @@ var _sillas_devoradas := 0
 var _ultimo_efecto_deposito := -1000
 
 var _reloj := 0.0
+var _reloj_guardia := 0.0
 var _ultimo_deposito := -100.0
 var _ultimo_tic := -1
 
@@ -94,6 +97,7 @@ func _process(delta: float) -> void:
 		return
 	frenesi_restante = maxf(0, frenesi_restante - delta)
 	_descanso_frenesi = maxf(0, _descanso_frenesi - delta)
+	_pisotones_guardia(delta)
 	tiempo_restante -= delta
 	var segundos := int(ceil(tiempo_restante))
 	if segundos <= 5 and segundos != _ultimo_tic and segundos > 0:
@@ -196,7 +200,7 @@ func _on_comida_destruida(comida: Comida) -> void:
 ## que una mordida. Sólo afecta alimentos; muebles, muros y restos son trabajo
 ## de las hormigas. Mantener el clic sigue siendo el llamado (ver Feromonas).
 ## Devuelve las migas obtenidas.
-func pisar(pos: Vector2) -> float:
+func pisar(pos: Vector2, automatico := false) -> float:
 	if not activa:
 		return 0.0
 	var comida := comidas.comida_en(pos, radio_actual)
@@ -210,9 +214,46 @@ func pisar(pos: Vector2) -> float:
 		efectos.numero(lugar + Vector2(0, -comida.radio), migas, Color(1.0, 0.97, 0.8), 0.9)
 		hud.migas_voladoras(a_pantalla(lugar), 1)
 	efectos.chispas(lugar, color, 6)
-	camara.sacudir(1.5)
-	Sonido.tocar("clic", randf_range(0.9, 1.15), 0.0)
+	if not automatico:
+		camara.sacudir(1.5)
+	Sonido.tocar("clic", randf_range(0.7, 0.85) if automatico else randf_range(0.9, 1.15), 0.0)
 	return migas
+
+
+## Guardia de la reina (árbol de jalea): pisotones automáticos cerca del
+## cursor, o cerca del hormiguero si el cursor está lejos de la comida.
+## Devuelve el intervalo actual (0 si no hay guardia).
+func intervalo_guardia() -> float:
+	var nivel := Juego.nivel_jalea("guardia")
+	return INTERVALO_GUARDIA / nivel if nivel > 0 else 0.0
+
+
+func _pisotones_guardia(delta: float) -> void:
+	var intervalo := intervalo_guardia()
+	if intervalo <= 0.0:
+		return
+	_reloj_guardia += delta
+	if _reloj_guardia < intervalo:
+		return
+	_reloj_guardia = 0.0
+	for centro in [get_global_mouse_position(), Vector2.ZERO]:
+		var objetivo := _comida_para_guardia(centro)
+		if objetivo != null:
+			pisar(objetivo.global_position, true)
+			return
+
+
+func _comida_para_guardia(centro: Vector2) -> Comida:
+	var mejor: Comida = null
+	var mejor_distancia := INF
+	for c in comidas._candidatas(centro, ALCANCE_GUARDIA):
+		if c is PiezaCasa or c is FragmentoCasa or not c.en_territorio(radio_actual):
+			continue
+		var d := c.global_position.distance_squared_to(centro)
+		if d < mejor_distancia:
+			mejor = c
+			mejor_distancia = d
+	return mejor
 
 
 func registrar_extraccion(cantidad: float) -> void:
