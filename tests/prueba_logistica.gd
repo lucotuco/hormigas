@@ -6,6 +6,7 @@ const RUN := preload("res://mundo/run.tscn")
 
 func _ready() -> void:
 	Juego.guardado_habilitado = false
+	Juego.usar_idioma("es")  # compara textos en español; CI corre con el sistema en inglés
 	Sonido.silenciado = true
 	seed(713)
 	probar_guardado()
