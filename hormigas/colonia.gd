@@ -83,6 +83,33 @@ func colonia_llena() -> bool:
 	return hormigas.size() >= MAX_HORMIGAS
 
 
+## Una hormiga atrapada por una amenaza: deja de contar y se esconde. No se
+## libera hasta que termina la run, porque la cola de rutas o el llamado
+## pueden tener referencias a ella. Devuelve false si ya no estaba.
+func perder(h: Hormiga) -> bool:
+	if not is_instance_valid(h) or not hormigas.has(h):
+		return false
+	hormigas.erase(h)
+	h.detener()
+	h.carga = 0.0
+	h.visible = false
+	Juego.sumar_estadistica("hormigas_perdidas")
+	return true
+
+
+## Hasta `maximo` hormigas a menos de `radio` de `pos`. Para eventos (pocas
+## veces por segundo), no para cada hormiga en cada cuadro.
+func hormigas_cerca(pos: Vector2, radio: float, maximo: int) -> Array[Hormiga]:
+	var cerca: Array[Hormiga] = []
+	var radio2 := radio * radio
+	for h in hormigas:
+		if h.position.distance_squared_to(pos) <= radio2:
+			cerca.append(h)
+			if cerca.size() >= maximo:
+				break
+	return cerca
+
+
 func _nacer(tipo := "obrera", donde := Vector2.INF) -> Hormiga:
 	if colonia_llena():
 		return null

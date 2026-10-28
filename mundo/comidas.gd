@@ -41,6 +41,8 @@ func generar() -> void:
 	rng.seed = SEMILLA_MAPA
 	var ocupados: Array[Vector3] = []  # x, y, radio
 	for tipo in Juego.comidas:
+		if not Juego.comida_en_destino(tipo, Juego.lugar_actual):
+			continue
 		var radio: float = tipo.radio
 		var dmin: float = tipo.distancia_min
 		var dmax: float = tipo.distancia_max
@@ -186,6 +188,14 @@ func revelar_tesoro(pos: Vector2, nivel: int) -> void:
 			_tesoros += 1
 	if Juego.obtener_hito("primer_tesoro"):
 		run.hud.mostrar_aviso(tr("¡Hallazgo! Olfato +10 permanente"))
+
+
+## Deja caer una comida durante la run (la bandeja del mozo, por ejemplo).
+func soltar_comida(id: String, pos: Vector2) -> void:
+	var run: Run = get_parent()
+	var lugar := run.cocina.ajustar_destino(pos, run.radio_actual)
+	if lugar != Vector2.INF:
+		_crear(_tipo_comida(id), lugar, randi())
 
 
 ## Busca un tipo de comida por id (no por posición en el CSV, que puede reordenarse).

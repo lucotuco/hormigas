@@ -95,6 +95,23 @@ reconstruye en cada expedición). Su resistencia (`vida_meta` en `mundo/mundos.g
 está calibrada para que a partir del restaurante haga falta fundar al menos
 una vez. El ritmo lo marca el ciclo **conquistar → fundar → volver más fuerte**.
 
+### 4. Destinos con identidad
+
+Con la misma comida y los muebles de la casa reacomodados, los destinos se
+sentían iguales (es la queja más común contra Idle Ants, el juego de celular
+con la misma idea). Ahora cada destino trae tres comidas propias y una amenaza
+con su propia regla. Las amenazas cumplen dos funciones:
+
+- **Una decisión en la run.** Clickear la amenaza o seguir pisando comida. La
+  pisada automática no las resuelve, así que el jugador que mira la pantalla
+  gana más que el que la deja sola.
+- **Riesgo en un género tranquilo.** Perder hormigas o una comida grande duele
+  un poco, pero vencerlas paga un botín (12% de lo juntado en la run, o lo que
+  la amenaza se había llevado ×1,5).
+
+La miga dorada es el estímulo corto clásico de los incrementales (la galleta
+dorada de Cookie Clicker): aparece cerca de lo que se mira y dura 9 s.
+
 ## Ritmo (jugador activo, medido con el bot)
 
 | Hito | Buscado | Medido | Fundaciones |

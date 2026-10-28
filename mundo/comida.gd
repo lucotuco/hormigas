@@ -7,6 +7,7 @@ signal destruida(comida: Comida)
 
 const COLOR_GRIETA := Color(0.18, 0.11, 0.06, 0.75)
 const COLOR_CONTORNO := Color(0.15, 0.09, 0.05, 0.55)
+const FORMAS_ALARGADAS := ["choripan", "baguette", "medialuna", "croissant", "racimo", "aceituna"]
 
 var id := ""
 var nombre := ""
@@ -65,6 +66,16 @@ func configurar(tipo: Dictionary, semilla: int) -> void:
 			for i in 8:
 				var p := Vector2.from_angle(TAU * i / 8.0) * 0.72
 				_detalles.append(Vector3(p.x, p.y, 0.1))
+		"pizza_entera":
+			for i in 9:
+				var p := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.15, 0.65)
+				_detalles.append(Vector3(p.x, p.y, rng.randf_range(0.1, 0.14)))
+		"racimo":
+			# Uvas en triángulo: más anchas arriba, una sola abajo.
+			for fila in 4:
+				for col in 4 - fila:
+					var x := (col - (3 - fila) * 0.5) * 0.42 + rng.randf_range(-0.05, 0.05)
+					_detalles.append(Vector3(x, -0.5 + fila * 0.36, rng.randf_range(0.2, 0.24)))
 	set_process(false)
 	queue_redraw()
 	if _usar_cache and not Graficos.listo:
@@ -162,8 +173,14 @@ func _draw() -> void:
 		Graficos.dibujar(self, "comida:" + id, Vector2.ZERO, Color(1.3, 1.3, 1.3) if _destello > 0 else Color.WHITE)
 		_dibujar_dano(desplazamiento)
 		return
-	# Sombra consistente, también para las formas pequeñas.
-	draw_circle(Vector2(1.5, 2.5), r * 0.93, Color(0.18, 0.12, 0.08, 0.14))
+	# Sombra consistente, también para las formas pequeñas; las alargadas la
+	# dibujan con su forma.
+	if forma in ["medialuna", "croissant"]:
+		pass  # la sombra la dibuja _creciente, con la forma de la media luna
+	elif forma in FORMAS_ALARGADAS:
+		_ovalo(Vector2(1.5, 2.5), Vector2(r, r * (0.5 if forma in ["choripan", "baguette"] else 0.8)), Color(0.18, 0.12, 0.08, 0.14))
+	else:
+		draw_circle(Vector2(1.5, 2.5), r * 0.93, Color(0.18, 0.12, 0.08, 0.14))
 	match forma:
 		"aro":
 			draw_circle(Vector2.ZERO, r, oscuro)
@@ -224,10 +241,145 @@ func _draw() -> void:
 			for d in _detalles:
 				draw_circle(Vector2(d.x, d.y) * r, d.z * r, Color(0.85, 0.1, 0.18))
 			draw_circle(Vector2.ZERO, r * 0.15, Color(0.85, 0.1, 0.18))
+		"raviol":
+			var lado := r * 1.45
+			var cuadro := Rect2(-lado / 2, -lado / 2, lado, lado)
+			draw_rect(cuadro.grow(r * 0.1), oscuro)
+			draw_rect(cuadro, c)
+			draw_rect(cuadro.grow(-r * 0.3), c.lightened(0.14))
+			for i in 7:
+				var t := -lado / 2 + lado * (i + 0.5) / 7
+				for p in [Vector2(t, -lado / 2), Vector2(t, lado / 2), Vector2(-lado / 2, t), Vector2(lado / 2, t)]:
+					draw_circle(p, r * 0.07, oscuro)
+		"flan":
+			draw_circle(Vector2.ZERO, r, oscuro)
+			draw_circle(Vector2.ZERO, r * 0.9, c)
+			draw_circle(Vector2.ZERO, r * 0.58, Color("9a5420"))
+			draw_arc(Vector2.ZERO, r * 0.74, -2.6, -0.9, 20, c.lightened(0.3), maxf(1.0, r * 0.08), true)
+			draw_circle(Vector2(r * 0.25, r * 0.2), r * 0.28, Color("b8743a"))
+			draw_circle(Vector2(r * 0.2, r * 0.13), r * 0.12, Color("d69a5c"))
+		"pizza_entera":
+			draw_circle(Vector2.ZERO, r, Color("bb7850"))
+			draw_circle(Vector2.ZERO, r * 0.86, c)
+			for d in _detalles:
+				draw_circle(Vector2(d.x, d.y) * r, d.z * r, Color("b85443"))
+			for i in 4:
+				var dir := Vector2.from_angle(i * PI / 4)
+				draw_line(-dir * r * 0.86, dir * r * 0.86, c.darkened(0.25), maxf(1.0, r * 0.03), true)
+		"canape":
+			var lado := r * 1.4
+			draw_rect(Rect2(-lado / 2, -lado / 2, lado, lado), oscuro)
+			draw_rect(Rect2(-lado / 2 + 1, -lado / 2 + 1, lado - 2, lado - 2), c)
+			for i in 4:
+				draw_circle(Vector2(-0.35 + (i % 2) * 0.7, -0.35 + floorf(i / 2.0) * 0.7) * r, r * 0.06, oscuro)
+			draw_circle(Vector2.ZERO, r * 0.42, Color("e88a6c"))
+			draw_circle(Vector2(r * 0.1, -r * 0.1), r * 0.16, Color("f4b49b"))
+			_ovalo(Vector2(-r * 0.25, r * 0.2), Vector2(r * 0.22, r * 0.1), Color("7aa35a"), 0.6)
+		"bombon":
+			for i in 14:
+				var p := Vector2.from_angle(i * TAU / 14) * r * 0.9
+				draw_circle(p, r * 0.18, Color("c9a35e"))
+			draw_circle(Vector2.ZERO, r * 0.86, Color("a8823f"))
+			draw_circle(Vector2.ZERO, r * 0.72, c)
+			draw_arc(Vector2.ZERO, r * 0.45, -2.5, -1.0, 16, c.lightened(0.35), maxf(1.0, r * 0.1), true)
+			draw_arc(Vector2.ZERO, r * 0.2, 0.4, 2.6, 12, c.lightened(0.2), maxf(1.0, r * 0.07), true)
+		"torta_pisos":
+			for i in 3:
+				var radio_piso := r * (1.0 - i * 0.28)
+				draw_circle(Vector2.ZERO, radio_piso, c.darkened(0.18 - i * 0.04))
+				draw_circle(Vector2.ZERO, radio_piso * 0.94, c.lightened(i * 0.03))
+				draw_arc(Vector2.ZERO, radio_piso * 0.86, 0, TAU, 40, Color(1, 1, 1, 0.8), maxf(1.0, r * 0.04), true)
+			draw_circle(Vector2.ZERO, r * 0.16, Color("e78aa4"))
+			draw_circle(Vector2(r * 0.03, -r * 0.03), r * 0.08, Color("f7b8c8"))
+		"alfajor":
+			draw_circle(Vector2.ZERO, r, Color("e8d9b8"))
+			draw_circle(Vector2.ZERO, r * 0.9, c)
+			draw_arc(Vector2.ZERO, r * 0.62, -2.7, -1.0, 18, c.lightened(0.28), maxf(1.0, r * 0.12), true)
+			draw_arc(Vector2.ZERO, r * 0.8, 0, TAU, 32, c.darkened(0.15), maxf(1.0, r * 0.05), true)
+		"medialuna", "croissant":
+			_creciente(r, c, oscuro, 5 if forma == "croissant" else 3)
+		"choripan":
+			_ovalo(Vector2.ZERO, Vector2(r, r * 0.42), oscuro)
+			_ovalo(Vector2(0, -r * 0.03), Vector2(r * 0.95, r * 0.37), c)
+			_ovalo(Vector2.ZERO, Vector2(r * 0.86, r * 0.17), Color("8f3a2a"))
+			for i in 6:
+				draw_circle(Vector2(-r * 0.6 + i * r * 0.24, sin(i * 1.7) * r * 0.06), r * 0.045, Color("4f7d3a"))
+		"aceituna":
+			_ovalo(Vector2.ZERO, Vector2(r, r * 0.72), oscuro)
+			_ovalo(Vector2(0, -r * 0.05), Vector2(r * 0.9, r * 0.62), c)
+			draw_circle(Vector2(r * 0.55, 0), r * 0.28, Color("c8452f"))
+			draw_arc(Vector2(-r * 0.15, -r * 0.1), r * 0.4, -2.8, -1.6, 10, c.lightened(0.35), maxf(0.8, r * 0.1), true)
+		"racimo":
+			draw_line(Vector2(0, -r * 0.62), Vector2(r * 0.1, -r * 0.98), Color("6b5236"), maxf(1.0, r * 0.08), true)
+			_ovalo(Vector2(r * 0.32, -r * 0.82), Vector2(r * 0.3, r * 0.16), Color("6f9a4c"), -0.4)
+			for d in _detalles:
+				draw_circle(Vector2(d.x, d.y) * r, d.z * r, oscuro)
+				draw_circle(Vector2(d.x, d.y - 0.03) * r, d.z * r * 0.86, c)
+				draw_circle(Vector2(d.x - 0.06, d.y - 0.07) * r, d.z * r * 0.28, c.lightened(0.35))
+		"pan_romano":
+			draw_circle(Vector2.ZERO, r, oscuro)
+			draw_circle(Vector2.ZERO, r * 0.92, c)
+			draw_circle(Vector2.ZERO, r * 0.32, c.lightened(0.1))
+			draw_arc(Vector2.ZERO, r * 0.32, 0, TAU, 24, c.darkened(0.3), maxf(1.0, r * 0.05), true)
+			for i in 8:
+				var dir := Vector2.from_angle(i * TAU / 8)
+				draw_line(dir * r * 0.34, dir * r * 0.88, c.darkened(0.32), maxf(1.0, r * 0.06), true)
+		"macaron":
+			for i in 18:
+				draw_circle(Vector2.from_angle(i * TAU / 18) * r * 0.86, r * 0.16, c.darkened(0.12))
+			draw_circle(Vector2.ZERO, r * 0.88, c)
+			draw_arc(Vector2.ZERO, r * 0.55, -2.6, -1.1, 16, c.lightened(0.35), maxf(1.0, r * 0.12), true)
+		"baguette":
+			_ovalo(Vector2.ZERO, Vector2(r, r * 0.3), oscuro)
+			_ovalo(Vector2(0, -r * 0.02), Vector2(r * 0.96, r * 0.25), c)
+			for i in 5:
+				var x := -r * 0.62 + i * r * 0.31
+				draw_line(Vector2(x - r * 0.08, r * 0.12), Vector2(x + r * 0.08, -r * 0.12), c.lightened(0.3), maxf(1.0, r * 0.06), true)
 		_:
 			draw_circle(Vector2.ZERO, r, c)
 
 	_dibujar_dano(desplazamiento)
+
+
+## Elipse como polígono: no usa draw_set_transform, que pisaría la sacudida.
+func _ovalo(centro: Vector2, radios: Vector2, tinta: Color, angulo := 0.0) -> void:
+	var puntos := PackedVector2Array()
+	for i in 20:
+		var a := i * TAU / 20
+		puntos.append(centro + Vector2(cos(a) * radios.x, sin(a) * radios.y).rotated(angulo))
+	draw_colored_polygon(puntos, tinta)
+
+
+## Medialuna (3 gajos) o croissant (5): una media luna abierta hacia la
+## derecha, más gruesa en el medio, con las marcas de cada gajo.
+func _creciente(r: float, tinta: Color, oscuro: Color, gajos: int) -> void:
+	var exterior := PackedVector2Array()
+	var interior := PackedVector2Array()
+	var pasos := 24
+	for i in pasos + 1:
+		var phi := lerpf(-0.82, 0.82, float(i) / pasos) * PI
+		var dir := Vector2(-cos(phi), sin(phi))
+		var grosor := r * 0.62 * maxf(0.12, cos(phi / 0.82 * 0.5))
+		exterior.append(dir * (r * 0.6 + grosor * 0.5))
+		interior.append(dir * (r * 0.6 - grosor * 0.5))
+	interior.reverse()
+	var cuerpo := exterior + interior
+	var sombra := PackedVector2Array()
+	for punto in cuerpo:
+		sombra.append(punto * 1.06)
+	var proyectada := PackedVector2Array()
+	for punto in cuerpo:
+		proyectada.append(punto + Vector2(1.5, 2.5))
+	draw_colored_polygon(proyectada, Color(0.18, 0.12, 0.08, 0.14))
+	draw_colored_polygon(sombra, oscuro)
+	draw_colored_polygon(cuerpo, tinta)
+	for k in range(1, gajos):
+		var phi := lerpf(-0.82, 0.82, float(k) / gajos) * PI
+		var dir := Vector2(-cos(phi), sin(phi))
+		var grosor := r * 0.62 * maxf(0.12, cos(phi / 0.82 * 0.5))
+		draw_line(dir * (r * 0.6 - grosor * 0.45), dir * (r * 0.6 + grosor * 0.45), oscuro, maxf(1.0, r * 0.06), true)
+	draw_arc(Vector2.ZERO, r * 0.72, PI * 0.8, PI * 1.2, 10, tinta.lightened(0.3), maxf(1.0, r * 0.07), true)
+
 
 func _dibujar_dano(desplazamiento: Vector2) -> void:
 	var r := radio

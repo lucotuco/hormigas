@@ -146,6 +146,11 @@ func jugar_run() -> float:
 		reloj += get_process_delta_time()
 		if reloj >= 1.0 / CLICS_POR_SEGUNDO and run.activa:
 			reloj = 0.0
+			# Un jugador activo atiende primero las amenazas y las migas doradas.
+			var evento := run.eventos.mas_urgente()
+			if evento != null:
+				run.pisar(run.eventos.punto_de_clic(evento))
+				continue
 			var mejor: Comida = null
 			for c in run.comidas.lista:
 				if not c.muerta and c.en_territorio(run.radio_actual) and (mejor == null or c.position.length() < mejor.position.length()):

@@ -25,6 +25,8 @@ const MAX_PISADAS_POR_CUADRO := 4
 @onready var efectos: Efectos = $Efectos
 @onready var camara: Camara = $Camara
 @onready var hud: HUD = $HUD
+## Amenazas de cada destino y migas doradas (se crea por código).
+var eventos: Eventos
 
 ## Radio del territorio en este momento (se anima al empezar si creció).
 var radio_actual: float = 0.0
@@ -83,6 +85,9 @@ func _ready() -> void:
 		Sonido.tocar("crecer", 1.0, 0.0)
 
 	colonia.iniciar(self)
+	eventos = Eventos.new()
+	add_child(eventos)
+	eventos.iniciar(self)
 	activa = true
 
 
@@ -204,6 +209,9 @@ func _on_comida_destruida(comida: Comida) -> void:
 ## Devuelve las migas obtenidas.
 func pisar(pos: Vector2, automatico := false) -> float:
 	if not activa:
+		return 0.0
+	# Las amenazas y la miga dorada se pisan antes que la comida de abajo.
+	if not automatico and eventos.pisar(pos):
 		return 0.0
 	var comida := comidas.comida_en(pos, radio_actual)
 	if comida == null or comida is PiezaCasa or comida is FragmentoCasa:

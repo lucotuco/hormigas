@@ -36,6 +36,9 @@ pendientes y quién hace qué, en `TAREAS.md`.
 - `mundo/`: la run y el mapa. `cocina.gd` es la navegación (AStarGrid2D con cola
   y presupuesto por cuadro); `plano_casa.gd` y `mundos.gd` definen los planos;
   `pieza_casa.gd` son muebles y muros comestibles por celdas.
+- `mundo/eventos.gd` y `mundo/evento.gd`: la amenaza de cada destino y la
+  miga dorada. Se crean por código desde `run.gd`; reciben los clics antes que
+  la comida.
 - `ui/`: menú (escena principal), HUD con pausa, tienda y paneles, todo por
   código. Las ventanas heredan de `VentanaModal`. Colores en `ui/estilo.gd`.
   Las estadísticas de la partida van en `Juego.estadisticas`
