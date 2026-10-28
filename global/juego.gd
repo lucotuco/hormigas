@@ -102,6 +102,8 @@ const REVELABLES := {
 	"prioridades": "Prioridades: elegí qué come la colonia",
 	"viajes": "Viajes: nuevos destinos",
 	"legado": "Jalea real: fundá colonias y mejorá a la reina",
+	"doradas": "Migas doradas: pisalas antes de que desaparezcan",
+	"amenazas": "Amenazas: cada destino tiene la suya; pisalas para salvar a la colonia",
 }
 ## Desbloqueos clave que marcan la progresión; el HUD muestra el próximo.
 const DIETAS := ["mordida_madera", "mordida_resistente", "mordida_muros"]
@@ -121,7 +123,8 @@ var guardado_habilitado := true
 const ESTADISTICAS := ["migas_totales", "migas_gastadas", "tiempo_total", "tiempo_en_runs",
 	"comidas_devoradas", "partes_devoradas", "pisotones", "derrumbes", "hormigas_nacidas",
 	"mayor_colonia", "mejor_combo", "objetivos_conquistados", "coronas_ganadas",
-	"niveles_comprados", "castas_reclutadas", "jalea_gastada"]
+	"niveles_comprados", "castas_reclutadas", "jalea_gastada",
+	"amenazas_vencidas", "hormigas_perdidas", "migas_doradas"]
 var estadisticas: Dictionary = {}
 var _inicio_run := 0.0
 
@@ -443,6 +446,10 @@ func _condicion_revelar(id: String) -> bool:
 			return not lugares_completados.is_empty()
 		"legado":
 			return not hitos.is_empty() or coronas > 0 or legado > 0 or fundaciones > 0
+		"doradas":
+			return runs_jugadas >= 3
+		"amenazas":
+			return runs_jugadas >= 6
 	return true
 
 
@@ -966,8 +973,19 @@ func _cargar_datos() -> void:
 			"distancia_max": _num(fila.distancia_max),
 			"cantidad": int(_num(fila.cantidad)),
 			"zonas": fila.get("zonas", ""),
+			# Destinos donde aparece ("" = en todos). Cada destino tiene sus comidas.
+			"destinos": Array(String(fila.get("destinos", "")).split("|", false)),
 		})
+	for c in comidas:
+		for d in c.destinos:
+			if not Mundos.INFO.has(d):
+				push_error("Comida '%s': el destino '%s' no existe" % [c.id, d])
 	_cache_stats.clear()
+
+
+## ¿La comida aparece en este destino?
+func comida_en_destino(tipo: Dictionary, lugar: String) -> bool:
+	return tipo.destinos.is_empty() or lugar in tipo.destinos
 
 
 ## Lee un CSV con encabezado y devuelve una lista de diccionarios (columna -> texto).

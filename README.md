@@ -375,6 +375,27 @@ ejemplo `{"coliseo": 1e30}`) para hacerlo invulnerable, mirá en el registro
 el daño por run (`meta X/Y`) y elegí una resistencia entre la meseta de una
 colonia y la siguiente.
 
+## Destinos con identidad
+
+Cada destino tiene **sus comidas** (columna `destinos` de `datos/comidas.csv`;
+vacía = en todos) y **su amenaza**, que se resuelve a clics y da botín:
+
+| Destino | Comidas propias | Amenaza | Cómo se juega |
+|---|---|---|---|
+| Casa | las de siempre | Araña | Caza hormigas sueltas; 6 pisotones la vencen |
+| Restaurante | ravioles, flan, pizza entera | El mozo | Avisa con su sombra y pisa; 3 clics en la sombra lo hacen tropezar y suelta la bandeja |
+| Museo | canapé, bombón, torta de gala | Aspiradora robot | Se traga comida chica y hormigas; romperla (6) devuelve lo tragado |
+| Obelisco | alfajor, medialuna, choripán | Palomas | Picotean lo mejor; un clic espanta a cada una |
+| Coliseo | aceituna, uvas, pan romano | Gato | Duerme sobre la mejor comida y salta si lo molestan; 4 clics y se va |
+| Torre Eiffel | macaron, croissant, baguette | Rata | Corre a robarse lo más rico; 5 clics la atrapan |
+
+Además, la **miga dorada** aparece cada tanto: pisala antes de que se apague y
+da migas, frenesí o +8 s. Las amenazas llegan desde la sexta expedición y las
+migas doradas desde la tercera; una flecha en el borde de la pantalla señala
+las que quedan fuera de la vista. Los pisotones automáticos no las resuelven:
+son el momento de clickear. Código en `mundo/eventos.gd` y `mundo/evento.gd`;
+revisión visual en `tests/revision_eventos.tscn` y `tests/revision_comidas.tscn`.
+
 ## Idiomas
 
 Español e inglés. El juego arranca en el idioma del sistema (español si el

@@ -64,6 +64,39 @@ class IconoMiga extends Control:
 		draw_circle(c + Vector2(0, -5), 3.5, Color(0.8, 0.6, 0.36))
 
 
+## Flechas en el borde de la pantalla hacia las amenazas y migas doradas
+## que quedan fuera de la vista.
+class IndicadorEventos extends Control:
+	var run: Run
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		if not is_instance_valid(run) or run.eventos == null:
+			return
+		var centro := size * 0.5
+		var area := Rect2(Vector2.ZERO, size).grow(-46)
+		for e in run.eventos.activos:
+			if not is_instance_valid(e) or e.resuelto or (e.tipo == "mozo" and e.estado != "avisando"):
+				continue
+			var p := run.a_pantalla(run.eventos.punto_de_clic(e))
+			if Rect2(Vector2.ZERO, size).has_point(p):
+				continue
+			var dir := (p - centro).normalized()
+			# Punto del borde en esa dirección.
+			var t := INF
+			if absf(dir.x) > 0.001:
+				t = minf(t, (area.size.x * 0.5) / absf(dir.x))
+			if absf(dir.y) > 0.001:
+				t = minf(t, (area.size.y * 0.5) / absf(dir.y))
+			var borde := centro + dir * t
+			var tinta := Color("f2c84b") if e.tipo == "dorada" else Color("e0634a")
+			draw_circle(borde, 17, Color(0.08, 0.06, 0.04, 0.75))
+			draw_circle(borde, 11, tinta)
+			draw_colored_polygon(PackedVector2Array([borde + dir * 30, borde + dir * 18 + dir.orthogonal() * 9, borde + dir * 18 - dir.orthogonal() * 9]), tinta)
+
+
 func _ready() -> void:
 	var raiz := Control.new()
 	raiz.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -77,6 +110,11 @@ func _ready() -> void:
 	_crear_progresion(raiz)
 	_crear_proxima_meta(raiz)
 	_crear_prioridades(raiz)
+	var indicador := IndicadorEventos.new()
+	indicador.run = run
+	indicador.set_anchors_preset(Control.PRESET_FULL_RECT)
+	indicador.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	raiz.add_child(indicador)
 	_hitos_vistos = Juego.hitos.size()
 	Juego.progreso_cambio.connect(_notificar_hito)
 	_actualizar_revelados()
@@ -503,7 +541,7 @@ func _actualizar_revelados() -> void:
 ## Al empezar la run, avisa qué mecánicas aparecieron desde la última vez.
 func _anunciar_novedades() -> void:
 	var nuevas := PackedStringArray()
-	for id in ["frenesi", "gran_objetivo", "prioridades"]:
+	for id in ["frenesi", "gran_objetivo", "prioridades", "doradas", "amenazas"]:
 		if Juego.revelado(id) and Juego.es_nuevo(id):
 			nuevas.append(tr(Juego.REVELABLES[id]))
 			Juego.marcar_visto(id)

@@ -67,7 +67,9 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] **A:** siete castas con roles, carpintera y demoledora, corrosión compartida y prioridades de trabajo
 - [x] **A:** evolución visual de mandíbulas, abdomen y corona de la reina
 - [ ] **A:** castas de combate y vuelo hacia superficies elevadas
-- [ ] **A:** enemigos: araña que caza hormigas sueltas, humano con insecticida
+- [x] Una amenaza por destino: araña, mozo, aspiradora, palomas, gato y rata (mundo/eventos.gd)
+- [x] Comidas propias en cada destino y miga dorada
+- [ ] **A:** humano con insecticida (¿amenaza de la casa avanzada?)
 - [x] **A:** atlas compartido, búsqueda espacial, navegación incremental y benchmark gráfico con 5/150/500 hormigas
 - [x] **A:** cola justa de rutas con prioridad manual, caché de fallos, giros comprimidos y prueba de cursor móvil con 500 hormigas
 - [ ] **Los dos:** probar rendimiento en otras PCs y balancear los tiempos de desbloqueo y resistencia de materiales

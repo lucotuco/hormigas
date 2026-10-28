@@ -1397,3 +1397,105 @@ msgstr "Explorer colony"
 
 msgid "Territorio +35%, hormigas 25% más rápidas y olfato +30%, pero muerden 25% más débil."
 msgstr "Territory +35%, ants 25% faster and smell +30%, but bites are 25% weaker."
+
+msgid "¡Una miga dorada! Pisala antes de que desaparezca"
+msgstr "A golden crumb! Stomp it before it vanishes"
+
+msgid "¡Una araña! Pisala antes de que se lleve a tus hormigas"
+msgstr "A spider! Stomp it before it carries off your ants"
+
+msgid "¡Viene el mozo! Pisá su sombra para que tropiece"
+msgstr "Here comes the waiter! Stomp his shadow to trip him"
+
+msgid "¡La aspiradora del museo! Rompela antes de que se trague todo"
+msgstr "The museum's robot vacuum! Break it before it swallows everything"
+
+msgid "¡Palomas! Espantalas antes de que se coman lo mejor"
+msgstr "Pigeons! Scare them off before they eat the best bits"
+
+msgid "Un gato duerme sobre la comida… no lo despiertes"
+msgstr "A cat is sleeping on the food… don't wake it"
+
+msgid "¡Una rata! Quiere robarse lo más rico"
+msgstr "A rat! It's after the tastiest food"
+
+msgid "¡Frenesí dorado! La colonia vuela"
+msgstr "Golden frenzy! The colony flies"
+
+msgid "¡+8 segundos de expedición!"
+msgstr "+8 seconds of expedition!"
+
+msgid "¡Lluvia de migas! +%s"
+msgstr "Crumb shower! +%s"
+
+msgid "¡El mozo tropezó! Se le cayó la bandeja"
+msgstr "The waiter tripped! He dropped the whole tray"
+
+msgid "¡Paloma espantada! +%s"
+msgstr "Pigeon scared off! +%s"
+
+msgid "El gato se fue a dormir a otro lado. +%s"
+msgstr "The cat went to nap somewhere else. +%s"
+
+msgid "¡Amenaza vencida! +%s"
+msgstr "Threat defeated! +%s"
+
+msgid "Migas doradas"
+msgstr "Golden crumbs"
+
+msgid "Amenazas vencidas"
+msgstr "Threats defeated"
+
+msgid "Hormigas perdidas"
+msgstr "Ants lost"
+
+msgid "Ravioles"
+msgstr "Ravioli"
+
+msgid "Flan con dulce de leche"
+msgstr "Flan with dulce de leche"
+
+msgid "Pizza entera"
+msgstr "Whole pizza"
+
+msgid "Canapé"
+msgstr "Canapé"
+
+msgid "Bombón"
+msgstr "Bonbon"
+
+msgid "Torta de gala"
+msgstr "Gala cake"
+
+msgid "Alfajor"
+msgstr "Alfajor"
+
+msgid "Medialuna"
+msgstr "Medialuna"
+
+msgid "Choripán"
+msgstr "Choripan"
+
+msgid "Aceituna"
+msgstr "Olive"
+
+msgid "Racimo de uvas"
+msgstr "Bunch of grapes"
+
+msgid "Pan romano"
+msgstr "Roman bread"
+
+msgid "Macaron"
+msgstr "Macaron"
+
+msgid "Croissant"
+msgstr "Croissant"
+
+msgid "Baguette"
+msgstr "Baguette"
+
+msgid "Migas doradas: pisalas antes de que desaparezcan"
+msgstr "Golden crumbs: stomp them before they vanish"
+
+msgid "Amenazas: cada destino tiene la suya; pisalas para salvar a la colonia"
+msgstr "Threats: every destination has its own; stomp them to save the colony"
