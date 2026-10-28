@@ -76,5 +76,8 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] **B:** seis destinos con objetivos: casa, restaurante, museo, Obelisco, Coliseo y Torre Eiffel
 - [x] **B:** árbol de mejoras como hormiguero en corte con seis cámaras interactivas
 - [x] Bot de balance (tests/bot_balance.tscn) y primera hora calibrada: madera ~10 min, paredes ~42, casa ~50
-- [ ] **Los dos:** decidir cómo progresan los destinos 2 a 6: hoy todo se maximiza antes del minuto 60 y cada destino cae en una run
+- [x] Progresión larga: jalea real y árbol de la reina, topes por destino, mejoras de cada viaje, hitos cada 25 niveles (docs/DISENO_PROGRESION.md)
+- [x] Tope de 500 hormigas y runs de hasta ~3,5 min
+- [ ] **Los dos:** jugar una colonia completa y ver si el árbol de la reina tiene decisiones interesantes (no sólo "comprar lo más barato")
+- [ ] **Los dos:** el prestigio tardío acelera mucho (×1000 por colonia): decidir si se amortigua más o se suman destinos
 - [ ] **B:** pasar los CSV a una planilla compartida

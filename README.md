@@ -319,28 +319,34 @@ Juega a velocidad ×8, así que una hora de juego tarda un par de minutos. Con
 `BOT_ESTADO=archivo.json` se puede cortar y retomar por tandas; con `BOT_LOG`
 también escribe el registro en un archivo. No corre en CI.
 
-Medición actual (27/10, dos corridas):
+Medición actual (28/10). Primera hora: dos corridas; campaña completa: una
+corrida por etapas, retomando desde cada conquista.
 
-| Desbloqueo | Minuto de juego |
-|---|---|
-| Mandíbulas fuertes 4 | 1,5–2,5 |
-| Primera casta | 3,5 |
-| Madera y telas (8.000 migas) | ~9,5 |
-| Materiales resistentes (150.000) | 24–27 |
-| Paredes (4.000.000) | 40–43 |
-| Casa conquistada | 46–61 |
-| Restaurante a Torre Eiffel | ~2 min cada uno |
+| Hito | Momento | Fundaciones |
+|---|---|---|
+| Mandíbulas fuertes 4 | 1,5–3,5 min | — |
+| Madera y telas (8.000 migas) | ~10 min | — |
+| Materiales resistentes (150.000) | ~26 min | — |
+| Paredes (4.000.000) | ~42 min | — |
+| Casa conquistada | ~45 min | 0 |
+| Restaurante | ~3,5–4,5 h | 2–3 |
+| Museo | ~5,3 h | 4 |
+| Obelisco | ~6,2 h | 5 |
+| Coliseo | ~8,2 h | 6 |
+| Torre Eiffel | TORRE_PENDIENTE | TORRE_FUND |
 
 El gran objetivo pide la dieta completa (`PiezaCasa.NIVEL_META`) y su
-resistencia se multiplica por `vida_meta` de cada destino en `mundo/mundos.gd`
-(la casa usa 1000; el resto, 3). Como la casa se reconstruye en cada
-expedición, es un chequeo de daño dentro de una sola run.
+resistencia se multiplica por `Mundos.vida_meta(destino)` (`vida_meta` en
+`mundo/mundos.gd`). Como la casa se reconstruye en cada expedición, es un
+chequeo de daño dentro de una sola run. Desde el restaurante, cada destino
+pide más o menos una colonia nueva: cada fundación multiplica el daño de la
+colonia por cientos o miles.
 
-**Pendiente de diseño:** el bot compra todas las mejoras y castas antes del
-minuto 60. Después de la casa no queda en qué gastar, y los cinco destinos
-siguientes caen en una run cada uno. Hay que decidir cómo progresa esa
-parte (topes de mejoras más altos, mejoras nuevas por destino, o exigir
-fundar colonia antes de viajar) y medirlo con el bot.
+Para recalibrar un destino: copiá el `estado_<destino>.json` que el bot guarda
+al conquistar el anterior, poné un `vida_meta.json` junto al estado (por
+ejemplo `{"coliseo": 1e30}`) para hacerlo invulnerable, mirá en el registro
+el daño por run (`meta X/Y`) y elegí una resistencia entre la meseta de una
+colonia y la siguiente.
 
 ## Trabajar de a dos con Git
 
