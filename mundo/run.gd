@@ -8,6 +8,7 @@ extends Node2D
 ## nodos ubicados en el origen, así que posición local = posición global.
 
 const ESCENA_TIENDA := "res://ui/tienda.tscn"
+const ESCENA_MENU := "res://ui/menu.tscn"
 const DURACION_EXPANSION := 1.8   # segundos que tarda en crecer el territorio al empezar
 const VENTANA_COMBO := 1.2        # segundos entre depósitos para que el combo siga
 const BONUS_DESTRUIR := 0.25      # migas extra al destruir una comida (proporción de su recompensa)
@@ -113,7 +114,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var tecla := event as InputEventKey
 	if tecla and tecla.pressed and not tecla.echo and tecla.keycode == KEY_ESCAPE:
-		tiempo_restante = 0.0  # termina la run en el próximo cuadro
+		get_viewport().set_input_as_handled()
+		hud.pausar()
 
 
 # =====================================================================
@@ -209,6 +211,7 @@ func pisar(pos: Vector2, automatico := false) -> float:
 	var color := comida.color
 	var lugar := comida.global_position
 	var migas := comida.morder(Juego.stat("dano_clic")) * PROPORCION_PISOTON
+	Juego.sumar_estadistica("pisotones")
 	if migas > 0.0:
 		Juego.sumar_migas_run(migas)
 		efectos.numero(lugar + Vector2(0, -comida.radio), migas, Color(1.0, 0.97, 0.8), 0.9)
@@ -260,6 +263,7 @@ func registrar_extraccion(cantidad: float) -> void:
 	resistencia_extraida += maxf(0, cantidad)
 
 func registrar_derrumbe() -> void:
+	Juego.sumar_estadistica("derrumbes")
 	Juego.obtener_hito("primer_derrumbe")
 
 func factor_ritmo() -> float:
@@ -267,17 +271,30 @@ func factor_ritmo() -> float:
 
 
 func _terminar() -> void:
-	activa = false
-	feromonas.soltar()
-	terminada = true
-	colonia.detener()
-	Juego.terminar_run()
+	_cerrar()
 	Sonido.tocar("fin", 1.0, 0.0)
 	# Cámara lenta un instante antes de mostrar el resultado.
 	Engine.time_scale = 0.3
 	var tween := create_tween().set_ignore_time_scale(true)
 	tween.tween_interval(0.8)
 	tween.tween_callback(_mostrar_fin)
+
+
+## Cierra la run y suma lo juntado (también al salir al menú desde la pausa).
+func _cerrar() -> void:
+	activa = false
+	feromonas.soltar()
+	terminada = true
+	colonia.detener()
+	Juego.registrar_maximo("mayor_colonia", colonia.cantidad())
+	Juego.terminar_run()
+
+
+func salir_al_menu() -> void:
+	get_tree().paused = false
+	if activa:
+		_cerrar()
+	get_tree().change_scene_to_file(ESCENA_MENU)
 
 
 func _mostrar_fin() -> void:

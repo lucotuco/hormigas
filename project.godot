@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Hormigas"
 config/description="Incremental de hormigas: guiá a tu colonia y comete la casa entera."
-run/main_scene="res://mundo/run.tscn"
+run/main_scene="res://ui/menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -21,6 +21,7 @@ config/icon="res://icon.svg"
 Juego="*res://global/juego.gd"
 Sonido="*res://global/sonido.gd"
 Graficos="*res://global/graficos.gd"
+Ajustes="*res://global/ajustes.gd"
 
 [display]
 

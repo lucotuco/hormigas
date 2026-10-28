@@ -108,6 +108,15 @@ var ultima_run_fue_record := false
 ## Ponerlo en false evita escribir el archivo de partida (lo usan las pruebas).
 var guardado_habilitado := true
 
+## Estadísticas de toda la partida: no se reinician al fundar una colonia.
+## Las muestra la pantalla de estadísticas (ui/panel_estadisticas.gd).
+const ESTADISTICAS := ["migas_totales", "migas_gastadas", "tiempo_total", "tiempo_en_runs",
+	"comidas_devoradas", "partes_devoradas", "pisotones", "derrumbes", "hormigas_nacidas",
+	"mayor_colonia", "mejor_combo", "objetivos_conquistados", "coronas_ganadas",
+	"niveles_comprados", "castas_reclutadas", "jalea_gastada"]
+var estadisticas: Dictionary = {}
+var _inicio_run := 0.0
+
 var _cache_stats: Dictionary = {}
 
 
@@ -132,6 +141,10 @@ var idioma := "es"
 
 func idioma_del_sistema() -> String:
 	return "es" if OS.get_locale_language() == "es" else "en"
+
+
+func _process(delta: float) -> void:
+	estadisticas.tiempo_total = estadistica("tiempo_total") + delta
 
 
 func usar_idioma(codigo: String) -> void:
@@ -303,6 +316,8 @@ func comprar_lote(id: String, cantidad := 1) -> int:
 		return 0
 	migas -= oferta.costo
 	niveles[id] = nivel_de(id) + int(oferta.cantidad)
+	sumar_estadistica("migas_gastadas", oferta.costo)
+	sumar_estadistica("niveles_comprados", oferta.cantidad)
 	_cache_stats.clear()
 	guardar()
 	migas_cambiaron.emit(migas)
@@ -348,6 +363,8 @@ func comprar_castas_lote(id: String, cantidad := 1) -> int:
 		return 0
 	migas -= oferta.costo
 	reclutadas[id] = cantidad_casta(id) + int(oferta.cantidad)
+	sumar_estadistica("migas_gastadas", oferta.costo)
+	sumar_estadistica("castas_reclutadas", oferta.cantidad)
 	guardar()
 	migas_cambiaron.emit(migas)
 	casta_comprada.emit(id, cantidad_casta(id))
@@ -467,6 +484,8 @@ func completar_destino() -> int:
 		coronas_cobradas[lugar_actual] = true
 		entregadas = int(Mundos.INFO[lugar_actual].coronas) + nivel_jalea("corona_doble")
 		coronas += entregadas
+		sumar_estadistica("coronas_ganadas", entregadas)
+	sumar_estadistica("objetivos_conquistados")
 	guardar()
 	progreso_cambio.emit()
 	return entregadas
@@ -555,6 +574,7 @@ func puede_comprar_jalea(id: String) -> bool:
 func comprar_jalea(id: String) -> bool:
 	if not puede_comprar_jalea(id):
 		return false
+	sumar_estadistica("jalea_gastada", costo_jalea(id))
 	jalea -= costo_jalea(id)
 	niveles_jalea[id] = nivel_jalea(id) + 1
 	if jalea_por_id[id].efecto == "herencia":
@@ -567,6 +587,22 @@ func comprar_jalea(id: String) -> bool:
 
 
 # =====================================================================
+# Estadísticas
+# =====================================================================
+
+func estadistica(clave: String) -> float:
+	return float(estadisticas.get(clave, 0.0))
+
+
+func sumar_estadistica(clave: String, cantidad: float = 1.0) -> void:
+	estadisticas[clave] = estadistica(clave) + cantidad
+
+
+func registrar_maximo(clave: String, valor: float) -> void:
+	estadisticas[clave] = maxf(estadistica(clave), valor)
+
+
+# =====================================================================
 # Run
 # =====================================================================
 
@@ -576,6 +612,7 @@ func iniciar_run() -> void:
 	partes_destruidas_run = 0
 	mejor_combo_run = 0
 	ultima_run_fue_record = false
+	_inicio_run = estadistica("tiempo_total")
 
 
 func sumar_migas_run(cantidad: float) -> void:
@@ -585,6 +622,11 @@ func sumar_migas_run(cantidad: float) -> void:
 func terminar_run() -> void:
 	migas += migas_run
 	migas_colonia += migas_run
+	sumar_estadistica("migas_totales", migas_run)
+	sumar_estadistica("comidas_devoradas", comidas_destruidas_run)
+	sumar_estadistica("partes_devoradas", partes_destruidas_run)
+	sumar_estadistica("tiempo_en_runs", maxf(0.0, estadistica("tiempo_total") - _inicio_run))
+	registrar_maximo("mejor_combo", mejor_combo_run)
 	runs_jugadas += 1
 	ultima_run_fue_record = runs_jugadas > 1 and migas_run > mejor_run
 	mejor_run = maxf(mejor_run, migas_run)
@@ -621,6 +663,7 @@ func datos_partida() -> Dictionary:
 		"legado": legado, "coronas": coronas, "fundaciones": fundaciones, "prioridad": prioridad,
 		"descubiertos": descubiertos,
 		"jalea": jalea, "niveles_jalea": niveles_jalea, "migas_colonia": migas_colonia,
+		"estadisticas": estadisticas,
 	}
 
 
@@ -697,6 +740,15 @@ func restaurar_partida(datos: Dictionary) -> void:
 			if castas_por_id.has(id) and castas_por_id[id].comprable:
 				reclutadas[id] = clampi(int(castas_guardadas[id]), 0, int(castas_por_id[id].maximo))
 	_cache_stats.clear()
+	estadisticas = {}
+	var guardadas = datos.get("estadisticas", null)
+	if guardadas is Dictionary:
+		for clave in guardadas:
+			if clave in ESTADISTICAS and typeof(guardadas[clave]) in [TYPE_INT, TYPE_FLOAT]:
+				estadisticas[clave] = maxf(0.0, float(guardadas[clave]))
+	else:
+		# Partida anterior a las estadísticas: lo que se sabe de antes.
+		estadisticas.migas_totales = migas_colonia
 	descubiertos = {}
 	var vistos = datos.get("descubiertos", null)
 	if vistos is Dictionary:
@@ -730,6 +782,7 @@ func reiniciar_estado() -> void:
 	fundaciones = 0
 	prioridad = "automatico"
 	descubiertos = {}
+	estadisticas = {}
 	_cache_stats.clear()
 
 

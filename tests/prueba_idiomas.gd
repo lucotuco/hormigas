@@ -10,6 +10,8 @@ const CARPETAS_CODIGO := ["res://global", "res://hormigas", "res://mundo", "res:
 const PALABRAS_ESPANOL := ["de", "la", "el", "los", "las", "del", "y", "con", "para", "por", "una", "que",
 	"migas", "hormigas", "mejoras", "nivel", "colonia", "comida", "jalea", "reina", "gran", "destino",
 	"obreras", "castas", "viajes", "sonido", "volver", "jugar", "salir", "partida"]
+## Nombres propios que se escriben igual en los dos idiomas.
+const NOMBRES_PROPIOS := ["Hormigas", "Español"]
 var fallas := 0
 var total := 0
 
@@ -152,7 +154,24 @@ func probar_interfaz_en_ingles() -> void:
 	textos.append_array(_textos(tienda._panel_legado))
 	tienda._panel_legado._pedir_fundacion()
 	textos.append_array(_textos(tienda._panel_legado._confirmar))
+	tienda.abrir_configuracion()
+	textos.append_array(_textos(tienda._ventana))
+	tienda.abrir_estadisticas()
+	textos.append_array(_textos(tienda._ventana))
 	tienda.queue_free()
+	await get_tree().process_frame
+	var menu: Control = preload("res://ui/menu.tscn").instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	textos.append_array(_textos(menu))
+	menu.queue_free()
+	Juego.runs_jugadas = 0
+	menu = preload("res://ui/menu.tscn").instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	textos.append_array(_textos(menu))
+	menu.queue_free()
+	Juego.runs_jugadas = 40
 	await get_tree().process_frame
 	for id in Mundos.ORDEN:
 		Juego.lugar_actual = id
@@ -165,6 +184,9 @@ func probar_interfaz_en_ingles() -> void:
 			if is_instance_valid(comida):
 				run.hud.mostrar_inspeccion(comida)
 				textos.append(run.hud._lbl_objetivo.text)
+		run.hud.pausar()
+		textos.append_array(_textos(run.hud))
+		run.hud.reanudar()
 		run.hud.mostrar_fin()
 		await get_tree().process_frame
 		textos.append_array(_textos(run.hud))
@@ -215,6 +237,8 @@ func _textos(nodo: Node) -> PackedStringArray:
 
 
 func _parece_espanol(texto: String) -> bool:
+	for nombre in NOMBRES_PROPIOS:
+		texto = texto.replace(nombre, "")
 	if RegEx.create_from_string("[áéíóúñ¡¿]").search(texto.to_lower()):
 		return true
 	for palabra in RegEx.create_from_string("[a-záéíóúñ]+").search_all(texto.to_lower()):

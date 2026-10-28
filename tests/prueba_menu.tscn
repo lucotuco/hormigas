@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/prueba_menu.gd" id="1_prueba"]
+
+[node name="PruebaMenu" type="Node"]
+script = ExtResource("1_prueba")

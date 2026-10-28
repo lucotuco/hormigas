@@ -132,7 +132,7 @@ func _notification(what: int) -> void:
 
 ## intensidad en píxeles de pantalla.
 func sacudir(intensidad: float) -> void:
-	_sacudida = minf(_sacudida + intensidad, 24.0)
+	_sacudida = minf(_sacudida + intensidad * Ajustes.temblor, 24.0)
 
 
 func _process(delta: float) -> void:
