@@ -117,7 +117,8 @@ func _resumen() -> Control:
 	fila.add_child(izquierda)
 	izquierda.add_child(_texto("JALEA DISPONIBLE", 11, Estilo.TEXTO_SUAVE))
 	izquierda.add_child(_texto("%d" % Juego.jalea, 32, Color("f0d277")))
-	izquierda.add_child(_texto("Ganada en total: %d · bonus pasivo +%d%% de daño y migas · %d colonias fundadas" % [Juego.legado, roundi(Juego.legado * Juego.BONUS_LEGADO * 100), Juego.fundaciones], 13, Estilo.TEXTO))
+	var colonias := "1 colonia fundada" if Juego.fundaciones == 1 else "%d colonias fundadas" % Juego.fundaciones
+	izquierda.add_child(_texto("Ganada en total: %d · bonus pasivo +%d%% de daño y migas · %s" % [Juego.legado, roundi(Juego.legado * Juego.BONUS_LEGADO * 100), colonias], 13, Estilo.TEXTO))
 	var derecha := VBoxContainer.new()
 	derecha.custom_minimum_size.x = 330
 	fila.add_child(derecha)

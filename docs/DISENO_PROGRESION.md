@@ -70,17 +70,38 @@ reconstruye en cada expedición). Su resistencia (`vida_meta` en `mundo/mundos.g
 está calibrada para que a partir del restaurante haga falta fundar al menos
 una vez. El ritmo lo marca el ciclo **conquistar → fundar → volver más fuerte**.
 
-## Ritmo buscado (jugador activo)
+## Ritmo (jugador activo, medido con el bot)
 
-| Hito | Objetivo |
-|---|---|
-| Madera | ~10 min |
-| Casa conquistada (sin fundar) | ~50 min |
-| Restaurante | 1,5–3 h, con 1–2 fundaciones |
-| Torre Eiffel | 10–20 h |
+| Hito | Buscado | Medido | Fundaciones |
+|---|---|---|---|
+| Madera | ~10 min | ~10 min | — |
+| Casa conquistada (sin fundar) | ~50 min | ~45 min | 0 |
+| Restaurante | 1,5–3 h | ~3,5 h | 2 |
+| Museo | — | ~4,75 h | 4 |
+| Obelisco | — | ~6,5 h | 8 |
+| Coliseo | — | ~7,8 h | 10 |
+| Torre Eiffel | 10–20 h | ~10,7 h | 12 |
 
-La medición real está en el README (sección del bot de balance) y se rehace
-con `tests/bot_balance.tscn`, que ahora también funda y compra jalea.
+Un jugador real pisa menos que el bot (3 por segundo) y no compra perfecto,
+así que la campaña real debería estar más cerca de 12–15 h.
+
+La medición completa está en el README (sección del bot de balance) y se rehace
+con `tests/bot_balance.tscn`, que también funda y compra jalea.
+
+## Preguntas abiertas
+
+- **El final se estira.** Del Coliseo a la Torre Eiffel van casi 3 h (dos
+  colonias, de 90 y 45 minutos), contra 17–25 minutos por colonia en el Obelisco. La jalea crece rápido, pero el
+  bonus de legado es aditivo (+3% por punto) y ya no hay destino nuevo que
+  suba topes. Si se siente pesado: una mejora de destino propia de la Torre
+  que multiplique, o un hito del árbol que escale con la jalea gastada.
+- **¿El árbol tiene decisiones?** El bot compra siempre lo más barato y llega
+  igual. Conviene probar si un jugador que prioriza poder sobre atajos
+  termina mucho antes; si no hay diferencia, el árbol es una lista de
+  compras y no una elección.
+- **Restaurante.** Pide la primera fundación pasada la hora y media; es el
+  momento en que el jugador aprende la capa nueva. Hay que mirar con gente
+  real si se entiende que conviene fundar o si parece que el juego se trabó.
 
 ## Qué se puede tocar sin programar
 

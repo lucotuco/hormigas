@@ -319,8 +319,8 @@ Juega a velocidad ×8, así que una hora de juego tarda un par de minutos. Con
 `BOT_ESTADO=archivo.json` se puede cortar y retomar por tandas; con `BOT_LOG`
 también escribe el registro en un archivo. No corre en CI.
 
-Medición actual (28/10). Primera hora: dos corridas; campaña completa: una
-corrida por etapas, retomando desde cada conquista.
+Medición actual (28/10). Primera hora: dos corridas; campaña: una corrida en
+modo calibración desde la casa conquistada (`BOT_CALIBRAR=1`, ver abajo).
 
 | Hito | Momento | Fundaciones |
 |---|---|---|
@@ -329,20 +329,30 @@ corrida por etapas, retomando desde cada conquista.
 | Materiales resistentes (150.000) | ~26 min | — |
 | Paredes (4.000.000) | ~42 min | — |
 | Casa conquistada | ~45 min | 0 |
-| Restaurante | ~3,5–4,5 h | 2–3 |
-| Museo | ~5,3 h | 4 |
-| Obelisco | ~6,2 h | 5 |
-| Coliseo | ~8,2 h | 6 |
-| Torre Eiffel | TORRE_PENDIENTE | TORRE_FUND |
+| Primera fundación (trabado en el restaurante) | ~1 h 47 min | 1 |
+| Restaurante | ~3 h 27 min | 2 |
+| Museo | ~4 h 45 min | 4 |
+| Obelisco | ~6 h 27 min | 8 |
+| Coliseo | ~7 h 47 min | 10 |
+| Torre Eiffel | ~10 h 43 min | 12 |
+
+La jalea por fundación sube de 14 a 406 a lo largo de la campaña. Cada
+colonia nueva dura entre 17 y 90 minutos: las primeras y las del Obelisco son
+cortas, las de la Torre Eiffel las más largas.
 
 El gran objetivo pide la dieta completa (`PiezaCasa.NIVEL_META`) y su
 resistencia se multiplica por `Mundos.vida_meta(destino)` (`vida_meta` en
 `mundo/mundos.gd`). Como la casa se reconstruye en cada expedición, es un
 chequeo de daño dentro de una sola run. Desde el restaurante, cada destino
-pide más o menos una colonia nueva: cada fundación multiplica el daño de la
-colonia por cientos o miles.
+pide entre una y cuatro colonias nuevas.
 
-Para recalibrar un destino: copiá el `estado_<destino>.json` que el bot guarda
+**Calibrar todo de una:** con `BOT_CALIBRAR=1` los destinos después de la casa
+arrancan invulnerables; cuando una colonia se traba y decide fundar, el bot fija
+la resistencia de ese destino en 3 × el mayor daño que le hizo y la colonia
+siguiente lo conquista. Al final imprime `CALIBRADO {...}` con los valores para
+`mundo/mundos.gd`.
+
+Para recalibrar un solo destino: copiá el `estado_<destino>.json` que el bot guarda
 al conquistar el anterior, poné un `vida_meta.json` junto al estado (por
 ejemplo `{"coliseo": 1e30}`) para hacerlo invulnerable, mirá en el registro
 el daño por run (`meta X/Y`) y elegí una resistencia entre la meseta de una
