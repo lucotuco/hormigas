@@ -36,6 +36,11 @@ func probar_datos() -> void:
 		if m.destino != "":
 			destinos_con_mejoras[m.destino] = true
 	verificar(destinos_con_mejoras.size() == Mundos.ORDEN.size() - 1, "todos los destinos después de la casa traen mejoras")
+	var multiplicadoras_elevables := 0
+	for m in Juego.mejoras:
+		if m.tipo == "multiplica" and (m.elevable or m.tope_por_destino > 1):
+			multiplicadoras_elevables += 1
+	verificar(multiplicadoras_elevables == 0, "las mejoras que multiplican tienen topes fijos (si no, el prestigio se desboca)")
 
 
 func probar_formula() -> void:

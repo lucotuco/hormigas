@@ -23,6 +23,9 @@ var _impacto := Vector2.ZERO
 var _tesoro_abierto := false
 var _distancia_nido := 0.0
 var _tiempo_caida := 0.0
+## Daño total recibido en esta run. Lo usa el bot de balance: con vidas enormes,
+## restar vida_max - vida pierde precisión.
+var dano_recibido := 0.0
 ## El gran objetivo es un mueble mucho más resistente: su vida se multiplica
 ## por Mundos.vida_meta(destino). Ver README (bot de balance).
 const RECOMPENSA_META := 4.0
@@ -130,6 +133,7 @@ func morder_en(dano: float, pos: Vector2) -> float:
 	_impacto = pos
 	var antes := vida
 	var presupuesto := minf(dano * (1.2 if corrosion > 0 else 1.0), vida)
+	dano_recibido += presupuesto
 	var agujero := false
 	var zona_rotura := Rect2()
 	while presupuesto > 0.001 and not vivas.is_empty():

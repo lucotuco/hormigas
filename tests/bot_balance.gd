@@ -12,6 +12,7 @@ extends Node
 ##   BOT_ESTADO   archivo donde guardar/retomar el estado entre tandas
 ##                (por defecto no guarda: empieza siempre de cero)
 ##   BOT_LOG      archivo donde agregar el registro (además de imprimirlo)
+##   BOT_CALIBRAR si existe, modo calibración (ver más abajo)
 ##
 ## Cómo juega: 3 pisotones por segundo sobre la comida más cercana al
 ## hormiguero; cuando el gran objetivo se puede comer, mantiene el llamado
@@ -25,6 +26,13 @@ extends Node
 ## RUNS_TRABADO_MAXIMO, aunque dé poca), funda. También funda, aunque siga
 ## creciendo, cuando fundar duplicaría su jalea. Gasta la jalea en el nodo
 ## más barato del árbol de la reina.
+##
+## Modo calibración (BOT_CALIBRAR): los destinos después de la casa empiezan
+## invulnerables. Cuando la colonia decide fundar estando en un destino sin
+## calibrar, fija su vida_meta en FACTOR_CALIBRACION × el máximo daño que le
+## hizo esa colonia, y funda: la colonia siguiente lo conquista. Así cada
+## destino pide una colonia más. Los valores salen en el registro como
+## "calibrado" y al final; se copian a mundo/mundos.gd.
 const RUN := preload("res://mundo/run.tscn")
 const VELOCIDAD := 8.0
 const CLICS_POR_SEGUNDO := 3.0
@@ -38,6 +46,13 @@ const RUNS_COLONIA_MADURA := 10
 const GANANCIA_MINIMA_DOBLE := 20
 
 var trabado := 0
+const FACTOR_CALIBRACION := 3.0
+const INVULNERABLE := 1e40
+var calibrar := false
+var calibrado: Dictionary = {}
+var max_dano_destino := 0.0
+var _dano_meta := 0.0
+var _base_meta := 0.0
 var mejor_run_colonia := 0.0
 var runs_colonia := 0
 
@@ -62,6 +77,7 @@ func _ready() -> void:
 		if valores is Dictionary:
 			Mundos.vida_meta_forzada = valores
 			anotar("(vida_meta forzada: %s)" % str(valores))
+	calibrar = OS.has_environment("BOT_CALIBRAR")
 	if estado_ruta != "" and FileAccess.file_exists(estado_ruta):
 		var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(estado_ruta))
 		Juego.restaurar_partida(d.partida)
@@ -70,10 +86,20 @@ func _ready() -> void:
 		trabado = int(d.get("trabado", 0))
 		mejor_run_colonia = float(d.get("mejor_run_colonia", 0.0))
 		runs_colonia = int(d.get("runs_colonia", 0))
+		calibrado = d.get("calibrado", {})
+		max_dano_destino = float(d.get("max_dano_destino", 0.0))
+	if calibrar:
+		for id in Mundos.ORDEN:
+			if id != "casa":
+				Mundos.vida_meta_forzada[id] = float(calibrado.get(id, INVULNERABLE))
+		anotar("(modo calibración: %s)" % str(calibrado))
 	for n in runs:
 		elegir_destino()
 		var cobradas := Juego.coronas_cobradas.size()
+		var donde := Juego.lugar_actual
 		var ganado: float = await jugar_run()
+		if calibrar and donde != "casa" and not calibrado.has(donde):
+			max_dano_destino = maxf(max_dano_destino, _dano_meta)
 		if Juego.coronas_cobradas.size() > cobradas or ganado > mejor_run_colonia * MEJORA_MINIMA:
 			trabado = 0
 		else:
@@ -84,10 +110,17 @@ func _ready() -> void:
 		if Juego.lugares_completados.size() == Mundos.ORDEN.size() and not vistos.has("FIN"):
 			vistos["FIN"] = minutos
 			anotar("FIN campaña completa en el minuto %.1f con %d fundaciones" % [minutos, Juego.fundaciones])
+			if calibrar:
+				anotar("CALIBRADO %s" % JSON.stringify(calibrado))
 			guardar_estado()
 			break
 		if conviene_fundar():
+			if calibrar and donde != "casa" and not calibrado.has(donde) and max_dano_destino > 0.0 and _base_meta > 0.0:
+				calibrado[donde] = FACTOR_CALIBRACION * max_dano_destino / _base_meta
+				Mundos.vida_meta_forzada[donde] = calibrado[donde]
+				anotar("== calibrado %s: vida_meta %.3e (máximo daño de la colonia %s)" % [donde, calibrado[donde], Juego.formatear(max_dano_destino)])
 			fundar()
+			max_dano_destino = 0.0
 		comprar()
 		guardar_estado()
 		if minutos > max_min:
@@ -98,6 +131,7 @@ func _ready() -> void:
 
 
 func jugar_run() -> float:
+	_dano_meta = 0.0
 	var run: Run = RUN.instantiate()
 	add_child(run)
 	Engine.max_fps = 0
@@ -131,7 +165,9 @@ func jugar_run() -> float:
 	var vida_meta := 0.0
 	if is_instance_valid(meta):
 		vida_meta = meta.vida_max
-		dano_meta = meta.vida_max - meta.vida
+		dano_meta = meta.dano_recibido
+		_dano_meta = dano_meta
+		_base_meta = meta.vida_max / Mundos.vida_meta(Juego.lugar_actual)
 	elif run.objetivo_completado:
 		dano_meta = INF
 	run.queue_free()
@@ -250,7 +286,7 @@ func guardar_estado(ruta := "") -> void:
 	if ruta == "":
 		return
 	var f := FileAccess.open(ruta, FileAccess.WRITE)
-	f.store_string(JSON.stringify({"partida": Juego.datos_partida(), "minutos": minutos, "vistos": vistos, "trabado": trabado, "mejor_run_colonia": mejor_run_colonia, "runs_colonia": runs_colonia}))
+	f.store_string(JSON.stringify({"partida": Juego.datos_partida(), "minutos": minutos, "vistos": vistos, "trabado": trabado, "mejor_run_colonia": mejor_run_colonia, "runs_colonia": runs_colonia, "calibrado": calibrado, "max_dano_destino": max_dano_destino}))
 
 
 func anotar(texto: String) -> void:
