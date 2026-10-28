@@ -92,8 +92,11 @@ cada colonia.
 
 Cada gran objetivo es un chequeo de daño **dentro de una sola run** (la casa se
 reconstruye en cada expedición). Su resistencia (`vida_meta` en `mundo/mundos.gd`)
-está calibrada para que a partir del restaurante haga falta fundar al menos
-una vez. El ritmo lo marca el ciclo **conquistar → fundar → volver más fuerte**.
+está calibrada para que el restaurante salga con la primera colonia y, desde
+el museo, cada destino pida una colonia nueva. El ritmo lo marca el ciclo
+**conquistar → fundar → volver más fuerte**. Como la resistencia es la del
+mueble × `vida_meta`, los números de `vida_meta` no se comparan entre sí: la
+vida real crece de 45 M (restaurante) a 3·10¹³ (Torre Eiffel).
 
 ### 4. Destinos con identidad
 
@@ -117,33 +120,42 @@ dorada de Cookie Clicker): aparece cerca de lo que se mira y dura 9 s.
 | Hito | Buscado | Medido | Fundaciones |
 |---|---|---|---|
 | Madera | ~10 min | ~10 min | — |
-| Casa conquistada (sin fundar) | ~50 min | ~45 min | 0 |
-| Restaurante | 1,5–3 h | ~3,5 h | 2 |
-| Museo | — | ~4,75 h | 4 |
-| Obelisco | — | ~6,5 h | 8 |
-| Coliseo | — | ~7,8 h | 10 |
-| Torre Eiffel | 10–20 h | ~10,7 h | 12 |
+| Casa conquistada | ~45 min | ~45 min | 0 |
+| Restaurante | ~1 h, sin fundar | ~1 h 01 min | 0 |
+| Primera fundación | ~1 h | ~1 h 07 min | 1 |
+| Museo | — | ~1 h 34 min | 1 |
+| Obelisco | — | ~1 h 57 min | 2 |
+| Coliseo | — | ~2 h 26 min | 3 |
+| Torre Eiffel | 3,5–4 h (bot) | ~3 h 53 min | 4 |
 
-Un jugador real pisa menos que el bot (3 por segundo) y no compra perfecto,
-así que la campaña real debería estar más cerca de 12–15 h.
+**Por qué más corta.** La primera versión medía 10 h 43 min con el bot pisando
+3 veces por segundo: el triple que los incrementales activos que funcionaron
+(Nodebuster ~3 h, A Game About Feeding a Black Hole 2–5 h). Gnorp dura más,
+pero porque se juega solo. Ahora:
+
+- El restaurante sale con la primera colonia: la primera fundación llega en
+  el museo, cuando el jugador ya conoce los viajes.
+- Cada destino siguiente pide una fundación (calibrado con factor 1,3 en vez
+  de 3), y cada colonia nueva tarda 20–35 minutos en superarlo.
+- El bot ahora clickea 2 veces por segundo (una persona no sostiene 3 por
+  horas) y compra la pisada automática como cualquiera.
+
+Una persona tarda más que el bot: estimamos 4 h 30 min a 5 h 30 min. Es el
+largo de un incremental activo que termina; quien quiera seguir puede fundar
+para batir sus récords.
 
 La medición completa está en el README (sección del bot de balance) y se rehace
-con `tests/bot_balance.tscn`, que también funda y compra jalea.
+con `tests/bot_balance.tscn`.
 
 ## Preguntas abiertas
 
-- **El final se estira.** Del Coliseo a la Torre Eiffel van casi 3 h (dos
-  colonias, de 90 y 45 minutos), contra 17–25 minutos por colonia en el Obelisco. La jalea crece rápido, pero el
-  bonus de legado es aditivo (+3% por punto) y ya no hay destino nuevo que
-  suba topes. Si se siente pesado: una mejora de destino propia de la Torre
-  que multiplique, o un hito del árbol que escale con la jalea gastada.
-- **¿El árbol tiene decisiones?** El bot compra siempre lo más barato y llega
-  igual. Conviene probar si un jugador que prioriza poder sobre atajos
-  termina mucho antes; si no hay diferencia, el árbol es una lista de
-  compras y no una elección.
-- **Restaurante.** Pide la primera fundación pasada la hora y media; es el
-  momento en que el jugador aprende la capa nueva. Hay que mirar con gente
-  real si se entiende que conviene fundar o si parece que el juego se trabó.
+- **El final.** La Torre Eiffel es el tramo más largo (casi 1 h 30 min, con la
+  colonia trabada antes de fundar). Es el jefe final y está bien que pese,
+  pero hay que ver si se siente como cierre o como pared.
+- **Decretos.** El bot elige siempre la colonia numerosa. Hay que jugar con
+  los otros tres y ver si alguno es siempre mejor (o nunca sirve).
+- **Amenazas.** Una cada 35–50 s. Si con jugadores reales resulta molesto,
+  se espacian en `Eventos.ENTRE_AMENAZAS`.
 
 ## Qué se puede tocar sin programar
 
