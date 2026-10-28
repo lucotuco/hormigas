@@ -36,6 +36,22 @@ func _ready() -> void:
 		Engine.time_scale = 1.0
 		run.queue_free()
 		await get_tree().process_frame
+	# El derrumbe de un gran objetivo, en medio de la cámara lenta.
+	Juego.reiniciar_estado()
+	Juego.lugar_actual = "obelisco"
+	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1, "excavar": 20}
+	Juego._cache_stats.clear()
+	var run_final: Run = preload("res://mundo/run.tscn").instantiate()
+	add_child(run_final)
+	run_final.eventos._reloj_amenaza = 1e9
+	run_final.eventos._reloj_dorada = 1e9
+	await get_tree().create_timer(1.0, true, false, true).timeout
+	run_final.objetivo_mapa.morder(run_final.objetivo_mapa.vida + 1)
+	await get_tree().create_timer(0.7, true, false, true).timeout
+	await captura("conquista")
+	run_final.queue_free()
+	await get_tree().process_frame
+	Engine.time_scale = 1.0
 	get_tree().quit()
 
 

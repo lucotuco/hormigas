@@ -117,9 +117,15 @@ func ver_objetivo() -> void:
 	var plano := Mundos.plano(Juego.lugar_actual)
 	var indice := int(str(plano.meta).get_slice(":", 1))
 	var r: Rect2 = plano.muebles[indice].rect
-	position = r.get_center()
+	mirar(r.get_center(), r.size)
+
+
+## Encuadra un lugar del mundo con margen (gran objetivo, su derrumbe).
+func mirar(centro: Vector2, tamano: Vector2) -> void:
+	_manual = true
+	position = centro
 	var pantalla := get_viewport_rect().size
-	_zoom_objetivo = clampf(minf(pantalla.x / (r.size.x + 1000), pantalla.y / (r.size.y + 1000)), ZOOM_MINIMO, 0.7)
+	_zoom_objetivo = clampf(minf(pantalla.x / (tamano.x + 1000), pantalla.y / (tamano.y + 1000)), ZOOM_MINIMO, 0.7)
 	zoom = Vector2.ONE * _zoom_objetivo
 	force_update_scroll()
 	vista_cambiada.emit()

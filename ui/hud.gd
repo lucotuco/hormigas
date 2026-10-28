@@ -49,6 +49,10 @@ var _relleno_meta: StyleBoxFlat
 var _meta_lista := false
 
 var _ventana: VentanaModal
+var _cartel: PanelContainer
+var _lbl_cartel_titulo: Label
+var _lbl_cartel_detalle: Label
+var _tween_cartel: Tween
 var _migas_mostradas := 0.0
 var _volando := 0
 var _tiempo_combo := -100.0
@@ -106,6 +110,7 @@ func _ready() -> void:
 	_crear_tiempo(raiz)
 	_crear_hormigas(raiz)
 	_crear_avisos(raiz)
+	_crear_cartel(raiz)
 	_crear_panel_fin(raiz)
 	_crear_progresion(raiz)
 	_crear_proxima_meta(raiz)
@@ -353,6 +358,69 @@ func _crear_avisos(raiz: Control) -> void:
 		var tween := _lbl_ayuda.create_tween()
 		tween.tween_interval(12.0)
 		tween.tween_property(_lbl_ayuda, "modulate:a", 0.0, 1.5)
+
+
+## Cartel grande de conquista (ver Conquista): corona, título y coronas.
+class Corona extends Control:
+	func _draw() -> void:
+		var c := size * 0.5
+		var w := minf(size.x * 0.42, size.y * 0.62)
+		var puntas := PackedVector2Array([c + Vector2(-w, w * 0.45), c + Vector2(-w, -w * 0.25), c + Vector2(-w * 0.5, w * 0.1), c + Vector2(0, -w * 0.55), c + Vector2(w * 0.5, w * 0.1), c + Vector2(w, -w * 0.25), c + Vector2(w, w * 0.45)])
+		draw_colored_polygon(puntas, Color("f0c94e"))
+		draw_polyline(puntas + PackedVector2Array([puntas[0]]), Color("8a6420"), 2.0, true)
+		for p in [puntas[1], puntas[3], puntas[5]]:
+			draw_circle(p, w * 0.1, Color("d9534a"))
+
+
+func _crear_cartel(raiz: Control) -> void:
+	var centro := CenterContainer.new()
+	centro.set_anchors_preset(Control.PRESET_FULL_RECT)
+	centro.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Más abajo del centro: que se vea el derrumbe arriba del cartel.
+	centro.offset_top = 170
+	raiz.add_child(centro)
+	_cartel = PanelContainer.new()
+	_cartel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cartel.add_theme_stylebox_override("panel", Estilo.caja(Color(0.1, 0.07, 0.04, 0.9), 22, Color("f0c94e"), 3, 30))
+	_cartel.visible = false
+	centro.add_child(_cartel)
+	var columna := VBoxContainer.new()
+	columna.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	columna.alignment = BoxContainer.ALIGNMENT_CENTER
+	columna.add_theme_constant_override("separation", 8)
+	columna.custom_minimum_size.x = 520
+	_cartel.add_child(columna)
+	var corona := Corona.new()
+	corona.custom_minimum_size = Vector2(0, 74)
+	corona.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	columna.add_child(corona)
+	_lbl_cartel_titulo = Estilo.etiqueta("", 36, Estilo.ACENTO, 6)
+	_lbl_cartel_titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	columna.add_child(_lbl_cartel_titulo)
+	_lbl_cartel_detalle = Estilo.etiqueta("", 18, Estilo.TEXTO, 3)
+	_lbl_cartel_detalle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	columna.add_child(_lbl_cartel_detalle)
+
+
+func mostrar_conquista(titulo: String, detalle: String) -> void:
+	_lbl_cartel_titulo.text = titulo
+	_lbl_cartel_detalle.text = detalle
+	_cartel.visible = true
+	_cartel.modulate.a = 0.0
+	if _tween_cartel and _tween_cartel.is_running():
+		_tween_cartel.kill()
+	await get_tree().process_frame
+	if not is_instance_valid(_cartel):
+		return
+	_cartel.pivot_offset = _cartel.size / 2.0
+	_cartel.scale = Vector2.ONE * 0.6
+	_tween_cartel = _cartel.create_tween().set_ignore_time_scale(true)
+	_tween_cartel.set_parallel(true)
+	_tween_cartel.tween_property(_cartel, "modulate:a", 1.0, 0.3)
+	_tween_cartel.tween_property(_cartel, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_tween_cartel.chain().tween_interval(3.2)
+	_tween_cartel.chain().tween_property(_cartel, "modulate:a", 0.0, 0.6)
+	_tween_cartel.chain().tween_callback(func() -> void: _cartel.visible = false)
 
 
 func _crear_panel_fin(raiz: Control) -> void:
