@@ -11,7 +11,6 @@ const ESCENA_TIENDA := "res://ui/tienda.tscn"
 const ESCENA_MENU := "res://ui/menu.tscn"
 const DURACION_EXPANSION := 1.8   # segundos que tarda en crecer el territorio al empezar
 const VENTANA_COMBO := 1.2        # segundos entre depósitos para que el combo siga
-const BONUS_DESTRUIR := 0.25      # migas extra al destruir una comida (proporción de su recompensa)
 const PROPORCION_PISOTON := 0.5   # el pisotón da la mitad de migas que una mordida de hormiga
 const ALCANCE_PISADA_AUTO := 400.0  # el pisotón automático busca comida a esta distancia del cursor
 const MAX_PISADAS_POR_CUADRO := 4
@@ -229,7 +228,7 @@ func depositar(cantidad: float, origen := Vector2.ZERO, categoria := 0, desglose
 		frenesi = minf(100, frenesi + reglas.carga_frenesi())
 		if frenesi >= 100:
 			frenesi = 0
-			frenesi_restante = 6
+			frenesi_restante = Juego.stat("frenesi_duracion")
 			_descanso_frenesi = 18
 			hud.mostrar_aviso(tr("¡FRENESÍ! La colonia trabaja más rápido"))
 	if _reloj - _ultimo_deposito <= VENTANA_COMBO:
@@ -279,7 +278,7 @@ func _on_comida_destruida(comida: Comida) -> void:
 				Juego.obtener_hito("cocina_vacia")
 	else:
 		Juego.comidas_destruidas_run += 1
-	var bonus := comida.recompensa * BONUS_DESTRUIR * Juego.stat("multiplicador_migas")
+	var bonus := comida.recompensa * Juego.stat("bonus_destruir") * Juego.stat("multiplicador_migas")
 	registrar_ingreso(bonus, 2 if comida is PiezaCasa and comida.nivel_requerido >= 3 else (1 if comida is PiezaCasa else 0))
 
 	var pos := comida.global_position
@@ -361,7 +360,7 @@ func registrar_derrumbe() -> void:
 	Juego.obtener_hito("primer_derrumbe")
 
 func factor_ritmo() -> float:
-	return 1.5 if frenesi_restante > 0 else 1.0
+	return Juego.stat("frenesi_ritmo") if frenesi_restante > 0 else 1.0
 
 func registrar_ingreso(cantidad: float, categoria := 0) -> void:
 	if terminada or cantidad <= 0:

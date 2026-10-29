@@ -420,17 +420,23 @@ msgstr "Permanent purchase: this unit joins every expedition."
 msgid "Faltan %s migas para este lote. Las unidades son permanentes."
 msgstr "%s crumbs short for this batch. Units are permanent."
 
-msgid "Requiere aprender a devorar madera y telas."
-msgstr "Requires learning to devour wood and fabric."
+msgid "Requiere reclutar: %s"
+msgstr "Requires recruiting: %s"
 
-msgid "Requiere aprender a devorar paredes."
-msgstr "Requires learning to devour walls."
+msgid "Requiere %d en la colonia: %s"
+msgstr "Requires %d in the colony: %s"
 
 msgid "%d en la colonia · desde %s migas"
 msgstr "%d in the colony · from %s crumbs"
 
-msgid "Bloqueada · requiere nueva dieta"
-msgstr "Locked · requires a new diet"
+msgid "Bloqueada · falta %s"
+msgstr "Locked · needs %s"
+
+msgid "Bloqueada"
+msgstr "Locked"
+
+msgid "%s ×%d"
+msgstr "%s ×%d"
 
 msgid "¡%s ×%d! Salen en todas las próximas expediciones."
 msgstr "%s ×%d! They join every future expedition."

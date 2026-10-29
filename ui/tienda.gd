@@ -836,12 +836,7 @@ func _actualizar_transito() -> void:
 
 ## "Requiere Buche grande · nivel 2" o, si faltan varios, "Requiere: Buche grande nivel 2 + Cría acelerada nivel 3".
 func texto_requisitos(faltan: Array) -> String:
-	if faltan.size() == 1:
-		return tr("Requiere %s · nivel %d") % [tr(Juego.mejoras_por_id[faltan[0].id].nombre), faltan[0].nivel]
-	var partes := PackedStringArray()
-	for r in faltan:
-		partes.append(tr("%s nivel %d") % [tr(Juego.mejoras_por_id[r.id].nombre), r.nivel])
-	return tr("Requiere: %s") % " + ".join(partes)
+	return Juego.texto_requisitos(faltan)
 
 
 ## Las mejoras de destino se muestran (bloqueadas) recién cuando aparecen los viajes.

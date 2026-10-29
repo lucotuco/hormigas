@@ -95,7 +95,7 @@ func medir_expedicion() -> Dictionary:
 	r.comidas.comida_destruida.connect(func(comida):
 		if comida is PiezaCasa:
 			if comida.nivel_requerido < 3:
-				bonus_muebles[0] += comida.recompensa * Run.BONUS_DESTRUIR * Juego.stat("multiplicador_migas")
+				bonus_muebles[0] += comida.recompensa * Juego.stat("bonus_destruir") * Juego.stat("multiplicador_migas")
 			if comida.pieza.get("practica", false):
 				resultado.carton = true
 	)

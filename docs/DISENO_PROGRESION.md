@@ -436,6 +436,16 @@ geometría; el formato de partida sigue en 7 y conserva el archivo histórico.
 
 - `datos/mejoras.csv`: columnas nuevas `destino`, `tope_por_destino`,
   `elevable` (le afecta Cámaras más hondas), `bonus_cada`, `bonus_mult`.
+  `requiere` acepta varias condiciones (`buche:2|veloz:1`); una condición puede
+  ser una mejora (su nivel) o una casta (unidades reclutadas). Lo mismo en
+  `datos/castas.csv`.
+- Stats que antes eran constantes y ahora puede mover una mejora (en
+  `stats_base.csv` conservan el valor de siempre): `frenesi_duracion` (6 s),
+  `frenesi_ritmo` (×1,5), `bonus_destruir` (25% del valor al destruir),
+  `botin_eventos` (12% de la run por amenaza o miga dorada),
+  `intervalo_doradas` (×1 sobre la espera entre doradas),
+  `fuerza_especialistas` (×1 al daño de las castas que se reclutan) y
+  `limite_castas` (+0 unidades por casta).
 - `datos/jalea.csv`: el árbol de la reina. Los nodos con `efecto = stat`
   funcionan como mejoras (stat, tipo, valor); el resto tiene un efecto
   especial programado en `Juego` (ver `EFECTOS_JALEA`).
