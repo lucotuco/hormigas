@@ -264,7 +264,7 @@ func _process(delta: float) -> void:
 		_actualizar_meta()
 		_lbl_meta.text = (tr("✓ Gran objetivo completado") if run.objetivo_completado else tr("Gran objetivo: %s") % tr(Mundos.INFO[Juego.lugar_actual].meta)) + "  [G]"
 		_lbl_frenesi.text = tr("¡FRENESÍ! %.1f s") % run.frenesi_restante if run.frenesi_restante > 0 else tr("Frenesí · depósitos consecutivos")
-		_barra_frenesi.value = run.frenesi_restante / 6.0 * 100 if run.frenesi_restante > 0 else run.frenesi
+		_barra_frenesi.value = run.frenesi_restante / Juego.stat("frenesi_duracion") * 100 if run.frenesi_restante > 0 else run.frenesi
 		var c := run.comidas.comida_en(run.get_global_mouse_position(), run.radio_actual, true)
 		mostrar_inspeccion(c)
 		_lbl_llamado.visible = run.feromonas.activa

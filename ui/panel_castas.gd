@@ -217,7 +217,7 @@ func _refrescar() -> void:
 	_nombre.text = tr(c.nombre)
 	_nombre.label_settings.font_color = c.color
 	_rol.text = tr(c.rol)
-	_cantidad.text = tr("En tu colonia: %d / %d") % [Juego.cantidad_casta(seleccion), c.maximo]
+	_cantidad.text = tr("En tu colonia: %d / %d") % [Juego.cantidad_casta(seleccion), Juego.maximo_casta(seleccion)]
 	_descripcion.text = tr(c.descripcion)
 	_habilidad.text = tr(c.habilidad)
 	_habilidad.label_settings.font_color = c.color.lightened(0.2)
@@ -227,7 +227,7 @@ func _refrescar() -> void:
 	_stats.dano.text = tr("Mordida · %.2f daño") % stats.dano
 	_stats.capacidad.text = tr("Carga · %d bocados") % stats.capacidad
 	_stats.olfato.text = tr("Olfato · %.0f px") % stats.olfato
-	var maximo: bool = Juego.cantidad_casta(seleccion) >= c.maximo
+	var maximo: bool = Juego.cantidad_casta(seleccion) >= Juego.maximo_casta(seleccion)
 	var oferta := Juego.cotizar_casta(seleccion, Juego.cantidad_compra)
 	var disponible: bool = oferta.puede
 	_boton.disabled = not disponible
@@ -237,13 +237,14 @@ func _refrescar() -> void:
 	if not disponible and not maximo:
 		_aviso.text = tr("Faltan %s migas para este lote. Las unidades son permanentes.") % Juego.formatear(maxf(0, oferta.costo - Juego.migas))
 	if not Juego.casta_desbloqueada(seleccion):
-		_aviso.text = tr("Requiere aprender a devorar madera y telas.") if seleccion == "carpintera" else tr("Requiere aprender a devorar paredes.")
+		_aviso.text = Juego.texto_requisitos(Juego.requisitos_faltantes(c.requisitos))
 	for id in _filas:
 		var fila: Dictionary = _filas[id]
 		var datos: Dictionary = Juego.castas_por_id[id]
 		fila.cantidad.text = tr("%d en la colonia · desde %s migas") % [Juego.cantidad_casta(id), Juego.formatear(Juego.costo_casta(id))]
 		if not Juego.casta_desbloqueada(id):
-			fila.cantidad.text = tr("Bloqueada · requiere nueva dieta")
+			var faltan := Juego.requisitos_faltantes(datos.requisitos)
+			fila.cantidad.text = tr("Bloqueada · falta %s") % tr(Juego.nombre_requisito(faltan[0].id)) if not faltan.is_empty() else tr("Bloqueada")
 		var color: Color = datos.color
 		fila.boton.add_theme_stylebox_override("normal", Estilo.caja(Color(color, 0.12) if id == seleccion else Color("28271f"), 12, Color(color, 0.8 if id == seleccion else 0.14), 1, 0))
 		fila.boton.add_theme_stylebox_override("hover", Estilo.caja(Color(color, 0.15), 12, color, 1, 0))

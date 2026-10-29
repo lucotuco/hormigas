@@ -21,3 +21,10 @@ tesoros_extra,0,Alimentos extra en cada tesoro
 corrosion_factor,0.2,Daño adicional sobre materiales corroídos
 domino,0,Fracción de resistencia afectada por derrumbes fuera del Coliseo
 pisotones_auto,0,Pisotones automáticos por segundo sobre la comida más cercana al cursor
+frenesi_duracion,6,Segundos que dura el frenesí
+frenesi_ritmo,1.5,Multiplicador de velocidad y mordida durante el frenesí
+bonus_destruir,0.25,Migas extra al destruir una comida o una pieza (proporción de su valor)
+botin_eventos,0.12,Parte de las migas de la run que paga vencer una amenaza o pisar una miga dorada
+intervalo_doradas,1,Multiplica el tiempo de espera entre migas doradas
+fuerza_especialistas,1,Multiplica el daño de las castas especialistas
+limite_castas,0,Unidades extra que se pueden reclutar de cada casta

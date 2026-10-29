@@ -275,7 +275,7 @@ func _registrar_destruccion(comida) -> void:
 	if not is_instance_valid(_run_observada) or not comida is PiezaCasa:
 		return
 	if comida.nivel_requerido < 3:
-		_bonus_muebles += comida.recompensa * Run.BONUS_DESTRUIR * Juego.stat("multiplicador_migas")
+		_bonus_muebles += comida.recompensa * Juego.stat("bonus_destruir") * Juego.stat("multiplicador_migas")
 	if comida.pieza.get("practica", false):
 		_marcar("carton", _run_observada.tiempo_jugado)
 	elif comida.pieza.get("meta", false):

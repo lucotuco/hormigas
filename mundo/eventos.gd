@@ -17,8 +17,8 @@ const PRIMERA_AMENAZA := Vector2(12.0, 18.0)
 const ENTRE_AMENAZAS := Vector2(35.0, 50.0)
 const PRIMERA_DORADA := Vector2(18.0, 28.0)
 const ENTRE_DORADAS := Vector2(45.0, 70.0)
-## Botín mínimo: parte de lo juntado en la expedición, para que siempre valga.
-const PARTE_DE_LA_RUN := 0.12
+## Botín: la stat botin_eventos (parte de lo juntado en la expedición) con
+## este mínimo, para que siempre valga.
 const BOTIN_BASE := 50.0
 
 var run: Run
@@ -30,7 +30,7 @@ var _reloj_dorada := 0.0
 func iniciar(r: Run) -> void:
 	run = r
 	_reloj_amenaza = randf_range(PRIMERA_AMENAZA.x, PRIMERA_AMENAZA.y)
-	_reloj_dorada = randf_range(PRIMERA_DORADA.x, PRIMERA_DORADA.y)
+	_reloj_dorada = randf_range(PRIMERA_DORADA.x, PRIMERA_DORADA.y) * Juego.stat("intervalo_doradas")
 
 
 func _process(delta: float) -> void:
@@ -44,7 +44,7 @@ func _process(delta: float) -> void:
 	if Juego.revelado("doradas"):
 		_reloj_dorada -= delta
 		if _reloj_dorada <= 0.0:
-			_reloj_dorada = randf_range(ENTRE_DORADAS.x, ENTRE_DORADAS.y)
+			_reloj_dorada = randf_range(ENTRE_DORADAS.x, ENTRE_DORADAS.y) * Juego.stat("intervalo_doradas")
 			aparecer("dorada")
 
 
@@ -127,7 +127,7 @@ func punto_de_clic(e: Evento) -> Vector2:
 
 ## Premio por vencer un evento. Devuelve las migas entregadas.
 func premiar(e: Evento) -> float:
-	var base := maxf(Juego.migas_run * PARTE_DE_LA_RUN, BOTIN_BASE * float(Mundos.INFO[Juego.lugar_actual].factor))
+	var base := maxf(Juego.migas_run * Juego.stat("botin_eventos"), BOTIN_BASE * float(Mundos.INFO[Juego.lugar_actual].factor))
 	var premio := 0.0
 	if e.tipo == "dorada":
 		Juego.sumar_estadistica("migas_doradas")

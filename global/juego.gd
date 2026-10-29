@@ -445,13 +445,44 @@ func esta_desbloqueada(id: String) -> bool:
 
 
 ## Requisitos de nivel que todavía no se cumplen ({id, nivel}), en el orden del CSV.
-## Una cámara compartida entre dos ramas pide todos los suyos.
+## Una cámara compartida entre dos ramas pide todos los suyos. Un requisito
+## puede ser una mejora (su nivel) o una casta (sus unidades reclutadas).
 func requisitos_faltantes(requisitos: Array) -> Array[Dictionary]:
 	var faltan: Array[Dictionary] = []
 	for r in requisitos:
-		if nivel_de(r.id) < int(r.nivel):
+		if nivel_requisito(r.id) < int(r.nivel):
 			faltan.append(r)
 	return faltan
+
+
+func nivel_requisito(id: String) -> int:
+	return nivel_de(id) if mejoras_por_id.has(id) else cantidad_casta(id)
+
+
+## Nombre (sin traducir) de lo que pide un requisito: una mejora o una casta.
+func nombre_requisito(id: String) -> String:
+	if mejoras_por_id.has(id):
+		return mejoras_por_id[id].nombre
+	return castas_por_id[id].nombre if castas_por_id.has(id) else id
+
+
+## "Requiere Buche grande · nivel 2"; si faltan varios, "Requiere: Buche grande
+## nivel 2 + Hormiga reina ×1". Una casta se pide por unidades reclutadas.
+func texto_requisitos(faltan: Array) -> String:
+	if faltan.size() == 1:
+		var r: Dictionary = faltan[0]
+		if mejoras_por_id.has(r.id):
+			return tr("Requiere %s · nivel %d") % [tr(nombre_requisito(r.id)), r.nivel]
+		if int(r.nivel) == 1:
+			return tr("Requiere reclutar: %s") % tr(nombre_requisito(r.id))
+		return tr("Requiere %d en la colonia: %s") % [r.nivel, tr(nombre_requisito(r.id))]
+	var partes := PackedStringArray()
+	for r in faltan:
+		if mejoras_por_id.has(r.id):
+			partes.append(tr("%s nivel %d") % [tr(nombre_requisito(r.id)), r.nivel])
+		else:
+			partes.append(tr("%s ×%d") % [tr(nombre_requisito(r.id)), r.nivel])
+	return tr("Requiere: %s") % " + ".join(partes)
 
 
 func puede_comprar(id: String) -> bool:
@@ -522,7 +553,17 @@ func puede_comprar_casta(id: String) -> bool:
 	if not castas_por_id.has(id):
 		return false
 	var c: Dictionary = castas_por_id[id]
-	return c.comprable and casta_desbloqueada(id) and cantidad_casta(id) < c.maximo and migas >= costo_casta(id)
+	return c.comprable and casta_desbloqueada(id) and cantidad_casta(id) < maximo_casta(id) and migas >= costo_casta(id)
+
+
+## Unidades que se pueden reclutar: las de castas.csv más la stat limite_castas.
+func maximo_casta(id: String) -> int:
+	if not castas_por_id.has(id):
+		return 0
+	var c: Dictionary = castas_por_id[id]
+	if not c.comprable or c.maximo <= 0:
+		return int(c.maximo)
+	return int(c.maximo) + maxi(0, int(stat("limite_castas")))
 
 func casta_desbloqueada(id: String) -> bool:
 	return castas_por_id.has(id) and requisitos_faltantes(castas_por_id[id].requisitos).is_empty()
@@ -536,7 +577,7 @@ func cotizar_casta(id: String, cantidad := 1) -> Dictionary:
 	if not castas_por_id.has(id):
 		return {"cantidad": 0, "costo": 0.0, "puede": false}
 	var c: Dictionary = castas_por_id[id]
-	return _cotizar(c.costo_base, c.crecimiento, cantidad_casta(id), c.maximo, cantidad, c.comprable and casta_desbloqueada(id))
+	return _cotizar(c.costo_base, c.crecimiento, cantidad_casta(id), maximo_casta(id), cantidad, c.comprable and casta_desbloqueada(id))
 
 
 func comprar_castas_lote(id: String, cantidad := 1) -> int:
@@ -562,11 +603,12 @@ func total_especialistas() -> int:
 
 
 ## Estadísticas reales: las mejoras generales también benefician a las castas.
+## Las especialistas (las que se reclutan) suman además fuerza_especialistas.
 func stats_casta(id: String) -> Dictionary:
 	var c: Dictionary = castas_por_id[id]
 	return {
 		"velocidad": stat("velocidad") * c.velocidad,
-		"dano": stat("dano") * c.dano,
+		"dano": stat("dano") * c.dano * (stat("fuerza_especialistas") if c.comprable else 1.0),
 		"capacidad": maxi(1, int(stat("capacidad") * c.capacidad)) + (2 if id == "cargadora" and hitos.has("cuatro_sillas") else 0),
 		"olfato": stat("olfato") * c.olfato,
 		"intervalo_mordida": maxf(0.05, stat("intervalo_mordida")),
@@ -1027,11 +1069,13 @@ func restaurar_partida(datos: Dictionary) -> void:
 				niveles[id] = clampi(int(guardados[id]), 0, nivel_maximo(id))
 	# Las partidas v1 no tienen castas: conservan sus mejoras y empiezan sin reclutas.
 	reclutadas = {}
+	# El límite de castas puede venir de mejoras recién cargadas.
+	_cache_stats.clear()
 	var castas_guardadas = datos.get("reclutadas", {})
 	if typeof(castas_guardadas) == TYPE_DICTIONARY:
 		for id in castas_guardadas:
 			if castas_por_id.has(id) and castas_por_id[id].comprable:
-				reclutadas[id] = clampi(int(castas_guardadas[id]), 0, int(castas_por_id[id].maximo))
+				reclutadas[id] = clampi(int(castas_guardadas[id]), 0, maximo_casta(id))
 	_cache_stats.clear()
 	estadisticas = {}
 	var guardadas = datos.get("estadisticas", null)
@@ -1206,8 +1250,8 @@ func _cargar_datos() -> void:
 	for lista in [mejoras, castas]:
 		for m in lista:
 			for r in m.requisitos.duplicate():
-				if not mejoras_por_id.has(r.id):
-					push_error("'%s' requiere '%s', que no es una mejora" % [m.id, r.id])
+				if not mejoras_por_id.has(r.id) and not castas_por_id.has(r.id):
+					push_error("'%s' requiere '%s', que no es una mejora ni una casta" % [m.id, r.id])
 					m.requisitos.erase(r)
 	for m in mejoras:
 		m.requiere_id = m.requisitos[0].id if not m.requisitos.is_empty() else ""
