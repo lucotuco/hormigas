@@ -77,7 +77,10 @@ res://
     hud.gd         Migas, tiempo, combo, avisos, pausa y panel de fin de run
     ventana_modal.gd  Base de las ventanas (configuración, estadísticas, pausa)
     panel_configuracion.gd / panel_estadisticas.gd
-    tienda.gd      Árbol de mejoras entre runs
+    tienda.gd      El hormiguero de mejoras entre runs: ficha, compras y secciones
+    arbol_hormiguero.gd  Vista del hormiguero: arrastrar, zoom y capas de dibujo
+    plano_hormiguero.gd  Dónde está cada cámara y por dónde pasan sus túneles
+    arte_camara.gd Forma, contenido y rastro de cada rama
     estilo.gd      Colores y helpers de interfaz compartidos
   datos/         Tablas de balance (CSV)
   idiomas/       en.po: el inglés de todos los textos (ver idiomas/LEEME.md)
@@ -95,23 +98,43 @@ res://
 ## Casa y hormiguero
 
 La resolución base del juego es **1920 × 1080**; las ventanas menores escalan
-el lienzo, no cambian la resolución de diseño. El hormiguero de la tienda queda
-visible en sus cuatro secciones: **Mejoras, Castas, Viajes y Jalea real**, que
-son cámaras conectadas dentro del mismo corte de tierra. Conservan sus requisitos
-de descubrimiento. El árbol ocupa toda la pantalla: seis ramas se subdividen en
-31 cámaras de mejoras, conectadas según sus requisitos reales. Las compras
-agrandan cámaras, ensanchan túneles y suman huevos, reservas y herramientas.
-Al elegir una mejora aparece una ficha flotante cerrable, con requisitos y la
-estadística exacta antes y después de comprar. Las otras secciones se abren
-sobre el mismo hormiguero y permiten volver al árbol.
+el lienzo, no cambian la resolución de diseño.
+
+### El hormiguero de mejoras
+
+La tienda es un corte de tierra de 1700 × 1900 con la **reina en el centro**
+(abre la Jalea real), **Viajes en la boca** y la **sala de Castas** (fichas
+completas y evoluciones) en el túnel principal. Alrededor salen siete ramas:
+Castas, Colonia, Recolección, Mandíbulas, Feromonas, Tiempo y Territorio, con
+89 cámaras: 82 mejoras y las 7 castas que se reclutan. Las ramas se separan y
+se vuelven a juntar: las **cámaras compartidas** (borde punteado) piden una
+mejora de cada rama, y algunos túneles cruzan de una rama a otra. Cada túnel
+que llega a una cámara sale de uno de sus requisitos reales.
+
+- **Pasar el mouse** abre la ficha: nombre, nivel, efecto, el valor antes y
+  después, el precio y qué le falta si está cerrada. **Un clic** mejora (o
+  recluta, en las castas); clic derecho en una casta abre su ficha completa.
+- Se recorre **arrastrando** y con la **rueda**. Al entrar encuadra lo ya
+  explorado; la leyenda de arriba a la izquierda encuadra cada rama y cuenta
+  cuántas cámaras podés comprar en cada una. "Ver mejora" acerca la cámara.
+- Cada rama se reconoce sin leer: forma de la cámara y lo que guarda adentro,
+  que crece con el nivel (huevos en Colonia, pilas de migas en Recolección,
+  astillas y metal en Mandíbulas, gotas que brillan en Feromonas, reservas
+  colgando en Tiempo, tierra y raíces en Territorio, especialistas en Castas).
+  Feromonas, Recolección y Tiempo dejan rastro en sus túneles. Los túneles
+  hacia una cámara cerrada se van cavando a medida que sube el requisito.
+- Las mejoras de destino aparecen como cámaras sin excavar hasta que se
+  revelan los viajes. Las castas y las secciones se descubren como antes.
+
+El plano (posiciones y túneles) está en `ui/plano_hormiguero.gd`; el dibujo de
+cada rama, en `ui/arte_camara.gd`. El suelo y las cámaras se dibujan una vez
+por compra; mover o acercar la vista no redibuja. Veintidós hormigas
+decorativas recorren los túneles cavados a 30 Hz, sin IA ni navegación de la run.
+
 Los botones **×1, ×10 y Máx** se comparten entre mejoras y castas.
 ×10 compra el lote completo (o los niveles restantes hasta el límite); Máx
 calcula cuántos podés pagar. El precio suma el costo creciente de cada nivel,
 se cobra una sola vez y la vista previa muestra el resultado del lote entero.
-Cada rama señala cuántas mejoras podés comprar en el modo seleccionado.
-La cámara seleccionada se ilumina y cada rama muestra su desarrollo.
-Veintidós hormigas decorativas recorren los túneles compartidos: el fondo es
-estático y sólo las siluetas se actualizan a 30 Hz, sin IA ni navegación de la run.
 El sonido se
 puede silenciar y regular desde el pie de la tienda; `M` sigue funcionando.
 
@@ -561,7 +584,8 @@ Los intervalos de las habilidades especiales están junto a su implementación.
 
 - Costo de una mejora = `costo_base × crecimiento ^ nivel`.
 - Una mejora tipo `multiplica` con valor `1.12` y nivel 3 multiplica la stat por `1.12³`.
-- Para agregar una mejora nueva alcanza con agregar una fila; aparece sola en la tienda. Si afecta una stat nueva, agregala también a `stats_base.csv` y usala en el código con `Juego.stat("nombre")`.
+- Para agregar una mejora nueva se agrega una fila y su cámara en `ui/plano_hormiguero.gd` (posición y túneles, que salen de sus requisitos); `tests/prueba_nido` avisa si falta. Si afecta una stat nueva, agregala también a `stats_base.csv` y usala en el código con `Juego.stat("nombre")`.
+- `rama` dice dónde va la cámara y cómo se ve. Una cámara compartida lleva las dos ramas (`Mandíbulas|Recolección`) y pide una mejora de cada una en `requiere`.
 
 ### Medir el ritmo con el bot
 

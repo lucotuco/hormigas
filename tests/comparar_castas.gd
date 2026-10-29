@@ -11,8 +11,8 @@ func _ready() -> void:
 		Juego._cache_stats.clear()
 		Juego.migas = 1200
 		if especialistas:
-			Juego.comprar_casta("carpintera")
-			Juego.comprar_casta("cargadora")
+			_reclutar_directo("carpintera", 1)
+			_reclutar_directo("cargadora", 1)
 		Juego.comprar_lote("mas_obreras", 0)
 		var gastado := 1200 - Juego.migas
 		var r: Run = preload("res://mundo/run.tscn").instantiate()
@@ -41,3 +41,15 @@ func _ready() -> void:
 		await get_tree().process_frame
 	Juego.reiniciar_estado()
 	get_tree().quit()
+
+
+## Compra al precio real pero sin la cadena de castas del hormiguero (veloz →
+## roja → cargadora → carpintera): la comparación mide sólo estas unidades.
+func _reclutar_directo(id: String, cantidad: int) -> void:
+	for i in cantidad:
+		var precio := Juego.costo_casta(id)
+		if Juego.migas < precio:
+			return
+		Juego.migas -= precio
+		Juego.reclutadas[id] = Juego.cantidad_casta(id) + 1
+	Juego.actualizar_evoluciones()

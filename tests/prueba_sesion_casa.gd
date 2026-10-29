@@ -59,7 +59,7 @@ func probar_registro() -> void:
 	Juego.reiniciar_estado()
 	var registro := nuevo_registro()
 	Juego.migas = 1000000
-	verificar(Juego.comprar_lote("mandibulas", 4) == 4 and Juego.comprar("mordida_madera"), "las compras reales del juego siguen funcionando con guardado deshabilitado")
+	verificar(Juego.comprar_lote("mandibulas", 4) == 4 and Juego.comprar("mordida_rapida") and Juego.comprar("mordida_madera"), "las compras reales del juego siguen funcionando con guardado deshabilitado")
 	verificar(registro.primeros.has("primera_compra") and registro.primeros.has("madera"), "las señales registran compras y dieta antes del muestreo de 0,1 s")
 	verificar(Juego.comprar_casta("veloz") and registro.primeros.has("primera_casta"), "la primera especialista se registra por la señal real de compra")
 	Juego.obtener_hito("primera_silla")

@@ -31,6 +31,7 @@ func _ready() -> void:
 	Juego.migas = 1e8
 	verificar(not Juego.comprar("mordida_madera"), "madera requiere primero mejorar las mandíbulas")
 	Juego.comprar_lote("mandibulas", 4)
+	Juego.comprar("mordida_rapida")
 	verificar(Juego.comprar_lote("mordida_madera", 10) == 1 and Juego.stat("materiales") == 1, "la compra por lote desbloquea la etapa de madera una sola vez")
 	verificar(silla.disponible() and not heladera.disponible() and not muro.disponible(), "madera y telas no desbloquean metal ni paredes")
 	var punto := silla.punto_mordida(Vector2.ZERO, run.radio_actual)

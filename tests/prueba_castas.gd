@@ -21,6 +21,9 @@ func _ready() -> void:
 	verificar(not Juego.comprar_casta("carpintera") and not Juego.comprar_casta("demoledora"), "las especializaciones requieren su material")
 	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
 	Juego._cache_stats.clear()
+	verificar(not Juego.comprar_casta("roja") and Juego.comprar_casta("veloz") and Juego.comprar_casta("roja"), "cada casta pide reclutar antes la anterior de su rama")
+	Juego.reclutadas = {}
+	# castas.csv está en el orden del hormiguero: cada una abre la siguiente.
 	for c in Juego.castas:
 		if not c.comprable:
 			continue

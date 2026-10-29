@@ -69,11 +69,9 @@ func _ready() -> void:
 	Juego.migas = 500000
 	var tienda := preload("res://ui/tienda.tscn").instantiate()
 	add_child(tienda)
-	tienda._seleccionar("Mandíbulas")
+	tienda._seleccionar_mejora("mordida_resistente")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var scroll := tienda._lista.get_parent() as ScrollContainer
-	scroll.scroll_vertical = 99999
 	await captura("tienda_materiales")
 	get_window().size = Vector2i(1000, 620)
 	await captura("tienda_materiales_1000")

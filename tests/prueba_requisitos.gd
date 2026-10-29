@@ -49,14 +49,20 @@ func probar_desbloqueo() -> void:
 
 
 func probar_castas() -> void:
-	verificar(Juego.castas_por_id.carpintera.requisitos.size() == 1 and Juego.castas_por_id.carpintera.requisitos[0].id == "mordida_madera", "la carpintera pide la dieta de madera desde castas.csv")
+	var carpintera: Array = Juego.castas_por_id.carpintera.requisitos
+	verificar(carpintera[0].id == "mordida_madera" and carpintera[1].id == "cargadora", "la carpintera pide la dieta de madera y una cargadora desde castas.csv")
 	Juego.niveles = {}
-	verificar(not Juego.casta_desbloqueada("carpintera") and not Juego.casta_desbloqueada("demoledora") and Juego.casta_desbloqueada("veloz"), "sin dietas sólo se cierran las especializadas")
+	Juego.reclutadas = {}
+	verificar(Juego.casta_desbloqueada("veloz") and not Juego.casta_desbloqueada("roja"), "la primera casta está abierta y cada una pide la anterior")
+	Juego.reclutadas = {"veloz": 1, "roja": 1, "cargadora": 1, "voladora": 1, "reina": 1}
+	verificar(not Juego.casta_desbloqueada("carpintera") and not Juego.casta_desbloqueada("demoledora"), "sin dietas se cierran las especializadas")
 	Juego.niveles = {"mordida_madera": 1}
 	verificar(Juego.casta_desbloqueada("carpintera") and not Juego.casta_desbloqueada("demoledora"), "la madera abre la carpintera")
+	Juego.reclutadas.carpintera = 1
 	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
 	verificar(Juego.casta_desbloqueada("demoledora") and Juego.stat("materiales") >= 3, "las paredes abren la demoledora, como antes con materiales 3")
 	Juego.niveles = {}
+	Juego.reclutadas = {}
 	Juego._cache_stats.clear()
 
 
@@ -64,12 +70,12 @@ func probar_datos() -> void:
 	var ok := true
 	for m in Juego.mejoras:
 		for r in m.requisitos:
-			ok = ok and Juego.mejoras_por_id.has(r.id) and r.id != m.id and int(r.nivel) >= 1
+			ok = ok and (Juego.mejoras_por_id.has(r.id) or Juego.castas_por_id.has(r.id)) and r.id != m.id and int(r.nivel) >= 1
 		ok = ok and m.requiere_id == (m.requisitos[0].id if not m.requisitos.is_empty() else "")
-	verificar(ok, "cada requisito de mejoras.csv existe y el primero sigue disponible como requiere_id")
-	# Sin ciclos: desde cualquier mejora se llega a una raíz.
+	verificar(ok, "cada requisito de mejoras.csv existe (mejora o casta) y el primero sigue disponible como requiere_id")
+	# Sin ciclos: desde cualquier mejora o casta se llega a una raíz.
 	var sin_ciclos := true
-	for m in Juego.mejoras:
+	for m in Juego.mejoras + Juego.castas:
 		var visitadas := {}
 		var pila: Array = [m.id]
 		while not pila.is_empty():
@@ -77,11 +83,12 @@ func probar_datos() -> void:
 			if visitadas.has(actual):
 				continue
 			visitadas[actual] = true
-			for r in Juego.mejoras_por_id[actual].requisitos:
+			var datos: Dictionary = Juego.mejoras_por_id[actual] if Juego.mejoras_por_id.has(actual) else Juego.castas_por_id[actual]
+			for r in datos.requisitos:
 				if r.id == m.id:
 					sin_ciclos = false
 				pila.append(r.id)
-	verificar(sin_ciclos, "ninguna mejora se pide a sí misma a través de otras")
+	verificar(sin_ciclos, "ninguna mejora ni casta se pide a sí misma a través de otras")
 
 
 func verificar(valor: bool, mensaje: String) -> void:

@@ -136,6 +136,8 @@ func probar_topes_y_destinos() -> void:
 	Juego.migas = 1e15
 	verificar(not Juego.esta_desbloqueada("titanio") and not Juego.comprar("titanio"), "una mejora de destino no se compra antes de llegar")
 	Juego.completar_destino() # Conquista actual, no sólo historial de otra colonia.
+	verificar(not Juego.esta_desbloqueada("titanio"), "el restaurante abre el titanio, pero en el hormiguero sigue pidiendo su cámara anterior")
+	Juego.niveles["filo_aserrado"] = 1
 	verificar(Juego.esta_desbloqueada("titanio") and Juego.comprar("titanio"), "al abrir el restaurante se puede comprar Mandíbulas de titanio")
 	verificar(not Juego.esta_desbloqueada("curadora"), "las del museo siguen esperando")
 
@@ -203,8 +205,9 @@ func probar_panel() -> void:
 	verificar(Juego.nivel_jalea("obreras_reales") == antes + 1, "se puede comprar un nodo desde el panel")
 	Juego.lugares_completados["casa"] = true
 	tienda._cambiar_pestana("hogar")
-	tienda._seleccionar("Mandíbulas")
-	verificar(tienda._tarjetas.titanio.boton.visible, "con viajes revelados se ven las mejoras de destino en su rama")
+	tienda._refrescar()
+	tienda._seleccionar_mejora("titanio")
+	verificar(not tienda._estados.titanio.misterio and "Mandíbulas de titanio" in tienda._lbl_sala.text, "con viajes revelados se ven las mejoras de destino en su rama")
 	tienda.queue_free()
 	await get_tree().process_frame
 

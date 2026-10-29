@@ -55,7 +55,7 @@ func probar_tienda() -> void:
 	verificar(tienda._seccion == "legado" and tienda._panel_legado.visible, "ver fundación abre sus opciones sin fundar ni cambiar destino")
 	tienda._siguiente_paso = {"accion": "casta", "id": "carpintera"}
 	tienda._ver_siguiente_paso()
-	verificar(tienda._seccion == "castas" and tienda._panel_castas.visible, "ver una casta abre el panel correspondiente")
+	verificar(tienda._seccion == "hogar" and tienda._ficha_id == "carpintera" and tienda._ficha_mejoras.visible, "ver una casta muestra su cámara en el hormiguero")
 	Juego.niveles = {"mandibulas": 4, "mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
 	Juego.coronas_cobradas = {"casa": true}
 	Juego.lugares_completados = {"casa": true}

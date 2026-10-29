@@ -62,6 +62,7 @@ func probar_limite_y_fuerza() -> void:
 	Juego._cache_stats.clear()
 	verificar(Juego.maximo_casta("reina") == reinas + 2, "limite_castas suma unidades a cada casta")
 	Juego.migas = 1e9
+	Juego.reclutadas = {"voladora": 1}
 	verificar(Juego.comprar_castas_lote("reina", 0) == reinas + 2 and Juego.cantidad_casta("reina") == reinas + 2, "Máx recluta hasta el límite ampliado")
 	var guardada := Juego.datos_partida().duplicate(true)
 	Juego.restaurar_partida(guardada)

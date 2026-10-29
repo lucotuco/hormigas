@@ -27,7 +27,7 @@ func _ready() -> void:
 		await captura("lectura_inicio_%d" % tam.x)
 		var area := Rect2(Vector2.ZERO, get_viewport().get_visible_rect().size)
 		verificar(area.encloses(tienda._lbl_paso.get_global_rect()) and area.encloses(tienda._boton_paso.get_global_rect()), "el paso y su acción quedan dentro de pantalla a %d" % tam.x)
-	Juego.niveles = {"mandibulas": 4, "mas_obreras": 4}
+	Juego.niveles = {"mandibulas": 4, "mordida_rapida": 1, "mas_obreras": 4}
 	Juego.migas = Juego.costo("mordida_madera")
 	Juego._cache_stats.clear()
 	tienda._refrescar()

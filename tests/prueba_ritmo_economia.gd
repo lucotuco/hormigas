@@ -25,7 +25,7 @@ func probar_arranque_y_compras() -> void:
 	verificar(Juego.stat("dano") == 1 and is_equal_approx(Juego.stat("intervalo_mordida"), 0.6), "el contacto y la mordida inicial no se debilitan para alargar la campaña")
 	verificar(Juego.stat("vida_silla_inicial") == 140 and Juego.stat("recompensa_silla_inicial") == 420, "la primera silla conserva la demostración accesible y la recompensa proporcional")
 	Juego.migas = 170
-	for id in ["mas_obreras", "mandibulas", "pisada", "buche"]:
+	for id in ["mas_obreras", "mandibulas", "buche", "pisada"]:
 		verificar(Juego.comprar(id), "una primera recaudación puede comprar un nivel real de %s" % id)
 	verificar(Juego.migas > 0 and Juego.stat("hormigas_iniciales") == 10 and Juego.stat("capacidad") == 2, "el costo gradual sigue permitiendo decisiones útiles tras una expedición")
 	verificar(is_equal_approx(Juego.stat("dano"), 2.5), "los niveles pagados mantienen el mismo efecto, no se nerfea la compra además de encarecerla")

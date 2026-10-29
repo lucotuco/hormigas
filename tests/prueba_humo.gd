@@ -103,18 +103,14 @@ func _probar_tienda() -> void:
 	add_child(tienda)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_verificar(tienda._tarjetas.size() == Juego.mejoras.size(), "la tienda muestra %d tarjetas" % tienda._tarjetas.size())
+	var camaras := 0
+	for m in Juego.mejoras:
+		camaras += int(tienda._estados.has(m.id))
+	_verificar(camaras == Juego.mejoras.size(), "el hormiguero tiene una cámara por cada una de las %d mejoras" % Juego.mejoras.size())
 	for rama in tienda.SALAS:
-		tienda._seleccionar(rama)
-		var visibles := 0
-		var esperadas := 0
-		for m in Juego.mejoras:
-			# Las mejoras de destino aparecen recién con la pestaña Viajes.
-			if m.rama == rama and (m.destino == "" or Juego.revelado("viajes")):
-				esperadas += 1
-			if tienda._tarjetas[m.id].boton.visible:
-				visibles += 1
-		_verificar(visibles == esperadas, "%s muestra sus %d mejoras" % [rama, esperadas])
+		var raiz: String = tienda.SALAS[rama].raiz
+		tienda._seleccionar_mejora(raiz)
+		_verificar(tienda._ficha_mejoras.visible and tienda._ficha_id == raiz and tienda._lbl_sala.text != "", "%s abre la ficha de su primera cámara" % rama)
 	tienda.queue_free()
 	await get_tree().process_frame
 

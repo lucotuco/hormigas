@@ -108,6 +108,7 @@ func claves_del_juego() -> Dictionary:
 	var tienda := load("res://ui/tienda.gd")
 	for sala in tienda.SALAS.values():
 		_sumar(claves, [sala.titulo, sala.detalle])
+	_sumar(claves, tienda.SALAS.keys())
 	_sumar(claves, tienda.NOMBRES_PESTANAS.values())
 	for preparacion in VentanaFundar.PREPARACIONES.values():
 		_sumar(claves, [preparacion.nombre, preparacion.detalle])
@@ -153,9 +154,12 @@ func probar_interfaz_en_ingles() -> void:
 	var tienda: Control = preload("res://ui/tienda.tscn").instantiate()
 	add_child(tienda)
 	await get_tree().process_frame
-	for rama in tienda.SALAS:
-		tienda._seleccionar(rama)
-		textos.append_array(_textos(tienda))
+	textos.append_array(_textos(tienda))
+	# La ficha de cada cámara del hormiguero, en todos sus estados posibles.
+	for id in PlanoHormiguero.CAMARAS:
+		tienda._seleccionar_mejora(id)
+		textos.append_array(_textos(tienda._ficha_mejoras))
+	tienda._cerrar_ficha()
 	tienda._cambiar_pestana("castas")
 	for c in Juego.castas:
 		if c.comprable:
