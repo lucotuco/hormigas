@@ -121,7 +121,7 @@ func _decorar(centro: Vector2, rama: String, nivel: int, color: Color, grande :=
 		draw_set_transform(Vector2.ZERO)
 
 func _draw() -> void:
-	if size.x < 1 or salas.is_empty():
+	if size.x < 1 or size.y < 90 or salas.is_empty():
 		return
 	if dimensiones != size:
 		reconstruir()
@@ -129,7 +129,8 @@ func _draw() -> void:
 	for capa in 7:
 		var franja := PackedVector2Array()
 		for i in 33:
-			franja.append(Vector2(size.x * i / 32.0, 44 + capa * size.y * .145 + sin(i * .29 + capa) * 16))
+			var alto := clampf(44 + capa * size.y * .145 + sin(i * .29 + capa) * 16, 0, size.y - 1)
+			franja.append(Vector2(size.x * i / 32.0, alto))
 		franja.append(Vector2(size.x, size.y))
 		franja.append(Vector2(0, size.y))
 		draw_colored_polygon(franja, Color("62452d").darkened(capa * .068))

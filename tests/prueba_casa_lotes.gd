@@ -10,8 +10,9 @@ func _ready() -> void:
 	Juego.migas = 100000
 	var oferta := Juego.cotizar_mejora("mas_obreras", 10)
 	var suma := 0.0
+	var obreras: Dictionary = Juego.mejoras_por_id.mas_obreras
 	for i in 10:
-		suma += floorf(8 * pow(1.55, i))
+		suma += floorf(obreras.costo_base * pow(obreras.crecimiento, i))
 	verificar(oferta.cantidad == 10 and oferta.costo == suma, "el lote ×10 suma los precios de sus diez niveles")
 	var antes := Juego.migas
 	verificar(Juego.comprar_lote("mas_obreras", 10) == 10 and Juego.migas == antes - suma and Juego.nivel_de("mas_obreras") == 10, "×10 compra exactamente diez niveles con su costo real")
@@ -19,9 +20,10 @@ func _ready() -> void:
 	Juego._cache_stats.clear()
 	verificar(Juego.cotizar_mejora("mas_obreras", 10).cantidad == 2, "un lote nunca supera el nivel máximo")
 	Juego.reiniciar_estado()
-	Juego.migas = 28
-	# 8 + 12 = 20; el siguiente cuesta 19 y ya no alcanza.
-	verificar(Juego.comprar_lote("mas_obreras", 0) == 2 and Juego.migas == 8, "Máx compra todo lo que alcanza y conserva el cambio")
+	# Alcanzan exactamente dos niveles y sobra una miga. No fijar el precio
+	# histórico: este contrato debe seguir valiendo al calibrar la economía.
+	Juego.migas = floorf(obreras.costo_base) + floorf(obreras.costo_base * obreras.crecimiento) + 1
+	verificar(Juego.comprar_lote("mas_obreras", 0) == 2 and Juego.migas == 1, "Máx compra todo lo que alcanza y conserva el cambio")
 	antes = Juego.migas
 	verificar(Juego.comprar_lote("mandibulas", 10) == 0 and Juego.migas == antes, "un lote que no alcanza no consume migas ni compra parcialmente")
 	Juego.migas = 1e9
@@ -88,7 +90,7 @@ func _ready() -> void:
 			h.detener()
 		verificar(regreso_seguro, "obreras, veloces y voladoras regresan desde %s sin quedar atrapadas ni cruzar obstáculos" % zona)
 	run.camara.ver_casa()
-	verificar(run.camara.position == PlanoCasa.LIMITES.get_center(), "H permite encuadrar toda la casa")
+	verificar(run.camara.position == PlanoCasa.limites().get_center(), "H permite encuadrar toda la casa")
 	run.queue_free()
 	await get_tree().process_frame
 	print("Casa y lotes: %d verificaciones; %d fallas." % [total, fallas])

@@ -272,6 +272,9 @@ var estadisticas: Dictionary = {}
 var _inicio_run := 0.0
 
 var _cache_stats: Dictionary = {}
+## El resultado sigue mostrando migas_run después del cobro. No volver a
+## sumarlas a la próxima compra cuando ya están en el saldo del hormiguero.
+var _run_cobrada := false
 
 
 func _ready() -> void:
@@ -360,10 +363,11 @@ func _calcular(nombre: String, id_extra := "", niveles_extra := 0, contexto: Dic
 			multiplicador *= pow(m.valor, nivel)
 		if m.bonus_cada > 0:
 			multiplicador *= pow(m.bonus_mult, floori(float(nivel) / m.bonus_cada))
+	var jalea_calculo: Dictionary = contexto.get("niveles_jalea", niveles_jalea)
 	for n in nodos_jalea:
 		if n.efecto != "stat" or n.stat != nombre:
 			continue
-		var nivel := nivel_jalea(n.id)
+		var nivel := int(jalea_calculo.get(n.id, 0))
 		if nivel <= 0:
 			continue
 		if n.tipo == "suma":
@@ -623,15 +627,25 @@ func proxima_meta() -> Dictionary:
 		if not faltan.is_empty():
 			var previa: Dictionary = mejoras_por_id[faltan[0].id]
 			return {"tipo": "nivel", "nombre": tr("%s nivel %d") % [tr(previa.nombre), faltan[0].nivel],
-				"detalle": tr("habilita: %s") % tr(m.nombre), "actual": float(nivel_de(previa.id)), "objetivo": float(faltan[0].nivel)}
+				"detalle": tr("habilita: %s") % tr(m.nombre), "actual": float(nivel_de(previa.id)), "objetivo": float(faltan[0].nivel),
+				"id": previa.id, "accion": "mejora", "seccion": "hogar"}
 		return {"tipo": "migas", "nombre": tr(m.nombre), "detalle": tr(m.descripcion),
-			"actual": migas + migas_run, "objetivo": costo(id)}
+			"actual": migas + (0.0 if _run_cobrada else migas_run), "objetivo": costo(id), "id": id, "accion": "mejora", "seccion": "hogar"}
 	if not coronas_cobradas.has(lugar_actual):
-		return {"tipo": "objetivo", "nombre": tr(Mundos.INFO[lugar_actual].meta), "detalle": tr("gran objetivo · %d coronas") % int(Mundos.INFO[lugar_actual].coronas)}
+		return {"tipo": "objetivo", "nombre": tr(Mundos.INFO[lugar_actual].meta), "detalle": tr("gran objetivo · %d coronas") % int(Mundos.INFO[lugar_actual].coronas),
+			"id": "", "accion": "mapa", "seccion": "hogar"}
+	# La primera corona ya permite un reinicio útil: mostrarlo sin cerrar el
+	# restaurante ni forzar una compra o una fundación automática.
+	if lugar_actual == "casa" and fundaciones == 0 and puede_fundar():
+		return {"tipo": "fundacion", "nombre": tr("Tu primera colonia nueva"),
+			"detalle": tr("Podés fundar por +%d de jalea o seguir al restaurante. Elegís vos.") % jalea_por_fundar(),
+			"id": "", "accion": "legado", "seccion": "legado"}
 	var indice := Mundos.ORDEN.find(lugar_actual)
 	if indice + 1 < Mundos.ORDEN.size():
-		return {"tipo": "viaje", "nombre": tr("Viajar a %s") % tr(Mundos.INFO[Mundos.ORDEN[indice + 1]].nombre), "detalle": tr("desde la pestaña Viajes")}
-	return {"tipo": "viaje", "nombre": tr("Fundar una colonia nueva"), "detalle": tr("convertí coronas y migas en jalea real")}
+		return {"tipo": "viaje", "nombre": tr("Viajar a %s") % tr(Mundos.INFO[Mundos.ORDEN[indice + 1]].nombre), "detalle": tr("desde la pestaña Viajes"),
+			"id": Mundos.ORDEN[indice + 1], "accion": "viajes", "seccion": "viajes"}
+	return {"tipo": "viaje", "nombre": tr("Fundar una colonia nueva"), "detalle": tr("convertí coronas y migas en jalea real"),
+		"id": "", "accion": "legado", "seccion": "legado"}
 
 
 func nivel_visual() -> int:
@@ -701,10 +715,11 @@ func puede_fundar() -> bool:
 	return jalea_por_fundar() >= 1
 
 
-## Arranque real con las mejoras permanentes YA compradas. No presupone gastar
-## la jalea futura. Usa el mismo cálculo que stat() y no modifica ningún estado.
-func vista_previa_fundar(decreto_nuevo := "") -> Dictionary:
-	var contexto := {"niveles": _niveles_heredados(), "legado": legado + jalea_por_fundar(),
+## Arranque real con mejoras permanentes y, sólo si se eligen, compras de
+## preparación. Cotiza sin gastar ni modificar estado; confirmar las aplica.
+func vista_previa_fundar(decreto_nuevo := "", compras_jalea: Array[String] = []) -> Dictionary:
+	var plan := cotizar_preparacion_fundar(compras_jalea)
+	var contexto := {"niveles": _niveles_heredados({"niveles_jalea": plan.niveles}), "niveles_jalea": plan.niveles, "legado": legado + jalea_por_fundar(),
 		"decreto": decreto_nuevo if decretos_por_id.has(decreto_nuevo) else ""}
 	var stats: Dictionary = {}
 	for nombre in ["hormigas_iniciales", "duracion_run", "materiales", "dano", "multiplicador_migas", "entradas"]:
@@ -715,21 +730,58 @@ func vista_previa_fundar(decreto_nuevo := "") -> Dictionary:
 		if quedan > 0:
 			castas[id] = quedan
 	return {"stats": stats, "castas": castas, "migas": migas * 0.1 * nivel_jalea("despensa"), "destino": "casa",
-		"jalea": jalea + jalea_por_fundar()}
+		"jalea": plan.saldo, "compras": plan.compras, "costo_jalea": plan.costo, "plan_valido": plan.valido}
+
+
+## Preparación explícita y acotada: cotiza como mucho doce compras ya elegidas.
+## No compra ni modifica moneda, niveles, señales o caché. Las herencias de
+## migas/castas usan sus niveles anteriores: no actúan retroactivamente.
+func cotizar_preparacion_fundar(compras: Array[String]) -> Dictionary:
+	var saldo := jalea + jalea_por_fundar()
+	var simulados: Dictionary = niveles_jalea.duplicate()
+	var cotizadas: Array[Dictionary] = []
+	var total := 0
+	var valido := compras.size() <= 12
+	if valido:
+		for id in compras:
+			if not jalea_por_id.has(id):
+				valido = false
+				break
+			var nodo: Dictionary = jalea_por_id[id]
+			var nivel := int(simulados.get(id, 0))
+			var costo_nuevo := int(floor(nodo.costo_base * pow(nodo.crecimiento, nivel)))
+			if nivel >= int(nodo.nivel_max) or costo_nuevo > saldo or (nodo.requiere_id != "" and int(simulados.get(nodo.requiere_id, 0)) < nodo.requiere_nivel):
+				valido = false
+				break
+			simulados[id] = nivel + 1
+			saldo -= costo_nuevo
+			total += costo_nuevo
+			cotizadas.append({"id": id, "nivel": nivel + 1, "costo": costo_nuevo})
+	if not valido:
+		# Un plan inválido nunca se convierte silenciosamente en una compra parcial.
+		return {"valido": false, "saldo": jalea + jalea_por_fundar(), "costo": 0,
+			"niveles": niveles_jalea.duplicate(), "compras": []}
+	return {"valido": true, "saldo": saldo, "costo": total, "niveles": simulados, "compras": cotizadas}
 
 
 ## Reinicia la economía de la colonia y la convierte en jalea real.
 ## Se conservan destinos, hitos, jalea, el árbol de la reina y lo revelado.
 ## `decreto_nuevo` rige la colonia que nace ("" = sin decreto).
-func fundar_colonia(decreto_nuevo := "") -> bool:
+func fundar_colonia(decreto_nuevo := "", compras_jalea: Array[String] = []) -> bool:
 	var ganada := jalea_por_fundar()
 	if ganada < 1:
+		return false
+	var plan := cotizar_preparacion_fundar(compras_jalea)
+	if not plan.valido:
 		return false
 	decreto = decreto_nuevo if decretos_por_id.has(decreto_nuevo) else ""
 	var conservar_migas := migas * 0.1 * nivel_jalea("despensa")
 	var porcion_castas := 0.25 * nivel_jalea("linaje")
 	legado += ganada
-	jalea += ganada
+	jalea = plan.saldo
+	if plan.costo > 0:
+		niveles_jalea = plan.niveles
+		sumar_estadistica("jalea_gastada", plan.costo)
 	coronas = 0
 	coronas_cobradas.clear()
 	lugar_actual = "casa"
@@ -760,11 +812,12 @@ func _aplicar_herencias() -> void:
 	_cache_stats.clear()
 
 
-func _niveles_heredados() -> Dictionary:
+func _niveles_heredados(contexto: Dictionary = {}) -> Dictionary:
 	var heredados: Dictionary = {}
+	var jalea_calculo: Dictionary = contexto.get("niveles_jalea", niveles_jalea)
 	var dietas := {"herencia_madera": "mordida_madera", "herencia_resistente": "mordida_resistente", "herencia_muros": "mordida_muros"}
 	for nodo in dietas:
-		if nivel_jalea(nodo) > 0:
+		if int(jalea_calculo.get(nodo, 0)) > 0:
 			heredados[dietas[nodo]] = 1
 	return heredados
 
@@ -828,6 +881,7 @@ func registrar_maximo(clave: String, valor: float) -> void:
 
 func iniciar_run() -> void:
 	actualizar_evoluciones()
+	_run_cobrada = false
 	migas_run = 0.0
 	comidas_destruidas_run = 0
 	partes_destruidas_run = 0
@@ -841,6 +895,7 @@ func sumar_migas_run(cantidad: float) -> void:
 
 
 func terminar_run() -> void:
+	_run_cobrada = true
 	migas += migas_run
 	migas_colonia += migas_run
 	sumar_estadistica("migas_totales", migas_run)
@@ -902,6 +957,7 @@ func cargar() -> void:
 
 
 func restaurar_partida(datos: Dictionary) -> void:
+	_run_cobrada = true
 	_restaurar_archivo(datos)
 	records_destino = {}
 	var records = datos.get("records_destino", {})
@@ -1014,6 +1070,8 @@ func restaurar_partida(datos: Dictionary) -> void:
 
 
 func reiniciar_estado() -> void:
+	_run_cobrada = false
+	migas_run = 0.0
 	records_destino.clear()
 	archivo_expediciones.clear()
 	records_limpieza.clear()

@@ -19,7 +19,7 @@ func _ready() -> void:
 	Juego.guardado_habilitado = false
 	Juego.usar_idioma("es")
 	Sonido.silenciado = true
-	verificar(Mundos.VERSION_CONTENIDO == 2, "los récords identifican el contenido ampliado como versión2")
+	verificar(Mundos.VERSION_CONTENIDO == 3, "los récords separan el terreno ampliado como versión3")
 	var claves: Dictionary = {}
 	for m in Graficos.catalogo_muebles():
 		claves[Graficos.clave_mueble(m)] = true
@@ -30,7 +30,7 @@ func _ready() -> void:
 		var plano := Mundos.plano(destino)
 		var muebles: Array = plano.muebles
 		print("POBLACION ", destino, " muebles ", ANTES[destino], " -> ", muebles.size())
-		verificar(muebles.size() >= ANTES[destino] + 15 and muebles.size() <= 60, destino + ": más contenido real con un máximo de60 muebles")
+		verificar(muebles.size() >= ANTES[destino] + 15 and muebles.size() <= 72, destino + ": interior y periferia conservan un máximo de72 muebles")
 		var tipos: Dictionary = {}
 		var catalogo_ok := true
 		var limites_ok := true

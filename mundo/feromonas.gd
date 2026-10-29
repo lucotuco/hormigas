@@ -20,9 +20,11 @@ var _destinos: Dictionary = {}
 var _pos_destinos := Vector2.INF
 var _version_destinos := -1
 var _radio_destinos := -1.0
+var _limites_jugables := Rect2()
 @onready var run: Run = get_parent()
 
 func _ready() -> void:
+	_limites_jugables = PlanoCasa.limites()
 	set_process(false)
 
 
@@ -67,13 +69,19 @@ func limpiar() -> void:
 
 
 func llama_a(hormiga: Hormiga) -> bool:
-	return activa and posicion.length_squared() <= run.radio_actual * run.radio_actual and seleccionadas.has(hormiga.get_instance_id())
+	return activa and _punto_permitido() and seleccionadas.has(hormiga.get_instance_id())
+
+
+func _punto_permitido() -> bool:
+	# El paisaje lejano no es un objetivo: no llamar ni buscar accesos hacia
+	# árboles/fachadas decorativos, aunque entren en el radio de una colonia grande.
+	return _limites_jugables.has_point(posicion) and posicion.length_squared() <= run.radio_actual * run.radio_actual
 
 
 func _actualizar_cercanas() -> void:
 	seleccionadas.clear()
 	objetivo_comida = null
-	if not activa or not run.activa or posicion.length() > run.radio_actual:
+	if not activa or not run.activa or not _punto_permitido():
 		return
 	objetivo_comida = run.comidas.comida_en(posicion, run.radio_actual)
 	# Heap máximo de K elementos: no crear un Dictionary por hormiga ni ordenar
@@ -139,6 +147,8 @@ func _intercambiar(a: int, b: int) -> void:
 
 
 func destino_para(volando: bool) -> Vector2:
+	if not _punto_permitido():
+		return Vector2.INF
 	# El cursor sobre un mueble puede requerir cientos de pruebas geométricas.
 	# Resolver una vez por tipo de movimiento, no una vez por hormiga y cuadro.
 	if _version_destinos != run.cocina.version or _pos_destinos.distance_squared_to(posicion) > 144 or absf(_radio_destinos - run.radio_actual) > 6:
@@ -200,7 +210,7 @@ func _draw() -> void:
 	if _desvanecer <= 0:
 		return
 	var zoom := maxf(get_canvas_transform().get_scale().x, 0.01)
-	var color := Color("72c4b0") if posicion.length() <= run.radio_actual else Color("bb8c72")
+	var color := Color("72c4b0") if _punto_permitido() else Color("bb8c72")
 	var radio := radio_visual()
 	draw_circle(posicion, radio, Color(color, 0.022 * _desvanecer))
 	draw_arc(posicion, radio, 0, TAU, 48, Color(color, 0.18 * _desvanecer), 1 / zoom, true)
@@ -208,7 +218,7 @@ func _draw() -> void:
 	draw_arc(posicion, (12 + pulso * 38) / zoom, 0, TAU, 40, Color(color, (1 - pulso) * 0.3 * _desvanecer), 1 / zoom, true)
 	draw_circle(posicion, 3 / zoom, Color(color, _desvanecer * 0.85))
 	# Guías tenues hacia las elegidas; nunca queda un camino al soltar.
-	if activa:
+	if activa and _punto_permitido():
 		var guias := 0
 		for h in seleccionadas.values():
 			if is_instance_valid(h) and h.en_pantalla and h.carga <= 0 and h.estado != Hormiga.Estado.VOLVIENDO:

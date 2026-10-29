@@ -11,10 +11,21 @@ extends Node
 ##   BOT_MAX_MIN  corta al pasar estos minutos de juego (por defecto 240)
 ##   BOT_ESTADO   archivo donde guardar/retomar el estado entre tandas
 ##                (por defecto no guarda: empieza siempre de cero)
+##   BOT_INICIO   snapshot de entrada de sólo lectura; si se usa, BOT_ESTADO
+##                puede apuntar a otra salida sin sobreescribir la muestra.
 ##   BOT_LOG      archivo donde agregar el registro (además de imprimirlo)
 ##   BOT_CALIBRAR si existe, modo calibración (ver más abajo)
 ##   BOT_FACTOR   factor de calibración (por defecto FACTOR_CALIBRACION)
 ##   BOT_TRABADO  runs sin progreso antes de pensar en fundar (por defecto RUNS_TRABADO)
+##   BOT_ORDEN    "materiales" dirige primero al material recién aprendido;
+##                "cercania" conserva el piloto histórico (por defecto).
+##   BOT_RETORNO  si existe, corta tras esta cantidad de runs de la segunda
+##                colonia; permite medir casa → primer rebirth sin campaña tardía.
+##   BOT_FUNDAR_CASA si existe, elige la primera fundación al conquistar la casa;
+##                la política histórica espera al restaurante o a una meseta.
+##   BOT_JALEA    "retorno" prueba Cuadrilla (memoria, obreras y daño; seis de
+##                jalea), o sólo Memoria si no alcanza; "memoria" elige sólo
+##                ese atajo. Ambos conservan el resto de la jalea.
 ##
 ## Cómo juega: dos órdenes por segundo, sin daño manual a la comida.
 ## Atiende eventos y dirige al tutorial o al gran objetivo cuando puede comerlo.
@@ -72,18 +83,34 @@ var estado_ruta := ""
 var log_ruta := ""
 var minutos := 0.0
 var vistos := {}
+var orden_materiales := false
+var runs_retorno := -1
+var fundar_en_casa := false
+var jalea_retorno := false
+var solo_memoria := false
+var _run_observada: Run
+var _piezas_observadas: Dictionary = {}
+var _bonus_muebles := 0.0
 
 
 func _ready() -> void:
 	estado_ruta = OS.get_environment("BOT_ESTADO")
 	log_ruta = OS.get_environment("BOT_LOG")
+	orden_materiales = OS.get_environment("BOT_ORDEN") == "materiales"
+	fundar_en_casa = OS.has_environment("BOT_FUNDAR_CASA")
+	jalea_retorno = OS.get_environment("BOT_JALEA") in ["retorno", "memoria"]
+	solo_memoria = OS.get_environment("BOT_JALEA") == "memoria"
+	if OS.has_environment("BOT_RETORNO"):
+		runs_retorno = maxi(0, int(OS.get_environment("BOT_RETORNO")))
 	var runs := int(OS.get_environment("BOT_RUNS")) if OS.has_environment("BOT_RUNS") else 200
 	var max_min := float(OS.get_environment("BOT_MAX_MIN")) if OS.has_environment("BOT_MAX_MIN") else 240.0
+	var inicio_ruta := OS.get_environment("BOT_INICIO") if OS.has_environment("BOT_INICIO") else estado_ruta
 	Juego.guardado_habilitado = false
 	Juego.usar_idioma("es")  # las verificaciones leen textos en español
 	Sonido.silenciado = true
 	Juego.reiniciar_estado()
 	seed(417)
+	anotar("(piloto paso 1/60 s, tiempo ×1, orden %s; los tiempos incluyen retirada y no incluyen la tienda)" % ("materiales" if orden_materiales else "cercania"))
 	# Para calibrar: un vida_meta.json junto al estado fuerza resistencias.
 	var forzada := estado_ruta.get_base_dir().path_join("vida_meta.json") if estado_ruta != "" else ""
 	if forzada != "" and FileAccess.file_exists(forzada):
@@ -96,8 +123,8 @@ func _ready() -> void:
 		runs_trabado = int(OS.get_environment("BOT_TRABADO"))
 	if OS.has_environment("BOT_FACTOR"):
 		factor_calibracion = float(OS.get_environment("BOT_FACTOR"))
-	if estado_ruta != "" and FileAccess.file_exists(estado_ruta):
-		var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(estado_ruta))
+	if inicio_ruta != "" and FileAccess.file_exists(inicio_ruta):
+		var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(inicio_ruta))
 		Juego.restaurar_partida(d.partida)
 		minutos = d.minutos
 		vistos = d.vistos
@@ -111,6 +138,10 @@ func _ready() -> void:
 			if id != "casa":
 				Mundos.vida_meta_forzada[id] = float(calibrado.get(id, INVULNERABLE))
 		anotar("(modo calibración: %s)" % str(calibrado))
+	# Un snapshot de conquista se guarda antes de fundar. Al retomarlo en el
+	# modo casa no debe jugar primero un restaurante por haber saltado el cierre.
+	if fundar_en_casa and Juego.fundaciones == 0 and Juego.coronas_cobradas.has("casa") and Juego.puede_fundar():
+		fundar()
 	for n in runs:
 		elegir_destino()
 		var cobradas := Juego.coronas_cobradas.size()
@@ -140,7 +171,13 @@ func _ready() -> void:
 			fundar()
 			max_dano_destino = 0.0
 		comprar()
+		# Las compras ocurren entre expediciones. Registrarlas acá evita fechar
+		# una dieta al terminar la run siguiente, como hacía el piloto anterior.
+		registrar()
 		guardar_estado()
+		if runs_retorno >= 0 and Juego.fundaciones >= 1 and runs_colonia >= runs_retorno:
+			anotar("FIN primer rebirth y %d expediciones de regreso a casa" % runs_colonia)
+			break
 		if minutos > max_min:
 			anotar("FIN se alcanzaron %d minutos" % int(max_min))
 			break
@@ -152,6 +189,12 @@ func jugar_run() -> float:
 	_dano_meta = 0.0
 	var run: Run = RUN.instantiate()
 	add_child(run)
+	_run_observada = run
+	_piezas_observadas.clear()
+	_bonus_muebles = 0.0
+	for parte in run.comidas.partes:
+		_piezas_observadas[parte.get_instance_id()] = parte.vivas.size()
+	run.comidas.comida_destruida.connect(_registrar_destruccion)
 	Engine.max_fps = 0
 	Engine.time_scale = VELOCIDAD
 	var reloj := 0.0
@@ -160,6 +203,7 @@ func jugar_run() -> float:
 		reloj += get_process_delta_time()
 		if reloj >= 1.0 / CLICS_POR_SEGUNDO and run.activa:
 			reloj = 0.0
+			_observar_materiales(run)
 			# Un jugador activo atiende primero las amenazas y las migas doradas.
 			var evento := run.eventos.mas_urgente()
 			if evento != null:
@@ -176,14 +220,19 @@ func jugar_run() -> float:
 					run.feromonas.mantener_en(punto)
 			elif is_instance_valid(run.objetivo_practica) and not run.objetivo_practica.muerta:
 				run.feromonas.mantener_en(run.objetivo_practica.position)
-			elif mejor:
-				run.feromonas.mantener_en(mejor.position)
 			else:
-				run.feromonas.soltar()
+				var parte := _material_cercano(run) if orden_materiales else null
+				if parte != null:
+					run.feromonas.mantener_en(parte.punto_mordida(Vector2.ZERO, run.radio_actual))
+				elif mejor:
+					run.feromonas.mantener_en(mejor.position)
+				else:
+					run.feromonas.soltar()
 	Engine.time_scale = 1.0
 	minutos += (run.tiempo_jugado + run.tiempo_retirada) / 60.0
 	var ganado := Juego.migas_run
 	var partes := Juego.partes_destruidas_run
+	anotar("   producción %.1f/s · ingresos comida/muebles/estructura (incluyen bonus) %s · cargas sin entregar %s · fin %s" % [run.produccion_run, JSON.stringify(run.ingresos), Juego.formatear(run.cargas_pendientes), "limpieza" if run.limpieza_lograda else "tiempo"])
 	# Daño hecho al gran objetivo en esta run (para calibrar vida_meta).
 	var meta := run.objetivo_mapa
 	var dano_meta := 0.0
@@ -197,12 +246,73 @@ func jugar_run() -> float:
 		dano_meta = INF
 	run.queue_free()
 	await get_tree().process_frame
+	_run_observada = null
 	anotar("run %3d  min %6.1f  %-11s +%-8s banco %-8s obreras %3d  dieta %d  terr %4d  partes %3d  especialistas %d  jalea %d  meta %s/%s" % [
 		Juego.runs_jugadas, minutos, Juego.lugar_actual, Juego.formatear(ganado), Juego.formatear(Juego.migas),
 		int(Juego.stat("hormigas_iniciales")), int(Juego.stat("materiales")), int(Juego.stat("radio_territorio")),
 		partes, Juego.total_especialistas(), Juego.legado,
 		"conquistado" if dano_meta == INF else Juego.formatear(dano_meta), Juego.formatear(vida_meta)])
 	return ganado
+
+
+## Diagnóstico del bot, no trabajo de la simulación: recorre piezas sólo dos
+## veces por segundo. Fechas por colonia permiten comparar el primer retorno.
+func _observar_materiales(run: Run) -> void:
+	# El bonus de destruir una pieza se acredita de inmediato y no es una
+	# entrega. El cartón además comparte esa columna con muebles; descontarlo
+	# evita presentar la recompensa del tutorial como transporte de madera.
+	if run.ingresos[1] > _bonus_muebles + 0.001:
+		_marcar("muebles_transportados", run.tiempo_jugado)
+	for parte in run.comidas.partes:
+		if parte.muerta or parte.nivel_requerido < 1:
+			continue
+		var anteriores := int(_piezas_observadas.get(parte.get_instance_id(), parte.vivas.size()))
+		if parte.vivas.size() < anteriores:
+			_marcar("primer_corte_dieta_%d" % parte.nivel_requerido, run.tiempo_jugado)
+
+
+func _registrar_destruccion(comida) -> void:
+	if not is_instance_valid(_run_observada) or not comida is PiezaCasa:
+		return
+	if comida.nivel_requerido < 3:
+		_bonus_muebles += comida.recompensa * Run.BONUS_DESTRUIR * Juego.stat("multiplicador_migas")
+	if comida.pieza.get("practica", false):
+		_marcar("carton", _run_observada.tiempo_jugado)
+	elif comida.pieza.get("meta", false):
+		_marcar("gran_objetivo_%s" % Juego.lugar_actual, _run_observada.tiempo_jugado)
+	elif comida.pieza.tipo == "silla":
+		_marcar("silla", _run_observada.tiempo_jugado)
+	else:
+		_marcar("pieza_dieta_%d" % comida.nivel_requerido, _run_observada.tiempo_jugado)
+
+
+func _marcar(hito: String, segundos_run := 0.0) -> void:
+	var clave := "colonia_%d/%s" % [Juego.fundaciones, hito]
+	if vistos.has(clave):
+		return
+	var instante := minutos + segundos_run / 60.0
+	vistos[clave] = instante
+	var numero_run := Juego.runs_jugadas + (1 if is_instance_valid(_run_observada) else 0)
+	anotar(">> %s en el minuto %.2f (run %d, segundo %.1f)" % [clave, instante, numero_run, segundos_run])
+
+
+## Un material recién aprendido debe poder probarse con una orden explícita.
+## No hace daño por clic ni llama a toda la colonia: usa el llamado real.
+func _material_cercano(run: Run) -> PiezaCasa:
+	var elegida: PiezaCasa
+	var distancia := INF
+	var dieta := int(Juego.stat("materiales"))
+	for parte in run.comidas.partes:
+		if parte.nivel_requerido != dieta or not parte.disponible() or not parte.en_territorio(run.radio_actual):
+			continue
+		var punto := parte.punto_mordida(Vector2.ZERO, run.radio_actual)
+		if punto == Vector2.INF:
+			continue
+		var d := punto.length_squared()
+		if d < distancia:
+			distancia = d
+			elegida = parte
+	return elegida
 
 
 ## Cada colonia recorre los destinos en orden: juega en el primero cuyas
@@ -219,6 +329,8 @@ func elegir_destino() -> void:
 func conviene_fundar() -> bool:
 	if not Juego.puede_fundar():
 		return false
+	if fundar_en_casa and Juego.fundaciones == 0 and Juego.coronas_cobradas.has("casa"):
+		return true
 	var ganada := Juego.jalea_por_fundar()
 	if runs_colonia >= RUNS_COLONIA_MADURA and ganada >= maxi(GANANCIA_MINIMA_DOBLE, 2 * Juego.legado):
 		return true
@@ -231,12 +343,30 @@ func conviene_fundar() -> bool:
 func fundar() -> void:
 	var ganada := Juego.jalea_por_fundar()
 	var donde := Juego.lugar_actual
-	Juego.fundar_colonia(DECRETO)
+	var preparacion: Array[String] = []
+	if jalea_retorno:
+		var deseadas := ["herencia_madera"] if solo_memoria else ["herencia_madera", "obreras_reales", "jalea_dano"]
+		for id in deseadas:
+			if Juego.nivel_jalea(id) < 1:
+				preparacion.append(id)
+	var cotizacion := Juego.cotizar_preparacion_fundar(preparacion)
+	if not cotizacion.valido:
+		preparacion.clear()
+		if jalea_retorno and Juego.nivel_jalea("herencia_madera") < 1:
+			preparacion.append("herencia_madera")
+		cotizacion = Juego.cotizar_preparacion_fundar(preparacion)
+		anotar("(plan de seis no alcanzable; prueba memoria sola si alcanza)")
+	if not cotizacion.valido:
+		preparacion.clear()
+		cotizacion = Juego.cotizar_preparacion_fundar(preparacion)
+	Juego.fundar_colonia(DECRETO, preparacion)
 	trabado = 0
 	mejor_run_colonia = 0.0
 	runs_colonia = 0
 	var compras := PackedStringArray()
-	while true:
+	for compra in cotizacion.compras:
+		compras.append(compra.id)
+	while not jalea_retorno:
 		var mejor := ""
 		var precio := 1 << 62
 		for nodo in Juego.nodos_jalea:
@@ -248,6 +378,8 @@ func fundar() -> void:
 		Juego.comprar_jalea(mejor)
 		compras.append(mejor)
 	anotar("<< fundación %d en el minuto %.1f (trabado en %s): +%d jalea, legado %d · compró %s" % [Juego.fundaciones, minutos, donde, ganada, Juego.legado, ", ".join(compras)])
+	if estado_ruta != "":
+		guardar_estado(estado_ruta.get_basename() + "_fundacion_%d.json" % Juego.fundaciones)
 
 
 func comprar() -> void:
@@ -297,6 +429,9 @@ func registrar() -> void:
 	for id in Mundos.ORDEN:
 		logros[id] = Juego.lugares_completados.has(id)
 	for clave in logros:
+		var lograda_en_colonia: bool = Juego.coronas_cobradas.has(clave) if Mundos.INFO.has(clave) else logros[clave]
+		if lograda_en_colonia:
+			_marcar(clave)
 		if logros[clave] and not vistos.has(clave):
 			vistos[clave] = minutos
 			anotar(">> %s en el minuto %.1f (run %d, %d fundaciones)" % [clave, minutos, Juego.runs_jugadas, Juego.fundaciones])

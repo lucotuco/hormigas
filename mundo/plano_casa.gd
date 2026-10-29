@@ -2,6 +2,10 @@ class_name PlanoCasa
 extends RefCounted
 ## Plano único para dibujo, suelos, comida, límites y navegación.
 const LIMITES := Rect2(-950, -1000, 7900, 5600)
+## El edificio original conserva sus coordenadas. Un cinturón cercano amplía
+## el juego; el segundo sólo completa el paisaje, sin navegación ni recursos.
+const LIMITES_JUGABLES := Rect2(-2150, -1900, 10300, 7400)
+const LIMITES_VISUALES := Rect2(-4800, -2800, 15600, 9200)
 const BANQUETE := Vector2(3900, 1040)
 const VENTANAS := [Rect2(-650, -1010, 840, 65), Rect2(5000, -1010, 1060, 65), Rect2(-400, 4530, 960, 65), Rect2(5700, 4530, 780, 65)]
 const AMBIENTES := [
@@ -105,5 +109,7 @@ static func ventanas() -> Array:
 	return Mundos.plano(Juego.lugar_actual).ventanas
 static func limites() -> Rect2:
 	return Mundos.plano(Juego.lugar_actual).limites
+static func limites_visuales() -> Rect2:
+	return Mundos.plano(Juego.lugar_actual).limites_visuales
 static func banquete() -> Vector2:
 	return Mundos.plano(Juego.lugar_actual).banquete

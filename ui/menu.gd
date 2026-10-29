@@ -120,7 +120,7 @@ func _boton(columna: VBoxContainer, texto: String, accion: Callable, principal :
 
 func _resumen() -> String:
 	if Juego.runs_jugadas == 0:
-		return tr("Guiá a tus hormigas, pisá migas y comete la casa entera.")
+		return tr("La colonia trabaja sola. Mantené clic para reunirla y guiarla hasta su próximo bocado.")
 	var lineas := PackedStringArray()
 	lineas.append(tr("Destino: %s") % tr(Mundos.INFO[Juego.lugar_actual].nombre))
 	var migas := Juego.formatear(Juego.estadistica("migas_totales"))

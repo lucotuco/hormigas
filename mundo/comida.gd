@@ -137,12 +137,29 @@ func aplicar_veneno(dano_por_segundo: float, duracion: float, run: Run) -> void:
 	veneno_restante = maxf(veneno_restante, duracion)
 	_run_veneno = run
 	set_process(true)
+	_mostrar_veneno()
+
+
+func _mostrar_veneno() -> void:
 	queue_redraw()
 
 
 func _process(delta: float) -> void:
 	if muerta:
 		return
+	_procesar_veneno(delta)
+	if muerta:
+		return
+	_sacudida = move_toward(_sacudida, 0.0, delta * 18.0)
+	_destello = maxf(0.0, _destello - delta)
+	if _sacudida <= 0.0 and _destello <= 0.0 and veneno_restante <= 0:
+		set_process(false)
+	queue_redraw()
+
+
+## El daño y su acreditación no dependen de cómo se dibuja el recurso.
+## PiezaCasa usa el mismo reloj, pero actualiza su máscara a 12,5 Hz.
+func _procesar_veneno(delta: float) -> void:
 	if veneno_restante > 0:
 		if not is_instance_valid(_run_veneno) or not _run_veneno.activa:
 			veneno_restante = 0
@@ -161,11 +178,6 @@ func _process(delta: float) -> void:
 					_veneno_dps = 0
 				if muerta:
 					return
-	_sacudida = move_toward(_sacudida, 0.0, delta * 18.0)
-	_destello = maxf(0.0, _destello - delta)
-	if _sacudida <= 0.0 and _destello <= 0.0 and veneno_restante <= 0:
-		set_process(false)
-	queue_redraw()
 
 
 func _draw() -> void:

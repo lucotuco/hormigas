@@ -82,6 +82,17 @@ func _ready() -> void:
 	f.mantener_en(Vector2(8000, 0))
 	f._actualizar_cercanas()
 	verificar(f.seleccionadas.is_empty(), "el llamado no controla zonas todavía fuera del territorio")
+	# Con mucho territorio el collar decorativo también puede quedar dentro
+	# del círculo. No debe reunir la colonia contra un límite intransitable.
+	run.radio_actual = 12000
+	var consultas_antes := run.cocina.consultas_ruta
+	f.mantener_en(PlanoCasa.limites().end + Vector2(200, -1000))
+	f._actualizar_cercanas()
+	verificar(f.seleccionadas.is_empty() and not f.llama_a(h) and f.destino_para(false) == Vector2.INF and run.cocina.consultas_ruta == consultas_antes, "el paisaje decorativo no atrae hormigas ni solicita rutas aun dentro del radio")
+	f.mantener_en(Vector2(-100, 120))
+	f._actualizar_cercanas()
+	verificar(not f.seleccionadas.is_empty(), "mover el llamado del paisaje al patio jugable recupera la selección")
+	run.radio_actual = Juego.stat("radio_territorio")
 	f.soltar()
 	var cam := run.camara
 	cam.centrar()
@@ -98,7 +109,7 @@ func _ready() -> void:
 	cam.desplazar(Vector2(50, -25))
 	verificar(cam.position.distance_to(pos - Vector2(50, -25) / z) < 0.1, "el desplazamiento respeta el zoom")
 	cam.ver_casa()
-	verificar(cam.position == PlanoCasa.LIMITES.get_center(), "se puede encuadrar la casa completa")
+	verificar(cam.position == PlanoCasa.limites().get_center(), "se puede encuadrar la casa completa")
 	cam.centrar()
 	run.process_mode = Node.PROCESS_MODE_INHERIT
 	run.set_process(false)

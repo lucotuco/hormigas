@@ -7,14 +7,18 @@ uniform vec4 tonos[7];
 uniform int patrones[7];
 uniform sampler2D materiales : source_color, filter_linear_mipmap, repeat_disable;
 uniform bool exterior = false;
+uniform vec4 tono_exterior : source_color = vec4(0.55, 0.60, 0.46, 1.0);
+uniform int patron_exterior = 4;
 
 void vertex() {
 	posicion_mundo = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
 }
 
 void fragment() {
-	vec3 base = vec3(0.12, 0.16, 0.14);
-	int patron = -1;
+	// El paisaje continúa fuera del edificio. Sigue siendo una superficie
+	// compartida: no se amplía el bucle por ambiente ni se agregan texturas.
+	vec3 base = tono_exterior.rgb;
+	int patron = patron_exterior;
 	float borde_ambiente = 1000.0;
 	for (int i = 0; i < 7; i++) {
 		vec4 r = ambientes[i];

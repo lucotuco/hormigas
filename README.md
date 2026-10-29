@@ -117,8 +117,8 @@ puede silenciar y regular desde el pie de la tienda; `M` sigue funcionando.
 
 La casa tiene cocina, comedor, living, pasillo, dormitorio, estudio y baño/lavadero.
 Los seis planos tienen más objetos útiles para devorar, sin agrandar zonas vacías:
-55 muebles en casa, 49 en restaurante, 29 en museo, 33 en Buenos Aires, 39 en
-Roma y 37 en París. Alrededor del Obelisco hay colectivo, taxi, kioscos y carteles
+63 muebles en casa, 57 en restaurante, 37 en museo, 41 en Buenos Aires, 47 en
+Roma y 45 en París, incluyendo la periferia. Alrededor del Obelisco hay colectivo, taxi, kioscos y carteles
 de la avenida; Roma suma columnas, ánforas y fuente; París, puestos de libros,
 cafés, faroles y jardines. Son escenarios estilizados, no recreaciones geográficas.
 
@@ -168,6 +168,15 @@ y `H` encuadra la casa entera.
 Los controles de cámara no dibujan feromonas. El piso usa juntas filtradas para
 mantener un patrón estable al cambiar el zoom.
 
+El terreno continúa alrededor del plano anterior: patio/veredas y jardines
+jugables, con ocho objetos adicionales por destino y salidas reales desde los
+edificios. El área navegable pasa de 7900×5600 a **10300×7400**; el paisaje
+lejano sólo completa el encuadre y no simula hormigas ni usa navegación.
+Se redistribuyen como máximo seis alimentos existentes, sin retirar los del
+arranque ni crear más recompensa alimentaria. Los muebles exteriores sí son
+recursos nuevos. Zoom, arrastre, redimensionado y temblor respetan el área visible
+completa: no se puede alejar o desplazar la cámara indefinidamente hacia el vacío.
+
 ### Los primeros minutos
 
 Las mecánicas aparecen de a una para no abrumar (`Juego.REVELABLES`). Una vez
@@ -193,14 +202,24 @@ dibujan más grandes (`Colonia.ESCALA_EN_PANTALLA`) para que se lea qué hacen.
 
 ### De comer migas a devorar la casa
 
-El taller (rama **Mandíbulas**) tiene tres desbloqueos permanentes, en orden:
+El taller (rama **Mandíbulas**) tiene tres desbloqueos, en orden. Persisten entre
+expediciones de la misma colonia; al fundar sólo se conservan con las Memorias
+correspondientes:
 
 | Dieta | Qué incorpora | Requisito / costo |
 |---|---|---|
 | Comida del piso | Los alimentos habituales | Desde el inicio |
-| Madera y telas | Sillas, mesas, muebles, sillones, cama y macetas | Mandíbulas fuertes 4; 900 migas |
-| Materiales resistentes | Electrodomésticos, mesadas y sanitarios | Madera y telas; 150.000 migas |
-| Paredes | Muros divididos en tramos de hasta 420 unidades | Materiales resistentes; 4.000.000 migas |
+| Madera y telas | Sillas, mesas, muebles, sillones, cama y macetas | Mandíbulas fuertes 4; 1.500 migas |
+| Materiales resistentes | Electrodomésticos, mesadas y sanitarios | Madera y telas; 450.000 migas |
+| Paredes | Muros divididos en tramos de hasta 420 unidades | Materiales resistentes; 12.000.000 migas |
+
+El ritmo inicial es más gradual por los costos de obreras, daño, carga y
+multiplicadores, no por empeorar movimiento u olfato. Con el mismo mapa nuevo,
+la comparación económica final del bot pasó de 15,83 a 23,87 minutos hasta fundar
+(+50,8%); madera, de 6,35 a 8,36. Son minutos activos simulados, sin pensar en
+la tienda ni una garantía de duración humana. Memoria y Cuadrilla siguen
+costando 3 y 6 jaleas y permiten volver sin repetir el ahorro de madera.
+Los niveles y saldos de partidas anteriores no se recobran ni se reinician.
 
 Mantené el clic sobre la pieza: las hormigas se acercan a su **borde accesible**,
 la muerden, transportan las migas y vuelven. Los materiales bloqueados no
@@ -257,7 +276,7 @@ conserva las últimas 128 limpiezas y hasta 1024 marcas por categoría. Sólo co
 la misma dieta, alcance y versión del mapa; las mejoras pueden ser distintas.
 Se conserva al fundar y permite exportar un JSON independiente de la partida.
 Las partidas viejas cargan sin inventar récords. El contenido ampliado se identifica
-como versión de mapa 2, para no compararlo con planos anteriores.
+como versión de mapa 3, para no comparar el nuevo terreno con planos anteriores.
 
 Los depósitos próximos se agrupan en ventanas de 0,35 s; el total económico
 no se limita. El piso tiene menos contraste, parte de la comida forma grupos
@@ -312,6 +331,27 @@ Al fundar se elige un **decreto de la reina** para la colonia nueva
 (`datos/decretos.csv`): numerosa, guerrera, recolectora o exploradora, cada uno
 con una ventaja y un costo. La **Pisada automática** (taller, desde Mandíbulas cooperativas 2)
 pisa sola la comida más cercana al cursor.
+
+### Recorrido pulido hasta la primera fundación
+
+La tienda y el resultado muestran el mismo siguiente paso, con un botón que
+acerca la mejora o la sección correspondiente **sin comprar ni viajar**. Las
+fichas explican qué cambia en el trabajo y la compra muestra el antes → después.
+El resultado mantiene rendimiento, récord y próxima decisión visibles; los
+detalles largos tienen scroll, sin esconder los botones.
+
+Tras conquistar la casa por primera vez se ofrece fundar o seguir al restaurante.
+No es obligatorio reiniciar. La confirmación permite conservar toda la jalea,
+preparar **Memoria de la madera** (3 jaleas) o una **Cuadrilla para la casa**
+(6: memoria, cuatro obreras más y un nivel de daño permanente). Se descuentan
+sólo las mejoras que falten. El costo completo, saldo y arranque exacto se ven
+antes de confirmar; un plan que no alcanza se rechaza entero. No se regala
+progreso ni se compra automáticamente al abrir la ventana.
+
+Para probar este recorrido con otra persona desde cero, sin sobrescribir tu
+partida, abrí `tests/sesion_casa.tscn` y usá **F6**. **F7** abre un informe local
+exportable a pedido; no hay telemetría ni envíos de datos. La guía y los límites
+de estas pruebas están en [`docs/PRUEBA_CASA.md`](docs/PRUEBA_CASA.md).
 
 Cada destino conquistado **sube el tope** de las mejoras (`tope_por_destino` en
 `mejoras.csv`) y trae **mejoras propias** (marcadas con ✦, columna `destino`).
@@ -379,8 +419,9 @@ se conservan como referencia. No se necesitan recursos externos adicionales.
 ### Castas y reclutamiento
 
 La pestaña **Castas** permite conocer y comprar siete tipos de
-hormiga. Cada unidad comprada es **permanente** y sale en todas las
-expediciones siguientes. Se puede reclutar de a una, diez o el máximo posible.
+hormiga. Cada unidad comprada sale en todas las expediciones de esa colonia;
+al fundar se reinician salvo la porción conservada por Linaje. Se puede reclutar
+de a una, diez o el máximo posible.
 Los precios crecen por unidad y cada casta tiene un
 límite. Las fichas muestran las estadísticas con las mejoras actuales incluidas.
 
@@ -493,8 +534,10 @@ coherencia artística antes de sumar monedas o destinos.
   se pueden cambiar entre expediciones.
 - La confirmación de fundar muestra obreras, especialistas, dieta, duración,
   mordida, multiplicador y reservas del arranque real, recalculados al elegir
-  decreto. Usa sólo mejoras permanentes compradas, sin gastar la jalea futura
-  ni modificar el guardado. Prueba: `tests/prueba_claridad.tscn`.
+  decreto y preparación. Sin preparación usa sólo mejoras ya compradas;
+  con ella incluye las compras explícitas y su costo. La vista previa nunca
+  gasta ni modifica el guardado: se cobra únicamente al confirmar. Pruebas:
+  `tests/prueba_claridad.tscn` y `tests/prueba_preparacion_fundar.tscn`.
 
 Antes de extender la campaña: observar 5–10 personas nuevas sin guiarlas.
 Registrar cuándo entienden el llamado, cuándo desmontan madera, qué compra

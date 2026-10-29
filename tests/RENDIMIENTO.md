@@ -565,3 +565,162 @@ muestra de 360. Inicial: media 4,01 / p95 4,84 / peor 5,38 ms; desarrollado:
 no hay reconstrucción continua. Registro: `.godot/qa/perfil_hormiguero_integrado.log`.
 Las cifras del menú no representan expediciones. Falta probar GPU integrada,
 sesiones largas y ritmo de reconquista con jugadores.
+
+### Casa hasta primera fundación — pulido del 28/10/2026
+
+Cambios sobre `bef0dfb`, sin alterar precios, resistencias ni el atlas compartido
+de 307 regiones / aproximadamente 43 MiB RGBA8. Al reservar comida ya al alcance,
+la hormiga empieza a morder sin pedir una ruta al centro. Alcance y orientación
+comparten caché hasta cambiar recurso, geometría o posición: la regresión cuenta
+una consulta geométrica en 120 cuadros inmóviles, en vez de una por cuadro.
+No cambia el límite de 500 hormigas, los cupos de trabajo ni seis rutas/cuadro.
+
+Próxima compra, resumen y preparación se calculan al actualizar la interfaz o
+elegir una opción, no recorriendo hormigas por cuadro. La preparación cotiza
+hasta doce compras explícitas y sólo las aplica al confirmar. La sesión F6 es
+una herramienta aparte: observa señales y estado a 10 Hz, con topes de 256
+eventos y 32 expediciones; no añade trabajo al juego normal.
+
+**30 suites / 998 verificaciones lógicas, sin fallas**, con guardado deshabilitado.
+Regresión completa y repetición final de sesión (30) e idiomas (9, 700 claves).
+Revisión con renderer: 24 verificaciones de lectura y 15 de sesión por idioma,
+español e inglés, a 1920×1080 y 1000×620. Las pruebas de sesión verifican que
+los archivos personales de partida/configuración conserven su huella exacta.
+Registros: `.godot/qa/pulido_final_prueba_*.log`; capturas `lectura_*` y `sesion_*`.
+
+Medición gráfica final: Godot 4.7.2, GL Compatibility, RTX 3060, **1920×1080**,
+VSync y tope de FPS desactivados, paso fijo 1/60. Perfiles ejecutados de a uno,
+sin bot ni pruebas headless simultáneas. El editor y la ejecución del usuario
+seguían abiertos: no es una medición aislada ni una comparación A/B controlada.
+Se excluyen arranque y horneado. No se modificó la partida personal.
+
+| Feromonas, 500 hormigas | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Sin llamado | 6,63 ms | 8,14 ms | 9,52 ms |
+| Cursor / 24 | 8,02 ms | 9,98 ms | 16,21 ms |
+| Cursor / 64 | 9,13 ms | 10,80 ms | 11,73 ms |
+| Sobre muebles / 64 | 9,14 ms | 10,88 ms | 11,71 ms |
+| Suelo sin objetivo / 64 | 8,08 ms | 9,49 ms | 10,91 ms |
+| Objetivo agotado / 64 | 7,91 ms | 9,33 ms | 10,28 ms |
+
+Las fases son consecutivas y el mundo evoluciona; las últimas dos conservan
+64 seleccionadas y 500 hormigas activas. No representan estados idénticos ni
+demuestran por sí solas que la caché aumente los FPS globales. Registro:
+`.godot/qa/perfil_casa_pulida_feromonas.log`.
+
+| Logística por destino, 500 hormigas | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Casa | 8,77 ms | 10,82 ms | 12,72 ms |
+| Restaurante | 8,05 ms | 10,94 ms | 14,26 ms |
+| Museo | 8,04 ms | 10,41 ms | 13,07 ms |
+| Obelisco | 7,53 ms | 10,03 ms | 11,41 ms |
+| Coliseo | 6,92 ms | 9,18 ms | 10,83 ms |
+| Eiffel | 8,08 ms | 10,53 ms | 12,85 ms |
+
+Se conservan las seis entradas y un máximo de seis rutas/cuadro en cada
+destino. Como en el perfil anterior, Run tiene su reloj normal desactivado:
+esta muestra mide IA/transporte, no detección de limpieza ni cierre. Registro:
+`.godot/qa/perfil_casa_pulida_logistica.log`.
+
+Hormiguero: inicial **4,34 / 4,95 / 6,58 ms** (media/p95/peor); desarrollado
+**5,60 / 6,36 / 7,43 ms**. Conserva 790 nodos durante cada muestra, 31 mejoras,
+41 rutas retenidas y 22 hormigas decorativas. Calentamiento de 90 cuadros y
+360 medidos por estado. Registro: `.godot/qa/perfil_casa_pulida_hormiguero.log`.
+
+Son resultados cortos de esta PC, no garantía de ausencia de tirones ni de
+rendimiento en otro hardware. La navegación conserva corte blando de 1,2 ms,
+no interrumpe un A* en curso. Siguen pendientes GPU integrada, sesiones largas
+y observación humana del recorrido, según `docs/PRUEBA_CASA.md`.
+
+### Terreno ampliado e inicio gradual — 28/10/2026
+
+El terreno navegable pasa de 7900×5600 a 10300×7400; el paisaje de 15600×9200
+queda fuera del grafo. Ocho objetos reales por destino reutilizan los acabados:
+el atlas sigue en **2048×5504, 307 regiones / 43 MiB RGBA8**. Hasta seis alimentos
+existentes se redistribuyen al patio, sin aumentar nodos ni valor alimentario.
+El dibujo exterior queda retenido, sin procesos decorativos individuales.
+Los 43 MiB describen sólo el atlas, no el consumo total de RAM/VRAM del juego.
+
+La cámara cachea límites y adapta zoom/paneo al viewport completo. El llamado
+rechaza el paisaje no jugable antes de seleccionar hormigas o buscar destinos,
+aunque el radio de territorio alcance allí; arrastrar de vuelta permite llamar.
+Se mantienen las 500 hormigas, las seis rutas por cuadro y el corte blando de
+1,2 ms. Un A* en curso no puede interrumpirse.
+
+Dos ahorros comprobados directamente, no inferidos de promedios de FPS:
+
+- Filtro envolvente inclusivo antes de las siluetas: 45.198 puntos conservan
+  el resultado exacto en los seis destinos; 3.600 consultas lejanas evitan
+  recorrer las bandas de material.
+- El veneno conserva daño/pagos cada 0,5 s y el último tick fraccionario, sin
+  forzar el dibujo base de Comida en cada cuadro de PiezaCasa. 81 renovaciones
+  en 1,25 s producen como máximo 16 actualizaciones de máscara, no 81 ni una
+  por cuadro. La corrosión termina de desvanecerse y apaga su procesamiento;
+  antes podía quedar congelada al detenerse el proceso al expirar el veneno.
+
+Medición final: Godot 4.7.2, GL Compatibility, RTX 3060, **1920×1080**, paso
+1/60, VSync y límite de FPS apagados sólo para medir. Cada perfil corre solo,
+sin bots ni pruebas headless simultáneas. El editor del usuario seguía abierto;
+no se cerraron sus sesiones ni se controlan las demás aplicaciones del equipo.
+Se excluyen arranque y preparación inicial de navegación/atlas.
+
+| Feromonas, 500 hormigas | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Sin llamado | 8,39 ms | 11,10 ms | 12,68 ms |
+| Cursor / 24 | 8,77 ms | 10,43 ms | 11,94 ms |
+| Cursor / 64 | 9,57 ms | 10,95 ms | 11,80 ms |
+| Sobre muebles / 64 | 9,54 ms | 10,79 ms | 12,87 ms |
+| Suelo sin objetivo / 64 | 8,88 ms | 10,03 ms | 17,33 ms |
+| Objetivo agotado / 64 | 9,88 ms | 11,85 ms | 16,69 ms |
+
+Registro: `.godot/qa/perfil_expansion_feromonas_final.log`.
+
+| Logística por destino, 500 hormigas | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Casa | 8,96 ms | 10,83 ms | 13,51 ms |
+| Restaurante | 8,48 ms | 11,13 ms | 14,07 ms |
+| Museo | 8,26 ms | 10,58 ms | 13,23 ms |
+| Obelisco | 7,36 ms | 9,93 ms | 12,58 ms |
+| Coliseo | 7,26 ms | 9,44 ms | 15,21 ms |
+| Eiffel | 8,30 ms | 10,64 ms | 17,76 ms |
+
+En todos, seis entradas y máximo de seis rutas/cuadro. Como en mediciones
+anteriores, el reloj de Run está desactivado: no mide el cierre ni limpieza.
+Registro: `.godot/qa/perfil_expansion_logistica_final.log`.
+
+`perfil_periferia.tscn` agrega un estrés diferente, no comparable directamente
+al perfil de feromonas anterior: seis castas con daño/carga/olfato mejorados,
+500 IA activas y 250 ubicadas inicialmente fuera del interior antiguo. Colonia
+mantiene su escala y visibilidad normales, no desactiva su `_process` como el
+perfil anterior. La cámara muestra todo el plano en H. Cada fase descarta 200
+cuadros y mide 360; las hormigas siguen moviéndose entre ambas fases.
+
+| Destino | H sin llamado: media / p95 / peor | H llamado móvil: media / p95 / peor |
+|---|---:|---:|
+| Casa | 12,11 / 16,49 / 26,60 ms | 10,55 / 12,28 / 14,18 ms |
+| Restaurante | 11,86 / 15,86 / 19,95 ms | 10,18 / 12,90 / 15,33 ms |
+| Museo | 10,08 / 12,90 / 14,63 ms | 9,67 / 12,25 / 13,57 ms |
+| Obelisco | 9,67 / 12,04 / 14,06 ms | 8,85 / 11,12 / 12,85 ms |
+| Coliseo | 8,32 / 10,55 / 20,12 ms | 8,35 / 11,14 / 16,14 ms |
+| Eiffel | 8,97 / 11,12 / 14,93 ms | 8,64 / 10,87 / 12,98 ms |
+
+Todas las fases conservaron 500 IA activas, cuota máxima de seis rutas y
+64 seleccionadas como máximo al llamar. El perfil informa distribuciones al
+cierre y topes de efectos; las fases no tienen idénticas posiciones ni recursos.
+Registro: `.godot/qa/perfil_expansion_periferia_final.log`.
+
+**No es una garantía de 60 FPS constantes**: en el estrés extremo hubo cuadros
+de 26,60 ms. Los ahorros de código tienen contadores/regresiones específicos;
+las diferencias entre pasadas no permiten atribuir cada milisegundo a ellos.
+Siguen pendientes GPU integrada, expediciones largas y juego humano.
+
+`revision_periferia` pasa 21 verificaciones con renderer: seis destinos, H
+completo en Full HD, zoom/arrastre extremos y ventanas 1000×620 / 2560×1080.
+Capturas `.godot/qa/periferia_*.png`. La prueba lógica de cámara también cubre
+viewport vertical. Ninguna prueba escribe la partida personal.
+
+Regresión definitiva después de los ahorros y del límite del llamado:
+**34 suites / 1.345 verificaciones OK, cero fallas y cero errores de script**.
+Incluye Cámara 222, Periferia 58, Economía 29, Geometría/veneno 34 y Controles
+24. Las suites se ejecutaron headless secuencialmente, nunca durante los perfiles.
+Registros: `.godot/qa/expansion_definitiva_prueba_*.log`.

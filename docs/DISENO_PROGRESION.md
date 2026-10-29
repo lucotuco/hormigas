@@ -239,8 +239,9 @@ que todas las castas estén balanceadas ni de que sea siempre la mejor compra.
   igual. Conviene probar si un jugador que prioriza poder sobre atajos
   termina mucho antes; si no hay diferencia, el árbol es una lista de
   compras y no una elección.
-- **Restaurante.** Es donde se pretende enseñar la primera fundación. Hay que mirar con gente
-  real si se entiende que conviene fundar o si parece que el juego se trabó.
+- **Primera fundación.** Se propone tras conquistar la casa, sin cerrar el
+  restaurante. Hay que mirar con gente real si se entiende qué cambia al
+  fundar y si prefieren hacerlo o seguir viajando.
 
 ### Eventos incorporados desde main
 
@@ -250,8 +251,8 @@ sentían iguales (es la queja más común contra Idle Ants, el juego de celular
 con la misma idea). Ahora cada destino trae tres comidas propias y una amenaza
 con su propia regla. Las amenazas cumplen dos funciones:
 
-- **Una decisión en la run.** Clickear la amenaza o seguir pisando comida. La
-  pisada automática no las resuelve, así que el jugador que mira la pantalla
+- **Una decisión en la run.** Clickear la amenaza o seguir guiando a la colonia.
+  La mejora automática no las resuelve, así que el jugador que mira la pantalla
   gana más que el que la deja sola.
 - **Riesgo en un género tranquilo.** Perder hormigas o una comida grande duele
   un poco, pero vencerlas paga un botín (12% de lo juntado en la run, o lo que
@@ -274,9 +275,10 @@ Los planos conservan límites, metas, resistencia y tutorial, pero pasan a tener
 no nuevas simulaciones ni mapas inactivos. Sólo diez alimentos chicos aumentan
 entre 11% y 15%; el catálogo pasa de 1347 a 1438 unidades (+6,8%), que no es
 el conteo final de cada escenario. No se aumenta el valor ni la vida de los
-grandes objetivos. El piloto corto actual, 13,4 minutos simulados desde cero,
+grandes objetivos. El piloto corto de aquella revisión, 13,4 minutos simulados desde cero,
 llega a Mandíbulas 4 a los 4,4 min y madera a los 7,5 min. No alcanza fundación
 ni valida la duración de la campaña, especialmente tras la reconquista nueva.
+Es una referencia histórica; el piloto hasta fundar se documenta más abajo.
 
 Cada 0,5 s se comprueba si queda comida, fragmentos o material permitido dentro
 del territorio. La salida inicial, expansión del alcance, derrumbes, cadenas y
@@ -290,7 +292,7 @@ Se guarda sólo cuando el cierre normal termina; salir antes no crea una marca.
 “Zona despejada” permite que queden materiales todavía bloqueados o recursos
 lejanos; “Mapa despejado” exige que no quede nada en el escenario. Ambos tienen
 categorías separadas por destino, dieta, alcance redondeado a una unidad y
-versión del contenido (actualmente 2). No se pretende una tabla competitiva:
+versión del contenido (2 en esa revisión; 3 tras ampliar la periferia). No se pretende una tabla competitiva:
 las compras y el poder de la colonia pueden diferir. Se conservan 128 registros
 recientes y 1024 mejores contextos; la interfaz construye como máximo ocho
 tarjetas a la vez. El JSON exportado contiene sólo ese archivo, no la partida.
@@ -301,6 +303,134 @@ El hormiguero representa las mejoras existentes, no agrega multiplicadores:
 comprar crecen cámaras/túneles y aparece decoración acotada. Las cuatro secciones
 se mantienen en un corte completo; la ficha de compra es flotante y cerrable.
 Fondo retenido, hormigas decorativas compartidas y sin IA de expedición.
+
+## Pulido del primer recorrido (28/10, posterior a requisitos múltiples)
+
+No se modifican costos, resistencia, cantidad de hormigas ni valores tardíos.
+La mejora se concentra en continuidad de trabajo, claridad y uso de las
+ventajas permanentes. Un recurso que ya llega a la boca no necesita otra ruta;
+una trabajadora mordiendo quieta reutiliza la comprobación de alcance hasta
+que cambia su pieza, versión geométrica o posición. Se mantienen las cuotas.
+
+La próxima meta incluye una acción/id de interfaz, sin ejecutar la decisión.
+Tras la primera conquista de casa propone fundar, pero el restaurante sigue
+abierto. No se añade una barrera de prestigio ni se regalan memorias. La
+ventana permite elegir compras explícitas al confirmar: memoria (3 de jalea)
+o cuadrilla (memoria + obreras reales + mandíbulas de jalea, 6). También se
+puede conservar toda la jalea y elegir después. Los planes alcanzan niveles
+mínimos y no vuelven a cobrar los ya aprendidos.
+
+La cotización es pura, acotada a doce compras y atómica: un requisito, máximo
+o saldo inválido rechaza el conjunto antes de reiniciar. La vista previa usa
+el mismo contexto de niveles de jalea que el resultado real; el legado suma
+toda la jalea ganada aunque se gaste. Reservas y Linaje comprados en ese acto
+no actúan retroactivamente sobre la colonia que ya termina. El guardado sigue
+en versión 7; no necesita campos nuevos. Se corrige también una duplicación
+visual: la meta no vuelve a sumar migas_run que ya fueron acreditadas al saldo.
+
+### Medición del pulido anterior, no duración prometida
+
+El bot ahora registra compras al comprarlas, no al cerrar la siguiente run.
+Se conserva la política original por cercanía; `BOT_ORDEN=materiales` es una
+política distinta: cartón → silla de madera → material recién aprendido → meta.
+`BOT_FUNDAR_CASA=1` elige fundar tras casa. No hay daño manual ni tiempo ×8.
+Piloto final, semilla 417, ×1 y 1/60, IA actual y sin guardado personal:
+
+| Suceso | Minuto activo de expediciones |
+|---|---:|
+| Madera comprada | 6,24 |
+| Primera silla | 6,38 |
+| Resistentes comprados | 11,80 |
+| Paredes compradas | 14,38 |
+| Gran mesa devorada | 15,18 |
+| Cierre / primera fundación, 7 jaleas | 16,93 |
+
+Los minutos no incluyen pensar en la tienda. La política original de cercanía
+de una pasada previa llegó al primer reinicio después del restaurante a los
+25,0 min; no es una comparación A/B aislada con esa tabla. Orden de trabajo,
+semilla temporal y admisión de rutas pueden cambiar resultados. Los pilotos
+anteriores de 38 min no describen esta versión integrada.
+
+Dos retornos desde **el mismo snapshot real** de casa y las mismas 7 jaleas,
+con decreto Numerosa y sus hitos/adaptaciones, sin compras ficticias:
+
+| Preparación | Jalea restante | Primera silla | Primera expedición | Segunda expedición |
+|---|---:|---:|---:|---:|
+| Memoria, costo 3 | 4 | 29,8 s | 742 migas · 15,5/s | 3906 migas · 66,8/s |
+| Cuadrilla, costo 6 | 1 | 23,0 s | 1176 migas · 20,5/s | 7456 migas · 103,7/s |
+
+La segunda expedición incluye compras hechas con ingresos reales de la primera;
+no es sólo el efecto aislado del plan. No asegura esos tiempos para todos los
+decretos ni muestra que la opción más cara sea siempre mejor. Ambas variantes
+ya pueden comer y transportar madera al regresar. `BOT_INICIO` permite leer
+un snapshot sin sobrescribirlo; los resultados van a una ruta QA distinta.
+
+`comparar_planes_casa` estudia tres semillas con presupuesto 2400. Las medias
+fueron 82,5 / 104,8 / 98,8 migas/s para obreras / corte / corte+barrido, pero
+el gasto efectivo fue 1785 / 2395 / 2235 y no hubo ganador universal. No justifica
+prometer +27%, ni reemplaza sesiones humanas. No se ajustó balance con esa muestra.
+
+La prueba jugable aislada y el protocolo están en `docs/PRUEBA_CASA.md`.
+
+## Inicio más gradual y periferia jugable (28/10, revisión posterior)
+
+El pedido nuevo es alargar moderadamente el recorrido y sostener el crecimiento
+por más tiempo. Se ajustan sólo nueve filas de `mejoras.csv`: obreras 8→12,
+mandíbulas 12→18, cooperativas 10→15, buche 30→40, recolección 100→135
+(crecimiento 1,9→2), huevos 5000→7500 y dietas 900→1500 / 150K→450K /
+4M→12M. Se conservan efectos, topes, resistencia de objetos, ocho obreras,
+velocidad, olfato, mordida y castas. No se vuelve torpe a la IA para frenar ingresos.
+Las Memorias y Cuadrilla cuestan lo mismo; cargar una partida no cobra diferencias
+por niveles anteriores ni elimina compras.
+
+`tests/medir_ritmo_casa.tscn` permite comparar economía con `RITMO_BASELINE=1`:
+repone los precios anteriores sólo en memoria antes de lanzar el bot. No usa
+una partida con compras prefijadas ni revierte archivos. Control y candidato
+final comparten los hashes de plano, mundos, comidas, IA y estado global;
+semilla 417, paso 1/60, tiempo ×1, política materiales y fundar tras la casa.
+
+| Hito | Precios anteriores sobre el mapa ampliado | Nuevos precios |
+|---|---:|---:|
+| Mandíbulas 4 | 3,28 min | 5,36 min |
+| Madera | 6,35 min | 8,36 min |
+| Resistentes | 11,96 min | 17,91 min |
+| Paredes | 14,41 min | 22,35 min |
+| Primera fundación | 15,83 min / 14 expediciones | 23,87 min / 19 expediciones |
+
+Esta comparación definitiva se repitió después de los ahorros de geometría y
+veneno y del límite del llamado. También coinciden las huellas de Comida,
+PiezaCasa, feromonas, CSV y bot entre ambos pilotos. El reinicio tarda 50,8%
+más en esa estrategia; la madera, aproximadamente 32%. La primera especialista
+sigue cerca de 3,3 minutos en ambos: no se esconden los roles para alargarla.
+Tras aprender madera, el primer recorte de silla pasó de 7,2 a 5,2 s y el
+desmontaje de 9,6 a 7,4 s: la mayor duración no viene de volverla torpe.
+Ambos pilotos produjeron once jaleas; pagaron Cuadrilla por seis y quedaron cinco.
+Son muestras sintéticas, sin tiempo de decisiones en tienda; el presupuesto
+temporal de rutas puede cambiar trayectorias. No validan diversión humana ni
+la duración tardía. Una pareja anterior al último pulido dio +25,5%; no se
+mezcla con esta medición ni se promete un porcentaje exacto a cada persona.
+Los pilotos anteriores de 16,93 y 38 minutos también quedan históricos.
+
+### Terreno cercano y paisaje lejano
+
+Los seis destinos conservan su interior y gran objetivo. La navegación pasa
+de 7900×5600 a 10300×7400 (+30,4% de ancho, +32,1% de alto y aproximadamente
+72% más de superficie).
+Un cinturón cercano contiene ocho muebles reales y como máximo seis alimentos
+trasladados desde fuera del arranque (hasta 5% del total). Se conservan cantidad
+y valor alimentario, el azar de colocación interior y los recursos hasta 900.
+Los muebles sí agregan resistencia y valor al mapa. Casa, restaurante y museo
+tienen cuatro aperturas hacia el exterior; las plazas pierden su muro rectangular.
+
+Más allá hay contexto dibujado y retenido, sin recursos, colisiones ni A*:
+el fondo no extiende el grafo a sus 15600×9200. Ese ancho decorativo permite
+encuadrar el terreno completo en 16:9. La cámara calcula su mínimo según el
+viewport, limita toda su extensión visible (incluido el temblor) y reacciona
+al redimensionar. Los límites se cachean por expedición, sin recorrer muebles
+por cuadro. No hay texturas por instancia ni aumento del atlas compartido.
+
+La versión de contenido sube a 3 para separar récords de limpieza con esta
+geometría; el formato de partida sigue en 7 y conserva el archivo histórico.
 
 ## Qué se puede tocar sin programar
 

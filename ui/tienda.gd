@@ -47,6 +47,10 @@ var _panel_seccion: PanelContainer
 var _titulo_seccion: Label
 var _boton_volver: Button
 var _area_nido: Control
+var _lbl_paso: Label
+var _lbl_paso_detalle: Label
+var _boton_paso: Button
+var _siguiente_paso: Dictionary = {}
 const NOMBRES_PESTANAS := {"hogar": "Mejoras", "castas": "Castas", "viajes": "Viajes", "legado": "Jalea real"}
 
 
@@ -298,9 +302,7 @@ func _ready() -> void:
 	var pie := HBoxContainer.new()
 	pie.add_theme_constant_override("separation", 20)
 	pie.add_child(_crear_compra_lotes())
-	var ayuda := Estilo.etiqueta(tr("Elegí una mejora para ver qué cambia."), 14, Estilo.TEXTO_SUAVE)
-	ayuda.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pie.add_child(ayuda)
+	pie.add_child(_crear_siguiente_paso())
 	pie.add_child(_pie())
 	columna.add_child(pie)
 	_area_nido.resized.connect(_acomodar_paneles)
@@ -370,6 +372,59 @@ func _encabezado() -> Control:
 	_boton_run.pressed.connect(_nueva_run)
 	fila.add_child(_boton_run)
 	return fila
+
+
+## El árbol no elige por el jugador: acerca una cámara útil sin comprarla ni
+## cambiar el destino. Se refresca con las mismas señales que la tienda.
+func _crear_siguiente_paso() -> Control:
+	var fila := HBoxContainer.new()
+	fila.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fila.add_theme_constant_override("separation", 12)
+	var columna := VBoxContainer.new()
+	columna.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columna.add_theme_constant_override("separation", 2)
+	fila.add_child(columna)
+	_lbl_paso = Estilo.etiqueta("", 14, Estilo.ACENTO)
+	_lbl_paso.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	columna.add_child(_lbl_paso)
+	_lbl_paso_detalle = Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
+	_lbl_paso_detalle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	columna.add_child(_lbl_paso_detalle)
+	_boton_paso = Estilo.boton(tr("Ver mejora"), 13, Color("293629"), Color("71865b"))
+	_boton_paso.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_boton_paso.pressed.connect(_ver_siguiente_paso)
+	fila.add_child(_boton_paso)
+	return fila
+
+
+func _actualizar_siguiente_paso() -> void:
+	_siguiente_paso = Juego.proxima_meta()
+	_lbl_paso.text = tr("SIGUIENTE PASO · %s") % _siguiente_paso.nombre
+	_lbl_paso_detalle.text = _siguiente_paso.detalle
+	if _siguiente_paso.tipo == "migas":
+		var disponible := Juego.migas >= float(_siguiente_paso.objetivo)
+		_lbl_paso_detalle.text = (tr("¡Ya te alcanza! Podés comprarla cuando quieras.") if disponible else tr("%s / %s migas") % [Juego.formatear(Juego.migas), Juego.formatear(_siguiente_paso.objetivo)])
+	var accion: String = _siguiente_paso.get("accion", "")
+	_boton_paso.visible = accion in ["mejora", "casta", "viajes", "legado"]
+	match accion:
+		"mejora": _boton_paso.text = tr("Ver mejora")
+		"casta": _boton_paso.text = tr("Ver castas")
+		"viajes": _boton_paso.text = tr("Ver viajes")
+		"legado": _boton_paso.text = tr("Ver fundación")
+
+
+func _ver_siguiente_paso() -> void:
+	var id: String = _siguiente_paso.get("id", "")
+	match _siguiente_paso.get("accion", ""):
+		"mejora":
+			if Juego.mejoras_por_id.has(id):
+				_seleccionar_mejora(id)
+		"casta":
+			_cambiar_pestana("castas")
+			if _panel_castas._filas.has(id):
+				_panel_castas._seleccionar(id)
+		"viajes": _cambiar_pestana("viajes")
+		"legado": _cambiar_pestana("legado")
 
 
 func _crear_mapa() -> Control:
@@ -661,6 +716,7 @@ func _seleccionar(rama: String) -> void:
 	_ficha_mejoras.show()
 	Sonido.tocar("clic", 0.85)
 	_refrescar()
+	_lbl_estado.text = tr("Elegí una mejora para ver qué cambia.")
 	_posicionar_ficha()
 	_posicionar_ficha.call_deferred()
 
@@ -672,6 +728,7 @@ func _seleccionar_mejora(id: String) -> void:
 	_ficha_mejoras.show()
 	Sonido.tocar("clic", .85)
 	_refrescar()
+	_lbl_estado.text = _efecto_practico(Juego.mejoras_por_id[id].stat)
 	_posicionar_ficha()
 	_posicionar_ficha.call_deferred()
 
@@ -689,6 +746,7 @@ func _on_migas_cambiaron(_total: float) -> void:
 func _refrescar() -> void:
 	_boton_run.text = tr("Explorar") + "  →"
 	_actualizar_revelados()
+	_actualizar_siguiente_paso()
 	_boton_run.tooltip_text = tr("Destino: %s") % tr(Mundos.INFO[Juego.lugar_actual].nombre)
 	for cantidad in _cantidades:
 		_cantidades[cantidad].add_theme_stylebox_override("normal", Estilo.caja(Color("536649") if cantidad == Juego.cantidad_compra else Color("282f26"), 10, Color("94b47e") if cantidad == Juego.cantidad_compra else Color("46503f"), 1, 10))
@@ -824,17 +882,39 @@ func _valor_stat(stat: String, valor: float) -> String:
 		"olfato": return tr("%.0f de alcance") % valor
 		"capacidad": return tr("%d bocados") % int(valor)
 		"dano_clic": return tr("%s de daño por pisotón") % Juego.formatear(valor)
+		"pisotones_auto": return tr("%.1f pisotones automáticos/s") % valor
 	return tr("%s de daño") % ("%.1f" % valor if valor < 1000.0 else Juego.formatear(valor))
 
 
+## Efecto sobre el trabajo que ya existe, no una promesa de producción: ésta
+## depende del material, los caminos y el resto de la colonia.
+func _efecto_practico(stat: String) -> String:
+	match stat:
+		"hormigas_iniciales", "cria": return tr("Más trabajadoras reparten la búsqueda, el corte y las entregas.")
+		"velocidad": return tr("Llegan antes a los recursos y tardan menos en entregar cada carga.")
+		"capacidad": return tr("Juntan más bocados antes de volver: menos viajes para transportar lo extraído.")
+		"dano", "intervalo_mordida": return tr("Recortan los materiales antes. Las cargadoras ayudan a llevarse los restos.")
+		"materiales": return tr("La colonia puede trabajar otro material: no hace falta romperlo a clics.")
+		"entradas": return tr("Al alcanzar otro ambiente pueden entregar allí, sin volver siempre a la entrada principal.")
+		"radio_territorio": return tr("Abre terreno para explorar; las entradas secundarias pueden acortar el regreso.")
+		"olfato": return tr("Encuentran recursos desde más lejos sin necesitar un llamado.")
+		"feromona_cantidad": return tr("El llamado reúne más hormigas cercanas; la colonia sigue buscando sola cuando lo soltás.")
+		"duracion_run": return tr("Tienen más tiempo para extraer y transportar antes de la retirada.")
+		"multiplicador_migas": return tr("Cada recurso entregado vale más. Lo que queda en camino todavía no se cobra.")
+		"pisotones_auto", "dano_clic": return tr("El apoyo automático corta comida cerca del cursor, sin agregar daño al clic manual.")
+	return tr("Las mejoras se guardan al comprar.")
+
+
 func _comprar(id: String) -> void:
+	var stat: String = Juego.mejoras_por_id[id].stat
+	var antes := Juego.stat(stat)
 	var compradas := Juego.comprar_lote(id, Juego.cantidad_compra)
 	if compradas == 0:
 		Sonido.tocar("no")
 		_lbl_estado.text = tr("Te faltan migas o una mejora previa. ¡Otra expedición!")
 		return
 	Sonido.tocar("comprar", 1.0, 0.01)
-	_lbl_estado.text = tr("¡%s +%d niveles!") % [tr(Juego.mejoras_por_id[id].nombre), compradas]
+	_lbl_estado.text = tr("¡%s +%d niveles!\n%s → %s") % [tr(Juego.mejoras_por_id[id].nombre), compradas, _valor_stat(stat, antes), _valor_stat(stat, Juego.stat(stat))]
 	var icono: Control = _nodos_mejoras[id].icono
 	if _tween_compra and _tween_compra.is_running():
 		_tween_compra.kill()

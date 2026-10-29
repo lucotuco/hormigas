@@ -2,7 +2,7 @@ class_name Mundos
 extends RefCounted
 ## Planos acotados: viajar cambia el escenario, no multiplica el mundo en memoria.
 const ORDEN := ["casa", "restaurante", "museo", "obelisco", "coliseo", "eiffel"]
-const VERSION_CONTENIDO := 2
+const VERSION_CONTENIDO := 3
 const INFO := {
 	"casa": {"nombre": "La casa", "subtitulo": "De las migas a los muebles", "meta": "La gran mesa familiar", "factor": 1.0, "coronas": 1, "vida_meta": 1000.0},
 	"restaurante": {"nombre": "El restaurante", "subtitulo": "Salón, barra y cocina industrial", "meta": "La barra del chef", "factor": 1.7, "coronas": 2, "vida_meta": 1500.0},
@@ -46,25 +46,84 @@ const ESPECIALES := [
 static func plano(id: String) -> Dictionary:
 	if _cache.has(id):
 		return _cache[id]
-	var p := {"limites": PlanoCasa.LIMITES, "ambientes": [], "muebles": [], "paredes": [], "ventanas": [], "banquete": Vector2(3900, 1040), "meta": "mueble:10"}
+	var p := {"limites": PlanoCasa.LIMITES_JUGABLES, "limites_visuales": PlanoCasa.LIMITES_VISUALES, "ambientes": [], "muebles": [], "paredes": [], "ventanas": [], "banquete": Vector2(3900, 1040), "meta": "mueble:10"}
 	if id == "casa":
 		p.ambientes = PlanoCasa.AMBIENTES
 		p.muebles = PlanoCasa.MUEBLES.duplicate()
-		_poner(p, "silla", Rect2(-360, 190, 110, 130))
-		p.muebles.back()["practica"] = true
-		p.muebles.back()["acabado"] = "carton"
-		p.paredes = PlanoCasa.PAREDES
+		p.paredes = PlanoCasa.PAREDES.duplicate()
 		p.ventanas = PlanoCasa.VENTANAS
 	else:
-		p.paredes = [Rect2(-950, -1000, 7900, 50), Rect2(-950, -1000, 50, 5600), Rect2(6900, -1000, 50, 5600), Rect2(-950, 4550, 7900, 50)]
+		if id in ["restaurante", "museo"]:
+			p.paredes = [Rect2(-950, -1000, 7900, 50), Rect2(-950, -1000, 50, 5600), Rect2(6900, -1000, 50, 5600), Rect2(-950, 4550, 7900, 50)]
 		match id:
 			"restaurante": _restaurante(p)
 			"museo": _museo(p)
 			"obelisco": _plaza(p)
 			"coliseo": _coliseo(p)
 			"eiffel": _paris(p)
+	# Agrupar comida conserva los muebles y el azar del interior anterior.
+	# El cartón vuelve al final: índices de muebles, meta y tutorial estables.
+	p.muebles_interiores = p.muebles.duplicate()
+	if id == "casa":
+		_poner(p, "silla", Rect2(-360, 190, 110, 130))
+		p.muebles.back()["practica"] = true
+		p.muebles.back()["acabado"] = "carton"
+		p.muebles_interiores.append(p.muebles.back())
+		p.muebles.pop_back()
+	_ampliar_entorno(p, id)
+	if id == "casa":
+		p.muebles.append(p.muebles_interiores.back())
 	_cache[id] = p
 	return p
+
+
+static func _ampliar_entorno(p: Dictionary, id: String) -> void:
+	if id in ["casa", "restaurante", "museo"]:
+		# Se recortan sólo los cuatro muros perimetrales. Los índices del resto
+		# de las paredes no cambian y ningún jardín exige aprender paredes.
+		p.paredes[0] = Rect2(-950, -1000, 4450, 50)
+		p.paredes[1] = Rect2(-950, -1000, 50, 2450)
+		p.paredes[2] = Rect2(6900, -1000, 50, 2850)
+		p.paredes[3] = Rect2(-950, 4550, 1850, 50)
+		p.paredes.append_array([Rect2(3950, -1000, 3000, 50), Rect2(-950, 1900, 50, 2700), Rect2(6900, 2350, 50, 2250), Rect2(1400, 4550, 5550, 50)])
+	# Ocho objetos auténticos, no una segunda colonia ni adornos con física.
+	# Se reutilizan colores y acabados existentes para no ampliar el atlas.
+	var tipos := ["banco", "planta", "canasto", "planta", "mesa", "banco", "banco", "canasto"]
+	if id == "restaurante":
+		tipos = ["banco", "planta", "carrito", "planta", "mesa_comedor", "banco", "banco", "canasto"]
+	elif id == "museo":
+		tipos = ["banco", "planta", "anfora", "planta", "columna", "banco", "banco", "canasto"]
+	elif id == "obelisco":
+		tipos = ["banco", "farol", "papelera", "planta", "kiosco", "banco", "cartel", "papelera"]
+	elif id == "coliseo":
+		tipos = ["banco", "columna", "anfora", "planta", "columna", "banco", "anfora", "papelera"]
+	elif id == "eiffel":
+		tipos = ["banco", "farol", "papelera", "planta", "kiosco", "banco", "banco", "papelera"]
+	var rects := [Rect2(-1950, 800, 650, 180), Rect2(-1980, 2650, 260, 260), Rect2(-1450, 4100, 250, 220), Rect2(2000, -1710, 260, 260), Rect2(3700, -1780, 650, 400), Rect2(7260, 2900, 650, 180), Rect2(4000, 4920, 750, 190), Rect2(6150, 4930, 250, 220)]
+	# Las bases de columnas y los objetos altos no heredan la proporción de
+	# un banco. Sólo corrige estos objetos nuevos del patio, no el interior.
+	if id in ["museo", "coliseo"]:
+		rects[4] = Rect2(3825, -1780, 400, 400)
+	if id == "coliseo":
+		rects[6] = Rect2(4293.5, 4920, 163, 190)
+	elif id == "obelisco":
+		rects[5] = Rect2(7260, 3230, 650, 180)
+		rects[6] = Rect2(4292.5, 4920, 165, 190)
+	for i in tipos.size():
+		_poner(p, tipos[i], rects[i])
+	var ids := ["galletita", "sandwich", "galletita", "dona", "pizza", "torta"]
+	match id:
+		"restaurante": ids = ["ravioles", "flan", "ravioles", "flan", "pizza_entera", "pizza_entera"]
+		"museo": ids = ["canape", "bombon", "canape", "sandwich", "torta_gala", "torta_gala"]
+		"obelisco": ids = ["alfajor", "medialuna", "alfajor", "choripan", "pizza", "pizza"]
+		"coliseo": ids = ["aceituna", "racimo", "aceituna", "racimo", "pan_romano", "pan_romano"]
+		"eiffel": ids = ["macaron", "croissant", "macaron", "croissant", "baguette", "baguette"]
+	var puntos := [Vector2(-1550, 300), Vector2(-1550, 3300), Vector2(1500, -1500), Vector2(2200, 5050), Vector2(7450, 400), Vector2(7450, 1700)]
+	p.bocados_exteriores = []
+	for i in puntos.size():
+		p.bocados_exteriores.append({"id": ids[i], "pos": puntos[i]})
+	p.color_exterior = Color("8b9876") if id in ["casa", "restaurante", "eiffel"] else (Color("bba989") if id == "coliseo" else Color("bcb8a6"))
+	p.patron_exterior = 4 if id in ["casa", "restaurante", "eiffel"] else (3 if id == "coliseo" else 0)
 
 static func _zona(p: Dictionary, id: String, nombre: String, rect: Rect2, color: String, patron: int) -> void:
 	p.ambientes.append({"id": id, "nombre": nombre, "rect": rect, "color": Color(color), "patron": patron})

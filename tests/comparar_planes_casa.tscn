@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/comparar_planes_casa.gd" id="1_comparar"]
+
+[node name="CompararPlanesCasa" type="Node"]
+script = ExtResource("1_comparar")

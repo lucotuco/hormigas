@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/prueba_ritmo_economia.gd" id="1_economia"]
+
+[node name="PruebaRitmoEconomia" type="Node"]
+script = ExtResource("1_economia")

@@ -74,6 +74,12 @@ func claves_del_juego() -> Dictionary:
 		for ruta in _scripts(carpeta):
 			for m in regex.search_all(FileAccess.get_file_as_string(ruta)):
 				claves[m.get_string(1).c_unescape()] = "codigo"
+	# La sesión jugable F6 es una herramienta de pruebas, pero su interfaz
+	# también se entrega en ambos idiomas. No escanear los fixtures completos.
+	var herramienta := "res://tests/registro_sesion_casa.gd"
+	if FileAccess.file_exists(herramienta):
+		for m in regex.search_all(FileAccess.get_file_as_string(herramienta)):
+			claves[m.get_string(1).c_unescape()] = "codigo"
 	for m in Juego.mejoras:
 		_sumar(claves, [m.nombre, m.descripcion])
 	for c in Juego.castas:
@@ -103,6 +109,8 @@ func claves_del_juego() -> Dictionary:
 	for sala in tienda.SALAS.values():
 		_sumar(claves, [sala.titulo, sala.detalle])
 	_sumar(claves, tienda.NOMBRES_PESTANAS.values())
+	for preparacion in VentanaFundar.PREPARACIONES.values():
+		_sumar(claves, [preparacion.nombre, preparacion.detalle])
 	return claves
 
 

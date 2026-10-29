@@ -22,6 +22,7 @@ static func alfombra(l: CanvasItem, r: Rect2, color: Color) -> void:
 		l.draw_line(Vector2(x, r.end.y - 5), Vector2(x, r.end.y + 13), color.lightened(0.15), 5)
 
 static func dibujar(l: CanvasItem, incluir_piezas := true) -> void:
+	EntornoMapa.dibujar(l)
 	if Juego.lugar_actual != "casa":
 		_destino(l)
 		return

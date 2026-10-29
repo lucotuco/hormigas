@@ -77,7 +77,9 @@ func _comida_mas_lejana_alcanzable(run: Run) -> Comida:
 
 
 func _probar_compras() -> void:
-	Juego.migas = 10_000_000.0  # alcanza para las tres dietas (paredes cuesta 4M)
+	# Fixture de integración, no una medición de ritmo: pagar las tres dietas
+	# y dejar margen para mejoras/castas aunque cambie su precio en los CSV.
+	Juego.migas = 2.0 * (Juego.costo("mordida_madera") + Juego.costo("mordida_resistente") + Juego.costo("mordida_muros")) + 1_000_000.0
 	var antes := Juego.stat("hormigas_iniciales")
 	for _vuelta in 6:
 		for m in Juego.mejoras:

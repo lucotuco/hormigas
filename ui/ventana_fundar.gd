@@ -10,6 +10,15 @@ var _tarjetas: Dictionary = {}
 var _boton_fundar: Button
 var _lbl_inicio: Label
 var _scroll: ScrollContainer
+var preparacion := "guardar"
+var _preparacion: OptionButton
+var _lbl_preparacion: Label
+var _lbl_aclaracion: Label
+const PREPARACIONES := {
+	"guardar": {"nombre": "Elegir mejoras después", "detalle": "Conservás toda la jalea para decidir en el árbol de la reina.", "objetivos": {}},
+	"madera": {"nombre": "Memoria de la madera", "detalle": "La colonia nueva nace pudiendo devorar muebles. No necesitás volver a comprar esa dieta.", "objetivos": {"herencia_madera": 1}},
+	"cuadrilla": {"nombre": "Cuadrilla para la casa", "detalle": "Memoria de la madera, cuatro obreras más y un nivel de daño permanente.", "objetivos": {"herencia_madera": 1, "obreras_reales": 1, "jalea_dano": 1}},
+}
 
 
 func _ready() -> void:
@@ -52,8 +61,20 @@ func _ready() -> void:
 	_lbl_inicio.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	columna.add_child(_lbl_inicio)
 	var aclaracion := Estilo.etiqueta(tr("Con tus mejoras permanentes actuales y el decreto elegido, antes de gastar la nueva jalea."), 12, Estilo.TEXTO_SUAVE)
+	_lbl_aclaracion = aclaracion
 	aclaracion.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	columna.add_child(aclaracion)
+	cuerpo.add_child(Estilo.etiqueta(tr("PREPARÁ EL REGRESO A CASA"), 12, Color("c9b779")))
+	_preparacion = OptionButton.new()
+	for datos in PREPARACIONES.values():
+		_preparacion.add_item(tr(datos.nombre))
+	_preparacion.item_selected.connect(func(indice: int) -> void:
+		preparacion = PREPARACIONES.keys()[indice]
+		elegir(elegido))
+	cuerpo.add_child(_preparacion)
+	_lbl_preparacion = Estilo.etiqueta("", 13, Estilo.TEXTO_SUAVE)
+	_lbl_preparacion.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cuerpo.add_child(_lbl_preparacion)
 	cuerpo.add_child(Estilo.etiqueta(tr("EL DECRETO DE LA COLONIA NUEVA"), 12, Color("c9b779")))
 	var ayuda := Estilo.etiqueta(tr("Rige toda la colonia, hasta la próxima fundación. Cada uno sirve para otra cosa."), 13, Estilo.TEXTO_SUAVE)
 	ayuda.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -115,7 +136,24 @@ func elegir(id: String) -> void:
 		_tarjetas[clave].add_theme_stylebox_override("normal", Estilo.caja(fondo, 12, Color(color, 0.9 if activo else 0.15), 2 if activo else 1, 0))
 		_tarjetas[clave].add_theme_stylebox_override("hover", Estilo.caja(fondo.lightened(0.05), 12, color, 1, 0))
 		_tarjetas[clave].add_theme_stylebox_override("pressed", Estilo.caja(fondo, 12, color, 2, 0))
-	var previa := Juego.vista_previa_fundar(id)
+	var compras := compras_preparacion()
+	var previa := Juego.vista_previa_fundar(id, compras)
+	var plan: Dictionary = PREPARACIONES[preparacion]
+	_lbl_preparacion.text = tr(plan.detalle)
+	if preparacion == "guardar" and Juego.fundaciones == 0 and Juego.nivel_jalea("herencia_madera") == 0:
+		_lbl_preparacion.text += "\n" + tr("Para tu primer regreso, Memoria de la madera permite empezar directamente con muebles.")
+	if compras.is_empty() and preparacion != "guardar":
+		_lbl_preparacion.text += "\n" + tr("Ya tenés todas las mejoras de esta preparación. No se cobra nada.")
+	elif previa.plan_valido and not compras.is_empty():
+		var nombres := PackedStringArray()
+		for compra in previa.compras:
+			nombres.append(tr(Juego.jalea_por_id[compra.id].nombre))
+		_lbl_preparacion.text += "\n" + tr("Al confirmar se compran: %s. Costo total: %d de jalea; quedan %d.") % [", ".join(nombres), previa.costo_jalea, previa.jalea]
+	elif not previa.plan_valido:
+		_lbl_preparacion.text += "\n" + tr("No alcanza la jalea para esta preparación completa. Elegí otra opción o conservá la jalea.")
+	_lbl_aclaracion.text = tr("Incluye el decreto y las compras de preparación elegidas. No se compra nada hasta confirmar.") if not compras.is_empty() and previa.plan_valido else tr("Con tus mejoras permanentes actuales y el decreto elegido, antes de gastar la nueva jalea.")
+	_boton_fundar.disabled = not Juego.puede_fundar() or not previa.plan_valido
+	_boton_fundar.text = tr("Fundar y comprar preparación") if not compras.is_empty() else tr("Fundar la nueva colonia")
 	var especialistas := 0
 	for cantidad in previa.castas.values():
 		especialistas += int(cantidad)
@@ -125,8 +163,28 @@ func elegir(id: String) -> void:
 		Juego.formatear_corto(previa.stats.dano), previa.stats.multiplicador_migas, Juego.formatear_corto(previa.migas), previa.jalea]
 
 
+## Los planes alcanzan niveles mínimos: no vuelven a cobrar una memoria ni
+## agregan niveles sin mostrarlos. La compra real usa la misma cotización.
+func compras_preparacion() -> Array[String]:
+	var compras: Array[String] = []
+	for id in PREPARACIONES[preparacion].objetivos:
+		for nivel in range(Juego.nivel_jalea(id), int(PREPARACIONES[preparacion].objetivos[id])):
+			compras.append(id)
+	return compras
+
+
+func elegir_preparacion(id: String) -> void:
+	if not PREPARACIONES.has(id):
+		return
+	preparacion = id
+	_preparacion.select(PREPARACIONES.keys().find(id))
+	elegir(elegido)
+
+
 func fundar() -> void:
-	if Juego.fundar_colonia(elegido):
+	if Juego.fundar_colonia(elegido, compras_preparacion()):
 		Sonido.tocar("crecer", 1.0, 0.0)
 		fundada.emit()
-	cerrar()
+		cerrar()
+	else:
+		elegir(elegido)

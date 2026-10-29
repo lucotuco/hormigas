@@ -45,7 +45,7 @@ func generar() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = SEMILLA_MAPA
 	var ocupados: Array[Vector3] = []  # x, y, radio
-	var muebles := PlanoCasa.muebles()
+	var muebles: Array = Mundos.plano(Juego.lugar_actual).muebles_interiores
 	for tipo in Juego.comidas:
 		if not Juego.comida_en_destino(tipo, Juego.lugar_actual):
 			continue
@@ -86,6 +86,7 @@ func generar() -> void:
 					ocupados.append(Vector3(pos.x, pos.y, radio))
 					_crear(tipo, pos, rng.randi())
 					break
+	_repartir_periferia()
 	# Meta fija sobre el plato: siempre existe y puede descubrirse desde la niebla.
 	for tipo in Juego.comidas:
 		if tipo.id == "banquete":
@@ -99,8 +100,41 @@ func generar() -> void:
 		_indexar(parte)
 
 
+## El patio usa alimentos del catálogo que ya estaban generados, no crea
+## recompensa adicional. Se hace al final para conservar el azar y todas las
+## ubicaciones del arranque (hasta900). Sin consultas periódicas ni RNG extra.
+func _repartir_periferia() -> void:
+	var presupuesto := mini(6, floori(lista.size() * 0.05))
+	var usadas: Dictionary = {}
+	for bocado in Mundos.plano(Juego.lugar_actual).bocados_exteriores:
+		if usadas.size() >= presupuesto:
+			break
+		var pos: Vector2 = bocado.pos
+		for comida in lista:
+			if comida.id != bocado.id or usadas.has(comida.get_instance_id()) or comida.position.length() <= 900.0:
+				continue
+			var datos := _tipo_comida(comida.id)
+			if pos.length() < datos.distancia_min or pos.length() > datos.distancia_max:
+				continue
+			if not get_parent().cocina.libre(pos, comida.radio + 12.0):
+				continue
+			for celda in _celdas(_rect_objetivo(comida)):
+				if _indice.has(celda):
+					_indice[celda].erase(comida)
+			comida.position = pos
+			comida.set_meta("periferia", true)
+			_indexar(comida)
+			usadas[comida.get_instance_id()] = true
+			break
+
+
 func _hay_lugar(pos: Vector2, radio: float, ocupados: Array[Vector3]) -> bool:
 	if pos.length() < 30.0 + radio:  # no tapar el hormiguero
+		return false
+	# La distribución histórica se genera con su borde original. Abrir las
+	# puertas no consume menos intentos aleatorios ni reubica migas iniciales;
+	# los bocados del patio se trasladan explícitamente al terminar.
+	if not PlanoCasa.LIMITES.grow(-62.0 - radio).has_point(pos):
 		return false
 	if not get_parent().cocina.libre(pos, radio + 12.0):
 		return false

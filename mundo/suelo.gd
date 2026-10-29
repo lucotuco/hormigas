@@ -8,6 +8,9 @@ func _ready() -> void:
 	piso.shader = preload("res://mundo/suelo.gdshader")
 	piso.set_shader_parameter("materiales", preload("res://arte/realista/materiales.png"))
 	piso.set_shader_parameter("exterior", Juego.lugar_actual in ["obelisco", "coliseo", "eiffel"])
+	var plano := Mundos.plano(Juego.lugar_actual)
+	piso.set_shader_parameter("tono_exterior", plano.color_exterior)
+	piso.set_shader_parameter("patron_exterior", plano.patron_exterior)
 	var rectangulos: Array[Vector4] = []
 	var colores: Array[Color] = []
 	var patrones: Array[int] = []
@@ -27,4 +30,4 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(-32000, -32000, 64000, 64000), Color.WHITE)
+	draw_rect(PlanoCasa.limites_visuales(), Color.WHITE)

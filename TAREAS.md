@@ -1,5 +1,29 @@
 # Tareas
 
+## Inicio gradual y continuidad del mapa — 28/10
+
+- [x] Encarecer compras iniciales y suavizar la bola de nieve por precios, conservando movimiento, mordida, olfato y roles.
+- [x] Comparar precios anteriores/nuevos sobre el mismo mapa e IA; comparación final hasta primer rebirth del bot +50,8%, sin prometer tiempo humano.
+- [x] Ampliar el terreno cercano de los seis destinos, con ocho objetos y hasta seis alimentos redistribuidos por mapa.
+- [x] Completar el horizonte con paisaje estático sin navegación, nuevas texturas ni procesos individuales.
+- [x] Limitar zoom/paneo por el viewport completo y adaptar los bordes al redimensionar, manteniendo R/H/G.
+- [x] Impedir llamados al paisaje no jugable y ahorrar consultas geométricas lejanas/redibujos de veneno sin alterar sus pagos.
+- [x] Verificar 34 suites (1.345 casos), seis mapas con renderer y estrés Full HD de 500 hormigas; documentar también los picos, no sólo medias.
+- [ ] Validar con jugadores si el ahorro adicional sigue ofreciendo decisiones y no se vuelve espera sin propósito.
+
+## Pulido casa → primera fundación — 28/10
+
+- [x] Evitar rutas para recursos al alcance y cachear alcance/orientación de mordidas hasta que cambie pieza, geometría o posición.
+- [x] Siguiente paso compartido en juego/tienda/resultado, con acceso opcional a la compra concreta y sin automatizar decisiones.
+- [x] Mostrar efecto práctico y antes → después; resumen con decisiones visibles y detalles desplazables.
+- [x] Proponer la primera fundación tras conquistar casa, sin bloquear la opción de seguir viajando.
+- [x] Preparación explícita con jalea: conservar, memoria o cuadrilla, con costo/previa exactos y confirmación atómica.
+- [x] Evitar el doble conteo visual de migas ya cobradas en la próxima meta; no cambiaba el saldo económico.
+- [x] Instrumentar fechas reales del bot, comparar dos retornos desde el mismo estado y separar diagnóstico de castas de prueba de balance.
+- [x] Sesión jugable F6 aislada, informe F7 y guía para observar jugadores sin tocar su partida ni enviar datos.
+- [ ] Ejecutar las sesiones con 5–10 personas y ajustar a partir de sus abandonos, dudas y decisiones reales; todavía no es una validación humana.
+- [ ] Validar GPU integrada y una sesión larga con capturas/alt-tab; las mediciones RTX no sustituyen esa prueba.
+
 ## Hormiguero, viajes y archivo — 28/10
 
 - [x] Volver a casa al fundar y reabrir viajes en orden por colonia; preservar descubrimientos, adaptaciones, topes e hitos históricos.
@@ -22,7 +46,7 @@ evitar una mezcla de imágenes con estilos incompatibles.
 - [x] Primera silla de madera accesible, premio proporcional y paso contextual con botón para encontrarla.
 - [x] Separar los hitos de silla de madera del banquito de cartón inicial; conservar premios ya guardados.
 - [x] Mostrar compañeros, utilidad y limitaciones en fichas de castas, sin sinergias numéricas inventadas.
-- [x] Mostrar el arranque real de la próxima colonia al elegir decreto, sin simular compras futuras.
+- [x] Mostrar el arranque real al elegir decreto y preparación explícita, sin suponer compras no elegidas ni cobrarlas antes de confirmar.
 - [x] Unificar mobiliario doméstico, textiles y repostería en dibujo cenital horneado; audio más corto y amortiguado.
 - [x] Avisos de amenazas con contexto y acción Ver; clic de cámara separado del llamado.
 - [ ] Probar la primera media hora con 5–10 personas que no conozcan el juego; observar sin explicarles los controles.

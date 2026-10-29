@@ -255,6 +255,14 @@ func _pensar() -> void:
 		elif comida != null:
 			run.colonia.avistar(comida)
 	if comida != null:
+		# Al cambiar a una miga o un montón que ya está a la boca no hace
+		# falta volver a entrar en la cola global ni caminar hasta su centro.
+		# Esto importa cuando otra hormiga termina el trabajo a nuestros pies.
+		if comida.alcanza_desde(global_position):
+			estado = Estado.MORDIENDO
+			_esperando_ruta = false
+			_reloj_mordida = _intervalo_mordida * 0.4
+			return
 		# El puesto se conserva durante el viaje. Sólo cambia al abrir material
 		# o tomar otro recurso: no perseguir una proyección móvil cada 150 ms.
 		_actualizar_puesto()
@@ -379,18 +387,20 @@ func _morder(delta: float) -> void:
 			estado = Estado.EXPLORANDO
 			_elegir_destino_al_azar()
 		return
-	if comida is PiezaCasa and not comida.alcanza_desde(global_position):
-		if carga > 0:
-			_volver()
-		else:
-			estado = Estado.YENDO_A_COMIDA
-			objetivo = comida.punto_mordida(global_position, run.radio_actual, casta == "voladora")
-		return
 	var hacia := (comida.global_position - global_position).angle()
 	if comida is PiezaCasa:
 		# Mirar la piedra o la pata que se muerde, no el aire en el centro de
-		# un arco. Esta consulta sólo cambia al llegar o al romper esa pieza.
-		if _version_mirada != comida.version_forma or _posicion_mirada.distance_squared_to(global_position) > 0.25:
+		# un arco. Alcance y orientación comparten la invalidación: una obrera
+		# quieta no vuelve a recorrer las secciones del mueble en cada cuadro.
+		# Cambiar de pieza, moverse o perder una sección obliga a comprobarlos.
+		if _version_mirada != comida.version_forma or _posicion_mirada != global_position:
+			if not comida.alcanza_desde(global_position):
+				if carga > 0:
+					_volver()
+				else:
+					estado = Estado.YENDO_A_COMIDA
+					objetivo = comida.punto_mordida(global_position, run.radio_actual, casta == "voladora")
+				return
 			var direccion: Vector2 = comida.material_cercano(global_position) - global_position
 			_angulo_mordida = direccion.angle() if direccion.length_squared() > 0.001 else hacia
 			_version_mirada = comida.version_forma

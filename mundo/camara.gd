@@ -7,7 +7,6 @@ const MARGEN := 1.22      # cuánto espacio extra alrededor del territorio
 const ZOOM_MAXIMO := 4.0
 const ZOOM_MINIMO := 0.08
 const PASO_ZOOM := 1.18
-const LIMITE_MAPA := 9000.0
 const VELOCIDAD_TECLADO := 700.0
 
 var _zoom_objetivo := 1.0
@@ -16,30 +15,74 @@ var _zoom_auto := 1.0
 var _manual := false
 var arrastrando := false
 var _boton_arrastre := 0
+var _radio_encuadre := 1.0
+var _pantalla := Vector2.ONE
+var _limites_visuales := Rect2()
+var _limites_jugables := Rect2()
+var _zoom_minimo_vista := ZOOM_MINIMO
 @onready var run: Run = get_parent()
 
 
+func _ready() -> void:
+	# Los planos son estáticos durante la expedición: ni el zoom ni el arrastre
+	# recorren muebles, ambientes o navegación. Sólo cambia el tamaño visible.
+	_limites_visuales = PlanoCasa.limites_visuales()
+	_limites_jugables = PlanoCasa.limites()
+	get_viewport().size_changed.connect(_al_cambiar_tamano)
+	_al_cambiar_tamano()
+
+
 func ajustar_a_radio(radio: float, inmediato := false) -> void:
-	var tamano := get_viewport_rect().size
-	var lado := minf(tamano.x, tamano.y)
-	_zoom_auto = clampf(lado / (2.0 * maxf(radio, 1.0) * MARGEN), ZOOM_MINIMO, 1.6)
+	var nuevo_radio := maxf(radio, 1.0)
+	if is_equal_approx(nuevo_radio, _radio_encuadre) and not inmediato:
+		return
+	_radio_encuadre = nuevo_radio
+	_actualizar_zoom_auto()
 	if not _manual:
 		_zoom_objetivo = _zoom_auto
 	if inmediato:
 		zoom = Vector2.ONE * _zoom_objetivo
+		_limitar_posicion()
+		_limitar_sacudida()
 		force_update_scroll()
 		vista_cambiada.emit()
+
+
+func _actualizar_zoom_auto() -> void:
+	var lado := minf(_pantalla.x, _pantalla.y)
+	_zoom_auto = _limitar_zoom(minf(lado / (2.0 * _radio_encuadre * MARGEN), 1.6))
+
+
+func _al_cambiar_tamano() -> void:
+	_pantalla = get_viewport_rect().size.max(Vector2.ONE)
+	# Para no ver fuera del escenario, ambos ejes del viewport tienen que caber.
+	# No alcanza con limitar el centro de cámara ni con un mínimo fijo de 0.08.
+	_zoom_minimo_vista = maxf(ZOOM_MINIMO, maxf(_pantalla.x / maxf(_limites_visuales.size.x, 1.0), _pantalla.y / maxf(_limites_visuales.size.y, 1.0)))
+	_actualizar_zoom_auto()
+	_zoom_objetivo = _limitar_zoom(_zoom_objetivo) if _manual else _zoom_auto
+	zoom = Vector2.ONE * _limitar_zoom(zoom.x if _manual else _zoom_auto)
+	if not _manual:
+		position = Vector2.ZERO
+	_limitar_posicion()
+	_limitar_sacudida()
+	force_update_scroll()
+	vista_cambiada.emit()
+
+
+func _limitar_zoom(valor: float) -> float:
+	return clampf(valor, _zoom_minimo_vista, maxf(ZOOM_MAXIMO, _zoom_minimo_vista))
 
 
 func zoom_hacia(factor: float, pantalla: Vector2) -> void:
 	var antes := get_canvas_transform().affine_inverse() * pantalla
 	_manual = true
-	_zoom_objetivo = clampf(zoom.x * factor, ZOOM_MINIMO, ZOOM_MAXIMO)
+	_zoom_objetivo = _limitar_zoom(zoom.x * factor)
 	zoom = Vector2.ONE * _zoom_objetivo
 	force_update_scroll()
 	var despues := get_canvas_transform().affine_inverse() * pantalla
 	position += antes - despues
 	_limitar_posicion()
+	_limitar_sacudida()
 	force_update_scroll()
 	vista_cambiada.emit()
 
@@ -48,6 +91,7 @@ func desplazar(pixeles: Vector2) -> void:
 	_manual = true
 	position -= pixeles / maxf(zoom.x, ZOOM_MINIMO)
 	_limitar_posicion()
+	_limitar_sacudida()
 	force_update_scroll()
 	vista_cambiada.emit()
 
@@ -59,24 +103,35 @@ func centrar() -> void:
 	_zoom_objetivo = _zoom_auto
 	zoom = Vector2.ONE * _zoom_auto
 	offset = Vector2.ZERO
+	_limitar_posicion()
 	force_update_scroll()
 	vista_cambiada.emit()
 
 
 func _limitar_posicion() -> void:
-	var limites := PlanoCasa.limites()
-	position = position.clamp(limites.position, limites.end)
+	var mitad := _pantalla / (2.0 * maxf(zoom.x, ZOOM_MINIMO))
+	var desde := _limites_visuales.position + mitad
+	var hasta := _limites_visuales.end - mitad
+	# La tolerancia numérica no debe invertir el intervalo al alejar al máximo.
+	position = position.clamp(desde.min(hasta), hasta.max(desde))
+
+
+func _limitar_sacudida() -> void:
+	var mitad := _pantalla / (2.0 * maxf(zoom.x, ZOOM_MINIMO))
+	var desde := _limites_visuales.position + mitad - position
+	var hasta := _limites_visuales.end - mitad - position
+	offset = offset.clamp(desde.min(hasta), hasta.max(desde))
 
 
 func ver_casa() -> void:
 	_manual = true
 	arrastrando = false
-	var limites := PlanoCasa.limites()
+	var limites := _limites_jugables
 	position = limites.get_center()
-	var pantalla := get_viewport_rect().size
-	_zoom_objetivo = clampf(minf(pantalla.x / limites.size.x, pantalla.y / limites.size.y) * 0.9, ZOOM_MINIMO, ZOOM_MAXIMO)
+	_zoom_objetivo = _limitar_zoom(minf(_pantalla.x / limites.size.x, _pantalla.y / limites.size.y) * 0.9)
 	zoom = Vector2.ONE * _zoom_objetivo
 	offset = Vector2.ZERO
+	_limitar_posicion()
 	force_update_scroll()
 	vista_cambiada.emit()
 
@@ -123,10 +178,12 @@ func ver_objetivo() -> void:
 ## Encuadra un lugar del mundo con margen (gran objetivo, su derrumbe).
 func mirar(centro: Vector2, tamano: Vector2) -> void:
 	_manual = true
+	arrastrando = false
 	position = centro
-	var pantalla := get_viewport_rect().size
-	_zoom_objetivo = clampf(minf(pantalla.x / (tamano.x + 1000), pantalla.y / (tamano.y + 1000)), ZOOM_MINIMO, 0.7)
+	_zoom_objetivo = _limitar_zoom(minf(minf(_pantalla.x / (tamano.x + 1000), _pantalla.y / (tamano.y + 1000)), 0.7))
 	zoom = Vector2.ONE * _zoom_objetivo
+	offset = Vector2.ZERO
+	_limitar_posicion()
 	force_update_scroll()
 	vista_cambiada.emit()
 
@@ -151,9 +208,16 @@ func _process(delta: float) -> void:
 	else:
 		arrastrando = false
 	var z := lerpf(zoom.x, _zoom_objetivo, 1.0 - exp(-6.0 * delta))
-	var cambio := absf(z - zoom.x) > 0.00001
-	zoom = Vector2(z, z)
+	if absf(z - _zoom_objetivo) < 0.00001:
+		z = _zoom_objetivo
+	var zoom_nuevo := Vector2(z, z)
+	var cambio := zoom_nuevo != zoom
+	zoom = zoom_nuevo
 	if cambio:
+		if not _manual:
+			position = Vector2.ZERO
+		_limitar_posicion()
+		force_update_scroll()
 		vista_cambiada.emit()
 	if _sacudida > 0.05:
 		offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _sacudida / z
@@ -161,3 +225,5 @@ func _process(delta: float) -> void:
 	else:
 		_sacudida = 0.0
 		offset = Vector2.ZERO
+	if cambio or _sacudida > 0.0:
+		_limitar_sacudida()

@@ -43,13 +43,16 @@ func _ready() -> void:
 	copia.rect = Rect2(1500, 900, 200, 200)
 	verificar(Graficos.clave_mueble(verde) == Graficos.clave_mueble(copia), "la posición no duplica el atlas")
 	var bancos := 0
+	var bancos_interiores := 0
 	for m in Mundos.plano("obelisco").muebles:
 		if m.tipo == "banco":
 			bancos += 1
+			if PlanoCasa.LIMITES.encloses(m.rect):
+				bancos_interiores += 1
 			var banco := MaterialesCasa.definir("banco", m.rect, m.color)
 			var anterior := MaterialesCasa.definir("consola", m.rect, m.color)
 			verificar(banco.nivel == anterior.nivel and banco.vida == anterior.vida and banco.recompensa == anterior.recompensa, "el banco conserva material, resistencia y recompensa")
-	verificar(bancos == 4, "la plaza tiene cuatro bancos en los mismos lugares")
+	verificar(bancos == 6 and bancos_interiores == 4, "la plaza conserva cuatro bancos interiores y agrega dos en la periferia")
 	verificar(Mundos.plano("eiffel").ambientes[0].patron == 4, "los jardines usan césped, no baldosas de baño")
 	verificar(Mundos.plano("coliseo").ambientes[1].patron == 3, "la arena no tiene juntas de cerámica")
 	var tutorial: Dictionary = Mundos.plano("casa").muebles.back()
@@ -61,6 +64,12 @@ func _ready() -> void:
 	for comida in run.comidas.lista:
 		if comida.id == "banquete":
 			continue # el plato caído tiene ubicación narrativa fija
+		var periferica := false
+		if comida.get_meta("periferia", false):
+			for bocado in Mundos.plano("casa").bocados_exteriores:
+				periferica = periferica or (bocado.id == comida.id and comida.position.distance_to(bocado.pos) < 1)
+		if periferica:
+			continue # la redistribución tiene destinos exteriores explícitos
 		for datos in Juego.comidas:
 			if datos.id == comida.id and datos.get("zonas", "") != "":
 				if not String(datos.zonas).split("|").has(PlanoCasa.ambiente_en(comida.position)):

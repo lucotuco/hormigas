@@ -219,7 +219,12 @@ func en_territorio(territorio: float) -> bool:
 	return _distancia_nido <= territorio - 10
 
 func alcanza_desde(pos: Vector2) -> bool:
-	return distancia_a(pos) <= Cocina.MARGEN + 5
+	var alcance := Cocina.MARGEN + 5
+	# Rechazo conservador antes de recorrer las bandas de una silueta. Incluye
+	# ambos bordes: Rect2.has_point excluiría el extremo derecho e inferior.
+	if pos.x < rect_mundo.position.x - alcance or pos.x > rect_mundo.end.x + alcance or pos.y < rect_mundo.position.y - alcance or pos.y > rect_mundo.end.y + alcance:
+		return false
+	return distancia_a(pos) <= alcance
 
 func cupos_trabajo() -> int:
 	return clampi(vivas.size() * 2, 4, 32)
@@ -380,6 +385,19 @@ func _actualizar_colision(zona := Rect2()) -> void:
 	_distancia_nido = distancia_a(Vector2.ZERO)
 	casa.recortar_pieza(pieza.clave, _formas.duplicate(), zona)
 
+
+func _mostrar_veneno() -> void:
+	# Varias rojas pueden renovar el efecto entre cuadros de dibujo. Marcar
+	# suciedad conserva el límite de la máscara también durante la aplicación.
+	_sucio = true
+
+
+func _actualizar_mascara() -> void:
+	_mascara.set_shader_parameter("cortes", _cortes)
+	_mascara.set_shader_parameter("corrosion", minf(1, corrosion))
+	queue_redraw()
+
+
 func _process(delta: float) -> void:
 	if muerta:
 		return
@@ -387,7 +405,9 @@ func _process(delta: float) -> void:
 		return
 	if veneno_restante > 0:
 		corrosion = maxf(corrosion, 2)
-		super._process(delta)
+		_procesar_veneno(delta)
+		if muerta:
+			return
 	var antes_corrosion := corrosion > 0
 	corrosion = maxf(0, corrosion - delta)
 	if antes_corrosion or corrosion > 0:
@@ -421,9 +441,7 @@ func _process(delta: float) -> void:
 	if _sucio and _reloj_dibujo <= 0:
 		_reloj_dibujo = 0.08
 		_sucio = false
-		_mascara.set_shader_parameter("cortes", _cortes)
-		_mascara.set_shader_parameter("corrosion", minf(1, corrosion))
-		queue_redraw()
+		_actualizar_mascara()
 	if not _sucio and not derrumbando and veneno_restante <= 0 and corrosion <= 0:
 		set_process(false)
 

@@ -23,6 +23,10 @@ var _lbl_fin_migas: Label
 var _lbl_fin_detalle: Label
 var _lbl_fin_record: Label
 var _lbl_fin_titulo: Label
+var _lbl_fin_resumen: Label
+var _lbl_fin_siguiente: Label
+var _lbl_fin_consejo: Label
+var _scroll_fin: ScrollContainer
 var _boton_tienda: Button
 var _reloj_descubrimiento := 0.0
 var _lbl_composicion: Label
@@ -364,9 +368,9 @@ func mostrar_fin() -> void:
 	_lbl_aviso.hide()
 	_lbl_fin_titulo.text = (tr("¡Mapa despejado!") if run.limpieza_completa else tr("¡Zona despejada!")) if run.limpieza_lograda else tr("¡Se acabó el tiempo!")
 	_lbl_fin_migas.text = tr("+%s migas") % Juego.formatear(Juego.migas_run)
+	_lbl_fin_resumen.text = tr("%s migas/s · %s") % [Juego.formatear_corto(run.produccion_run), (tr("%+.0f%% frente al récord anterior") % run.mejora_produccion) if run.tenia_record else tr("primer registro en este destino")]
 	_lbl_fin_detalle.text = tr("Comidas: %d · Partes de la casa: %d\nMejor combo: x%d\nTotal en el hormiguero: %s") % [
 		Juego.comidas_destruidas_run, Juego.partes_destruidas_run, Juego.mejor_combo_run, Juego.formatear(Juego.migas)]
-	_lbl_fin_detalle.text += tr("\n%s migas/s · %s") % [Juego.formatear_corto(run.produccion_run), (tr("%+.0f%% frente al récord anterior") % run.mejora_produccion) if run.tenia_record else tr("primer registro en este destino")]
 	_lbl_fin_detalle.text += tr("\nAlimentos %s · Muebles %s · Estructuras %s") % [Juego.formatear_corto(run.ingresos[0]), Juego.formatear_corto(run.ingresos[1]), Juego.formatear_corto(run.ingresos[2])]
 	if run.limpieza_lograda:
 		_lbl_fin_detalle.text += tr("\nLimpieza: %.1f s · Total con entregas: %.1f s") % [run.tiempo_limpieza, run.tiempo_jugado + run.tiempo_retirada]
@@ -385,7 +389,11 @@ func mostrar_fin() -> void:
 	# El prestigio a la vista: cuánto daría fundar ahora (ver pestaña Jalea real).
 	if Juego.revelado("legado") and Juego.puede_fundar():
 		_lbl_fin_detalle.text += "\n" + tr("Fundar ahora daría +%d de jalea real") % Juego.jalea_por_fundar()
-	_lbl_fin_record.visible = Juego.ultima_run_fue_record
+	_actualizar_consejo_fin()
+	_ajustar_resumen_fin()
+	_scroll_fin.scroll_vertical = 0
+	_lbl_fin_record.text = tr("¡NUEVO RÉCORD DE LIMPIEZA!") if run.limpieza_registrada and run.nuevo_record_limpieza else tr("¡NUEVO RÉCORD!")
+	_lbl_fin_record.visible = Juego.ultima_run_fue_record or (run.limpieza_registrada and run.nuevo_record_limpieza)
 	_lbl_ayuda.visible = false
 	_panel_fin.visible = true
 	_panel_fin.modulate.a = 0.0
@@ -396,6 +404,27 @@ func mostrar_fin() -> void:
 	tween.tween_property(_panel_fin, "modulate:a", 1.0, 0.2)
 	tween.tween_property(_panel_fin, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_boton_tienda.grab_focus()
+
+
+## No deduce un cuello de botella a partir del aspecto de la colonia. Sólo
+## destaca carga realmente pendiente cuando supera un décimo de lo extraído.
+func _actualizar_consejo_fin() -> void:
+	var meta := Juego.proxima_meta()
+	_lbl_fin_siguiente.text = tr("SIGUIENTE PASO · %s") % meta.nombre
+	_lbl_fin_consejo.text = meta.detalle
+	var dieta_lista: bool = meta.tipo == "migas" and Juego.migas >= float(meta.objetivo)
+	if dieta_lista:
+		_lbl_fin_consejo.text = tr("¡Ya te alcanza! Podés comprarla cuando quieras.")
+	var extraido := Juego.migas_run + run.cargas_pendientes
+	if not dieta_lista and meta.get("accion", "") not in ["legado", "viajes"] and run.cargas_pendientes >= maxf(1.0, extraido * 0.1):
+		_lbl_fin_consejo.text = tr("Quedó al menos un 10% de lo extraído en camino. Más velocidad o entradas secundarias ayudan a entregar antes.")
+		_lbl_fin_siguiente.text = tr("PROBÁ MEJORAR EL TRANSPORTE")
+
+
+func _ajustar_resumen_fin() -> void:
+	if is_instance_valid(_scroll_fin):
+		# Las acciones y la próxima decisión permanecen fuera del desplazamiento.
+		_scroll_fin.custom_minimum_size.y = clampf(get_viewport().get_visible_rect().size.y - 500.0, 100.0, 210.0)
 
 
 # =====================================================================
@@ -566,12 +595,12 @@ func _crear_panel_fin(raiz: Control) -> void:
 	centro.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	raiz.add_child(centro)
 	_panel_fin = PanelContainer.new()
-	_panel_fin.add_theme_stylebox_override("panel", Estilo.caja(Color(0.12, 0.08, 0.05, 0.96), 18, Estilo.ACENTO.darkened(0.3), 2, 28))
+	_panel_fin.add_theme_stylebox_override("panel", Estilo.caja(Color(0.12, 0.08, 0.05, 0.96), 18, Estilo.ACENTO.darkened(0.3), 2, 20))
 	_panel_fin.visible = false
 	centro.add_child(_panel_fin)
 	var columna := VBoxContainer.new()
-	columna.add_theme_constant_override("separation", 10)
-	columna.custom_minimum_size = Vector2(420, 0)
+	columna.add_theme_constant_override("separation", 8)
+	columna.custom_minimum_size = Vector2(620, 0)
 	_panel_fin.add_child(columna)
 	_lbl_fin_titulo = Estilo.etiqueta(tr("¡Se acabó el tiempo!"), 30, Estilo.TEXTO, 4)
 	_lbl_fin_titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -582,20 +611,38 @@ func _crear_panel_fin(raiz: Control) -> void:
 	_lbl_fin_migas = Estilo.etiqueta(tr("+%s migas") % "0", 44, Estilo.ACENTO, 6)
 	_lbl_fin_migas.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(_lbl_fin_migas)
-	_lbl_fin_detalle = Estilo.etiqueta("", 17, Estilo.TEXTO_SUAVE)
-	_lbl_fin_detalle.custom_minimum_size.x = 620
+	_lbl_fin_resumen = Estilo.etiqueta("", 17, Estilo.VERDE)
+	_lbl_fin_resumen.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	columna.add_child(_lbl_fin_resumen)
+	var siguiente := PanelContainer.new()
+	siguiente.add_theme_stylebox_override("panel", Estilo.caja(Color("283124"), 10, Color("657650"), 1, 12))
+	columna.add_child(siguiente)
+	var ayuda := VBoxContainer.new()
+	ayuda.add_theme_constant_override("separation", 4)
+	siguiente.add_child(ayuda)
+	_lbl_fin_siguiente = Estilo.etiqueta("", 16, Estilo.ACENTO)
+	_lbl_fin_siguiente.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ayuda.add_child(_lbl_fin_siguiente)
+	_lbl_fin_consejo = Estilo.etiqueta("", 14, Estilo.TEXTO_SUAVE)
+	_lbl_fin_consejo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ayuda.add_child(_lbl_fin_consejo)
+	_scroll_fin = ScrollContainer.new()
+	_scroll_fin.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	columna.add_child(_scroll_fin)
+	_lbl_fin_detalle = Estilo.etiqueta("", 15, Estilo.TEXTO_SUAVE)
+	_lbl_fin_detalle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lbl_fin_detalle.custom_minimum_size.x = 610
 	_lbl_fin_detalle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_lbl_fin_detalle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	columna.add_child(_lbl_fin_detalle)
-	var espacio := Control.new()
-	espacio.custom_minimum_size = Vector2(0, 8)
-	columna.add_child(espacio)
+	_scroll_fin.add_child(_lbl_fin_detalle)
 	_boton_tienda = Estilo.boton(tr("Mejorar el hormiguero") + "  ▸", 22, Color(0.45, 0.3, 0.12), Estilo.ACENTO)
 	_boton_tienda.pressed.connect(run.ir_a_tienda)
 	columna.add_child(_boton_tienda)
 	var archivo := Estilo.boton(tr("Archivo de expediciones"), 15, Color("293329"), Color("71865b"))
 	archivo.pressed.connect(_abrir_archivo)
 	columna.add_child(archivo)
+	get_viewport().size_changed.connect(_ajustar_resumen_fin)
+	_ajustar_resumen_fin()
 
 
 func _abrir_archivo() -> void:
@@ -733,7 +780,7 @@ func _actualizar_meta() -> void:
 	if is_instance_valid(practica) and not practica.muerta and Juego.stat("materiales") < 1 and not Juego.hitos.has("primer_derrumbe"):
 		meta = {"tipo": "practica", "nombre": tr("Desarmá el banquito de cartón")}
 		_objetivo_paso = practica
-	if is_instance_valid(_silla_inicial) and _silla_inicial.disponible() and not Juego.hitos.has("primera_silla"):
+	if meta.get("accion", "") not in ["legado", "viajes"] and is_instance_valid(_silla_inicial) and _silla_inicial.disponible() and not Juego.hitos.has("primera_silla"):
 		meta = {"tipo": "madera", "nombre": tr("Tu primera silla de madera")}
 		_objetivo_paso = _silla_inicial
 	var actual := 0.0
@@ -743,11 +790,11 @@ func _actualizar_meta() -> void:
 		"practica":
 			actual = practica.vida_max - practica.vida
 			objetivo = practica.vida_max
-			texto = tr("Mantené clic sobre el banquito · no requiere mejoras")
+			texto = tr("No requiere mejoras. El llamado ayuda a reunir hormigas sobre el banquito.")
 		"madera":
 			actual = _silla_inicial.vida_max - _silla_inicial.vida
 			objetivo = _silla_inicial.vida_max
-			texto = tr("Ya comen madera: llamalas sobre la silla y mirá cómo la desarman.")
+			texto = tr("Ya comen madera y la buscan solas. Podés llamarlas para concentrar el trabajo.")
 		"migas":
 			actual = meta.actual
 			objetivo = maxf(1.0, meta.objetivo)
@@ -767,7 +814,7 @@ func _actualizar_meta() -> void:
 		_:
 			actual = 1.0
 			texto = meta.detalle
-	_lbl_meta_titulo.text = tr("GRAN OBJETIVO") if meta.tipo == "objetivo" else (tr("SIGUIENTE PASO") if meta.tipo in ["viaje", "madera", "practica"] else tr("PRÓXIMO DESBLOQUEO"))
+	_lbl_meta_titulo.text = tr("GRAN OBJETIVO") if meta.tipo == "objetivo" else (tr("SIGUIENTE PASO") if meta.tipo in ["viaje", "madera", "practica"] or meta.get("accion", "") == "legado" else tr("PRÓXIMO DESBLOQUEO"))
 	_lbl_meta_nombre.text = meta.nombre
 	_boton_paso.visible = is_instance_valid(_objetivo_paso) and run.activa and _objetivo_paso.disponible()
 	_barra_meta.value = clampf(actual / objetivo, 0.0, 1.0) * 100.0

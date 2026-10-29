@@ -54,8 +54,8 @@ msgstr "Find on the map"
 msgid "Tu primera silla de madera"
 msgstr "Your first wooden chair"
 
-msgid "Ya comen madera: llamalas sobre la silla y mirá cómo la desarman."
-msgstr "They can eat wood now: call them onto the chair and watch them dismantle it."
+msgid "Ya comen madera y la buscan solas. Podés llamarlas para concentrar el trabajo."
+msgstr "They can eat wood and find it on their own. Call them to focus their work."
 
 msgid "TRABAJO EN EQUIPO"
 msgstr "TEAMWORK"
@@ -552,8 +552,8 @@ msgstr "%s damage"
 msgid "Te faltan migas o una mejora previa. ¡Otra expedición!"
 msgstr "You need more crumbs or an earlier upgrade. Another expedition!"
 
-msgid "¡%s +%d niveles!"
-msgstr "%s +%d levels!"
+msgid "¡%s +%d niveles!\n%s → %s"
+msgstr "%s +%d levels!\n%s → %s"
 
 msgid "Más obreras"
 msgstr "More workers"
@@ -1292,8 +1292,8 @@ msgstr "Play"
 msgid "Salir"
 msgstr "Quit"
 
-msgid "Guiá a tus hormigas, pisá migas y comete la casa entera."
-msgstr "Guide your ants, stomp on crumbs and eat the whole house."
+msgid "La colonia trabaja sola. Mantené clic para reunirla y guiarla hasta su próximo bocado."
+msgstr "The colony works on its own. Hold click to gather your ants and guide them to their next bite."
 
 msgid "1 expedición · %s migas juntadas"
 msgstr "1 expedition · %s crumbs gathered"
@@ -1649,8 +1649,8 @@ msgstr "\n%d looking for a path"
 msgid "Fuera del territorio descubierto"
 msgstr "Outside explored territory"
 
-msgid "\n%s migas/s · %s"
-msgstr "\n%s crumbs/s · %s"
+msgid "%s migas/s · %s"
+msgstr "%s crumbs/s · %s"
 
 msgid "%+.0f%% frente al récord anterior"
 msgstr "%+.0f%% versus previous record"
@@ -1676,8 +1676,8 @@ msgstr "Hold click: call ants · Click threats and rewards: interact\nWheel: zoo
 msgid "Desarmá el banquito de cartón"
 msgstr "Dismantle the cardboard stool"
 
-msgid "Mantené clic sobre el banquito · no requiere mejoras"
-msgstr "Hold click on the stool · no upgrades needed"
+msgid "No requiere mejoras. El llamado ayuda a reunir hormigas sobre el banquito."
+msgstr "No upgrades needed. The call helps gather ants around the stool."
 
 msgid "%s · %s\n%s / %s de resistencia · %d trabajadoras\n%s"
 msgstr "%s · %s\n%s / %s durability · %d workers\n%s"
@@ -1936,3 +1936,177 @@ msgstr "Amphora"
 
 msgid "Fuente"
 msgstr "Fountain"
+
+msgid "Tu primera colonia nueva"
+msgstr "Your first new colony"
+
+msgid "Podés fundar por +%d de jalea o seguir al restaurante. Elegís vos."
+msgstr "Found a colony for +%d jelly or continue to the restaurant. It's your choice."
+
+msgid "¡NUEVO RÉCORD DE LIMPIEZA!"
+msgstr "NEW CLEAR TIME RECORD!"
+
+msgid "SIGUIENTE PASO · %s"
+msgstr "NEXT STEP · %s"
+
+msgid "¡Ya te alcanza! Podés comprarla cuando quieras."
+msgstr "You can afford it now! Buy it whenever you like."
+
+msgid "Quedó al menos un 10% de lo extraído en camino. Más velocidad o entradas secundarias ayudan a entregar antes."
+msgstr "At least 10% did not reach the nest. More speed or secondary entrances help deliver it sooner."
+
+msgid "PROBÁ MEJORAR EL TRANSPORTE"
+msgstr "TRY IMPROVING TRANSPORT"
+
+msgid "Ver mejora"
+msgstr "View upgrade"
+
+msgid "Ver castas"
+msgstr "View castes"
+
+msgid "Ver viajes"
+msgstr "View travel"
+
+msgid "Ver fundación"
+msgstr "View founding options"
+
+msgid "%.1f pisotones automáticos/s"
+msgstr "%.1f automatic stomps/s"
+
+msgid "Más trabajadoras reparten la búsqueda, el corte y las entregas."
+msgstr "More workers share the searching, cutting and deliveries."
+
+msgid "Llegan antes a los recursos y tardan menos en entregar cada carga."
+msgstr "They reach resources sooner and deliver each load faster."
+
+msgid "Juntan más bocados antes de volver: menos viajes para transportar lo extraído."
+msgstr "They gather more bites before returning: fewer trips to carry what they extract."
+
+msgid "Recortan los materiales antes. Las cargadoras ayudan a llevarse los restos."
+msgstr "They cut through materials sooner. Haulers help carry away the scraps."
+
+msgid "La colonia puede trabajar otro material: no hace falta romperlo a clics."
+msgstr "The colony can work on another material: you don't have to break it by clicking."
+
+msgid "Al alcanzar otro ambiente pueden entregar allí, sin volver siempre a la entrada principal."
+msgstr "Upon reaching another room, they can deliver there instead of always returning to the main entrance."
+
+msgid "Abre terreno para explorar; las entradas secundarias pueden acortar el regreso."
+msgstr "Opens more ground to explore; secondary entrances can shorten the return trip."
+
+msgid "Encuentran recursos desde más lejos sin necesitar un llamado."
+msgstr "They find resources from farther away without needing a call."
+
+msgid "El llamado reúne más hormigas cercanas; la colonia sigue buscando sola cuando lo soltás."
+msgstr "The call gathers more nearby ants; the colony keeps searching on its own when you release it."
+
+msgid "Tienen más tiempo para extraer y transportar antes de la retirada."
+msgstr "They have more time to extract and carry resources before retreating."
+
+msgid "Cada recurso entregado vale más. Lo que queda en camino todavía no se cobra."
+msgstr "Each delivered resource is worth more. Loads still in transit haven't been credited yet."
+
+msgid "El apoyo automático corta comida cerca del cursor, sin agregar daño al clic manual."
+msgstr "Automatic support breaks food near the cursor without adding damage to manual clicks."
+
+msgid "PREPARÁ EL REGRESO A CASA"
+msgstr "PREPARE YOUR RETURN HOME"
+
+msgid "Ya tenés todas las mejoras de esta preparación. No se cobra nada."
+msgstr "You already have all the upgrades in this preparation. Nothing will be charged."
+
+msgid "Al confirmar se compran: %s. Costo total: %d de jalea; quedan %d."
+msgstr "Confirming purchases: %s. Total cost: %d jelly; %d remains."
+
+msgid "No alcanza la jalea para esta preparación completa. Elegí otra opción o conservá la jalea."
+msgstr "You can't afford this entire preparation. Choose another option or keep your jelly."
+
+msgid "Incluye el decreto y las compras de preparación elegidas. No se compra nada hasta confirmar."
+msgstr "Includes the selected decree and preparation purchases. Nothing is purchased until you confirm."
+
+msgid "Fundar y comprar preparación"
+msgstr "Found and buy preparation"
+
+msgid "Elegir mejoras después"
+msgstr "Choose upgrades later"
+
+msgid "Conservás toda la jalea para decidir en el árbol de la reina."
+msgstr "Keep all your jelly to choose upgrades in the queen's tree."
+
+msgid "La colonia nueva nace pudiendo devorar muebles. No necesitás volver a comprar esa dieta."
+msgstr "The new colony starts able to devour furniture. You don't need to buy that diet again."
+
+msgid "Cuadrilla para la casa"
+msgstr "House crew"
+
+msgid "Memoria de la madera, cuatro obreras más y un nivel de daño permanente."
+msgstr "Memory of wood, four extra workers and one permanent damage level."
+
+msgid "Para tu primer regreso, Memoria de la madera permite empezar directamente con muebles."
+msgstr "For your first return, Memory of wood lets you start directly with furniture."
+
+msgid "Sesión de prueba: no guarda tu partida · F7: informe"
+msgstr "Test session: your save is untouched · F7: report"
+
+msgid "Informe de la sesión de prueba"
+msgstr "Test session report"
+
+msgid "Sesión de prueba: no guarda tu partida"
+msgstr "Test session: your save is untouched"
+
+msgid "%.1f min activas · %d expediciones · %d fundaciones"
+msgstr "%.1f active min · %d expeditions · %d colonies founded"
+
+msgid "Primeros hitos · tiempo activo"
+msgstr "First milestones · active time"
+
+msgid "Primera expedición"
+msgstr "First expedition"
+
+msgid "Primer ingreso observado"
+msgstr "First observed income"
+
+msgid "Primera mejora comprada"
+msgstr "First upgrade purchased"
+
+msgid "Primera casta comprada"
+msgstr "First caste purchased"
+
+msgid "Primera silla devorada"
+msgstr "First chair devoured"
+
+msgid "Casa conquistada"
+msgstr "House conquered"
+
+msgid "Primera fundación"
+msgstr "First colony founded"
+
+msgid "Pendiente"
+msgstr "Pending"
+
+msgid "%.1f s"
+msgstr "%.1f s"
+
+msgid "%s: %s"
+msgstr "%s: %s"
+
+msgid "El primer ingreso se observa cada 0,1 s y puede incluir veneno o premios: no equivale a la primera entrega. Las compras e hitos se registran por señal. Las pausas no suman tiempo activo."
+msgstr "First income is checked every 0.1 s and may include poison or rewards: it is not the first delivery. Purchases and milestones are recorded through signals. Pauses do not count as active time."
+
+msgid "Exportar informe JSON"
+msgstr "Export JSON report"
+
+msgid "Sólo se exporta si lo pedís. No se envían datos ni se incluyen nombres o archivos personales."
+msgstr "Exported only at your request. No data is sent anywhere, and no names or personal files are included."
+
+msgid "Guardar informe de la sesión"
+msgstr "Save session report"
+
+msgid "Ese archivo está protegido. Elegí otro nombre para el informe."
+msgstr "That file is protected. Choose another name for the report."
+
+msgid "No se pudo exportar el informe. Elegí otra carpeta."
+msgstr "Could not export the report. Choose another folder."
+
+msgid "Informe exportado."
+msgstr "Report exported."
