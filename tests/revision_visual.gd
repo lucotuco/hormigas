@@ -19,7 +19,7 @@ func _ready() -> void:
 	await get_tree().create_timer(0.5).timeout
 	await captura("tienda_mejorada")
 	for rama in tienda.SALAS:
-		tienda._seleccionar(rama)
+		tienda._seleccionar_mejora(tienda.SALAS[rama].raiz)
 		await captura("sala_" + rama.to_lower())
 	tienda._cambiar_pestana("castas")
 	await captura("castas_reina")
@@ -32,7 +32,7 @@ func _ready() -> void:
 	get_window().size = Vector2i(1000, 620)
 	await captura("castas_1000x620")
 	tienda._cambiar_pestana("hogar")
-	tienda._seleccionar("Mandíbulas")
+	tienda._seleccionar_mejora("mandibulas")
 	await captura("tienda_1000x620")
 	get_window().size = Vector2i(1280, 720)
 	tienda.queue_free()

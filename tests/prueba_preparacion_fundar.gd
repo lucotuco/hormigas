@@ -37,7 +37,7 @@ func probar_contrato() -> void:
 	Juego.reiniciar_estado()
 	var paso := Juego.proxima_meta()
 	verificar(paso.tipo == "nivel" and paso.accion == "mejora" and paso.id == "mandibulas", "la primera meta identifica la compra concreta, sin ejecutar nada")
-	Juego.niveles = {"mandibulas": 4}
+	Juego.niveles = {"mandibulas": 4, "mordida_rapida": 1}
 	Juego.iniciar_run()
 	Juego.migas = 300
 	Juego.sumar_migas_run(350)

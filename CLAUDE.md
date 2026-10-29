@@ -41,6 +41,9 @@ pendientes y quién hace qué, en `TAREAS.md`.
   la comida.
 - `ui/`: menú (escena principal), HUD con pausa, tienda y paneles, todo por
   código. Las ventanas heredan de `VentanaModal`. Colores en `ui/estilo.gd`.
+  La tienda es el hormiguero: una mejora o casta nueva necesita su cámara en
+  `ui/plano_hormiguero.gd` (posición y túneles desde sus requisitos);
+  `tests/prueba_nido` avisa si falta.
   Las estadísticas de la partida van en `Juego.estadisticas`
   (`Juego.sumar_estadistica`); una nueva se agrega a `Juego.ESTADISTICAS`.
 - `datos/*.csv`: **todo el balance**. Costos, stats base, comidas y castas van

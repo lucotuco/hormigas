@@ -483,12 +483,6 @@ msgstr "Destination: %s"
 msgid "%d obreras + %d especialistas  ·  %d s  ·  %d cm"
 msgstr "%d workers + %d specialists  ·  %d s  ·  %d cm"
 
-msgid "1 disponible"
-msgstr "1 available"
-
-msgid "%d disponibles"
-msgstr "%d available"
-
 msgid "Se descubre al llegar a %s"
 msgstr "Discovered on reaching %s"
 
@@ -1904,9 +1898,6 @@ msgstr "VISITED · "
 msgid "Volver al hormiguero"
 msgstr "Back to the nest"
 
-msgid "Elegí una mejora para ver qué cambia."
-msgstr "Select an upgrade to see what changes."
-
 msgid "Volvés a la casa. Los viajes se desbloquean otra vez al conquistar cada destino."
 msgstr "You return to the house. Travels unlock again as you conquer each destination."
 
@@ -2116,3 +2107,444 @@ msgstr "Could not export the report. Choose another folder."
 
 msgid "Informe exportado."
 msgstr "Report exported."
+
+msgid "Nodrizas"
+msgstr "Nurses"
+
+msgid "Las nodrizas cuidan la cría: nace 1 hormiga más cada 10 segundos durante la run."
+msgstr "Nurses tend the brood: 1 more ant is born every 10 seconds during the run."
+
+msgid "Patas de seda"
+msgstr "Silk legs"
+
+msgid "Patas finas y ágiles: las hormigas caminan un 5% más rápido."
+msgstr "Fine and nimble legs: ants walk 5% faster."
+
+msgid "Hermanas mayores"
+msgstr "Older sisters"
+
+msgid "Las hermanas mayores guían a las nuevas: salen 6% más obreras al empezar cada run."
+msgstr "Older sisters guide the new ones: 6% more workers set out at the start of each run."
+
+msgid "Cámara de pupas"
+msgstr "Pupa chamber"
+
+msgid "Una cámara tibia para las pupas: +3 hormigas al empezar cada run."
+msgstr "A warm chamber for the pupae: +3 ants at the start of each run."
+
+msgid "Marcha nocturna"
+msgstr "Night march"
+
+msgid "Aprendida en las noches del Coliseo: las hormigas caminan un 6% más rápido."
+msgstr "Learned on Colosseum nights: ants walk 6% faster."
+
+msgid "Colonia inmensa"
+msgstr "Immense colony"
+
+msgid "París queda chico: salen 10% más obreras al empezar cada run."
+msgstr "Paris feels small: 10% more workers set out at the start of each run."
+
+msgid "Filo aserrado"
+msgstr "Serrated edge"
+
+msgid "Afiladas con astillas de madera: daño de mordida x1.08."
+msgstr "Sharpened on wood splinters: bite damage x1.08."
+
+msgid "Ácido fórmico"
+msgstr "Formic acid"
+
+msgid "La corrosión de las hormigas rojas suma 5% más de daño."
+msgstr "Red ants' corrosion adds 5% more damage."
+
+msgid "Mordida incansable"
+msgstr "Tireless bite"
+
+msgid "Mandíbulas que no se cansan: muerden un 5% más seguido."
+msgstr "Mandibles that never tire: they bite 5% more often."
+
+msgid "Mandíbulas de diamante"
+msgstr "Diamond mandibles"
+
+msgid "Talladas con las vitrinas del museo: daño de mordida x1.15."
+msgstr "Cut from the museum's display cases: bite damage x1.15."
+
+msgid "Golpe a los cimientos"
+msgstr "Foundation strike"
+
+msgid "Cada pieza devorada golpea a dos vecinas: 4% más de su resistencia."
+msgstr "Each devoured piece strikes two neighbors: 4% more of their toughness."
+
+msgid "Colmillos de la reina"
+msgstr "Queen's fangs"
+
+msgid "El último regalo de París: daño de mordida x1.15."
+msgstr "Paris's last gift: bite damage x1.15."
+
+msgid "Banquete"
+msgstr "Banquet"
+
+msgid "Destruir una comida o una pieza da 5% más de su valor."
+msgstr "Destroying a food or a piece pays 5% more of its value."
+
+msgid "Migas finas"
+msgstr "Fine crumbs"
+
+msgid "Molidas como en la cocina del restaurante: todas las migas x1.08."
+msgstr "Ground like in the restaurant kitchen: all crumbs x1.08."
+
+msgid "Despensa sin fondo"
+msgstr "Bottomless pantry"
+
+msgid "Buches entrenados en el museo: cada hormiga junta 1 mordida más antes de volver."
+msgstr "Crops trained at the museum: each ant gathers 1 more bite before heading home."
+
+msgid "Migas de la abundancia"
+msgstr "Crumbs of plenty"
+
+msgid "Las migas del Obelisco rinden más: todas las migas x1.12."
+msgstr "The Obelisk's crumbs go further: all crumbs x1.12."
+
+msgid "Festín eterno"
+msgstr "Endless feast"
+
+msgid "Los festines duran 2 segundos más."
+msgstr "Feasts last 2 seconds longer."
+
+msgid "Feromona de alarma"
+msgstr "Alarm pheromone"
+
+msgid "La feromona de alarma enciende a la colonia: el frenesí acelera 10% más."
+msgstr "Alarm pheromone fires up the colony: frenzy speeds it up 10% more."
+
+msgid "Rastro de azúcar"
+msgstr "Sugar trail"
+
+msgid "Un rastro dulce atrae la suerte: las migas doradas aparecen 12% más seguido."
+msgstr "A sweet trail draws luck: golden crumbs appear 12% more often."
+
+msgid "Feromona de la colmena"
+msgstr "Hive pheromone"
+
+msgid "Toda la colonia responde a la vez: el frenesí acelera 10% más."
+msgstr "The whole colony answers at once: frenzy speeds it up 10% more."
+
+msgid "Antenas largas"
+msgstr "Long antennae"
+
+msgid "Detectan comida 20 píxeles más lejos."
+msgstr "They smell food 20 pixels farther away."
+
+msgid "Senderos químicos"
+msgstr "Chemical paths"
+
+msgid "Rastros químicos bien marcados: las hormigas caminan un 5% más rápido."
+msgstr "Well-marked chemical trails: ants walk 5% faster."
+
+msgid "Mapa de olores"
+msgstr "Scent map"
+
+msgid "Un mapa de olores del Coliseo: cada escondite revela 1 alimento más."
+msgstr "A scent map of the Colosseum: each hiding place reveals 1 more food."
+
+msgid "Vuelta a casa"
+msgstr "Way home"
+
+msgid "+1 segundo para entregar las cargas al terminar la expedición."
+msgstr "+1 second to deliver loads when the expedition ends."
+
+msgid "Frenesí prolongado"
+msgstr "Long frenzy"
+
+msgid "El frenesí dura 1 segundo más."
+msgstr "Frenzy lasts 1 second longer."
+
+msgid "Regreso en fila"
+msgstr "Single-file return"
+
+msgid "Vuelven en fila india: +1 segundo para entregar las cargas al terminar la expedición."
+msgstr "They return in single file: +1 second to deliver loads when the expedition ends."
+
+msgid "Horas extra"
+msgstr "Overtime"
+
+msgid "+4 segundos por run."
+msgstr "+4 seconds per run."
+
+msgid "Saqueo de alacenas"
+msgstr "Cupboard raid"
+
+msgid "Saben abrir alacenas: cada escondite revela 1 alimento más."
+msgstr "They know how to open cupboards: each hiding place reveals 1 more food."
+
+msgid "Galerías anchas"
+msgstr "Wide galleries"
+
+msgid "Túneles más anchos: las hormigas caminan un 4% más rápido."
+msgstr "Wider tunnels: ants walk 4% faster."
+
+msgid "Socavones"
+msgstr "Sinkholes"
+
+msgid "Cada pieza devorada golpea a dos vecinas con 3% de su resistencia."
+msgstr "Each devoured piece strikes two neighbors for 3% of their toughness."
+
+msgid "Exploradoras de avanzada"
+msgstr "Advance scouts"
+
+msgid "Van delante de la colonia: detectan comida 15 píxeles más lejos."
+msgstr "They go ahead of the colony: they smell food 15 pixels farther away."
+
+msgid "Derrumbe en cadena"
+msgstr "Chain collapse"
+
+msgid "Derrumbes en cadena: cada pieza devorada golpea a dos vecinas con 4% más de su resistencia."
+msgstr "Chain collapses: each devoured piece strikes two neighbors for 4% more of their toughness."
+
+msgid "Botín escondido"
+msgstr "Hidden loot"
+
+msgid "Encuentran el botín escondido: cada escondite revela 1 alimento más."
+msgstr "They find hidden loot: each hiding place reveals 1 more food."
+
+msgid "Guardianas"
+msgstr "Guardians"
+
+msgid "Defienden el territorio: vencer una amenaza o pisar una miga dorada paga 4% más de la run."
+msgstr "They defend the territory: beating a threat or stomping a golden crumb pays 4% more of the run."
+
+msgid "Calzadas"
+msgstr "Roman roads"
+
+msgid "Caminos de piedra como los romanos: las hormigas caminan un 5% más rápido."
+msgstr "Stone roads like the Romans: ants walk 5% faster."
+
+msgid "Tierras conquistadas"
+msgstr "Conquered lands"
+
+msgid "Todo lo conquistado da de comer: todas las migas x1.15."
+msgstr "Everything conquered feeds the colony: all crumbs x1.15."
+
+msgid "Cimientos del Coliseo"
+msgstr "Colosseum foundations"
+
+msgid "Aprendieron de los arcos: cada pieza devorada golpea a dos vecinas con 4% más de su resistencia."
+msgstr "They learned from the arches: each devoured piece strikes two neighbors for 4% more of their toughness."
+
+msgid "Escuela de especialistas"
+msgstr "Specialist school"
+
+msgid "Las especialistas hacen 10% más daño."
+msgstr "Specialists deal 10% more damage."
+
+msgid "Cuarteles"
+msgstr "Barracks"
+
+msgid "Podés reclutar 1 especialista más de cada casta."
+msgstr "You can recruit 1 more specialist of each caste."
+
+msgid "Señales de casta"
+msgstr "Caste signals"
+
+msgid "Cada casta reconoce su señal: las especialistas hacen 6% más daño."
+msgstr "Each caste knows its signal: specialists deal 6% more damage."
+
+msgid "Olfato de exploradora"
+msgstr "Scout's nose"
+
+msgid "Detectan comida 10 píxeles más lejos."
+msgstr "They smell food 10 pixels farther away."
+
+msgid "Larvas glotonas"
+msgstr "Greedy larvae"
+
+msgid "Las larvas reclaman su parte: cada hormiga junta 1 mordida más antes de volver."
+msgstr "The larvae want their share: each ant gathers 1 more bite before heading home."
+
+msgid "Relevos"
+msgstr "Shifts"
+
+msgid "Turnos que se relevan: +2 segundos por run."
+msgstr "Shifts relieve each other: +2 seconds per run."
+
+msgid "Escuadrilla"
+msgstr "Squadron"
+
+msgid "Vuelan en formación: las especialistas hacen 8% más daño."
+msgstr "They fly in formation: specialists deal 8% more damage."
+
+msgid "Picos de excavación"
+msgstr "Digging picks"
+
+msgid "Cavar endurece las mandíbulas: daño de mordida x1.05."
+msgstr "Digging hardens mandibles: bite damage x1.05."
+
+msgid "Pisada en equipo"
+msgstr "Team stomp"
+
+msgid "Mapa del tesoro"
+msgstr "Treasure map"
+
+msgid "Un mapa del tesoro: las migas doradas aparecen 12% más seguido."
+msgstr "A treasure map: golden crumbs appear 12% more often."
+
+msgid "Demolición"
+msgstr "Demolition"
+
+msgid "Demoler en orden paga: destruir una comida o una pieza da 5% más de su valor."
+msgstr "Orderly demolition pays: destroying a food or a piece pays 5% more of its value."
+
+msgid "Banquete familiar"
+msgstr "Family feast"
+
+msgid "Toda la familia a la mesa: todas las migas x1.08."
+msgstr "The whole family at the table: all crumbs x1.08."
+
+msgid "Acarreo pesado"
+msgstr "Heavy hauling"
+
+msgid "Cortan y cargan a la vez: cada hormiga junta 1 mordida más antes de volver."
+msgstr "They cut and carry at once: each ant gathers 1 more bite before heading home."
+
+msgid "Corazón del hormiguero"
+msgstr "Heart of the nest"
+
+msgid "Lo más hondo de la colonia: todas las migas x1.5."
+msgstr "The deepest part of the colony: all crumbs x1.5."
+
+msgid "Pasá el mouse por una cámara para ver qué hace · clic para mejorarla · arrastrá y usá la rueda para recorrer"
+msgstr "Hover a chamber to see what it does · click to upgrade it · drag and use the wheel to move around"
+
+msgid "Cámara sin excavar"
+msgstr "Undug chamber"
+
+msgid "Se descubre más adelante, en tus viajes."
+msgstr "You will discover it later, on your travels."
+
+msgid "Clic para mejorar"
+msgstr "Click to upgrade"
+
+msgid "CASTAS"
+msgstr "CASTES"
+
+msgid "Las especialistas aparecen después de tu cuarta expedición."
+msgstr "Specialists show up after your fourth expedition."
+
+msgid "CASTA · %s"
+msgstr "CASTE · %s"
+
+msgid "Clic derecho: ficha completa y evoluciones"
+msgstr "Right click: full sheet and evolutions"
+
+msgid "Clic para reclutar · clic derecho: ficha completa y evoluciones"
+msgstr "Click to recruit · right click: full sheet and evolutions"
+
+msgid "Clic para entrar"
+msgstr "Click to enter"
+
+msgid "Elegí el próximo destino. Conquistaste %d de %d."
+msgstr "Choose the next destination. You have conquered %d of %d."
+
+msgid "Se abre al conquistar el gran objetivo de la casa."
+msgstr "Opens when you conquer the house's great objective."
+
+msgid "Fichas completas, evoluciones y equipo de tus especialistas."
+msgstr "Full sheets, evolutions and team for your specialists."
+
+msgid "Fundá colonias nuevas y mejorá a la reina. Tenés %d de jalea."
+msgstr "Found new colonies and improve the queen. You have %d royal jelly."
+
+msgid "Se abre con tu primer hito o tu primera corona."
+msgstr "Opens with your first milestone or your first crown."
+
+msgid "EL FONDO DEL HORMIGUERO"
+msgstr "THE BOTTOM OF THE NEST"
+
+msgid "%.0f s de retirada"
+msgstr "%.0f s of retreat"
+
+msgid "%.0f s de frenesí"
+msgstr "%.0f s of frenzy"
+
+msgid "frenesí ×%.2f"
+msgstr "frenzy ×%.2f"
+
+msgid "%d%% al destruir"
+msgstr "%d%% when destroying"
+
+msgid "%d%% de la run por botín"
+msgstr "%d%% of the run as loot"
+
+msgid "una dorada cada %.0f s"
+msgstr "a golden crumb every %.0f s"
+
+msgid "especialistas ×%.2f"
+msgstr "specialists ×%.2f"
+
+msgid "+%d por casta"
+msgstr "+%d per caste"
+
+msgid "%d alimentos por escondite"
+msgstr "%d foods per hiding place"
+
+msgid "%d%% a dos vecinas"
+msgstr "%d%% to two neighbors"
+
+msgid "+%d%% sobre lo corroído"
+msgstr "+%d%% on corroded material"
+
+msgid "%.0f s de festín"
+msgstr "%.0f s of feast"
+
+msgid "Al final de la expedición tienen más tiempo para entregar lo que llevan."
+msgstr "At the end of the expedition they have more time to deliver what they carry."
+
+msgid "Cada depósito carga el frenesí: con veinte seguidos la colonia acelera."
+msgstr "Each delivery charges the frenzy: twenty in a row speed the colony up."
+
+msgid "Terminar una comida o una pieza paga un extra, además de lo que se transporta."
+msgstr "Finishing a food or a piece pays a bonus, on top of what gets carried."
+
+msgid "Pisar las migas doradas y vencer amenazas paga más: conviene mirar la pantalla."
+msgstr "Stomping golden crumbs and beating threats pays more: keep an eye on the screen."
+
+msgid "Las especialistas reclutadas salen en todas las expediciones."
+msgstr "Recruited specialists join every expedition."
+
+msgid "Las alacenas, heladeras y vitrinas que se abren sueltan más comida."
+msgstr "Opened cupboards, fridges and display cases drop more food."
+
+msgid "Al caer un mueble devorado sacude a los vecinos: un derrumbe puede abrir varios."
+msgstr "A devoured piece of furniture shakes its neighbors as it falls: one collapse can open several."
+
+msgid "Las hormigas rojas ablandan los materiales para todo el grupo."
+msgstr "Red ants soften materials for the whole group."
+
+msgid "Los festines del restaurante cargan el frenesí al doble."
+msgstr "Restaurant feasts charge the frenzy twice as fast."
+
+msgid "Te faltan migas o una casta previa. ¡Otra expedición!"
+msgstr "You need more crumbs or an earlier caste. Another expedition!"
+
+msgid "Las especialistas"
+msgstr "The specialists"
+
+msgid "Cada casta trabaja a su manera."
+msgstr "Each caste works its own way."
+
+msgid "Colonia"
+msgstr "Colony"
+
+msgid "Recolección"
+msgstr "Gathering"
+
+msgid "Mandíbulas"
+msgstr "Mandibles"
+
+msgid "Feromonas"
+msgstr "Pheromones"
+
+msgid "Tiempo"
+msgstr "Time"
+
+msgid "Territorio"
+msgstr "Territory"

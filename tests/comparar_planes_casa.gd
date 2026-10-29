@@ -45,8 +45,8 @@ func medir(plan: String, semilla: int) -> Dictionary:
 	Juego._cache_stats.clear()
 	Juego.migas = PRESUPUESTO
 	if plan != "obreras":
-		Juego.comprar_casta("carpintera")
-		Juego.comprar_castas_lote("cargadora", 3 if plan == "corte_barrido" else 1)
+		_reclutar_directo("carpintera", 1)
+		_reclutar_directo("cargadora", 3 if plan == "corte_barrido" else 1)
 	Juego.comprar_lote("mas_obreras", 0)
 	var dato := {"plan": plan, "semilla": semilla, "presupuesto": PRESUPUESTO, "gasto": PRESUPUESTO - Juego.migas,
 		"obreras": int(Juego.stat("hormigas_iniciales")), "especialistas": Juego.reclutadas.duplicate(), "evoluciones": Juego.evoluciones_equipadas.duplicate()}
@@ -83,3 +83,15 @@ func medir(plan: String, semilla: int) -> Dictionary:
 	r.queue_free()
 	await get_tree().process_frame
 	return dato
+
+
+## Compra al precio real pero sin la cadena de castas del hormiguero (veloz →
+## roja → cargadora → carpintera): la comparación mide sólo estas unidades.
+func _reclutar_directo(id: String, cantidad: int) -> void:
+	for i in cantidad:
+		var precio := Juego.costo_casta(id)
+		if Juego.migas < precio:
+			return
+		Juego.migas -= precio
+		Juego.reclutadas[id] = Juego.cantidad_casta(id) + 1
+	Juego.actualizar_evoluciones()

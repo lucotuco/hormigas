@@ -432,6 +432,72 @@ por cuadro. No hay texturas por instancia ni aumento del atlas compartido.
 La versión de contenido sube a 3 para separar récords de limpieza con esta
 geometría; el formato de partida sigue en 7 y conserva el archivo histórico.
 
+## El hormiguero ramificado (29/10)
+
+La tienda pasa a ser el hormiguero del lienzo de diseño: la reina en el centro,
+Viajes en la boca y siete ramas que se separan y se vuelven a juntar. Para
+llenarlo, `mejoras.csv` pasa de 31 a 82 filas y las castas se vuelven una rama.
+
+**Cómo se ordenan.** El anillo de una cámara es su momento en la partida:
+
+| Anillo | Precio base | Para qué |
+|---|---|---|
+| 1 (sale de la reina) | 10–40 | Las raíces de siempre: obreras, mandíbulas, buche, llamado, reservas, territorio, veloz |
+| 2–3 | 15–6.000 | Primeras decisiones de la casa: madera, frenesí, retirada, escondites, castas |
+| 4 | 4.000–600.000 | Entre madera y paredes: daño, población, derrumbes, especialistas |
+| 5–6 y el fondo | 10⁶ en adelante | Casi todas con `destino` (24 nuevas): cada viaje trae cámaras propias en qué gastar |
+
+Las 51 nuevas reparten sus efectos entre stats que ya existían y las siete que
+el PR anterior volvió stats (frenesí, bonus al destruir, botín, doradas, fuerza
+y límite de castas). Muchas tienen efectos acotados por diseño: los derrumbes
+en cadena siguen limitados a 24 eslabones y los escondites a 24 alimentos. Las
+**compartidas** (`rama = A|B`) piden una mejora de cada rama: son las que hacen
+que las ramas se crucen.
+
+**Requisitos que cambian para que los túneles sean reales:**
+
+- Madera pide además Mordida rápida 1 (y Acero, Mordida rápida 1). La meta de
+  los primeros minutos queda: Mandíbulas 4 → Mordida rápida → migas para madera.
+- Mandíbulas cooperativas pide Mandíbulas 1 y Buche 1 (es la cámara que une
+  Mandíbulas con Recolección); Recolección eficiente pasa por ella.
+- Buche y Explorar la casa ya no piden nada: son raíces de su rama.
+  Entradas secundarias pide Explorar la casa 6 en vez de madera (abrir otro
+  ambiente es lo que la hace útil).
+- Coordinación pide Antenas 1; Segundo aire, Vuelta a casa 1.
+- Las castas se reclutan en cadena: veloz → roja → cargadora → voladora → reina;
+  carpintera pide cargadora (y madera) y demoledora, carpintera y reina (y paredes).
+- Las diez mejoras de destino que ya existían piden una cámara de su rama,
+  además de su destino.
+
+**Medición.** Bot con `BOT_ORDEN=materiales`, semilla 417, paso 1/60.
+El mismo `main` dio 41,9 y 37,4 minutos de campaña en dos corridas seguidas:
+la admisión de rutas por tiempo hace que haya ±3 minutos de ruido, así que
+sólo se compara contra ese rango.
+
+| Hito | `main` (dos corridas) | Con el hormiguero |
+|---|---:|---:|
+| Mandíbulas 4 | 4,2 – 5,5 | 5,4 – 5,6 |
+| Madera | 7,5 – 8,9 | 8,7 – 10,1 |
+| Resistentes | 15,6 – 17,0 | 16,9 – 17,9 |
+| Paredes | 19,1 – 20,8 | 20,0 – 21,1 |
+| Casa conquistada | 20,7 – 22,3 | 21,5 – 22,1 |
+| Museo | 29,9 – 32,7 | 34,0 |
+| Coliseo | 31,0 – 34,9 | 34,9 |
+| Torre Eiffel (fin) | 37,4 – 41,9 | 40,3 |
+
+(Los dos primeros valores de cada fila del hormiguero son el piloto de casa
+`medir_ritmo_casa` y la campaña larga.) La primera versión de los datos llegaba
+a la Torre en 35,5 minutos: el frenesí, el límite de castas y los derrumbes
+en cadena pegaban fuerte en la segunda colonia. Se bajaron (en la casa el frenesí
+llega a ×1,8 y 9 s; el límite de castas a +2; cada golpe en cadena, 3–4%) y las mejoras del anillo 4 se
+encarecieron ×3 para que lleguen después de madera, no antes.
+
+Lo que sigue pendiente, y no viene de este cambio: en el bot la campaña
+completa ya duraba ~42 minutos con el `main` anterior. Museo, Obelisco y
+Coliseo caen en una run cada uno después de una fundación. Las cámaras de
+destino dan dónde gastar en ese tramo, pero hace falta recalibrar `vida_meta`
+de esos destinos para que cada uno pida su propia colonia.
+
 ## Qué se puede tocar sin programar
 
 - `datos/mejoras.csv`: columnas nuevas `destino`, `tope_por_destino`,

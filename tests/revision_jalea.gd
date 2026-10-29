@@ -30,7 +30,7 @@ func _ready() -> void:
 	Juego._cache_stats.clear()
 	var tienda := preload("res://ui/tienda.tscn").instantiate()
 	add_child(tienda)
-	tienda._seleccionar("Mandíbulas")
+	tienda._seleccionar_mejora("titanio")
 	await captura("jalea_mejoras_destino")
 	tienda._cambiar_pestana("legado")
 	await captura("jalea_panel")

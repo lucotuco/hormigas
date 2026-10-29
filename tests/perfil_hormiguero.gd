@@ -69,7 +69,7 @@ func medir(nombre: String) -> void:
 		suma += ms
 	var p95 := ceili(MUESTRAS * .95) - 1
 	print("HORMIGUERO %s: media %.2f ms | p95 %.2f ms | peor %.2f ms | drawcalls %.0f" % [nombre, suma / MUESTRAS, cuadros[p95], cuadros[-1], dibujos / MUESTRAS])
-	print("  Cotas: %d mejoras | %d rutas | %d hormigas visuales | nodos %d → %d | rutas retenidas %s" % [tienda._nodos_mejoras.size(), tienda._animacion_hormiguero.rutas.size(), mini(22, tienda._animacion_hormiguero.indices_rutas.size() * 2), nodos_antes, contar_nodos(tienda), str(tienda._animacion_hormiguero.rutas[0] == ruta_inicial)])
+	print("  Cotas: %d cámaras | %d rutas | %d hormigas visuales | nodos %d → %d | rutas retenidas %s" % [tienda._estados.size(), tienda._animacion_hormiguero.rutas.size(), mini(22, tienda._animacion_hormiguero.indices_rutas.size() * 2), nodos_antes, contar_nodos(tienda), str(tienda._animacion_hormiguero.rutas[0] == ruta_inicial)])
 
 func contar_nodos(nodo: Node) -> int:
 	var total := 1

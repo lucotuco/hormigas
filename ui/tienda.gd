@@ -1,247 +1,63 @@
 extends Control
-## El hormiguero es el árbol: cada mejora excava su propia cámara visible.
+## El hormiguero es el árbol: cada mejora y cada casta es una cámara.
+## Al pasar el mouse se abre su ficha; un clic la mejora (o recluta).
+## La reina, en el centro, abre la jalea real; la boca, los viajes; la sala
+## de castas, las fichas completas y las evoluciones. Ver ui/arbol_hormiguero.gd.
 const ESCENA_RUN := "res://mundo/run.tscn"
+## Ramas del hormiguero: nombre, frase, color y la cámara por la que empiezan.
 const SALAS := {
-	"Colonia": {"titulo": "El criadero", "detalle": "Una familia cada vez más grande.", "color": Color("b8cd91"), "pos": Vector2(.32, .27)},
-	"Mandíbulas": {"titulo": "El taller", "detalle": "Comida → madera y telas → materiales resistentes → paredes.", "color": Color("e7ac7d"), "pos": Vector2(.68, .29)},
-	"Recolección": {"titulo": "La despensa", "detalle": "Pequeños viajes, grandes tesoros.", "color": Color("e8cc86"), "pos": Vector2(.32, .53)},
-	"Feromonas": {"titulo": "El observatorio", "detalle": "Todos los caminos llevan a casa.", "color": Color("8dc3bc"), "pos": Vector2(.69, .63)},
-	"Tiempo": {"titulo": "El refugio", "detalle": "Siempre hay tiempo para otro bocado.", "color": Color("c3add4"), "pos": Vector2(.41, .77)},
-	"Territorio": {"titulo": "La excavación", "detalle": "La cocina es solo el comienzo.", "color": Color("c9b48c"), "pos": Vector2(.58, .77)},
+	"Castas": {"titulo": "Las especialistas", "detalle": "Cada casta trabaja a su manera.", "color": Color("e5879a"), "raiz": "veloz"},
+	"Colonia": {"titulo": "El criadero", "detalle": "Una familia cada vez más grande.", "color": Color("b8cd91"), "raiz": "mas_obreras"},
+	"Recolección": {"titulo": "La despensa", "detalle": "Pequeños viajes, grandes tesoros.", "color": Color("e8cc86"), "raiz": "buche"},
+	"Mandíbulas": {"titulo": "El taller", "detalle": "Comida → madera y telas → materiales resistentes → paredes.", "color": Color("e7ac7d"), "raiz": "mandibulas"},
+	"Feromonas": {"titulo": "El observatorio", "detalle": "Todos los caminos llevan a casa.", "color": Color("8dc3bc"), "raiz": "rastro_persistente"},
+	"Tiempo": {"titulo": "El refugio", "detalle": "Siempre hay tiempo para otro bocado.", "color": Color("c3add4"), "raiz": "reservas"},
+	"Territorio": {"titulo": "La excavación", "detalle": "La cocina es solo el comienzo.", "color": Color("c9b48c"), "raiz": "excavar"},
 }
-const SECCIONES := {
-	"hogar": {"pos": Vector2(.50, .44), "color": Color("b8cd91")},
-	"castas": {"pos": Vector2(.085, .10), "color": Color("e7ac7d")},
-	"viajes": {"pos": Vector2(.915, .10), "color": Color("8dc3bc")},
-	"legado": {"pos": Vector2(.50, .13), "color": Color("d9b5e7")},
-}
-var _tarjetas: Dictionary = {}
-var _salas: Dictionary = {}
-var _rama := "Colonia"
+const NOMBRES_PESTANAS := {"hogar": "Mejoras", "castas": "Castas", "viajes": "Viajes", "legado": "Jalea real"}
+const COLORES_SECCIONES := {"castas": Color("e5879a"), "viajes": Color("d8c49a"), "legado": Color("ebc67d")}
+
 var _lbl_migas: Label
 var _lbl_proxima: Label
-var _lbl_sala: Label
-var _lbl_detalle: Label
-var _lbl_estado: Label
-var _lista: VBoxContainer
 var _boton_run: Button
 var _migas_mostradas := 0.0
-var _tween_compra: Tween
 var _ventana: VentanaModal
-var _cuerpo_mejoras: Control
-var _panel_castas: PanelCastas
-var _pestanas: Dictionary = {}
-var _cantidades: Dictionary = {}
-var _panel_viajes: PanelCampana
-var _panel_legado: PanelCampana
-var _lbl_comprar: Label
+var _area_nido: Control
 var _mapa_hormiguero: Control
 var _corte_tierra: ArbolHormiguero
-var _animacion_hormiguero: TransitoNido
+var _animacion_hormiguero: ArbolHormiguero.TransitoNido
+var _cuerpo_mejoras: Control
+var _pestanas: Dictionary = {}
+var _leyenda: Dictionary = {}
 var _seccion := "hogar"
-var _nodos_mejoras: Dictionary = {}
-var _secciones_por_descubrir: Dictionary = {}
-var _mejora_seleccionada := ""
-var _ficha_mejoras: PanelContainer
 var _panel_seccion: PanelContainer
 var _titulo_seccion: Label
 var _boton_volver: Button
-var _area_nido: Control
+var _panel_castas: PanelCastas
+var _panel_viajes: PanelCampana
+var _panel_legado: PanelCampana
+var _cantidades: Dictionary = {}
+var _lbl_comprar: Label
 var _lbl_paso: Label
 var _lbl_paso_detalle: Label
 var _boton_paso: Button
 var _siguiente_paso: Dictionary = {}
-const NOMBRES_PESTANAS := {"hogar": "Mejoras", "castas": "Castas", "viajes": "Viajes", "legado": "Jalea real"}
+# La ficha: se abre al pasar el mouse; "Ver mejora" la deja fija.
+var _ficha_mejoras: PanelContainer
+var _ficha_franja: ColorRect
+var _ficha_id := ""
+var _mejora_seleccionada := ""
+var _lbl_sala: Label
+var _lbl_nivel: Label
+var _lbl_rama: Label
+var _lbl_detalle: Label
+var _lbl_cambio: Label
+var _lbl_costo: Label
+var _lbl_estado: Label
+var _lbl_pista: Label
+var _aviso_compra := {"id": "", "texto": ""}
+var _estados: Dictionary = {}
 
-
-class SelloMejora extends Control:
-	var stat := "dano"
-	var color := Color.WHITE
-	var abierta := false
-	var nivel := 0
-
-	func _draw() -> void:
-		var tinta := color if abierta or nivel > 0 else color.darkened(.55)
-		draw_set_transform(size * .5)
-		match stat:
-			"hormigas_iniciales", "cria":
-				for i in 3:
-					draw_set_transform(size * .5 + Vector2((i - 1) * 10, (i % 2) * 5 - 2), -.25, Vector2(.7, 1.1))
-					draw_circle(Vector2.ZERO, 6, tinta)
-			"materiales", "entradas", "radio_territorio":
-				draw_polyline(PackedVector2Array([Vector2(-12, 11), Vector2(-12, -2), Vector2.ZERO + Vector2(0, -12), Vector2(12, -2), Vector2(12, 11)]), tinta, 2.4, true)
-				for i in 3:
-					draw_line(Vector2(-8, -2 + i * 5), Vector2(8, -2 + i * 5), Color(tinta, .6), 1.4, true)
-			"capacidad", "multiplicador_migas":
-				for i in 3:
-					draw_circle(Vector2(-9 + i * 9, 4 - (i % 2) * 10), 5.5, tinta)
-				draw_line(Vector2(-15, 13), Vector2(15, 13), tinta, 2, true)
-			"duracion_run", "intervalo_mordida":
-				draw_arc(Vector2.ZERO, 12, 0, TAU, 24, tinta, 2, true)
-				draw_polyline(PackedVector2Array([Vector2(0, -8), Vector2.ZERO, Vector2(7, 4)]), tinta, 2, true)
-			"olfato", "feromona_cantidad":
-				for i in 5:
-					draw_circle(Vector2(-13 + i * 6, sin(i) * 9), 2 + i * .3, Color(tinta, .4 + i * .14))
-			"velocidad":
-				for i in [-1, 1]:
-					draw_polyline(PackedVector2Array([Vector2(-10, i * 9), Vector2(3, i * 9), Vector2(10, 0)]), tinta, 2.5, true)
-			_:
-				for lado in [-1, 1]:
-					draw_polyline(PackedVector2Array([Vector2(lado * 9, 10), Vector2(lado * 12, -3), Vector2(lado * 5, -12), Vector2(lado * 2, -5)]), tinta, 3, true)
-		if not abierta and nivel == 0:
-			draw_circle(Vector2(14, -13), 5, Color("30271e"))
-			draw_arc(Vector2(14, -14), 3, PI, TAU, 8, Color("9c8e76"), 1, true)
-			draw_rect(Rect2(10, -14, 8, 6), Color("9c8e76"))
-		draw_set_transform(Vector2.ZERO)
-
-
-class CerrojoCamara extends Control:
-	func _draw() -> void:
-		draw_arc(Vector2(8, 7), 5, PI, TAU, 14, Color("a3947b"), 2, true)
-		draw_rect(Rect2(1, 7, 14, 11), Color("a3947b"))
-		draw_circle(Vector2(8, 12), 1.5, Color("382a20"))
-
-
-class IconoSala extends Control:
-	var rama := "Colonia"
-	var color := Color.WHITE
-	var nivel := 0
-	var seleccionada := false
-	var disponibles := 0
-	var reloj := 0.0
-	var proximo_dibujo := 0.0
-
-	func _process(delta: float) -> void:
-		reloj += delta
-		if seleccionada and is_visible_in_tree() and reloj >= proximo_dibujo:
-			proximo_dibujo = reloj + 0.1
-			queue_redraw()
-
-	func _draw() -> void:
-		var c := size * 0.5
-		# La cámara pertenece al corte de tierra; el símbolo conserva su lectura.
-		if seleccionada:
-			draw_circle(c, 39 + sin(reloj * 2) * 2, Color(color, 0.07))
-		draw_circle(c + Vector2(0, 3), 31, Color(0, 0, 0, 0.2))
-		draw_circle(c, 30, Color("302a22"))
-		draw_arc(c, 30, 0, TAU, 60, Color(color, 0.9 if seleccionada else 0.35), 2, true)
-		var tinta := color if nivel > 0 or seleccionada else color.darkened(0.3)
-		draw_set_transform(c)
-		match rama:
-			"Colonia":
-				for p in [Vector2(-10, 3), Vector2(9, 4), Vector2(0, -10)]:
-					draw_set_transform(c + p, -0.3, Vector2(0.8, 1.1))
-					draw_circle(Vector2.ZERO, 7, tinta)
-					draw_arc(Vector2.ZERO, 4, -2.8, -1.3, 12, tinta.lightened(0.4), 1.5, true)
-			"Mandíbulas":
-				for lado in [-1, 1]:
-					draw_colored_polygon(PackedVector2Array([Vector2(lado * 14, 12), Vector2(lado * 18, -4), Vector2(lado * 8, -15), Vector2(lado * 3, -7), Vector2(lado * 10, -5), Vector2(lado * 6, 8)]), tinta)
-			"Recolección":
-				for i in 3:
-					draw_circle(Vector2(-10 + i * 10, 9 - (i % 2) * 12), 7, tinta.darkened(i * 0.06))
-				draw_line(Vector2(-19, 20), Vector2(19, 20), tinta, 2, true)
-			"Feromonas":
-				for i in 6:
-					draw_circle(Vector2(-17 + i * 7, sin(i * 0.9) * 11), 2 + i * 0.35, Color(tinta, 0.35 + i * 0.12))
-			"Tiempo":
-				draw_arc(Vector2.ZERO, 18, 0, TAU, 40, tinta, 2, true)
-				draw_polyline(PackedVector2Array([Vector2(0, -12), Vector2.ZERO, Vector2(9, 5)]), tinta, 2.5, true)
-				draw_circle(Vector2.ZERO, 3, tinta)
-			"Territorio":
-				for i in 3:
-					draw_arc(Vector2(-12, 12), 10 + i * 10, -PI * 0.5, 0, 24, Color(tinta, 1.0 - i * 0.2), 2, true)
-		draw_set_transform(Vector2.ZERO)
-		for i in mini(nivel, 8):
-			draw_circle(c + Vector2.from_angle(PI * 0.2 + i * PI * 0.085) * 36, 2, color)
-		if disponibles > 0:
-			draw_circle(c + Vector2(27, -23), 7, Color("b8d891"))
-			draw_circle(c + Vector2(27, -23), 10, Color(0.7, 0.9, 0.5, 0.12))
-
-
-class EscenaSeccion extends Control:
-	var seccion := "hogar"
-	var tinta := Color.WHITE
-
-	func _draw() -> void:
-		match seccion:
-			"hogar":
-				# Huevos y larvas sobre una cama de fibras.
-				for i in 9:
-					draw_line(Vector2(12 + i * 6, 64), Vector2(20 + i * 5, 48), Color("87744d"), 2, true)
-				for i in 6:
-					draw_set_transform(Vector2(22 + (i % 3) * 17, 48 - (i / 3) * 20), -0.25, Vector2(0.75, 1.0))
-					draw_circle(Vector2.ZERO, 9, tinta)
-					draw_arc(Vector2.ZERO, 5, -2.5, -0.7, 10, tinta.lightened(0.3), 2, true)
-			"castas", "legado":
-				var reina := seccion == "legado"
-				for lado in [-1, 1]:
-					for i in 3:
-						draw_polyline(PackedVector2Array([Vector2(38, 36 + i * 6), Vector2(38 + lado * 15, 26 + i * 13), Vector2(38 + lado * 23, 20 + i * 19)]), tinta.darkened(0.25), 2, true)
-					draw_polyline(PackedVector2Array([Vector2(38 + lado * 5, 24), Vector2(38 + lado * 12, 13), Vector2(38 + lado * 18, 16)]), tinta, 1.5, true)
-				draw_set_transform(Vector2(38, 58), 0, Vector2(1, 1.3))
-				draw_circle(Vector2.ZERO, 14 if reina else 10, tinta.darkened(0.22))
-				draw_set_transform(Vector2.ZERO)
-				draw_circle(Vector2(38, 39), 8, tinta)
-				draw_circle(Vector2(38, 25), 10, tinta.lightened(0.1))
-				if reina:
-					draw_colored_polygon(PackedVector2Array([Vector2(27, 12), Vector2(25, 1), Vector2(34, 7), Vector2(38, -1), Vector2(43, 7), Vector2(51, 1), Vector2(49, 12)]), Color("e5c379"))
-			"viajes":
-				draw_colored_polygon(PackedVector2Array([Vector2(8, 20), Vector2(29, 13), Vector2(51, 21), Vector2(73, 13), Vector2(73, 64), Vector2(51, 72), Vector2(29, 63), Vector2(8, 70)]), Color("b9a77b"))
-				draw_line(Vector2(29, 13), Vector2(29, 63), Color("786648"), 1, true)
-				draw_line(Vector2(51, 21), Vector2(51, 72), Color("786648"), 1, true)
-				for i in 7:
-					draw_circle(Vector2(18 + i * 7, 48 + sin(i) * 8), 2, Color("4b6258"))
-				draw_circle(Vector2(62, 37), 5, tinta.darkened(0.45))
-		draw_set_transform(Vector2.ZERO)
-
-
-class TransitoNido extends Control:
-	## 22 siluetas como máximo en un solo CanvasItem, sin nodos ni IA por hormiga.
-	## Sólo esta capa se redibuja a 30 Hz; el suelo y las cámaras quedan retenidos.
-	var rutas: Array[Curve2D] = []
-	var indices_rutas: Array[int] = []
-	var reloj := 0.0
-	var acumulado := 0.0
-	var actualizaciones := 0
-
-	func _process(delta: float) -> void:
-		if not is_visible_in_tree():
-			return
-		reloj += delta
-		acumulado += delta
-		if acumulado >= 1.0 / 30.0:
-			acumulado = fmod(acumulado, 1.0 / 30.0)
-			actualizaciones += 1
-			queue_redraw()
-
-	func posicion(ruta: Curve2D, indice: int, tiempo: float) -> Vector2:
-		var largo := ruta.get_baked_length()
-		var recorrido := fposmod(tiempo * (22 + indice % 3 * 5) + indice * 83, largo * 2)
-		return ruta.sample_baked(largo - absf(largo - recorrido))
-
-	func _draw() -> void:
-		if indices_rutas.is_empty():
-			return
-		for indice in mini(22, indices_rutas.size() * 2):
-			var ruta := rutas[indices_rutas[(indice * 7) % indices_rutas.size()]]
-			if ruta.get_baked_length() < 1:
-				continue
-			var p := posicion(ruta, indice, reloj)
-			var rumbo := (posicion(ruta, indice, reloj + 0.08) - p).angle()
-			draw_set_transform(p, rumbo)
-			var tinta := Color("c3a176") if indice % 2 == 0 else Color("a38b6c")
-			for pata in 3:
-				var paso := sin(reloj * 11 + pata * 2 + indice) * 1.5
-				for lado in [-1, 1]:
-					draw_line(Vector2(-2 + pata * 2, lado), Vector2(-4 + pata * 3 + paso * lado, lado * 4), tinta, 1, true)
-			draw_circle(Vector2(-4, 0), 3.0, tinta.darkened(.18))
-			draw_circle(Vector2.ZERO, 2, tinta)
-			draw_circle(Vector2(4, 0), 2.3, tinta)
-			draw_line(Vector2(5, -1), Vector2(8, -3), tinta, 1, true)
-			draw_line(Vector2(5, 1), Vector2(8, 3), tinta, 1, true)
-			if indice % 4 == 0:
-				draw_circle(Vector2(8, 0), 2.8, Color("dfc273"))
-		draw_set_transform(Vector2.ZERO)
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -269,7 +85,16 @@ func _ready() -> void:
 	_cuerpo_mejoras.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_cuerpo_mejoras.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_area_nido.add_child(_cuerpo_mejoras)
-	_ficha_mejoras = _crear_detalles()
+	_cuerpo_mejoras.add_child(_crear_leyenda())
+	var ayuda := PanelContainer.new()
+	ayuda.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ayuda.add_theme_stylebox_override("panel", Estilo.caja(Color(0.09, 0.07, 0.05, 0.72), 8, Color.TRANSPARENT, 0, 7))
+	ayuda.add_child(Estilo.etiqueta(tr("Pasá el mouse por una cámara para ver qué hace · clic para mejorarla · arrastrá y usá la rueda para recorrer"), 13, Color(0.88, 0.88, 0.79, 0.7)))
+	ayuda.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	ayuda.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	ayuda.position = Vector2(14, -14)
+	_cuerpo_mejoras.add_child(ayuda)
+	_ficha_mejoras = _crear_ficha()
 	_ficha_mejoras.hide()
 	_cuerpo_mejoras.add_child(_ficha_mejoras)
 	_panel_seccion = PanelContainer.new()
@@ -284,10 +109,9 @@ func _ready() -> void:
 	_titulo_seccion = Estilo.etiqueta("", 27, Estilo.ACENTO)
 	_titulo_seccion.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	barra.add_child(_titulo_seccion)
-	var cerrar := Estilo.boton(tr("Volver al hormiguero") + "  ×", 15, Color("283126"), Color("697652"))
-	_boton_volver = cerrar
-	cerrar.pressed.connect(_cambiar_pestana.bind("hogar"))
-	barra.add_child(cerrar)
+	_boton_volver = Estilo.boton(tr("Volver al hormiguero") + "  ×", 15, Color("283126"), Color("697652"))
+	_boton_volver.pressed.connect(_cambiar_pestana.bind("hogar"))
+	barra.add_child(_boton_volver)
 	_panel_castas = PanelCastas.new()
 	_panel_castas.visible = false
 	contenido.add_child(_panel_castas)
@@ -310,6 +134,7 @@ func _ready() -> void:
 	Juego.partida_borrada.connect(_refrescar)
 	Juego.modo_compra_cambio.connect(_refrescar)
 	Juego.progreso_cambio.connect(_refrescar)
+	Juego.casta_comprada.connect(func(_id: String, _cantidad: int) -> void: _refrescar())
 	_migas_mostradas = Juego.migas
 	_refrescar()
 	_cambiar_pestana("hogar")
@@ -321,19 +146,21 @@ func _acomodar_paneles() -> void:
 	if not is_instance_valid(_panel_seccion):
 		return
 	var tam := _area_nido.size
-	_panel_seccion.position = Vector2(tam.x * .16, tam.y * .20)
-	_panel_seccion.size = Vector2(tam.x * .68, tam.y * .74)
-	_ficha_mejoras.size = Vector2(420, minf(425, tam.y - 70))
+	_panel_seccion.position = Vector2(tam.x * .16, tam.y * .12)
+	_panel_seccion.size = Vector2(tam.x * .68, tam.y * .82)
 	if _ficha_mejoras.visible:
 		_posicionar_ficha()
 
 
-func _posicionar_ficha() -> void:
-	_ficha_mejoras.size = Vector2(420, minf(425, _area_nido.size.y - 70))
-	var pos: Vector2 = _corte_tierra.posicion_mejora(_mejora_seleccionada) if _mejora_seleccionada != "" else SALAS[_rama].pos
-	var punto := pos * _area_nido.size
-	var x := punto.x + 92 if pos.x < .52 else punto.x - _ficha_mejoras.size.x - 92
-	_ficha_mejoras.position = Vector2(clampf(x, 12, _area_nido.size.x - _ficha_mejoras.size.x - 12), clampf(punto.y - 65, 45, _area_nido.size.y - _ficha_mejoras.size.y - 12))
+## Lo que ya se ve del hormiguero: secciones, cámaras compradas y las que se
+## pueden comprar. El encuadre inicial muestra eso y un poco de alrededor.
+func zona_explorada() -> Rect2:
+	var zona := PlanoHormiguero.rect("viajes").merge(PlanoHormiguero.rect("legado"))
+	for id in _estados:
+		var e: Dictionary = _estados[id]
+		if e.nivel > 0 or (e.abierta and not e.misterio):
+			zona = zona.merge(PlanoHormiguero.rect(id))
+	return zona.grow(40)
 
 
 func _unhandled_input(evento: InputEvent) -> void:
@@ -341,10 +168,9 @@ func _unhandled_input(evento: InputEvent) -> void:
 		if _seccion != "hogar":
 			_cambiar_pestana("hogar")
 		else:
-			_ficha_mejoras.hide()
-			_mejora_seleccionada = ""
-			_refrescar()
+			_cerrar_ficha()
 		get_viewport().set_input_as_handled()
+
 
 func _process(delta: float) -> void:
 	_migas_mostradas = lerpf(_migas_mostradas, Juego.migas, 1.0 - exp(-10.0 * delta))
@@ -416,13 +242,9 @@ func _actualizar_siguiente_paso() -> void:
 func _ver_siguiente_paso() -> void:
 	var id: String = _siguiente_paso.get("id", "")
 	match _siguiente_paso.get("accion", ""):
-		"mejora":
-			if Juego.mejoras_por_id.has(id):
+		"mejora", "casta":
+			if PlanoHormiguero.CAMARAS.has(id):
 				_seleccionar_mejora(id)
-		"casta":
-			_cambiar_pestana("castas")
-			if _panel_castas._filas.has(id):
-				_panel_castas._seleccionar(id)
 		"viajes": _cambiar_pestana("viajes")
 		"legado": _cambiar_pestana("legado")
 
@@ -431,133 +253,62 @@ func _crear_mapa() -> Control:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_theme_stylebox_override("panel", Estilo.caja(Color("211e19"), 18, Color("6f563b"), 1, 0))
-	var base := Control.new()
-	base.clip_contents = true
-	panel.add_child(base)
 	_corte_tierra = ArbolHormiguero.new()
-	_corte_tierra.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_corte_tierra.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	base.add_child(_corte_tierra)
-	_corte_tierra.configurar(SALAS, SECCIONES)
-	_animacion_hormiguero = TransitoNido.new()
-	_animacion_hormiguero.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_animacion_hormiguero.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	base.add_child(_animacion_hormiguero)
+	panel.add_child(_corte_tierra)
+	# Hasta que el jugador mueva la vista, se encuadra lo ya explorado.
 	_corte_tierra.resized.connect(func() -> void:
-		_corte_tierra.reconstruir()
-		_animacion_hormiguero.rutas = _corte_tierra.rutas
-		_actualizar_transito()
-	)
-	for id in SECCIONES:
-		var datos: Dictionary = SECCIONES[id]
-		var boton := Button.new()
-		boton.text = tr(NOMBRES_PESTANAS[id])
-		boton.add_theme_font_size_override("font_size", 23)
-		boton.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_anclar(boton, datos.pos, Vector2(236, 92), Vector2.ZERO)
+		if not _corte_tierra.movida_por_jugador and _corte_tierra.size.x > 1:
+			_corte_tierra.encuadrar(zona_explorada(), false, 0.95, 0.62))
+	_animacion_hormiguero = _corte_tierra.transito
+	_corte_tierra.camara_pulsada.connect(_on_camara_pulsada)
+	_corte_tierra.camara_pulsada_derecha.connect(_on_camara_pulsada_derecha)
+	_corte_tierra.camara_sobrevolada.connect(_on_camara_sobrevolada)
+	_corte_tierra.vista_cambiada.connect(func() -> void:
+		if _ficha_mejoras.visible:
+			_posicionar_ficha())
+	_pestanas = _corte_tierra.etiquetas
+	for id in _pestanas:
+		var boton: Button = _pestanas[id]
+		var color: Color = COLORES_SECCIONES[id]
 		for estado in ["normal", "hover", "pressed", "focus"]:
-			var caja := Estilo.caja(Color(datos.color, .07 if estado != "normal" else 0), 35, Color(datos.color, .4 if estado != "normal" else 0), 1, 10)
-			caja.content_margin_left = 75
-			boton.add_theme_stylebox_override(estado, caja)
-		boton.pressed.connect(_cambiar_pestana.bind(id))
-		if id != "hogar":
-			var cerrada := Control.new()
-			_anclar(cerrada, datos.pos, Vector2(236, 92), Vector2.ZERO)
-			cerrada.tooltip_text = tr("Cámara por desarrollar")
-			base.add_child(cerrada)
-			var nombre := Estilo.etiqueta(tr(NOMBRES_PESTANAS[id]), 21, Color("aa9b84"))
-			nombre.position = Vector2(81, 32)
-			nombre.size.x = 143
-			nombre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			cerrada.add_child(nombre)
-			var futuro := EscenaSeccion.new()
-			futuro.seccion = id
-			futuro.tinta = datos.color.darkened(.45)
-			futuro.position = Vector2(10, 14)
-			futuro.scale = Vector2.ONE * .7
-			futuro.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			cerrada.add_child(futuro)
-			var cerrojo := CerrojoCamara.new()
-			cerrojo.position = Vector2(211, 7)
-			cerrojo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			cerrada.add_child(cerrojo)
-			_secciones_por_descubrir[id] = cerrada
-		base.add_child(boton)
-		var escena := EscenaSeccion.new()
-		escena.seccion = id
-		escena.tinta = datos.color
-		escena.position = Vector2(10, 14)
-		escena.size = Vector2(80, 80)
-		escena.scale = Vector2.ONE * .7
-		escena.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		boton.add_child(escena)
-		_pestanas[id] = boton
-	for rama in SALAS:
-		var datos: Dictionary = SALAS[rama]
-		var boton := Button.new()
-		_anclar(boton, datos.pos, Vector2(162, 112), Vector2(0, 17))
-		boton.tooltip_text = tr(datos.titulo) + ": " + tr(datos.detalle)
-		for estado in ["normal", "hover", "pressed", "focus"]:
-			boton.add_theme_stylebox_override(estado, StyleBoxEmpty.new() if estado == "normal" else Estilo.caja(Color(datos.color, .05), 30, Color(datos.color, .2), 1, 0))
-		boton.pressed.connect(_seleccionar.bind(rama))
-		base.add_child(boton)
-		var icono := IconoSala.new()
-		icono.rama = rama
-		icono.color = datos.color
-		icono.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icono.position = Vector2(51, 4)
-		icono.size = Vector2(80, 80)
-		icono.scale = Vector2.ONE * .75
-		boton.add_child(icono)
-		var etiqueta := Estilo.etiqueta(tr(datos.titulo), 18, datos.color)
-		etiqueta.position = Vector2(0, 69)
-		etiqueta.size.x = 162
-		etiqueta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		boton.add_child(etiqueta)
-		var aviso := Estilo.etiqueta("", 12, Color("b8d891"))
-		aviso.position = Vector2(0, 92)
-		aviso.size.x = 162
-		aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		boton.add_child(aviso)
-		_salas[rama] = {"boton": boton, "icono": icono, "aviso": aviso}
-	for m in Juego.mejoras:
-		var boton := Button.new()
-		_anclar(boton, _corte_tierra.posicion_mejora(m.id), Vector2(170, 96), Vector2(0, 20))
-		for estado in ["normal", "hover", "pressed", "focus"]:
-			boton.add_theme_stylebox_override(estado, StyleBoxEmpty.new() if estado == "normal" else Estilo.caja(Color(SALAS[m.rama].color, .05), 28, Color(SALAS[m.rama].color, .32), 1, 0))
-		boton.pressed.connect(_seleccionar_mejora.bind(m.id))
-		base.add_child(boton)
-		var simbolo := SelloMejora.new()
-		simbolo.stat = m.stat
-		simbolo.color = SALAS[m.rama].color
-		simbolo.position = Vector2(65, 10)
-		simbolo.size = Vector2(40, 40)
-		simbolo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		boton.add_child(simbolo)
-		var nombre := Estilo.etiqueta(tr(m.nombre), 16, Estilo.TEXTO)
-		nombre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		nombre.position = Vector2(0, 57)
-		nombre.size = Vector2(170, 42)
-		nombre.max_lines_visible = 2
-		nombre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		nombre.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		boton.add_child(nombre)
-		var nivel := Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
-		nivel.position = Vector2(111, 18)
-		boton.add_child(nivel)
-		_nodos_mejoras[m.id] = {"boton": boton, "icono": simbolo, "nivel": nivel, "nombre": nombre}
+			boton.add_theme_stylebox_override(estado, Estilo.caja(Color(0.09, 0.07, 0.05, 0.82 if estado == "normal" else 0.95), 10, Color(color, 0.35 if estado == "normal" else 0.8), 1, 8))
+		boton.add_theme_color_override("font_color", color)
+		boton.add_theme_color_override("font_hover_color", color.lightened(0.25))
 	return panel
 
 
-func _anclar(control: Control, pos: Vector2, tamano: Vector2, desplazamiento: Vector2) -> void:
-	control.anchor_left = pos.x
-	control.anchor_right = pos.x
-	control.anchor_top = pos.y
-	control.anchor_bottom = pos.y
-	control.offset_left = -tamano.x * .5 + desplazamiento.x
-	control.offset_right = tamano.x * .5 + desplazamiento.x
-	control.offset_top = -tamano.y * .5 + desplazamiento.y
-	control.offset_bottom = tamano.y * .5 + desplazamiento.y
+## Las siete ramas con su color y cuántas cámaras podés comprar ahora.
+## Un clic encuadra la rama entera.
+func _crear_leyenda() -> Control:
+	var caja := HFlowContainer.new()
+	caja.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	caja.position = Vector2(14, 12)
+	caja.add_theme_constant_override("h_separation", 6)
+	caja.add_theme_constant_override("v_separation", 6)
+	for rama in SALAS:
+		var datos: Dictionary = SALAS[rama]
+		var boton := Button.new()
+		boton.focus_mode = Control.FOCUS_NONE
+		boton.add_theme_font_size_override("font_size", 14)
+		boton.add_theme_color_override("font_color", datos.color)
+		boton.add_theme_color_override("font_hover_color", datos.color.lightened(0.25))
+		for estado in ["normal", "hover", "pressed", "focus"]:
+			boton.add_theme_stylebox_override(estado, Estilo.caja(Color(0.09, 0.07, 0.05, 0.78 if estado == "normal" else 0.95), 8, Color(datos.color, 0.25 if estado == "normal" else 0.7), 1, 7))
+		boton.tooltip_text = tr(datos.titulo) + ": " + tr(datos.detalle)
+		boton.pressed.connect(_encuadrar_rama.bind(rama))
+		caja.add_child(boton)
+		_leyenda[rama] = boton
+	return caja
+
+
+func _encuadrar_rama(rama: String) -> void:
+	var zona := PlanoHormiguero.rect(SALAS[rama].raiz)
+	for id in _estados:
+		if rama in String(_estados[id].get("rama", "")).split("|"):
+			zona = zona.merge(PlanoHormiguero.rect(id))
+	Sonido.tocar("clic", 0.85)
+	_corte_tierra.encuadrar(zona.grow(50), true, 1.1)
+
 
 func _crear_compra_lotes() -> Control:
 	var fila := HBoxContainer.new()
@@ -582,7 +333,7 @@ func _cambiar_pestana(id: String) -> void:
 	_cuerpo_mejoras.visible = id == "hogar"
 	_panel_seccion.visible = id != "hogar"
 	_titulo_seccion.text = tr(NOMBRES_PESTANAS[id])
-	_ficha_mejoras.hide()
+	_cerrar_ficha()
 	_panel_castas.visible = id == "castas"
 	_panel_viajes.visible = id == "viajes"
 	_panel_legado.visible = id == "legado"
@@ -590,92 +341,409 @@ func _cambiar_pestana(id: String) -> void:
 		_panel_viajes.refrescar()
 	elif id == "legado":
 		_panel_legado.refrescar()
-	for clave in _pestanas:
-		var color: Color = SECCIONES[clave].color
-		var caja := Estilo.caja(Color.TRANSPARENT, 48, Color.TRANSPARENT, 0, 12)
-		caja.content_margin_left = 75
-		_pestanas[clave].add_theme_stylebox_override("normal", caja)
-		_pestanas[clave].add_theme_color_override("font_color", color if clave == id else Estilo.TEXTO)
-	_corte_tierra.seccion = id
-	_corte_tierra.queue_redraw()
-	for rama in _salas:
-		_salas[rama].icono.seleccionada = id == "hogar" and rama == _rama
-		_salas[rama].icono.queue_redraw()
+	_actualizar_revelados()
 
 
-func _crear_detalles() -> PanelContainer:
+# =====================================================================
+# Ficha de la cámara bajo el mouse
+# =====================================================================
+
+func _crear_ficha() -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(420, 340)
-	panel.size = Vector2(420, 425)
-	panel.add_theme_stylebox_override("panel", Estilo.caja(Color("1e271f"), 20, Color("8d9573"), 2, 16))
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.custom_minimum_size.x = 350
+	var caja := Estilo.caja(Color("1d221d"), 12, Color("4b5945"), 2, 0)
+	caja.shadow_color = Color(0, 0, 0, 0.5)
+	caja.shadow_size = 14
+	caja.shadow_offset = Vector2(0, 8)
+	panel.add_theme_stylebox_override("panel", caja)
 	var columna := VBoxContainer.new()
-	columna.add_theme_constant_override("separation", 8)
+	columna.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	columna.add_theme_constant_override("separation", 0)
 	panel.add_child(columna)
+	_ficha_franja = ColorRect.new()
+	_ficha_franja.custom_minimum_size.y = 6
+	_ficha_franja.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	columna.add_child(_ficha_franja)
+	var margen := MarginContainer.new()
+	margen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for lado in ["left", "right"]:
+		margen.add_theme_constant_override("margin_" + lado, 14)
+	margen.add_theme_constant_override("margin_top", 10)
+	margen.add_theme_constant_override("margin_bottom", 12)
+	columna.add_child(margen)
+	var textos := VBoxContainer.new()
+	textos.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	textos.add_theme_constant_override("separation", 6)
+	margen.add_child(textos)
 	var fila := HBoxContainer.new()
-	columna.add_child(fila)
-	_lbl_sala = Estilo.etiqueta("", 25)
+	fila.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	textos.add_child(fila)
+	_lbl_sala = Estilo.etiqueta("", 19)
 	_lbl_sala.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lbl_sala.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lbl_sala.custom_minimum_size.x = 240
 	fila.add_child(_lbl_sala)
-	var cerrar := Estilo.boton("×", 22, Color("293226"), Color("4d5d45"))
-	cerrar.tooltip_text = tr("Volver al hormiguero")
-	cerrar.pressed.connect(_cerrar_ficha)
-	fila.add_child(cerrar)
-	_lbl_detalle = Estilo.etiqueta("", 14, Estilo.TEXTO_SUAVE)
-	_lbl_detalle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	columna.add_child(_lbl_detalle)
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size.y = 196
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	columna.add_child(scroll)
-	_lista = VBoxContainer.new()
-	_lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_lista.add_theme_constant_override("separation", 10)
-	scroll.add_child(_lista)
-	for m in Juego.mejoras:
-		_crear_tarjeta(m)
-	_lbl_estado = Estilo.etiqueta(tr("Las mejoras se guardan al comprar."), 12, Estilo.TEXTO_SUAVE)
-	_lbl_estado.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	columna.add_child(_lbl_estado)
+	_lbl_nivel = Estilo.etiqueta("", 15, Estilo.TEXTO_SUAVE)
+	_lbl_nivel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	fila.add_child(_lbl_nivel)
+	_lbl_rama = Estilo.etiqueta("", 11)
+	textos.add_child(_lbl_rama)
+	for nombre in ["_lbl_detalle", "_lbl_cambio", "_lbl_costo", "_lbl_estado", "_lbl_pista"]:
+		var tamano: int = {"_lbl_detalle": 14, "_lbl_cambio": 16, "_lbl_costo": 15, "_lbl_estado": 13, "_lbl_pista": 12}[nombre]
+		var color: Color = {"_lbl_detalle": Estilo.TEXTO_SUAVE, "_lbl_cambio": Estilo.VERDE, "_lbl_costo": Estilo.ACENTO, "_lbl_estado": Estilo.TEXTO_SUAVE, "_lbl_pista": Color("8d927f")}[nombre]
+		var etiqueta := Estilo.etiqueta("", tamano, color)
+		etiqueta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		etiqueta.custom_minimum_size.x = 322
+		textos.add_child(etiqueta)
+		set(nombre, etiqueta)
 	return panel
 
 
-func _crear_tarjeta(m: Dictionary) -> void:
-	var boton := Button.new()
-	boton.custom_minimum_size.y = 218
-	boton.pressed.connect(_comprar.bind(m.id))
-	_lista.add_child(boton)
-	var margen := MarginContainer.new()
-	margen.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margen.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for lado in ["left", "right", "top", "bottom"]:
-		margen.add_theme_constant_override("margin_" + lado, 13)
-	boton.add_child(margen)
-	var contenido := VBoxContainer.new()
-	contenido.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	contenido.add_theme_constant_override("separation", 5)
-	margen.add_child(contenido)
-	var fila := HBoxContainer.new()
-	fila.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	contenido.add_child(fila)
-	# Las mejoras de destino llevan una estrella: se traen de un viaje.
-	var nombre := Estilo.etiqueta(("✦ " if m.destino != "" else "") + tr(m.nombre), 19)
-	nombre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	nombre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	fila.add_child(nombre)
-	var nivel := Estilo.etiqueta("", 16, Estilo.TEXTO_SUAVE)
-	fila.add_child(nivel)
-	var descripcion := Estilo.etiqueta(tr(m.descripcion), 14, Estilo.TEXTO_SUAVE)
-	descripcion.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	contenido.add_child(descripcion)
-	var cambio := Estilo.etiqueta("", 16, Estilo.VERDE)
-	cambio.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	contenido.add_child(cambio)
-	var costo := Estilo.etiqueta("", 15, Estilo.ACENTO)
-	costo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	contenido.add_child(costo)
-	_tarjetas[m.id] = {"boton": boton, "nivel": nivel, "cambio": cambio, "costo": costo}
+func _on_camara_sobrevolada(id: String) -> void:
+	if _seccion != "hogar":
+		return
+	if id == "":
+		if _mejora_seleccionada != "":
+			_mostrar_ficha(_mejora_seleccionada)
+		else:
+			_ficha_mejoras.hide()
+			_ficha_id = ""
+		return
+	if id != _mejora_seleccionada:
+		_mejora_seleccionada = ""
+		_corte_tierra.seleccion = ""
+	_mostrar_ficha(id)
 
+
+func _on_camara_pulsada(id: String) -> void:
+	if _seccion != "hogar":
+		# Con una sección abierta, tocar el hormiguero vuelve a él sin comprar.
+		_cambiar_pestana("hogar")
+		return
+	if id == "":
+		_cerrar_ficha()
+		return
+	if id in PlanoHormiguero.SECCIONES:
+		if Juego.revelado(id):
+			Sonido.tocar("clic", 0.9)
+			_cambiar_pestana(id)
+		else:
+			Sonido.tocar("no")
+		return
+	_comprar(id)
+
+
+func _on_camara_pulsada_derecha(id: String) -> void:
+	if _seccion == "hogar" and Juego.castas_por_id.has(id) and Juego.revelado("castas"):
+		_cambiar_pestana("castas")
+		_panel_castas._seleccionar(id)
+
+
+## Acerca una cámara y deja su ficha abierta (el "Ver mejora" del pie).
+func _seleccionar_mejora(id: String) -> void:
+	_cambiar_pestana("hogar")
+	_mejora_seleccionada = id
+	_corte_tierra.seleccion = id
+	_corte_tierra.resalte.queue_redraw()
+	_corte_tierra.enfocar(id)
+	Sonido.tocar("clic", .85)
+	_mostrar_ficha(id)
+
+
+func _cerrar_ficha() -> void:
+	_ficha_mejoras.hide()
+	_ficha_id = ""
+	_mejora_seleccionada = ""
+	if is_instance_valid(_corte_tierra):
+		_corte_tierra.seleccion = ""
+		_corte_tierra.resalte.queue_redraw()
+
+
+func _mostrar_ficha(id: String) -> void:
+	if not _estados.has(id):
+		return
+	if id != _ficha_id and _aviso_compra.id != id:
+		_aviso_compra = {"id": "", "texto": ""}
+	_ficha_id = id
+	var e: Dictionary = _estados[id]
+	_ficha_franja.color = e.color
+	_lbl_sala.label_settings.font_color = Estilo.TEXTO
+	_lbl_nivel.visible = e.maximo > 0 and not e.misterio
+	_lbl_nivel.text = "%d / %d" % [e.nivel, e.maximo]
+	_lbl_rama.label_settings.font_color = e.color
+	_lbl_cambio.label_settings.font_color = Estilo.VERDE
+	_lbl_costo.label_settings.font_color = Estilo.ACENTO
+	match e.tipo:
+		"seccion": _ficha_seccion(id, e)
+		"casta": _ficha_casta(id, e)
+		_: _ficha_mejora(id, e)
+	if _aviso_compra.id == id:
+		_lbl_estado.text = _aviso_compra.texto
+	for etiqueta in [_lbl_rama, _lbl_detalle, _lbl_cambio, _lbl_costo, _lbl_estado, _lbl_pista]:
+		etiqueta.visible = etiqueta.text != ""
+	_ficha_mejoras.show()
+	_ficha_mejoras.reset_size()
+	_posicionar_ficha()
+
+
+func _ficha_mejora(id: String, e: Dictionary) -> void:
+	var m: Dictionary = Juego.mejoras_por_id[id]
+	if e.misterio:
+		_lbl_sala.text = tr("Cámara sin excavar")
+		_lbl_rama.text = _nombre_rama(m.rama)
+		_lbl_detalle.text = tr("Se descubre más adelante, en tus viajes.")
+		_lbl_cambio.text = ""
+		_lbl_costo.text = ""
+		_lbl_estado.text = ""
+		_lbl_pista.text = ""
+		return
+	var maxima := Juego.esta_al_maximo(id)
+	var oferta := Juego.cotizar_mejora(id, Juego.cantidad_compra)
+	_lbl_sala.text = ("✦ " if m.destino != "" else "") + tr(m.nombre)
+	_lbl_rama.text = _nombre_rama(m.rama)
+	_lbl_detalle.text = tr(m.descripcion)
+	_lbl_estado.text = _efecto_practico(m.stat)
+	if not e.abierta:
+		if m.destino != "" and not Juego.destino_desbloqueado(m.destino):
+			_lbl_cambio.text = tr("Se descubre al llegar a %s") % tr(Mundos.INFO[m.destino].nombre)
+		else:
+			_lbl_cambio.text = texto_requisitos(Juego.requisitos_faltantes(m.requisitos))
+		_lbl_cambio.label_settings.font_color = Estilo.TEXTO_SUAVE
+		_lbl_costo.text = tr("Cámara por desarrollar")
+		_lbl_costo.label_settings.font_color = Estilo.TEXTO_SUAVE
+		_lbl_pista.text = ""
+		return
+	if maxima:
+		if m.tope_por_destino > 0 and Juego.lugares_completados.size() < Mundos.ORDEN.size():
+			_lbl_cambio.text = tr("Tope alcanzado: cada destino conquistado suma %d niveles.") % m.tope_por_destino
+		elif m.elevable and not Juego.jalea_al_maximo("techo"):
+			_lbl_cambio.text = tr("Tope alcanzado: las Cámaras más hondas de la reina suman niveles.")
+		else:
+			_lbl_cambio.text = tr("Tu colonia domina esta habilidad.")
+		_lbl_costo.text = tr("COMPLETA")
+		_lbl_pista.text = ""
+		return
+	if m.stat == "materiales":
+		_lbl_cambio.text = tr("Nueva dieta: %s") % _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))
+	else:
+		_lbl_cambio.text = "%s  →  %s" % [_valor_stat(m.stat, Juego.stat(m.stat)), _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))]
+	var hito := Juego.proximo_hito_nivel(id)
+	if hito > 0:
+		_lbl_cambio.text += "\n" + tr("Hito en nivel %d: daño ×%s") % [hito, _numero_corto(m.bonus_mult)]
+	if oferta.puede:
+		_lbl_costo.text = tr("Comprar ×%d · %s migas") % [oferta.cantidad, Juego.formatear(oferta.costo)]
+		_lbl_pista.text = tr("Clic para mejorar")
+	else:
+		_lbl_costo.text = tr("Faltan %s migas") % Juego.formatear(maxf(0, oferta.costo - Juego.migas))
+		_lbl_costo.label_settings.font_color = Estilo.TEXTO_SUAVE
+		_lbl_pista.text = ""
+
+
+func _ficha_casta(id: String, e: Dictionary) -> void:
+	var c: Dictionary = Juego.castas_por_id[id]
+	if e.misterio:
+		_lbl_sala.text = tr("Cámara por desarrollar")
+		_lbl_rama.text = tr("CASTAS")
+		_lbl_detalle.text = tr("Las especialistas aparecen después de tu cuarta expedición.")
+		_lbl_cambio.text = ""
+		_lbl_costo.text = ""
+		_lbl_estado.text = ""
+		_lbl_pista.text = ""
+		return
+	_lbl_sala.text = tr(c.nombre)
+	_lbl_sala.label_settings.font_color = c.color.lightened(0.25)
+	_lbl_rama.text = tr("CASTA · %s") % tr(c.rol).to_upper()
+	_lbl_detalle.text = tr(c.habilidad)
+	_lbl_estado.text = _panel_castas.consejo_equipo(id)
+	_lbl_pista.text = tr("Clic derecho: ficha completa y evoluciones")
+	var oferta := Juego.cotizar_casta(id, Juego.cantidad_compra)
+	if not e.abierta:
+		_lbl_cambio.text = texto_requisitos(Juego.requisitos_faltantes(c.requisitos))
+		_lbl_cambio.label_settings.font_color = Estilo.TEXTO_SUAVE
+		_lbl_costo.text = tr("Cámara por desarrollar")
+		_lbl_costo.label_settings.font_color = Estilo.TEXTO_SUAVE
+	elif e.nivel >= e.maximo:
+		_lbl_cambio.text = tr("Compra permanente: esta unidad saldrá en cada expedición.")
+		_lbl_costo.text = tr("Colonia completa")
+	else:
+		_lbl_cambio.text = tr("Compra permanente: esta unidad saldrá en cada expedición.")
+		if oferta.puede:
+			_lbl_costo.text = tr("Reclutar ×%d · %s migas") % [maxi(1, oferta.cantidad), Juego.formatear(oferta.costo)]
+			_lbl_pista.text = tr("Clic para reclutar · clic derecho: ficha completa y evoluciones")
+		else:
+			_lbl_costo.text = tr("Faltan %s migas") % Juego.formatear(maxf(0, oferta.costo - Juego.migas))
+			_lbl_costo.label_settings.font_color = Estilo.TEXTO_SUAVE
+
+
+func _ficha_seccion(id: String, e: Dictionary) -> void:
+	_lbl_sala.text = tr(NOMBRES_PESTANAS[id])
+	_lbl_rama.text = ""
+	_lbl_cambio.text = ""
+	_lbl_costo.text = ""
+	_lbl_estado.text = ""
+	_lbl_pista.text = tr("Clic para entrar") if e.abierta else ""
+	match id:
+		"viajes":
+			_lbl_detalle.text = tr("Elegí el próximo destino. Conquistaste %d de %d.") % [Juego.lugares_completados.size(), Mundos.ORDEN.size()] if e.abierta else tr("Se abre al conquistar el gran objetivo de la casa.")
+		"castas":
+			_lbl_detalle.text = tr("Fichas completas, evoluciones y equipo de tus especialistas.") if e.abierta else tr("Las especialistas aparecen después de tu cuarta expedición.")
+		"legado":
+			_lbl_detalle.text = tr("Fundá colonias nuevas y mejorá a la reina. Tenés %d de jalea.") % Juego.jalea if e.abierta else tr("Se abre con tu primer hito o tu primera corona.")
+
+
+func _nombre_rama(rama: String) -> String:
+	if rama == "Fondo":
+		return tr("EL FONDO DEL HORMIGUERO")
+	var partes := PackedStringArray()
+	for parte in rama.split("|"):
+		partes.append(tr(parte).to_upper())
+	return " + ".join(partes)
+
+
+func _posicionar_ficha() -> void:
+	if _ficha_id == "" or not is_instance_valid(_corte_tierra):
+		return
+	var tam := _ficha_mejoras.get_combined_minimum_size()
+	_ficha_mejoras.size = tam
+	var r := _corte_tierra.rect_en_pantalla(_ficha_id)
+	r.position += _corte_tierra.global_position - _area_nido.global_position
+	var x := r.end.x + 18.0
+	if x + tam.x > _area_nido.size.x - 10.0:
+		x = r.position.x - tam.x - 18.0
+	_ficha_mejoras.position = Vector2(clampf(x, 10.0, maxf(10.0, _area_nido.size.x - tam.x - 10.0)), clampf(r.get_center().y - 70.0, 10.0, maxf(10.0, _area_nido.size.y - tam.y - 10.0)))
+
+
+# =====================================================================
+# Estado de cada cámara
+# =====================================================================
+
+func _calcular_estados() -> Dictionary:
+	var estados := {}
+	var castas_vistas := Juego.revelado("castas")
+	var viajes_vistos := Juego.revelado("viajes")
+	for id in PlanoHormiguero.CAMARAS:
+		var e := {"tipo": "mejora", "rama": "", "kit": "comun", "mezcla": [], "color": Estilo.ACENTO, "nivel": 0, "maximo": 0,
+			"lleno": 0.0, "abierta": false, "puede": false, "lejana": false, "misterio": false, "extra": 0, "seccion": false}
+		if id in PlanoHormiguero.SECCIONES:
+			e.tipo = "seccion"
+			e.seccion = true
+			e.abierta = Juego.revelado(id)
+			e.color = COLORES_SECCIONES[id]
+			e.lleno = 1.0
+			match id:
+				"viajes":
+					e.kit = "viajes"
+					e.extra = Juego.lugares_completados.size()
+				"castas":
+					e.kit = "castas"
+					e.lleno = clampf(Juego.total_especialistas() / 12.0, 0.0, 1.0)
+				"legado":
+					e.kit = "reina"
+					e.extra = mini(6, Juego.fundaciones)
+		elif Juego.mejoras_por_id.has(id):
+			var m: Dictionary = Juego.mejoras_por_id[id]
+			e.rama = m.rama
+			e.kit = ArteCamara.kit_de(m.rama)
+			e.mezcla = ArteCamara.mezcla_de(m.rama) if e.kit == "comun" else []
+			e.color = ArteCamara.color_de(m.rama) if e.kit != "comun" else ArteCamara.COLORES.comun
+			e.nivel = Juego.nivel_de(id)
+			e.maximo = Juego.nivel_maximo(id)
+			e.misterio = m.destino != "" and not viajes_vistos
+			e.abierta = Juego.esta_desbloqueada(id) and not e.misterio
+			e.puede = e.abierta and Juego.cotizar_mejora(id, Juego.cantidad_compra).puede
+		elif Juego.castas_por_id.has(id):
+			e.tipo = "casta"
+			e.rama = "Castas"
+			e.kit = "castas"
+			e.color = Juego.castas_por_id[id].color.lerp(SALAS.Castas.color, 0.55)
+			e.nivel = Juego.cantidad_casta(id)
+			e.maximo = Juego.maximo_casta(id)
+			e.misterio = not castas_vistas
+			e.abierta = castas_vistas and Juego.casta_desbloqueada(id)
+			e.puede = e.abierta and Juego.cotizar_casta(id, Juego.cantidad_compra).puede
+		else:
+			continue
+		if e.tipo != "seccion" and e.nivel > 0 and e.maximo > 0:
+			e.lleno = 0.15 + 0.85 * sqrt(clampf(float(e.nivel) / e.maximo, 0.0, 1.0))
+		estados[id] = e
+	# Lejanas: ninguna de las cámaras que llevan a ellas tiene niveles todavía.
+	var alcanzadas := {}
+	for tunel in PlanoHormiguero.TUNELES:
+		if estados.has(tunel[1]) and (tunel[0] == "legado" or _nivel(tunel[0]) > 0):
+			alcanzadas[tunel[1]] = true
+	for id in estados:
+		var e: Dictionary = estados[id]
+		e.lejana = e.tipo != "seccion" and not e.abierta and e.nivel == 0 and not alcanzadas.has(id)
+	return estados
+
+
+func _nivel(id: String) -> int:
+	if Juego.mejoras_por_id.has(id):
+		return Juego.nivel_de(id)
+	return Juego.cantidad_casta(id) if Juego.castas_por_id.has(id) else 0
+
+
+## Cuánto está cavado cada túnel y qué rastro deja. Un túnel hacia una cámara
+## cerrada se va cavando a medida que sube el requisito del que sale.
+func _calcular_tuneles() -> Array:
+	var cavado: Array[float] = []
+	var rastros: Array[String] = []
+	for tunel in PlanoHormiguero.TUNELES:
+		var desde: String = tunel[0]
+		var hasta: String = tunel[1]
+		var valor := 1.0
+		var rastro := ""
+		if hasta in PlanoHormiguero.SECCIONES and not desde in ["boca", "viajes", "castas"]:
+			valor = 1.0 if _nivel(desde) > 0 else 0.0
+		elif desde != "boca" and not desde in PlanoHormiguero.SECCIONES:
+			var e: Dictionary = _estados.get(hasta, {})
+			if e.is_empty() or e.misterio:
+				valor = 0.0
+			elif not e.abierta and e.nivel == 0:
+				valor = clampf(float(_nivel(desde)) / maxf(1.0, _nivel_pedido(hasta, desde)), 0.0, 1.0) * 0.9
+			if valor >= 1.0 and e.get("nivel", 0) > 0:
+				var kit_hasta: String = e.kit
+				var kit_desde: String = _estados.get(desde, {}).get("kit", "")
+				if ArteCamara.RASTROS.has(kit_hasta):
+					rastro = kit_hasta
+				elif kit_hasta == "comun" and ArteCamara.RASTROS.has(kit_desde):
+					rastro = kit_desde
+		cavado.append(valor)
+		rastros.append(rastro)
+	return [cavado, rastros]
+
+
+## El nivel que una cámara pide de otra para abrirse.
+func _nivel_pedido(id: String, requisito: String) -> float:
+	var requisitos: Array = Juego.mejoras_por_id[id].requisitos if Juego.mejoras_por_id.has(id) else Juego.castas_por_id[id].requisitos
+	for r in requisitos:
+		if r.id == requisito:
+			return float(r.nivel)
+	return 1.0
+
+
+func disponibles_por_rama() -> Dictionary:
+	var cuenta := {}
+	for rama in SALAS:
+		cuenta[rama] = 0
+	for id in _estados:
+		var e: Dictionary = _estados[id]
+		if e.puede:
+			for parte in String(e.rama).split("|"):
+				if cuenta.has(parte):
+					cuenta[parte] += 1
+	return cuenta
+
+
+## Centro de una cámara en coordenadas globales (para clics de las pruebas).
+func posicion_camara(id: String) -> Vector2:
+	return _corte_tierra.get_global_transform() * _corte_tierra.rect_en_pantalla(id).get_center()
+
+
+# =====================================================================
+# Refresco, pie y compras
+# =====================================================================
 
 func _pie() -> Control:
 	var fila := HBoxContainer.new()
@@ -709,36 +777,6 @@ func _ir_al_menu() -> void:
 	get_tree().change_scene_to_file("res://ui/menu.tscn")
 
 
-func _seleccionar(rama: String) -> void:
-	_rama = rama
-	_mejora_seleccionada = ""
-	_cambiar_pestana("hogar")
-	_ficha_mejoras.show()
-	Sonido.tocar("clic", 0.85)
-	_refrescar()
-	_lbl_estado.text = tr("Elegí una mejora para ver qué cambia.")
-	_posicionar_ficha()
-	_posicionar_ficha.call_deferred()
-
-
-func _seleccionar_mejora(id: String) -> void:
-	_rama = Juego.mejoras_por_id[id].rama
-	_cambiar_pestana("hogar")
-	_mejora_seleccionada = id
-	_ficha_mejoras.show()
-	Sonido.tocar("clic", .85)
-	_refrescar()
-	_lbl_estado.text = _efecto_practico(Juego.mejoras_por_id[id].stat)
-	_posicionar_ficha()
-	_posicionar_ficha.call_deferred()
-
-
-func _cerrar_ficha() -> void:
-	_ficha_mejoras.hide()
-	_mejora_seleccionada = ""
-	_refrescar()
-
-
 func _on_migas_cambiaron(_total: float) -> void:
 	_refrescar()
 
@@ -750,88 +788,19 @@ func _refrescar() -> void:
 	_boton_run.tooltip_text = tr("Destino: %s") % tr(Mundos.INFO[Juego.lugar_actual].nombre)
 	for cantidad in _cantidades:
 		_cantidades[cantidad].add_theme_stylebox_override("normal", Estilo.caja(Color("536649") if cantidad == Juego.cantidad_compra else Color("282f26"), 10, Color("94b47e") if cantidad == Juego.cantidad_compra else Color("46503f"), 1, 10))
-	_lbl_sala.text = tr(SALAS[_rama].titulo)
-	_lbl_sala.label_settings.font_color = SALAS[_rama].color
-	_lbl_detalle.text = tr(SALAS[_rama].detalle)
-	_lbl_detalle.visible = _mejora_seleccionada == ""
 	_lbl_proxima.text = tr("%d obreras + %d especialistas  ·  %d s  ·  %d cm") % [int(Juego.stat("hormigas_iniciales")), Juego.total_especialistas(), int(Juego.stat("duracion_run")), int(Juego.stat("radio_territorio") / 10.0)]
 	if Juego.decretos_por_id.has(Juego.decreto):
 		_lbl_proxima.text += "  ·  " + tr(Juego.decretos_por_id[Juego.decreto].nombre)
-	for rama in _salas:
-		var total := 0
-		var disponibles := 0
-		for m in Juego.mejoras:
-			if m.rama == rama and _mejora_visible(m):
-				total += Juego.nivel_de(m.id)
-				if Juego.cotizar_mejora(m.id, Juego.cantidad_compra).puede:
-					disponibles += 1
-		_salas[rama].icono.disponibles = disponibles
-		_salas[rama].aviso.text = (tr("1 disponible") if disponibles == 1 else tr("%d disponibles") % disponibles) if disponibles > 0 else ""
-		_salas[rama].icono.nivel = total
-		_salas[rama].icono.seleccionada = _seccion == "hogar" and rama == _rama
-		_salas[rama].icono.queue_redraw()
-	var estados := {}
-	for id in _tarjetas:
-		var t: Dictionary = _tarjetas[id]
-		var m: Dictionary = Juego.mejoras_por_id[id]
-		var boton: Button = t.boton
-		boton.visible = m.rama == _rama and _mejora_visible(m) and (_mejora_seleccionada == "" or _mejora_seleccionada == id)
-		var abierta := Juego.esta_desbloqueada(id)
-		var maxima := Juego.esta_al_maximo(id)
-		var oferta := Juego.cotizar_mejora(id, Juego.cantidad_compra)
-		var disponible: bool = oferta.puede
-		var color: Color = SALAS[m.rama].color
-		t.nivel.text = "%d / %d" % [Juego.nivel_de(id), Juego.nivel_maximo(id)]
-		if not abierta:
-			if m.destino != "" and not Juego.destino_desbloqueado(m.destino):
-				t.cambio.text = tr("Se descubre al llegar a %s") % tr(Mundos.INFO[m.destino].nombre)
-			else:
-				t.cambio.text = texto_requisitos(Juego.requisitos_faltantes(m.requisitos))
-		elif maxima:
-			if m.tope_por_destino > 0 and Juego.lugares_completados.size() < Mundos.ORDEN.size():
-				t.cambio.text = tr("Tope alcanzado: cada destino conquistado suma %d niveles.") % m.tope_por_destino
-			elif m.elevable and not Juego.jalea_al_maximo("techo"):
-				t.cambio.text = tr("Tope alcanzado: las Cámaras más hondas de la reina suman niveles.")
-			else:
-				t.cambio.text = tr("Tu colonia domina esta habilidad.")
-		else:
-			if m.stat == "materiales":
-				t.cambio.text = tr("Nueva dieta: %s") % _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))
-			else:
-				t.cambio.text = "%s  →  %s" % [_valor_stat(m.stat, Juego.stat(m.stat)), _valor_stat(m.stat, Juego.stat_tras_comprar(id, maxi(1, oferta.cantidad)))]
-			var hito := Juego.proximo_hito_nivel(id)
-			if hito > 0:
-				t.cambio.text += "\n" + tr("Hito en nivel %d: daño ×%s") % [hito, _numero_corto(m.bonus_mult)]
-		t.cambio.label_settings.font_color = color if abierta else Estilo.TEXTO_SUAVE
-		t.costo.text = tr("COMPLETA") if maxima else (tr("Comprar ×%d · %s migas") % [oferta.cantidad, Juego.formatear(oferta.costo)] if disponible else tr("Faltan %s migas") % Juego.formatear(maxf(0, oferta.costo - Juego.migas)))
-		if not abierta:
-			t.costo.text = tr("Cámara por desarrollar")
-		t.costo.label_settings.font_color = color if disponible else Estilo.TEXTO_SUAVE
-		var fondo := Color("333c2d") if disponible else Color("252b24")
-		boton.add_theme_stylebox_override("normal", Estilo.caja(fondo, 12, Color(color, 0.55 if disponible else 0.12), 1, 0))
-		boton.add_theme_stylebox_override("hover", Estilo.caja(fondo.lightened(0.06), 12, color, 1, 0))
-		boton.add_theme_stylebox_override("pressed", Estilo.caja(fondo.darkened(0.08), 12, color, 2, 0))
-		boton.add_theme_stylebox_override("focus", Estilo.caja(Color.TRANSPARENT, 12, color, 2, 0))
-		boton.modulate.a = 1.0 if abierta else 0.6
-		var nodo: Dictionary = _nodos_mejoras[id]
-		nodo.boton.visible = _mejora_visible(m)
-		nodo.nivel.text = "%d/%d" % [Juego.nivel_de(id), Juego.nivel_maximo(id)]
-		nodo.nombre.label_settings.font_color = color.lightened(.15) if Juego.nivel_de(id) > 0 else (Estilo.TEXTO if abierta else Color("baa88b"))
-		nodo.icono.nivel = Juego.nivel_de(id)
-		nodo.icono.abierta = abierta
-		nodo.icono.queue_redraw()
-		nodo.boton.tooltip_text = tr(m.nombre) + "\n" + tr(m.descripcion) + "\n" + t.cambio.text + "\n" + t.costo.text
-		estados[id] = {"nivel": Juego.nivel_de(id), "puede": disponible, "abierta": abierta, "visible": _mejora_visible(m)}
-	_corte_tierra.actualizar(estados, _mejora_seleccionada, _seccion)
-	_actualizar_transito()
-
-
-func _actualizar_transito() -> void:
-	_animacion_hormiguero.indices_rutas.clear()
-	for i in _corte_tierra.caminos.size():
-		var id: String = _corte_tierra.caminos[i].id
-		if id == "" or _corte_tierra.estados.get(id, {}).get("visible", true):
-			_animacion_hormiguero.indices_rutas.append(i)
+	_estados = _calcular_estados()
+	var tuneles := _calcular_tuneles()
+	_corte_tierra.actualizar(_estados, tuneles[0], tuneles[1])
+	var disponibles := disponibles_por_rama()
+	for rama in _leyenda:
+		var boton: Button = _leyenda[rama]
+		boton.text = "●  " + tr(rama) + ("   %d" % disponibles[rama] if disponibles[rama] > 0 else "")
+		boton.visible = rama != "Castas" or Juego.revelado("castas")
+	if _ficha_mejoras.visible and _ficha_id != "":
+		_mostrar_ficha(_ficha_id)
 
 
 ## "Requiere Buche grande · nivel 2" o, si faltan varios, "Requiere: Buche grande nivel 2 + Cría acelerada nivel 3".
@@ -848,14 +817,14 @@ func _numero_corto(n: float) -> String:
 	return str(int(n)) if is_equal_approx(n, roundf(n)) else "%.2f" % n
 
 
-## Pestañas y compra por lote aparecen recién cuando sirven; las nuevas
+## Secciones y compra por lote aparecen recién cuando sirven; las nuevas
 ## llevan un punto hasta que el jugador las abre.
 func _actualizar_revelados() -> void:
-	for id in ["castas", "viajes", "legado"]:
+	for id in _pestanas:
 		var boton: Button = _pestanas[id]
 		boton.visible = Juego.revelado(id)
-		_secciones_por_descubrir[id].visible = not boton.visible
 		boton.text = tr(NOMBRES_PESTANAS[id]) + ("  ● " + tr("¡Nuevo!") if Juego.es_nuevo(id) else "")
+	_corte_tierra._ubicar_etiquetas()
 	var lotes := Juego.revelado("compra_lote")
 	_lbl_comprar.visible = lotes
 	for cantidad in _cantidades:
@@ -878,6 +847,18 @@ func _valor_stat(stat: String, valor: float) -> String:
 		"capacidad": return tr("%d bocados") % int(valor)
 		"dano_clic": return tr("%s de daño por pisotón") % Juego.formatear(valor)
 		"pisotones_auto": return tr("%.1f pisotones automáticos/s") % valor
+		"retirada": return tr("%.0f s de retirada") % valor
+		"frenesi_duracion": return tr("%.0f s de frenesí") % valor
+		"frenesi_ritmo": return tr("frenesí ×%.2f") % valor
+		"bonus_destruir": return tr("%d%% al destruir") % roundi(valor * 100.0)
+		"botin_eventos": return tr("%d%% de la run por botín") % roundi(valor * 100.0)
+		"intervalo_doradas": return tr("una dorada cada %.0f s") % ((Eventos.ENTRE_DORADAS.x + Eventos.ENTRE_DORADAS.y) * 0.5 * valor)
+		"fuerza_especialistas": return tr("especialistas ×%.2f") % valor
+		"limite_castas": return tr("+%d por casta") % int(valor)
+		"tesoros_extra": return tr("%d alimentos por escondite") % (3 + int(valor))
+		"domino": return tr("%d%% a dos vecinas") % roundi(valor * 100.0)
+		"corrosion_factor": return tr("+%d%% sobre lo corroído") % roundi(valor * 100.0)
+		"festin_duracion": return tr("%.0f s de festín") % valor
 	return tr("%s de daño") % ("%.1f" % valor if valor < 1000.0 else Juego.formatear(valor))
 
 
@@ -897,26 +878,55 @@ func _efecto_practico(stat: String) -> String:
 		"duracion_run": return tr("Tienen más tiempo para extraer y transportar antes de la retirada.")
 		"multiplicador_migas": return tr("Cada recurso entregado vale más. Lo que queda en camino todavía no se cobra.")
 		"pisotones_auto", "dano_clic": return tr("El apoyo automático corta comida cerca del cursor, sin agregar daño al clic manual.")
+		"retirada": return tr("Al final de la expedición tienen más tiempo para entregar lo que llevan.")
+		"frenesi_duracion", "frenesi_ritmo": return tr("Cada depósito carga el frenesí: con veinte seguidos la colonia acelera.")
+		"bonus_destruir": return tr("Terminar una comida o una pieza paga un extra, además de lo que se transporta.")
+		"botin_eventos", "intervalo_doradas": return tr("Pisar las migas doradas y vencer amenazas paga más: conviene mirar la pantalla.")
+		"fuerza_especialistas", "limite_castas": return tr("Las especialistas reclutadas salen en todas las expediciones.")
+		"tesoros_extra": return tr("Las alacenas, heladeras y vitrinas que se abren sueltan más comida.")
+		"domino": return tr("Al caer un mueble devorado sacude a los vecinos: un derrumbe puede abrir varios.")
+		"corrosion_factor": return tr("Las hormigas rojas ablandan los materiales para todo el grupo.")
+		"festin_duracion": return tr("Los festines del restaurante cargan el frenesí al doble.")
 	return tr("Las mejoras se guardan al comprar.")
 
 
 func _comprar(id: String) -> void:
-	var stat: String = Juego.mejoras_por_id[id].stat
-	var antes := Juego.stat(stat)
-	var compradas := Juego.comprar_lote(id, Juego.cantidad_compra)
-	if compradas == 0:
-		Sonido.tocar("no")
-		_lbl_estado.text = tr("Te faltan migas o una mejora previa. ¡Otra expedición!")
+	var texto := ""
+	if Juego.castas_por_id.has(id) and not Juego.mejoras_por_id.has(id):
+		if not Juego.revelado("castas"):
+			Sonido.tocar("no")
+			return
+		var reclutadas := Juego.comprar_castas_lote(id, Juego.cantidad_compra)
+		if reclutadas == 0:
+			Sonido.tocar("no")
+			_aviso(id, tr("Te faltan migas o una casta previa. ¡Otra expedición!"))
+			return
+		texto = tr("¡%s ×%d! Salen en todas las próximas expediciones.") % [tr(Juego.castas_por_id[id].nombre), reclutadas]
+	elif Juego.mejoras_por_id.has(id):
+		if _estados.get(id, {}).get("misterio", false):
+			Sonido.tocar("no")
+			return
+		var stat: String = Juego.mejoras_por_id[id].stat
+		var antes := Juego.stat(stat)
+		var compradas := Juego.comprar_lote(id, Juego.cantidad_compra)
+		if compradas == 0:
+			Sonido.tocar("no")
+			_aviso(id, tr("Te faltan migas o una mejora previa. ¡Otra expedición!"))
+			return
+		texto = tr("¡%s +%d niveles!\n%s → %s") % [tr(Juego.mejoras_por_id[id].nombre), compradas, _valor_stat(stat, antes), _valor_stat(stat, Juego.stat(stat))]
+	else:
 		return
 	Sonido.tocar("comprar", 1.0, 0.01)
-	_lbl_estado.text = tr("¡%s +%d niveles!\n%s → %s") % [tr(Juego.mejoras_por_id[id].nombre), compradas, _valor_stat(stat, antes), _valor_stat(stat, Juego.stat(stat))]
-	var icono: Control = _nodos_mejoras[id].icono
-	if _tween_compra and _tween_compra.is_running():
-		_tween_compra.kill()
-	icono.pivot_offset = icono.size * 0.5
-	icono.scale = Vector2.ONE * 1.22
-	_tween_compra = icono.create_tween()
-	_tween_compra.tween_property(icono, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_corte_tierra.celebrar(id)
+	_aviso(id, texto)
+
+
+## Mensaje en la ficha de la cámara hasta que el mouse pase a otra.
+func _aviso(id: String, texto: String) -> void:
+	_aviso_compra = {"id": id, "texto": texto}
+	_lbl_estado.text = texto
+	if _ficha_id == id and _ficha_mejoras.visible:
+		_mostrar_ficha(id)
 
 
 func _nueva_run() -> void:

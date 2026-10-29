@@ -59,6 +59,10 @@ func probar_proxima_meta() -> void:
 	var meta := Juego.proxima_meta()
 	verificar(meta.tipo == "nivel" and meta.objetivo == 4.0 and meta.actual == 0.0, "la primera meta es subir Mandíbulas fuertes a nivel 4")
 	Juego.niveles = {"mandibulas": 4}
+	Juego._cache_stats.clear()
+	meta = Juego.proxima_meta()
+	verificar(meta.tipo == "nivel" and meta.id == "mordida_rapida" and Juego.esta_desbloqueada("mordida_rapida"), "en el hormiguero la madera está pasando la Mordida rápida, que ya se puede comprar")
+	Juego.niveles = {"mandibulas": 4, "mordida_rapida": 1}
 	Juego.migas = 300
 	Juego._cache_stats.clear()
 	meta = Juego.proxima_meta()
@@ -85,7 +89,7 @@ func probar_hud() -> void:
 	run.queue_free()
 	await get_tree().process_frame
 	Juego.runs_jugadas = 4
-	Juego.niveles = {"mandibulas": 4}
+	Juego.niveles = {"mandibulas": 4, "mordida_rapida": 1}
 	Juego.hitos.primer_derrumbe = true
 	Juego.migas = Juego.costo("mordida_madera") + 100
 	Juego._cache_stats.clear()
@@ -115,7 +119,7 @@ func probar_tienda() -> void:
 	tienda._cambiar_pestana("castas")
 	tienda._refrescar()
 	verificar(not "Nuevo" in tienda._pestanas.castas.text, "abrir la pestaña quita la marca de nuevo")
-	verificar(tienda._tarjetas.has("pisada"), "el taller conserva la mejora migrada Mandíbulas cooperativas")
+	verificar(tienda._estados.has("pisada"), "el hormiguero conserva la mejora migrada Mandíbulas cooperativas")
 	tienda.queue_free()
 	await get_tree().process_frame
 
@@ -136,6 +140,8 @@ func probar_llamado_sin_dano() -> void:
 	run.pisar(miga.position)
 	verificar(miga.vida == vida, "el clic manual no extrae alimento")
 	Juego.migas = 1000
+	Juego.niveles = {"mandibulas": 1, "buche": 1}
+	Juego._cache_stats.clear()
 	var antes := Juego.stat("dano")
 	Juego.comprar("pisada")
 	verificar(Juego.stat("dano") == antes + 0.5, "Mandíbulas cooperativas suma daño a las hormigas")

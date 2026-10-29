@@ -28,6 +28,7 @@ func _ready() -> void:
 	verificar(Juego.comprar_lote("mandibulas", 10) == 0 and Juego.migas == antes, "un lote que no alcanza no consume migas ni compra parcialmente")
 	Juego.migas = 1e9
 	verificar(Juego.comprar_lote("mandibulas_acero", 0) == 0, "Máx respeta los requisitos de las mejoras")
+	Juego.reclutadas = {"voladora": 1}
 	verificar(Juego.comprar_castas_lote("reina", 10) == 3 and Juego.cantidad_casta("reina") == 3, "los lotes de castas respetan su límite")
 	verificar(Juego.comprar_castas_lote("reina", 0) == 0, "una casta completa no se vuelve a cobrar")
 	Juego.reiniciar_estado()
@@ -35,13 +36,13 @@ func _ready() -> void:
 	var tienda := preload("res://ui/tienda.tscn").instantiate()
 	add_child(tienda)
 	Juego.cambiar_cantidad_compra(10)
-	verificar(tienda._salas.Colonia.icono.disponibles > 0 and not tienda._salas.Colonia.aviso.text.is_empty(), "la rama avisa que hay una mejora comprable")
+	verificar(tienda.disponibles_por_rama().Colonia > 0 and tienda._leyenda.Colonia.text.ends_with(str(tienda.disponibles_por_rama().Colonia)), "la rama avisa cuántas mejoras se pueden comprar")
 	antes = Juego.stat("hormigas_iniciales")
 	tienda._comprar("mas_obreras")
 	verificar(Juego.stat("hormigas_iniciales") == antes + 20, "el selector ×10 de la tienda ejecuta la compra por lotes")
 	Juego.migas = 0
 	Juego.migas_cambiaron.emit(0)
-	verificar(tienda._salas.Colonia.icono.disponibles == 0, "el aviso se apaga cuando ya no alcanza el saldo")
+	verificar(tienda.disponibles_por_rama().Colonia == 0 and tienda._leyenda.Colonia.text.ends_with("Colonia"), "el aviso se apaga cuando ya no alcanza el saldo")
 	tienda.queue_free()
 	await get_tree().process_frame
 	Juego.reiniciar_estado()
