@@ -734,3 +734,48 @@ el piloto de 35,11 minutos pertenece exclusivamente a la física anterior.
 El contenido se identifica ahora con **versión de mapa 5**, para separar
 récords de esta extracción/ritmo de los frentes de la versión 4. El formato
 de guardado no cambia y se conserva el archivo histórico de expediciones.
+
+### Campaña completa con la extracción de la versión 5 (30/10, tarde)
+
+Dos pasadas de `bot_balance` (`BOT_ORDEN=materiales`, política de fundación
+por defecto) sobre `main` con la presión de amenazas de #15. Minutos de juego
+activo del bot; no incluyen la tienda.
+
+| Hito | Pasada A | Pasada B |
+|---|---:|---:|
+| Primera casta | 7,3 | 7,5 |
+| Mandíbulas 4 | 15,0 | 17,4 |
+| Madera | 36,9 | 41,9 |
+| Resistentes | 50,0 | 69,2 |
+| Muros | 55,8 | 74,7 |
+| Casa conquistada | 61,7 | 89,7 |
+| Restaurante → fundación 1 | 67,7 | 93,0 |
+| Museo → fundación 2 | 91,2 | 124,2 |
+| Obelisco | 111,3 | 146,4 |
+| Coliseo | 114,0 | 150,6 |
+| Torre Eiffel | 117,9 | ~173 |
+
+Lo que muestran las dos pasadas:
+
+- **La primera casa es casi todo el juego.** En la pasada A, 47 de las 70
+  expediciones son de la primera casa. Antes de la madera, una expedición deja
+  entre 5 y 370 migas. Las tres primeras dejan 5 migas cada una.
+- **Con los materiales la economía explota.** Por expedición: 264K, 786K,
+  3,3M, 18M, 30M, 449M y 6,7B. La meta de la casa (4,75M) se pasa en tres
+  expediciones. El restaurante cae en dos.
+- **Desde la segunda colonia, cada destino dura una expedición.** El
+  restaurante, el museo, el Obelisco, el Coliseo y la Torre Eiffel caen en una
+  sola vuelta cada uno. Al final se cobran 197Qa por expedición.
+- **Por qué pasa:** el multiplicador de migas y el daño se apilan de forma
+  multiplicativa entre ramas. Eso da ~1,6·10⁵ en migas, y varios ×16 en daño
+  (Acero, Titanio, Legión). En cambio, el `factor` de los destinos crece de 1
+  a 11 y la `vida_meta` no acompaña. Los topes de nivel dejan los costos
+  fijos mientras el ingreso sigue creciendo, así que al final el bot compró
+  casi todo al máximo.
+- **El llamado base era de 24.** Con 24 alcanzaba a toda la colonia de la
+  primera casa (≤ 24 hormigas hasta el minuto ~55). Por eso Llamado potente,
+  la primera mejora sin requisitos, y Coordinación no hacían nada en esa
+  etapa. Además, con las dos al máximo se llegaba a 79 y el tope es 64: los
+  últimos 15 niveles de Coordinación no hacían nada. Ahora el base es 8: el
+  máximo da 63, y cada nivel cuenta desde la primera expedición. La pasada de
+  control llegó a la madera en el minuto 38,7, dentro del ruido.
