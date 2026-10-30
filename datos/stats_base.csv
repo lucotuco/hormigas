@@ -1,9 +1,10 @@
 stat,valor,descripcion
-hormigas_iniciales,8,Hormigas que salen al empezar la run
+hormigas_iniciales,1,Hormigas que salen al empezar la run
 velocidad,95,Píxeles por segundo que camina una hormiga
 dano,1,Daño de cada mordida
 dano_clic,2,Daño de la mejora automática (el clic manual no daña alimentos)
-intervalo_mordida,0.6,Segundos entre mordidas
+intervalo_mordida,0.95,Segundos entre mordidas
+tamano_bocado,6,Lado máximo en unidades del mundo de una porción arrancada; no crece con el daño ni con el zoom
 capacidad,1,Mordidas que junta una hormiga antes de volver al hormiguero
 olfato,45,Distancia en píxeles a la que una hormiga detecta comida
 feromona_cantidad,24,Hormigas más cercanas que responden al llamado mientras mantenés el clic
@@ -12,8 +13,9 @@ radio_territorio,620,Radio en píxeles del territorio explorable
 multiplicador_migas,1,Multiplicador de todas las migas recolectadas
 cria,0,Hormigas nuevas que nacen cada 10 segundos durante la run
 materiales,0,Etapa de materiales que la colonia puede devorar
-vida_silla_inicial,140,Resistencia de la primera silla de madera cercana al nido
-recompensa_silla_inicial,420,Valor de la primera silla; conserva tres migas por punto de resistencia
+vida_silla_inicial,280,Resistencia de la primera silla de madera cercana al nido
+recompensa_silla_inicial,420,Valor total de la primera silla; no crece al aumentar su resistencia
+resistencia_muebles,1.6,Multiplica la resistencia de muebles y muros sin aumentar su valor
 entradas,0,Entradas secundarias en ambientes descubiertos (hasta seis)
 retirada,6,Segundos finales para entregar la carga sin nuevas mordidas
 festin_duracion,8,Duración del festín al abrir un tesoro

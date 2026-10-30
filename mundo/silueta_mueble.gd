@@ -5,8 +5,43 @@ extends RefCounted
 ## Los huecos grandes conservan paso; el calado diminuto del hierro es sólido.
 
 static var _perfiles: Dictionary = {}
+static var _materiales: Dictionary = {}
+static var _materiales_cargados := false
+
+static func datos_material(datos: Dictionary) -> Dictionary:
+	if not _materiales_cargados:
+		_materiales_cargados = true
+		var contenido = JSON.parse_string(FileAccess.get_file_as_string("res://datos/siluetas_muebles.json"))
+		if contenido is Dictionary:
+			_materiales = contenido
+	var dibujo: Dictionary = datos.get("dibujo", datos)
+	if not dibujo.has("tipo") or not dibujo.has("rect") or not dibujo.has("color"):
+		return {}
+	return _materiales.get(Graficos.clave_mueble(dibujo), {})
+
+static func _transformar(datos: Dictionary, zonas: Array) -> Array[Rect2]:
+	var rect: Rect2 = datos.rect
+	var resultado: Array[Rect2] = []
+	for zona: Array in zonas:
+		resultado.append(Rect2(rect.position + Vector2(zona[0], zona[1]) * rect.size, Vector2(zona[2], zona[3]) * rect.size))
+	return resultado
+
+static func material(datos: Dictionary) -> Array[Rect2]:
+	var cuerpo := datos_material(datos)
+	if not cuerpo.is_empty():
+		return _transformar(datos, cuerpo.formas)
+	var resultado: Array[Rect2] = []
+	resultado.assign(datos.get("recortes", rectangulos(datos)))
+	return resultado
 
 static func rectangulos(datos: Dictionary) -> Array[Rect2]:
+	var cuerpo := datos_material(datos)
+	if not cuerpo.is_empty():
+		return _transformar(datos, cuerpo.perfil)
+	return perfil_base(datos)
+
+## Autoría estable: nunca deriva el dibujo de los metadatos que él genera.
+static func perfil_base(datos: Dictionary) -> Array[Rect2]:
 	var rect: Rect2 = datos.rect
 	var dibujo: Dictionary = datos.get("dibujo", datos)
 	var tipo := String(datos.tipo)

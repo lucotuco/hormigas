@@ -72,8 +72,9 @@ static func dibujar(l: CanvasItem, incluir_piezas := true) -> void:
 	l.draw_arc(Vector2(200, 2050), 460, 0, PI * 0.5, 40, Color(0.37, 0.29, 0.2, 0.22), 4, true)
 	# Arcos de apertura, no hojas sólidas sin colisión.
 
-static func pared(l: CanvasItem, rect: Rect2) -> void:
-	l.draw_rect(Rect2(rect.position + Vector2(12, 22), rect.size + Vector2(5, 8)), Color(0.12, 0.12, 0.1, 0.18))
+static func pared(l: CanvasItem, rect: Rect2, con_sombra := true) -> void:
+	if con_sombra:
+		l.draw_rect(Rect2(rect.position + Vector2(12, 22), rect.size + Vector2(5, 8)), Color(0.12, 0.12, 0.1, 0.18))
 	l.draw_rect(rect, Color("857e6f"))
 	l.draw_rect(rect.grow(-7), Color("ede7d6"))
 	l.draw_line(rect.position + Vector2(4, 4), Vector2(rect.end.x - 4, rect.position.y + 4), Color("faf6e9"), 5)
@@ -288,12 +289,12 @@ static func _perfil_ilustrado(l: CanvasItem, m: Dictionary) -> void:
 	var menor := minf(s.x, s.y)
 	var c: Color = m.color
 	var base := Color("897354") if m.tipo == "silla" else (Color("6c845d") if m.tipo == "planta" else Color("dedaca"))
-	# El contorno sale del perfil público; interpolar sus bandas evita un
-	# borde escalonado. La geometría consultada por las hormigas no cambia.
+	# El contorno de autoría es estable, no depende de la máscara exportada
+	# desde este mismo dibujo. Así regenerar el atlas no deforma el mueble.
 	var datos := m.duplicate()
 	datos.rect = Rect2(0, 0, 1, 1)
 	datos.frente = "sur"
-	var bandas := SiluetaMueble.rectangulos(datos)
+	var bandas := SiluetaMueble.perfil_base(datos)
 	var contorno := PackedVector2Array()
 	contorno.append(Vector2(bandas[0].position.x, bandas[0].position.y))
 	for banda in bandas:

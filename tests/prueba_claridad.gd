@@ -81,7 +81,8 @@ func probar_pasos() -> void:
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
-	verificar(run.hud._boton_paso.visible and run.hud._objetivo_paso == run.objetivo_practica, "el primer paso permite encontrar el cartón sin dar una orden automática")
+	verificar(run.hud._lbl_meta_titulo.text == "Empezá por las migas cercanas" and not run.hud._boton_paso.visible and run.hud._objetivo_paso == null, "el primer paso orienta hacia las migas sin mandar a completar ni enfocar el cartón")
+	verificar(run.objetivo_practica.disponible() and not run.objetivo_practica.muerta and run.hud._objetivo_paso != run.objetivo_practica, "el cartón sigue disponible para la colonia, pero no es un objetivo inicial obligatorio")
 	# El tutorial tiene forma de silla, pero no debe dar el premio de madera real.
 	run._on_comida_destruida(run.objetivo_practica)
 	verificar(not Juego.hitos.has("primera_silla") and run._sillas_devoradas == 0, "el cartón no completa hitos de sillas de madera")

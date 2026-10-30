@@ -97,8 +97,9 @@ func probar_alcance_retenido() -> void:
 	verificar(otra.consultas_alcance == 1 and pieza.trabajadoras == 0, "cambiar de recurso no reutiliza el alcance de la pieza anterior")
 	h.carga = 9
 	h.position = Vector2(-500, -200)
+	run.radio_actual = 100 # No queda un puesto de esta pieza dentro del territorio.
 	h._morder(1.0 / 60)
-	verificar(h.estado == Hormiga.Estado.VOLVIENDO and h.carga == 9 and Juego.migas_run == 0, "una obrera alejada con carga vuelve a entregarla sin cobro remoto")
+	verificar(h.estado == Hormiga.Estado.VOLVIENDO and h.carga == 9 and Juego.migas_run == 0, "una obrera sin puesto alcanzable vuelve con su carga sin cobro remoto")
 	run.queue_free()
 	await get_tree().process_frame
 

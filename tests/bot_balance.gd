@@ -18,7 +18,8 @@ extends Node
 ##   BOT_FACTOR   factor de calibración (por defecto FACTOR_CALIBRACION)
 ##   BOT_TRABADO  runs sin progreso antes de pensar en fundar (por defecto RUNS_TRABADO)
 ##   BOT_ORDEN    "materiales" dirige primero al material recién aprendido;
-##                "cercania" conserva el piloto histórico (por defecto).
+##                "cercania" prioriza alimento cercano (por defecto). Ambos
+##                empiezan sobre migas reales, no sobre el cartón gigante.
 ##   BOT_RETORNO  si existe, corta tras esta cantidad de runs de la segunda
 ##                colonia; permite medir casa → primer rebirth sin campaña tardía.
 ##   BOT_FUNDAR_CASA si existe, elige la primera fundación al conquistar la casa;
@@ -28,7 +29,9 @@ extends Node
 ##                ese atajo. Ambos conservan el resto de la jalea.
 ##
 ## Cómo juega: dos órdenes por segundo, sin daño manual a la comida.
-## Atiende eventos y dirige al tutorial o al gran objetivo cuando puede comerlo.
+## Atiende eventos y dirige al gran objetivo cuando puede comerlo. Antes de
+## aprender materiales prefiere migas pequeñas existentes; el cartón grande
+## sólo se trabaja si no quedan alimentos accesibles, no es ingreso regalado.
 ## Entre runs ahorra para la próxima dieta si ya tiene la mitad;
 ## si no, compra lo más barato (mejoras o castas).
 ##
@@ -210,22 +213,28 @@ func jugar_run() -> float:
 				run.pisar(run.eventos.punto_de_clic(evento))
 				continue
 			var mejor: Comida = null
+			var miga: Comida = null
 			for c in run.comidas.lista:
 				if not c.muerta and c.en_territorio(run.radio_actual) and (mejor == null or c.position.length() < mejor.position.length()):
 					mejor = c
+				if c.id == "miga" and c.disponible() and c.en_territorio(run.radio_actual) and (miga == null or c.position.length_squared() < miga.position.length_squared()):
+					miga = c
+			var dieta := int(Juego.stat("materiales"))
+			if dieta == 0 and miga != null:
+				mejor = miga
 			var meta := run.objetivo_mapa
 			if is_instance_valid(meta) and not meta.muerta and meta.disponible() and meta.en_territorio(run.radio_actual):
 				var punto := meta.punto_mordida(Vector2.ZERO, run.radio_actual)
 				if punto != Vector2.INF:
 					run.feromonas.mantener_en(punto)
-			elif is_instance_valid(run.objetivo_practica) and not run.objetivo_practica.muerta:
-				run.feromonas.mantener_en(run.objetivo_practica.position)
 			else:
-				var parte := _material_cercano(run) if orden_materiales else null
+				var parte := _material_cercano(run) if orden_materiales and dieta > 0 else null
 				if parte != null:
 					run.feromonas.mantener_en(parte.punto_mordida(Vector2.ZERO, run.radio_actual))
 				elif mejor:
 					run.feromonas.mantener_en(mejor.position)
+				elif is_instance_valid(run.objetivo_practica) and run.objetivo_practica.disponible() and run.objetivo_practica.en_territorio(run.radio_actual):
+					run.feromonas.mantener_en(run.objetivo_practica.position)
 				else:
 					run.feromonas.soltar()
 	Engine.time_scale = 1.0

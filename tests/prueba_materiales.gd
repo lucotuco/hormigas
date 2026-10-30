@@ -40,8 +40,12 @@ func _ready() -> void:
 	verificar(previa.size() > 1, "la silla intacta bloquea el recorrido directo")
 	verificar(run.cocina._celdas_preparadas.size() < 2000, "la navegación inicial no prepara celdas de toda la casa")
 	var h := run.colonia._nacer()
+	# Fixture de extracción intensiva para cubrir el ciclo completo de A*,
+	# no el ritmo de una obrera inicial: la fuerza no agranda cada porción.
 	h._dano = 100
-	h._capacidad = 100
+	h._intervalo_mordida = 0.04
+	h._velocidad = 300
+	h._capacidad = 1000
 	h.position = punto
 	h.comida = silla
 	h._reloj_mordida = 1000
@@ -49,14 +53,21 @@ func _ready() -> void:
 	verificar(absf(angle_difference(h.rotation, (silla.material_cercano(punto) - punto).angle())) < 0.001, "la hormiga mira el material que muerde, no el centro transparente del dibujo")
 	h._reloj_mordida = 0
 	run.feromonas.mantener_en(silla.position)
-	for paso in 800:
+	var reubicacion_con_carga := false
+	for paso in 2400:
 		run.feromonas._process(0.1)
 		h._process(0.1)
 		if not silla.muerta:
 			silla._process(0.1)
 		run.cocina.procesar_cambios()
+		reubicacion_con_carga = reubicacion_con_carga or (h._reubicando_frente and h.carga > 0 and h.estado == Hormiga.Estado.YENDO_A_COMIDA)
 		if silla.muerta:
 			break
+	if not silla.muerta and silla.mordiscos != null:
+		print("DIAG MATERIAL vida %.9f/%.0f area %.3f pos %s estado %d objetivo %s carga %.6f bocados %d reubicando %s trabajadoras %d contacto %s version %d" % [silla.vida, silla.vida_max, silla.mordiscos.area_total(), h.position, h.estado, h.objetivo, h.carga, h.bocados, h._reubicando_frente, silla.trabajadoras, silla.punto_contacto(h.position), silla.version_forma])
+		for i in silla.vivas:
+			print("DIAG CELDA %d HP %.9f AABB %s fisico %s" % [i, silla.vidas[i], silla.mordiscos.limites_celda(i), silla._limites_fisicos[i]])
+	verificar(reubicacion_con_carga, "un buche amplio conserva su carga al reubicarse en otro borde de la misma pieza")
 	verificar(silla.muerta, "mantener sobre una silla reúne hormigas que la devoran desde el borde")
 	verificar(run.cocina.libre(silla.position, Cocina.MARGEN) and run.cocina.ruta(Vector2.ZERO, Vector2(460, 0), run.radio_actual).size() == 1, "la silla devorada libera colisión y permite un nuevo atajo")
 	var celda_silla := Vector2i((silla.position / Cocina.CELDA).floor())
@@ -102,10 +113,19 @@ func _ready() -> void:
 	add_child(otra)
 	otra.process_mode = Node.PROCESS_MODE_DISABLED
 	var reconstruida := false
+	var silla_reconstruida: PiezaCasa
 	for parte in otra.comidas.partes:
 		if parte.pieza.clave == "mueble:6":
 			reconstruida = parte.vida == parte.vida_max and parte.disponible()
+			silla_reconstruida = parte
 	verificar(reconstruida, "cada expedición reconstruye la casa y conserva la dieta desbloqueada")
+	var basica := otra.colonia._nacer("obrera", silla_reconstruida.punto_mordida(Vector2.ZERO, otra.radio_actual))
+	basica.comida = silla_reconstruida
+	basica.estado = Hormiga.Estado.MORDIENDO
+	basica._dano = 1
+	basica._reloj_mordida = 0
+	basica._morder(0.1)
+	verificar(basica._capacidad == 1 and basica.bocados == 1 and basica.carga > 0 and basica.estado == Hormiga.Estado.VOLVIENDO, "la capacidad inicial uno sigue volviendo después de su primer bocado real")
 	otra.queue_free()
 	await get_tree().process_frame
 	await probar_siluetas()

@@ -39,7 +39,7 @@ func _ready() -> void:
 	verificar(tienda.disponibles_por_rama().Colonia > 0 and tienda._leyenda.Colonia.text.ends_with(str(tienda.disponibles_por_rama().Colonia)), "la rama avisa cuántas mejoras se pueden comprar")
 	antes = Juego.stat("hormigas_iniciales")
 	tienda._comprar("mas_obreras")
-	verificar(Juego.stat("hormigas_iniciales") == antes + 20, "el selector ×10 de la tienda ejecuta la compra por lotes")
+	verificar(Juego.stat("hormigas_iniciales") == antes + 10, "el selector ×10 compra diez obreras, una por nivel")
 	Juego.migas = 0
 	Juego.migas_cambiaron.emit(0)
 	verificar(tienda.disponibles_por_rama().Colonia == 0 and tienda._leyenda.Colonia.text.ends_with("Colonia"), "el aviso se apaga cuando ya no alcanza el saldo")

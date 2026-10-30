@@ -1,6 +1,6 @@
 class_name Comida
 extends Node2D
-## Una comida del mapa: tiene vida, se agrieta al morderla y da migas.
+## Una comida del mapa: cada mordida quita material y produce carga.
 ## El dibujo es procedural según la "forma" definida en datos/comidas.csv.
 
 signal destruida(comida: Comida)
@@ -25,8 +25,7 @@ func cupos_trabajo() -> int:
 	return clampi(ceili(radio / 10.0), 1, 12)
 
 func punto_trabajo(desde: Vector2, territorio: float, volando: bool, puesto: int) -> Vector2:
-	var centro := punto_mordida(desde, territorio, volando)
-	return (centro + Vector2.from_angle((puesto % 12) * TAU / 12) * radio * 0.65).limit_length(territorio - 6)
+	return punto_mordida(desde + Vector2.from_angle((puesto % 12) * TAU / 12) * radio * 0.35, territorio, volando)
 
 var _sacudida := 0.0
 var _destello := 0.0
@@ -37,7 +36,16 @@ var veneno_restante := 0.0
 var _veneno_dps := 0.0
 var _veneno_acumulado := 0.0
 var _run_veneno: Run
+var _origen_veneno := Vector2.INF
 var _usar_cache := true
+## Se crea recién al primer bocado, no para miles de alimentos intactos.
+var mordiscos: MordiscosMaterial
+var _porcion_reciente := Rect2()
+var _mascara_comida: ShaderMaterial
+var _mascara_pendiente := false
+var _reloj_mascara := 0.0
+var _grilla_bocado := Vector2i.ONE
+var _cantidad_celdas_bocado := 1
 
 
 func configurar(tipo: Dictionary, semilla: int) -> void:
@@ -103,22 +111,116 @@ func en_territorio(radio_territorio: float) -> bool:
 	return position.length() - radio * 0.5 <= radio_territorio
 
 func alcanza_desde(pos: Vector2) -> bool:
+	if mordiscos != null:
+		var local := to_local(pos)
+		var limite := mordiscos.limites_celda(0)
+		return limite.has_area() and local.distance_squared_to(local.clamp(limite.position, limite.end)) <= 9.0
 	return distancia_a(pos) <= 3
 
-func punto_mordida(_desde: Vector2, territorio: float, _volando := false) -> Vector2:
-	return global_position.limit_length(territorio - 6)
+func punto_mordida(desde: Vector2, territorio: float, _volando := false) -> Vector2:
+	if self is FragmentoCasa:
+		return global_position.limit_length(territorio - 6)
+	if mordiscos == null:
+		_preparar_mordiscos()
+	var local := to_local(desde)
+	var limite := mordiscos.limites_celda(0)
+	if not limite.has_area():
+		return Vector2.INF
+	var proyectado := local.clamp(limite.position, limite.end)
+	var candidatos: Array[Vector2] = [
+		Vector2(limite.position.x - 1, proyectado.y), Vector2(limite.end.x + 1, proyectado.y),
+		Vector2(proyectado.x, limite.position.y - 1), Vector2(proyectado.x, limite.end.y + 1)]
+	var mejor := Vector2.INF
+	var menor := INF
+	for candidato in candidatos:
+		var contacto := mordiscos.punto_frontera(0, candidato)
+		if contacto == Vector2.INF:
+			continue
+		# En una silueta redonda la esquina del AABB puede estar muy lejos.
+		# Acercar el puesto al primer material, por el mismo segmento de aire.
+		var exterior := contacto + (candidato - contacto).normalized() * 1.5
+		if not mordiscos.aire_exterior(exterior):
+			continue
+		var punto := to_global(exterior)
+		var distancia := desde.distance_squared_to(punto)
+		if distancia < menor and punto.length_squared() < pow(maxf(0, territorio - 6), 2):
+			mejor = punto
+			menor = distancia
+	return mejor
+
+
+func punto_contacto(pos: Vector2) -> Vector2:
+	if mordiscos == null:
+		_preparar_mordiscos()
+	var punto := mordiscos.punto_frontera(0, to_local(pos))
+	return to_global(punto) if punto != Vector2.INF else Vector2.INF
 
 
 ## Aplica daño y devuelve las migas que corresponden a ese daño.
 func morder(dano: float) -> float:
-	if muerta or dano <= 0.0:
+	return morder_en(dano, global_position + Vector2.from_angle(rotation) * radio)
+
+
+## El daño y la porción visible salen de la misma operación.
+func morder_en(dano: float, pos: Vector2) -> float:
+	return _extraer_alimento(dano, pos, 0.0)
+
+
+func morder_local(dano: float, pos: Vector2, lado_max := 6.0) -> float:
+	_porcion_reciente = Rect2()
+	if not is_finite(lado_max) or lado_max <= 0:
+		return 0
+	return _extraer_alimento(dano, pos, lado_max)
+
+
+func _extraer_alimento(dano: float, pos: Vector2, lado_max: float) -> float:
+	_porcion_reciente = Rect2()
+	if muerta or not is_finite(dano) or dano <= 0.0 or not pos.is_finite():
 		return 0.0
-	var real := minf(dano, vida)
-	vida -= real
+	var presupuesto := minf(dano, vida)
+	if mordiscos == null:
+		_preparar_mordiscos()
+	var local := to_local(pos)
+	var pendiente := presupuesto
+	var real := 0.0
+	for paso in _cantidad_celdas_bocado:
+		if pendiente <= 0:
+			break
+		var elegida := -1
+		var menor := INF
+		for i in _cantidad_celdas_bocado:
+			var punto := mordiscos.punto_frontera(i, local) if lado_max != 0 else mordiscos.punto_celda(i, local)
+			if punto == Vector2.INF:
+				continue
+			var distancia := local.distance_squared_to(punto)
+			if distancia < menor:
+				menor = distancia
+				elegida = i
+		if elegida < 0:
+			break
+		var retirado := minf(pendiente, mordiscos.vida_celda(elegida))
+		var trabajo := retirado
+		if lado_max > 0:
+			var escala_mundo := maxf(0.0001, maxf(absf(global_scale.x), absf(global_scale.y)))
+			retirado = mordiscos.recortar_local(elegida, pendiente, local, lado_max / escala_mundo)
+		elif lado_max < 0:
+			retirado = mordiscos.recortar_frente(elegida, trabajo, local)
+		else:
+			retirado = mordiscos.recortar(elegida, trabajo, local)
+		if mordiscos.ultima_porcion.get_area() > _porcion_reciente.get_area():
+			_porcion_reciente = mordiscos.ultima_porcion
+		pendiente = maxf(0, pendiente - trabajo)
+		real += retirado
+		if lado_max > 0:
+			break
+	if real <= 0:
+		return 0.0
+	vida = maxf(0, vida - real)
 	if get_parent() is Comidas:
 		get_parent().get_parent().registrar_extraccion(real)
-	_sacudida = minf(_sacudida + 1.2, 3.0)
-	_destello = 0.07
+	_sacudida = minf(_sacudida + 0.18, 0.6)
+	_destello = 0.045
+	_mascara_pendiente = true
 	set_process(true)
 	queue_redraw()
 	var migas := recompensa * real / vida_max * Juego.stat("multiplicador_migas")
@@ -129,10 +231,51 @@ func morder(dano: float) -> float:
 	return migas
 
 
+func _preparar_mordiscos() -> void:
+	mordiscos = MordiscosMaterial.new()
+	var rect := Rect2(Vector2.ONE * -radio, Vector2.ONE * radio * 2.0)
+	var silueta := Graficos.formas_alimento(id)
+	if silueta.is_empty():
+		# Fallback para un alimento de prueba o contenido todavía sin silueta.
+		mordiscos.configurar(rect, Vector2i.ONE, [[rect]], PackedFloat64Array([vida_max]))
+	else:
+		# Los alimentos no bloquean A*: una única reserva de material evita
+		# que una miga de diez unidades se divida en 16 microbocados artificiales.
+		mordiscos.configurar(rect, Vector2i.ONE, [silueta], PackedFloat64Array([vida_max]))
+	if not _usar_cache or DisplayServer.get_name() == "headless":
+		return
+	_mascara_comida = ShaderMaterial.new()
+	_mascara_comida.shader = preload("res://mundo/recorte_bocados.gdshader")
+	_mascara_comida.set_shader_parameter("tamano", rect.size)
+	_mascara_comida.set_shader_parameter("grilla", _grilla_bocado)
+	_mascara_comida.set_shader_parameter("material_id", 0)
+	_mascara_comida.set_shader_parameter("mascara_bocados", mordiscos.textura_mascara())
+	_mascara_comida.set_shader_parameter("usar_mascara", true)
+	material = _mascara_comida
+
+
+## Coordenadas del atlas copiadas por valor: sobreviven al alimento destruido.
+func region_bocado() -> Rect2:
+	var clave := "comida:" + id
+	if not Graficos.tamanos.has(clave):
+		return Rect2()
+	return Graficos.region_porcion(clave, _porcion_reciente, Graficos.tamanos[clave])
+
+
+func origen_bocado() -> Vector2:
+	return to_global(_porcion_reciente.get_center()) if _porcion_reciente.has_area() else global_position
+
+
+func tamano_bocado() -> Vector2:
+	return _porcion_reciente.size * global_scale.abs()
+
+
 ## Conserva el efecto más fuerte y renueva su duración; no suma DPS sin límite.
-func aplicar_veneno(dano_por_segundo: float, duracion: float, run: Run) -> void:
+func aplicar_veneno(dano_por_segundo: float, duracion: float, run: Run, origen := Vector2.INF) -> void:
 	if muerta or not run.activa or dano_por_segundo <= 0:
 		return
+	if veneno_restante <= 0 or dano_por_segundo >= _veneno_dps:
+		_origen_veneno = origen if origen.is_finite() else global_position + Vector2.from_angle(rotation) * (radio + 2)
 	_veneno_dps = maxf(_veneno_dps, dano_por_segundo)
 	veneno_restante = maxf(veneno_restante, duracion)
 	_run_veneno = run
@@ -144,6 +287,15 @@ func _mostrar_veneno() -> void:
 	queue_redraw()
 
 
+func morder_veneno(dano: float, origen: Vector2) -> float:
+	if mordiscos == null:
+		_preparar_mordiscos()
+	var local := to_local(origen)
+	if not mordiscos.aire_exterior(local):
+		local = mordiscos.origen_exterior(0, local)
+	return _extraer_alimento(dano, to_global(local), -1.0)
+
+
 func _process(delta: float) -> void:
 	if muerta:
 		return
@@ -152,7 +304,13 @@ func _process(delta: float) -> void:
 		return
 	_sacudida = move_toward(_sacudida, 0.0, delta * 18.0)
 	_destello = maxf(0.0, _destello - delta)
-	if _sacudida <= 0.0 and _destello <= 0.0 and veneno_restante <= 0:
+	_reloj_mascara -= delta
+	if _mascara_pendiente and _reloj_mascara <= 0:
+		_reloj_mascara = 0.08
+		_mascara_pendiente = false
+		if _mascara_comida != null:
+			mordiscos.actualizar_textura()
+	if _sacudida <= 0.0 and _destello <= 0.0 and veneno_restante <= 0 and not _mascara_pendiente:
 		set_process(false)
 	queue_redraw()
 
@@ -170,7 +328,7 @@ func _procesar_veneno(delta: float) -> void:
 			veneno_restante = maxf(0, veneno_restante - tiempo)
 			_veneno_acumulado += tiempo
 			if _veneno_acumulado >= 0.5 or veneno_restante <= 0:
-				var migas := morder(_veneno_dps * _veneno_acumulado)
+				var migas := morder_veneno(_veneno_dps * _veneno_acumulado, _origen_veneno)
 				_veneno_acumulado = 0
 				_run_veneno.registrar_ingreso(migas, 2 if self is PiezaCasa and self.nivel_requerido >= 3 else (1 if self is PiezaCasa else 0))
 				_run_veneno.efectos.numero(global_position + Vector2(0, -radio), migas, Color("b7d68b"), 0.7)
@@ -181,7 +339,9 @@ func _procesar_veneno(delta: float) -> void:
 
 
 func _draw() -> void:
-	var desplazamiento := Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _sacudida
+	# Una comida mordida no se sacude entera: permite seguir el hueco exacto
+	# mientras la hormiga retira su retazo.
+	var desplazamiento := Vector2.ZERO if mordiscos != null else Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _sacudida
 	draw_set_transform(desplazamiento)
 	var c := color.lerp(Color.WHITE, 0.65) if _destello > 0.0 else color
 	var oscuro := c.darkened(0.3)

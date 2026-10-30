@@ -86,15 +86,24 @@ func _ready() -> void:
 	Juego._cache_stats.clear()
 	var run := crear_run()
 	var silla: PiezaCasa = run.comidas.partes[6]
+	silla._preparar_mordiscos()
+	var area_inicial := silla.mordiscos.area_total()
+	var resistencia_inicial := silla.vida
 	var n := silla.vivas.size()
 	var valor := silla.morder_en(silla.vida_max * 0.1, Vector2(170, -90))
-	verificar(not silla.muerta and silla.vivas.size() < n and valor > 0 and run.comidas.fragmentos.size() > 0, "una mordida localizada quita un pedazo y deja fragmentos sin borrar la silla")
+	var retirado := resistencia_inicial - silla.vida
+	var fragmentos := valor_fragmentos(run)
+	var valor_retirado := silla.recompensa * retirado / silla.vida_max * Juego.stat("multiplicador_migas")
+	# Un evento quita píxeles reales; ya no necesita agotar una celda lógica
+	# para que se vea su daño. El reparto 65/35 sigue siendo sólo del evento.
+	verificar(not silla.muerta and silla.vivas.size() <= n and silla.mordiscos.area_total() < area_inicial and retirado > 0 and is_equal_approx(valor, valor_retirado * 0.65) and is_equal_approx(fragmentos, valor_retirado * 0.35), "un evento retira material y reparte su valor en carga y fragmentos sin borrar la silla")
 	var ultimo := silla.vivas.size()
+	verificar(not silla.derrumbando and silla.vida > silla.vida_max * 0.08, "el mueble no derrumba por perder las primeras secciones")
 	var sin_soportes := 0
-	while not silla.derrumbando and not silla.muerta and sin_soportes < 20:
-		silla.morder_en(silla.vida_max * 0.08, Vector2(170, -90))
+	while not silla.derrumbando and not silla.muerta and sin_soportes < 60:
+		silla.morder_en(silla.vida_max * 0.02, Vector2(170, -90))
 		sin_soportes += 1
-	verificar(silla.derrumbando and not silla.muerta and silla.vivas.size() <= ultimo, "perder soportes inicia un derrumbe y no una desaparición instantánea")
+	verificar(silla.derrumbando and not silla.muerta and silla.vivas.size() <= ultimo and silla.vida <= silla.vida_max * 0.08, "sólo el último ocho por ciento se desprende por etapas")
 	for i in 20:
 		if silla.muerta:
 			break
@@ -151,9 +160,12 @@ func _ready() -> void:
 			heladera = p
 	heladera.aplicar_veneno(2, 3, run)
 	heladera._process(0.1)
+	heladera._preparar_mordiscos()
 	var resistencia := heladera.vida
+	var credito := credito_pendiente(heladera.mordiscos)
 	heladera.morder_en(10, heladera.rect_mundo.position)
-	verificar(is_equal_approx(resistencia - heladera.vida, 12), "la corrosión de una roja mejora 20% los ataques del grupo")
+	var trabajo := 10 * (1.0 + Juego.stat("corrosion_factor"))
+	verificar(resistencia - heladera.vida > 0 and is_equal_approx(resistencia - heladera.vida + credito_pendiente(heladera.mordiscos) - credito, trabajo) and credito_subpixel(heladera.mordiscos), "la corrosión mejora el trabajo del grupo y sólo descuenta el material realmente retirado")
 	Juego.niveles.recoleccion_eficiente = 5
 	Juego._cache_stats.clear()
 	run.comidas.soltar_fragmento(Vector2(-150, 300), 100, 1)
@@ -181,6 +193,25 @@ func crear_run() -> Run:
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.radio_actual = 9500
 	return run
+
+func valor_fragmentos(run: Run) -> float:
+	var valor := 0.0
+	for f in run.comidas.fragmentos:
+		if is_instance_valid(f) and not f.muerta:
+			valor += f.recompensa
+	return valor
+
+func credito_pendiente(m: MordiscosMaterial) -> float:
+	var pendiente := 0.0
+	for credito in m._credito:
+		pendiente += credito
+	return pendiente
+
+func credito_subpixel(m: MordiscosMaterial) -> bool:
+	for i in m._credito.size():
+		if m._credito[i] < 0 or m._credito[i] >= m._hp_pixel[i] + 0.000001:
+			return false
+	return true
 
 func verificar(ok: bool, mensaje: String) -> void:
 	total += 1

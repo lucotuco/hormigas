@@ -768,7 +768,7 @@ func _ver_paso() -> void:
 
 func _actualizar_meta() -> void:
 	var meta := Juego.proxima_meta()
-	var practica := run.objetivo_practica
+	var inicio_con_migas := Juego.lugar_actual == "casa" and Juego.stat("materiales") < 1
 	_objetivo_paso = null
 	# La geometría se consulta una sola vez, después de generar el escenario.
 	if run.activa and not _silla_buscada:
@@ -777,9 +777,6 @@ func _actualizar_meta() -> void:
 			if parte.pieza.get("perfil", "") == "silla_inicial":
 				_silla_inicial = parte
 				break
-	if is_instance_valid(practica) and not practica.muerta and Juego.stat("materiales") < 1 and not Juego.hitos.has("primer_derrumbe"):
-		meta = {"tipo": "practica", "nombre": tr("Desarmá el banquito de cartón")}
-		_objetivo_paso = practica
 	if meta.get("accion", "") not in ["legado", "viajes"] and is_instance_valid(_silla_inicial) and _silla_inicial.disponible() and not Juego.hitos.has("primera_silla"):
 		meta = {"tipo": "madera", "nombre": tr("Tu primera silla de madera")}
 		_objetivo_paso = _silla_inicial
@@ -787,10 +784,6 @@ func _actualizar_meta() -> void:
 	var objetivo := 1.0
 	var texto := ""
 	match meta.tipo:
-		"practica":
-			actual = practica.vida_max - practica.vida
-			objetivo = practica.vida_max
-			texto = tr("No requiere mejoras. El llamado ayuda a reunir hormigas sobre el banquito.")
 		"madera":
 			actual = _silla_inicial.vida_max - _silla_inicial.vida
 			objetivo = _silla_inicial.vida_max
@@ -814,13 +807,18 @@ func _actualizar_meta() -> void:
 		_:
 			actual = 1.0
 			texto = meta.detalle
-	_lbl_meta_titulo.text = tr("GRAN OBJETIVO") if meta.tipo == "objetivo" else (tr("SIGUIENTE PASO") if meta.tipo in ["viaje", "madera", "practica"] or meta.get("accion", "") == "legado" else tr("PRÓXIMO DESBLOQUEO"))
+	_lbl_meta_titulo.text = tr("GRAN OBJETIVO") if meta.tipo == "objetivo" else (tr("SIGUIENTE PASO") if meta.tipo in ["viaje", "madera"] or meta.get("accion", "") == "legado" else tr("PRÓXIMO DESBLOQUEO"))
+	if inicio_con_migas:
+		_lbl_meta_titulo.text = tr("Empezá por las migas cercanas")
 	_lbl_meta_nombre.text = meta.nombre
 	_boton_paso.visible = is_instance_valid(_objetivo_paso) and run.activa and _objetivo_paso.disponible()
 	_barra_meta.value = clampf(actual / objetivo, 0.0, 1.0) * 100.0
 	var lista: bool = meta.tipo == "migas" and actual >= objetivo
 	if lista:
 		texto = tr("¡Ya te alcanza! Compralo en el taller al terminar")
+	if inicio_con_migas:
+		# Orientar la recolección sin sustituir la compra ni su progreso real.
+		texto += "\n" + tr("Juntá migas para comprar más obreras al volver. El cartón puede esperar a una colonia más grande.")
 	_lbl_meta_progreso.text = texto
 	_columna_progresion.position.y = _panel_meta.position.y + _panel_meta.get_combined_minimum_size().y + 14
 	_relleno_meta.bg_color = Estilo.VERDE if lista else Estilo.ACENTO

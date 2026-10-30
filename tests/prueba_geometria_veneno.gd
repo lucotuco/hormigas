@@ -110,23 +110,32 @@ func crear_comida(run: Run) -> Comida:
 
 func probar_comida(run: Run) -> void:
 	var comida := crear_comida(run)
+	comida._preparar_mordiscos()
 	var inicio := Juego.migas_run
 	var factor := Juego.stat("multiplicador_migas")
 	comida.aplicar_veneno(10, 1.25, run)
 	comida._process(0.25)
 	verificar(comida.vida == 1000 and Juego.migas_run == inicio and comida.is_processing(), "el veneno espera su primer medio segundo sin adelantar pagos")
 	comida._process(0.25)
-	verificar(is_equal_approx(comida.vida, 995) and is_equal_approx(Juego.migas_run - inicio, 5 * factor), "el primer medio segundo aplica y acredita exactamente un tick")
+	verificar(conserva_trabajo(comida, 1000, 5) and is_equal_approx(Juego.migas_run - inicio, (1000 - comida.vida) * factor), "el primer tick conserva su trabajo y sólo acredita píxeles físicamente retirados")
 	comida.aplicar_veneno(2, comida.veneno_restante, run)
 	comida._process(0.25)
 	comida._process(0.25)
-	verificar(is_equal_approx(comida.vida, 990), "renovar con veneno débil no suma ni reduce el DPS existente")
+	verificar(conserva_trabajo(comida, 1000, 10) and comida._veneno_dps == 10, "renovar con veneno débil conserva el DPS y el crédito fraccionario, sin sumarlos")
 	comida._process(0.25)
-	verificar(is_equal_approx(comida.vida, 987.5) and is_equal_approx(Juego.migas_run - inicio, 12.5 * factor), "el último cuarto de segundo se cobra una sola vez y sin perder fracción")
+	verificar(conserva_trabajo(comida, 1000, 12.5) and is_equal_approx(Juego.migas_run - inicio, (1000 - comida.vida) * factor), "el último cuarto de segundo conserva su fracción sin pagar material todavía pendiente")
 	verificar(comida.veneno_restante == 0 and comida._veneno_dps == 0 and comida._veneno_acumulado == 0 and not comida.is_processing(), "la comida deja de procesar al agotarse el veneno y su destello")
 	var cobrado := Juego.migas_run
 	comida._process(0.5)
 	verificar(Juego.migas_run == cobrado, "procesar de nuevo un veneno terminado no duplica ingresos")
+	# Esta miga tiene mucha resistencia para su área: los primeros 12,5 HP
+	# quedan bajo un píxel. Un tick adicional paga un píxel entero y debe
+	# conservar también el trabajo fraccionario del veneno anterior.
+	var cuanto := comida.mordiscos._hp_pixel[0]
+	comida.aplicar_veneno(cuanto * 2, 0.5, run)
+	comida._process(0.5)
+	verificar(comida.vida < 1000 and conserva_trabajo(comida, 1000, 12.5 + cuanto) and is_equal_approx(Juego.migas_run - inicio, (1000 - comida.vida) * factor), "un siguiente tick suficiente desprende material sin perder ni cobrar dos veces el crédito anterior")
+	cobrado = Juego.migas_run
 	comida.aplicar_veneno(10, 2, run)
 	run.activa = false
 	comida._process(0.5)
@@ -147,7 +156,7 @@ func probar_pieza(run: Run) -> void:
 	var vida := pieza.vida
 	var ingreso := Juego.migas_run
 	var dano := 10 * 1.25 * (1.0 + Juego.stat("corrosion_factor"))
-	var pago := pieza.recompensa * dano / pieza.vida_max * Juego.stat("multiplicador_migas") * 0.65
+	var restos_iniciales := valor_fragmentos(run)
 	pieza._sacudida = 1.7
 	pieza._destello = 0.075
 	pieza.aplicar_veneno(10, 1.25, run)
@@ -156,8 +165,10 @@ func probar_pieza(run: Run) -> void:
 		# eluden el reloj de la máscara. 1/64 representa exactamente 1,25 s.
 		pieza.aplicar_veneno(2, pieza.veneno_restante, run)
 		pieza._process(1.0 / 64)
-	verificar(is_equal_approx(vida - pieza.vida, dano) and is_equal_approx(pieza.dano_recibido, dano), "la pieza conserva DPS, corrosión y último tick fraccionario")
-	verificar(is_equal_approx(Juego.migas_run - ingreso, pago), "el veneno acredita sólo su proporción transportable y no duplica los fragmentos")
+	var retirado := vida - pieza.vida
+	verificar(conserva_trabajo(pieza, vida, dano) and is_equal_approx(pieza.dano_recibido, retirado), "la pieza conserva DPS y corrosión como material retirado más crédito menor a un píxel")
+	var valor_retirado := pieza.recompensa * retirado / pieza.vida_max * Juego.stat("multiplicador_migas")
+	verificar(is_equal_approx(Juego.migas_run - ingreso, valor_retirado * 0.65) and is_equal_approx(valor_fragmentos(run) - restos_iniciales, valor_retirado * 0.35), "el veneno paga y deja fragmentos sólo de material retirado, sin anticipar el crédito")
 	verificar(pieza.aplicaciones_visuales == 81 and pieza.actualizaciones_mascara <= 16, "81 aplicaciones conservan el máximo de 12,5 actualizaciones de máscara por segundo")
 	verificar(pieza._sacudida == 1.7 and pieza._destello == 0.075, "la pieza no procesa la sacudida ni el destello visual de Comida")
 	verificar(pieza.veneno_restante == 0 and pieza.corrosion > 0 and pieza.is_processing(), "terminar el DPS mantiene el procesamiento mientras se desvanece la corrosión")
@@ -170,6 +181,25 @@ func probar_pieza(run: Run) -> void:
 		pieza._process(1.0 / 64)
 	verificar(Juego.migas_run == cobrado and pieza.actualizaciones_mascara == dibujos, "una pieza quieta no agrega pagos ni actualizaciones de máscara")
 	pieza.queue_free()
+
+func conserva_trabajo(fuente: Comida, vida_inicial: float, aportado: float) -> bool:
+	var m := fuente.mordiscos
+	var pendiente := 0.0
+	var vida_material := 0.0
+	for i in m._credito.size():
+		if m._credito[i] < 0 or m._credito[i] >= m._hp_pixel[i] + 0.000001:
+			return false
+		pendiente += m._credito[i]
+		vida_material += m.vida_celda(i)
+	var retirado := vida_inicial - fuente.vida
+	return retirado >= 0 and is_equal_approx(retirado + pendiente, aportado) and is_equal_approx(vida_material, fuente.vida)
+
+func valor_fragmentos(run: Run) -> float:
+	var valor := 0.0
+	for f in run.comidas.fragmentos:
+		if is_instance_valid(f) and not f.muerta:
+			valor += f.recompensa
+	return valor
 
 
 func verificar(ok: bool, detalle: String) -> void:

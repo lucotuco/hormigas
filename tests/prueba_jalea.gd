@@ -31,7 +31,8 @@ func probar_datos() -> void:
 		if m.destino != "":
 			con_destino += 1
 	verificar(con_destino >= 10, "cada destino trae mejoras propias (%d)" % con_destino)
-	verificar(is_equal_approx(Juego.mejoras_por_id.titanio.costo_base, 2e7), "los costos en notación científica se leen bien (2e7)")
+	# Aislar el lector del precio de titanio, que cambia al calibrar el balance.
+	verificar(is_equal_approx(Juego._num("2e7"), 20000000.0), "el lector acepta costos en notación científica (2e7)")
 	var destinos_con_mejoras := {}
 	for m in Juego.mejoras:
 		if m.destino != "":

@@ -1,6 +1,43 @@
 # Tareas
 
-## Inicio gradual y continuidad del mapa — 28/10
+## Cuerpo, contacto y sombra coherentes — 30/10
+
+- [x] Separar cuerpo opaco de sombra en el atlas compuesto, sin regenerar texturas por mordida.
+- [x] Exportar los 59 acabados/orientaciones: contorno fino RLE y hasta 16 bandas de navegación, con múltiples vanos cuando corresponde.
+- [x] Compartir cuerpo, máscara y región transportada; ajustar salientes al rect físico y proyectar la sombra desde el material restante.
+- [x] Rechazar mordidas desde material y cavidades cerradas; reubicar voladoras al exterior y erosionar veneno desde su origen, sin recortes interiores arbitrarios.
+- [x] Mantener el dibujo de autoría independiente del perfil derivado del atlas, evitando deformarlo al regenerar.
+- [x] Regresión lógica: 39 suites, todas verdes, incluyendo exterior conectado, voladora y veneno lateral.
+- [x] Revisión gráfica: 68 verificaciones, incluidos 59 acabados con cuatro bocados por lado y retazos con su transparencia propia. Revisión previa de mordiscos: 13 OK, uno agrupa 108 alimentos/lados.
+- [x] Medir Full HD y reducir consultas redundantes, sin cambiar daño/geometría. Feromonas máximas p95 10,57 ms; estrés de evoluciones aún p95 21,22 ms y peor 36,80 ms en RTX 3060: pendiente, no prometer 60 FPS constantes.
+
+## Porciones físicas y carga a escala — 30/10
+
+- [x] Reemplazar las franjas de desgaste por una máscara fina irreversible por recurso mordido; los intactos no reservan texturas.
+- [x] Una mordida arranca un solo rectángulo sólido de hasta 6×6; HP y valor dependen sólo del material efectivamente quitado, no del daño solicitado.
+- [x] Llevar el mismo retazo y tamaño del mundo; compensar escala de atlas/hormiga sin miniaturizar una rotura enorme.
+- [x] Carga normal del 100% de esa porción; sin otro 35% inventado ni desaparición automática del último 8% por mordidas.
+- [x] Siluetas de alimento prehorneadas compartidas con headless, sin lectura GPU durante el juego.
+- [x] Revalidar arranque económico con una obrera e ingresos reales, contacto con bordes que retroceden y conservación de material/valor; sin abaratar la primera compra de 12 migas.
+- [x] Orientar el HUD inicial a migas cercanas y comprar obreras, conservando la meta económica compartida; el cartón grande sigue disponible pero no se exige completarlo.
+- [x] Medir perfiles Full HD en serie y revisar el renderer: 13 verificaciones, una con 108 bocados de catálogo; resultados y memoria adicional de máscaras en `tests/RENDIMIENTO.md`.
+- [x] Regresión lógica final: 38 suites / 1.604 verificaciones, cero fallas ni errores de script. Menú repetido tras restaurar silencio en su fixture: sin advertencias ni fugas al salir.
+- [ ] Playtest humano: legibilidad del corte, tirón, transporte y entrega, y esperas entre primeras compras.
+- [ ] Reducir picos en el estrés de 500 hormigas con evoluciones; ver medición vigente de cuerpo/sombra en `tests/RENDIMIENTO.md`. Validar también GPU integrada/PC modesta, sin prometer 60 FPS constantes.
+
+## Arranque individual, mordidas y carga — 29/10 (histórico, anterior a las porciones limitadas)
+
+- [x] Empezar con una obrera; Más obreras suma una por nivel, con primera compra de 12 migas y mordida base de 0,95 s, sin empeorar IA, velocidad ni olfato.
+- [x] Verificar la segunda hormiga comprada con ingresos reales: una expedición guiada o dos autónomas en el piloto corto, sin dinero ni nacimientos regalados.
+- [x] Aumentar costos y resistencia sin inflación de recompensas; silla inicial 280/420, cartón 20/180 y resistencia común de muebles/muros ×1,6.
+- [x] Recortes monotónicos desde el contacto: hasta 16 celdas físicas y 64 frentes visuales orientados, sin reponer material al cambiar de lado.
+- [x] Carga con hasta tres retazos del material retirado por hormiga; mismo atlas compartido, sin textura, nodo ni física por bocado.
+- [x] Conservar el resto del mueble hasta el último 8% de vida; separar los huecos físicos por celda del pequeño recorte visual.
+- [x] Acortar las descripciones de las 82 mejoras a su efecto, manteniendo valores, costos y requisitos reales en la ficha.
+- [x] Medir casa → primera fundación desde cero: piloto de 35,11 minutos activos / 27 expediciones, sin afirmar duración humana ni campaña tardía.
+- [ ] Validar con personas que la escala individual y las mordidas pausadas sean legibles y agradables, no espera sin propósito; revisar también escalas tardías sin prometer recorte píxel por píxel.
+
+## Inicio gradual y continuidad del mapa — 28/10 (histórico)
 
 - [x] Encarecer compras iniciales y suavizar la bola de nieve por precios, conservando movimiento, mordida, olfato y roles.
 - [x] Comparar precios anteriores/nuevos sobre el mismo mapa e IA; comparación final hasta primer rebirth del bot +50,8%, sin prometer tiempo humano.
@@ -43,7 +80,7 @@ evitar una mezcla de imágenes con estilos incompatibles.
 
 - [x] Recuperar trabajo cercano cuando el llamado queda sobre suelo/comida agotada; no reservar muebles que ya caen.
 - [x] Conservar puestos de trabajo hasta cambiar de objetivo o SU geometría, no por cualquier rotura del mapa.
-- [x] Primera silla de madera accesible, premio proporcional y paso contextual con botón para encontrarla.
+- [x] Primera silla de madera accesible y paso contextual con botón para encontrarla; el perfil vigente conserva 420 de valor al subir a 280 de resistencia.
 - [x] Separar los hitos de silla de madera del banquito de cartón inicial; conservar premios ya guardados.
 - [x] Mostrar compañeros, utilidad y limitaciones en fichas de castas, sin sinergias numéricas inventadas.
 - [x] Mostrar el arranque real al elegir decreto y preparación explícita, sin suponer compras no elegidas ni cobrarlas antes de confirmar.
@@ -87,13 +124,13 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 
 - [x] Temporizador por run
 - [x] Panel de fin de run
-- [x] Tienda con árbol de mejoras (31 mejoras en 6 ramas, las bloqueadas en sombra)
+- [x] Tienda con árbol de mejoras (82 mejoras y 7 castas en siete ramas, las bloqueadas en sombra)
 - [x] Comprar mejoras y castas en cantidades ×1, ×10 o Máx, con indicadores de disponibilidad por rama
 - [x] Guardado y carga automáticos
 - [x] Clic exclusivamente para llamar; compras de Pisotón migradas a daño de hormigas sin perder niveles
 - [x] Mecánicas que aparecen de a una (frenesí, castas, prioridades, viajes, legado)
 - [x] Próxima meta siempre visible en el HUD, con barra y aviso cuando alcanza
-- [x] Hormigas más grandes en pantalla y 8 obreras iniciales
+- [x] Hormigas más grandes en pantalla y una obrera inicial; cada nivel de Más obreras suma una
 - [x] Menú principal, pausa con Esc, configuración (idioma, volumen, pantalla completa, temblor) y estadísticas
 - [x] Todo el juego en español e inglés (idiomas/en.po)
 
@@ -145,7 +182,7 @@ Pueden copiar esta lista a un tablero de GitHub Projects.
 - [x] **B:** hitos opcionales con premios permanentes explícitos
 - [x] **B:** seis destinos con objetivos: casa, restaurante, museo, Obelisco, Coliseo y Torre Eiffel
 - [x] **B:** árbol de mejoras como hormiguero de pantalla completa, con cámaras subdivididas y desarrollo visual
-- [x] Bot de balance con paso 1/60 y tiempo ×1; piloto final con retirada: madera 7,3 min, paredes/casa 33,1, restaurante 38,2; comparación controlada de castas (ver limitaciones en diseño)
+- [x] Bot de balance con paso 1/60 y tiempo ×1; piloto histórico con retirada: madera 7,3 min, paredes/casa 33,1, restaurante 38,2; no describe el arranque individual actual (ver medición vigente y limitaciones en diseño)
 - [x] Puestos de trabajo estables durante el acercamiento; regresos alternativos si una entrada queda aislada
 - [x] Hasta seis entradas secundarias por destino, sin simulación subterránea y con navegación compartida
 - [x] Retirada acotada, desglose de ingresos y récords por destino persistentes

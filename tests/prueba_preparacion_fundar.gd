@@ -113,8 +113,9 @@ func probar_ventana() -> void:
 	var antes := Juego.datos_partida().duplicate(true)
 	ventana.elegir_preparacion("cuadrilla")
 	verificar(Juego.datos_partida() == antes and not ventana._boton_fundar.disabled and "Costo total: 6" in ventana._lbl_preparacion.text, "elegir cuadrilla muestra el costo completo sin comprar")
+	var esperada := Juego.vista_previa_fundar(ventana.elegido, ventana.compras_preparacion())
 	ventana.fundar()
-	verificar(Juego.fundaciones == 1 and Juego.jalea == 4 and Juego.stat("materiales") == 1 and Juego.stat("hormigas_iniciales") > 8, "el botón confirma una colonia que ya puede comer muebles y su cuadrilla")
+	verificar(Juego.fundaciones == 1 and Juego.jalea == 4 and Juego.stat("materiales") == 1 and Juego.stat("hormigas_iniciales") == esperada.stats.hormigas_iniciales and Juego.stat("hormigas_iniciales") > Juego.stats_base.hormigas_iniciales, "el botón confirma la cuadrilla exacta mostrada, que ya puede comer muebles")
 	await get_tree().process_frame
 	ventana = VentanaFundar.new()
 	add_child(ventana)

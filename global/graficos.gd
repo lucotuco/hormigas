@@ -13,9 +13,20 @@ var _alto_fila := 0
 var _pendientes: Array[Dictionary] = []
 var _mueble_claves: Dictionary = {}
 var _mueble_medidas: Dictionary = {}
+var _regiones_muebles_crudas: Dictionary = {}
+var _rects_muebles_crudos: Dictionary = {}
 var _alturas := PackedInt32Array()
 var _alto_atlas := 4
 var _animaciones: Dictionary = {}
+## Geometría del arte prehorneada: idéntica en juego y simulación headless.
+## Nunca se lee la GPU para decidir cuánto material o dinero se extrae.
+var _formas_alimentos: Dictionary = {}
+var tiempo_lectura_siluetas_usec := 0
+var tiempo_cpu_siluetas_usec := 0
+var pixeles_siluetas_revisados := 0
+var pixeles_lectura_atlas := 0
+const GRILLA_SILUETA_ALIMENTO := 8
+const ALPHA_MATERIAL_ALIMENTO := 0.55
 
 func animacion(tipo: String, evolucion: int) -> Array[Rect2]:
 	var clave := "%s:%d" % [tipo, evolucion]
@@ -36,6 +47,8 @@ class Pintura extends Node2D:
 			AspectoHormiga.dibujar(self, datos.id, datos.color, fase, false, Color.WHITE, evolucion)
 		elif tipo == "mueble":
 			DibujoCasa.mueble(self, datos)
+		elif tipo == "pared":
+			DibujoCasa.pared(self, Rect2(0, 0, 96, 64))
 		elif tipo == "reposteria":
 			_dulce()
 		elif tipo == "resto":
@@ -72,6 +85,7 @@ class Pintura extends Node2D:
 				draw_arc(centro, radio * 0.88, -2.8, -1.0, 16, c.lightened(0.16), maxf(1, radio * 0.035), true)
 
 func _ready() -> void:
+	_cargar_siluetas_alimentos()
 	if DisplayServer.get_name() == "headless":
 		return
 	_viewport = SubViewport.new()
@@ -131,6 +145,9 @@ func _ready() -> void:
 		resto.tipo = "resto"
 		resto.datos = {"color": [Color("d9bb80"), Color("b58d61"), Color("95afa0"), Color("c8bba2")][material_id]}
 		_agregar("resto:%d" % material_id, resto, Rect2(-12, -12, 24, 24), 3)
+	var pared := Pintura.new()
+	pared.tipo = "pared"
+	_agregar("material:pared", pared, Rect2(0, 0, 96, 64), 1)
 	var carga := Pintura.new()
 	_agregar("carga", carga, Rect2(-4, -4, 8, 8), 4)
 	# Orden por altura: las camas y bibliotecas no dejan filas casi vacías.
@@ -144,9 +161,83 @@ func _ready() -> void:
 	textura = _viewport.get_texture()
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	await RenderingServer.frame_post_draw
+	await _separar_material()
+	_ajustar_cuerpos()
 	# Congelar el atlas; no agrega un segundo render por cuadro.
 	listo = true
 	preparado.emit()
+
+
+func _separar_material() -> void:
+	# Segundo pase GPU de arranque: el cutoff ve la alpha del sprite COMPLETO,
+	# no de cada pincelada. El atlas crudo se libera; no quedan dos atlas vivos.
+	var crudo := _viewport
+	var limpio := SubViewport.new()
+	limpio.size = crudo.size
+	limpio.transparent_bg = true
+	limpio.disable_3d = true
+	limpio.world_2d = World2D.new()
+	limpio.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(limpio)
+	var recorte := ShaderMaterial.new()
+	recorte.shader = preload("res://mundo/atlas_material.gdshader")
+	for clave: String in regiones:
+		var copia := Sprite2D.new()
+		copia.texture = textura
+		copia.region_enabled = true
+		copia.region_filter_clip_enabled = true
+		copia.region_rect = regiones[clave]
+		copia.centered = false
+		copia.position = regiones[clave].position
+		if clave.begins_with("mueble:") or clave == "material:pared":
+			copia.material = recorte
+		limpio.add_child(copia)
+	limpio.render_target_update_mode = SubViewport.UPDATE_ONCE
+	await RenderingServer.frame_post_draw
+	limpio.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	textura = limpio.get_texture()
+	_viewport = limpio
+	for copia in limpio.get_children():
+		copia.queue_free()
+	crudo.queue_free()
+
+
+func _ajustar_cuerpos() -> void:
+	for datos: Dictionary in catalogo_muebles():
+		var id := clave_mueble(datos)
+		if not _mueble_claves.has(id):
+			continue
+		var clave: String = _mueble_claves[id]
+		if _regiones_muebles_crudas.has(clave):
+			continue
+		_regiones_muebles_crudas[clave] = regiones[clave]
+		_rects_muebles_crudos[clave] = tamanos[clave]
+		var cuerpo := SiluetaMueble.datos_material(datos)
+		if cuerpo.is_empty():
+			continue
+		var base: Vector2 = _mueble_medidas[id]
+		var b: Array = cuerpo.limites
+		var ocupado := Rect2(Vector2(b[0], b[1]) * base, Vector2(b[2], b[3]) * base)
+		var original: Rect2 = tamanos[clave]
+		var atlas: Rect2 = regiones[clave]
+		var escala := atlas.size / original.size
+		regiones[clave] = Rect2(atlas.position + (ocupado.position - original.position) * escala, ocupado.size * escala)
+		# El cuerpo completo se ajusta al mismo rect físico, sin perder sus
+		# salientes ni dejar una tira visible fuera de la máscara comestible.
+		tamanos[clave] = Rect2(Vector2.ZERO, base)
+
+
+func configurar_sombra(material_cuerpo: ShaderMaterial, datos: Dictionary) -> void:
+	var id := clave_mueble(datos)
+	if not listo or not _mueble_claves.has(id):
+		return
+	var clave: String = _mueble_claves[id]
+	var region: Rect2 = regiones[clave]
+	var rect: Rect2 = datos.rect
+	var inv_atlas := Vector2.ONE / Vector2(textura.get_width(), textura.get_height())
+	material_cuerpo.set_shader_parameter("sombra_activa", true)
+	material_cuerpo.set_shader_parameter("region_cuerpo", Vector4(region.position.x * inv_atlas.x, region.position.y * inv_atlas.y, region.end.x * inv_atlas.x, region.end.y * inv_atlas.y))
+	material_cuerpo.set_shader_parameter("uv_por_unidad", region.size * inv_atlas / rect.size)
 
 func _agregar(clave: String, dibujo: Node2D, rect: Rect2, escala: float) -> void:
 	_pendientes.append({"clave": clave, "dibujo": dibujo, "rect": rect, "escala": escala})
@@ -197,7 +288,7 @@ func clave_mueble(datos: Dictionary) -> String:
 	var eje := "vertical" if datos.tipo == "biblioteca" and datos.rect.size.y > datos.rect.size.x else "horizontal"
 	return "%s:%s:%s:%s:%s" % [datos.tipo, datos.get("frente", "sur"), color.to_html(), datos.get("acabado", "normal"), eje]
 
-func dibujar_mueble(lienzo: CanvasItem, datos: Dictionary) -> void:
+func dibujar_mueble(lienzo: CanvasItem, datos: Dictionary, con_sombra := false) -> void:
 	var id := clave_mueble(datos)
 	if not _mueble_claves.has(id):
 		return
@@ -206,4 +297,134 @@ func dibujar_mueble(lienzo: CanvasItem, datos: Dictionary) -> void:
 	var escala: Vector2 = r.size / _mueble_medidas[id]
 	var original: Rect2 = tamanos[clave]
 	var destino := Rect2(r.position + original.position * escala, original.size * escala)
-	lienzo.draw_texture_rect_region(textura, destino, regiones[clave])
+	var fuente: Rect2 = regiones[clave]
+	if con_sombra:
+		var margen := Vector2.ONE * 12
+		var relacion := fuente.size / destino.size
+		destino = destino.grow(12)
+		fuente = Rect2(fuente.position - margen * relacion, fuente.size + margen * relacion * 2)
+	lienzo.draw_texture_rect_region(textura, destino, fuente)
+
+
+## El retazo usa el mismo atlas y la misma transformación que el objeto.
+## No se lee la GPU ni se crea una textura al arrancar un bocado.
+func region_porcion(clave: String, porcion: Rect2, dibujo: Rect2) -> Rect2:
+	if not listo or not regiones.has(clave) or not dibujo.has_area():
+		return Rect2()
+	var recorte := porcion.intersection(dibujo)
+	if not recorte.has_area():
+		return Rect2()
+	var atlas: Rect2 = regiones[clave]
+	var escala := atlas.size / dibujo.size
+	return Rect2(atlas.position + (recorte.position - dibujo.position) * escala, recorte.size * escala)
+
+
+func region_porcion_mueble(datos: Dictionary, porcion_mundo: Rect2) -> Rect2:
+	var id := clave_mueble(datos)
+	if not listo or not _mueble_claves.has(id):
+		return Rect2()
+	var clave: String = _mueble_claves[id]
+	var rect: Rect2 = datos.rect
+	var escala: Vector2 = rect.size / _mueble_medidas[id]
+	var original: Rect2 = tamanos[clave]
+	var dibujo := Rect2(rect.position + original.position * escala, original.size * escala)
+	return region_porcion(clave, porcion_mundo, dibujo)
+
+
+## Vista retenida, sólo lectura. Cajas ocupadas de una grilla 8×8, en
+## coordenadas locales del alimento; se omiten las zonas completamente vacías.
+## El recurso incluido también está disponible sin renderer.
+func formas_alimento(id: String) -> Array[Rect2]:
+	if not _formas_alimentos.has(id):
+		return []
+	return _formas_alimentos[id]
+
+
+func _cargar_siluetas_alimentos() -> void:
+	var datos: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://datos/siluetas_comidas.json"))
+	for id: String in datos:
+		var zonas: Array[Rect2] = []
+		for r: Array in datos[id]:
+			zonas.append(Rect2(r[0], r[1], r[2], r[3]))
+		_formas_alimentos[id] = zonas
+
+
+func _preparar_siluetas_alimentos() -> void:
+	_formas_alimentos.clear()
+	pixeles_siluetas_revisados = 0
+	var inicio_lectura := Time.get_ticks_usec()
+	var imagen := textura.get_image()
+	tiempo_lectura_siluetas_usec = Time.get_ticks_usec() - inicio_lectura
+	if imagen == null or imagen.is_empty():
+		return
+	pixeles_lectura_atlas = imagen.get_width() * imagen.get_height()
+	var inicio_cpu := Time.get_ticks_usec()
+	for tipo in Juego.comidas:
+		var clave := "comida:" + String(tipo.id)
+		if not regiones.has(clave) or not tamanos.has(clave):
+			continue
+		var radio: float = tipo.radio
+		var cuerpo := Rect2(Vector2.ONE * -radio, Vector2.ONE * radio * 2.0)
+		_formas_alimentos[tipo.id] = _formas_desde_alpha(imagen, regiones[clave], tamanos[clave], cuerpo)
+	tiempo_cpu_siluetas_usec = Time.get_ticks_usec() - inicio_cpu
+	# La única copia CPU del atlas sale de alcance aquí; las cajas no la referencian.
+	imagen = null
+	print("[Graficos] Siluetas de %d alimentos: lectura %.2f ms; CPU %.2f ms; %d píxeles revisados; atlas RGBA8 aprox. %.2f MiB temporales." % [
+		_formas_alimentos.size(), tiempo_lectura_siluetas_usec / 1000.0, tiempo_cpu_siluetas_usec / 1000.0,
+		pixeles_siluetas_revisados, pixeles_lectura_atlas * 4.0 / 1048576.0])
+
+
+func _formas_desde_alpha(imagen: Image, atlas: Rect2, dibujo: Rect2, cuerpo: Rect2) -> Array[Rect2]:
+	var formas: Array[Rect2] = []
+	if not dibujo.has_area() or not atlas.has_area() or not cuerpo.has_area():
+		return formas
+	var escala := atlas.size / dibujo.size
+	# Misma transformación dibujo→atlas que region_porcion, antes de listo.
+	var origen_pixel := atlas.position + (cuerpo.position - dibujo.position) * escala
+	var fin_pixel := atlas.position + (cuerpo.end - dibujo.position) * escala
+	var minimo_x := clampi(floori(origen_pixel.x), 0, imagen.get_width())
+	var minimo_y := clampi(floori(origen_pixel.y), 0, imagen.get_height())
+	var maximo_x := clampi(ceili(fin_pixel.x), 0, imagen.get_width())
+	var maximo_y := clampi(ceili(fin_pixel.y), 0, imagen.get_height())
+	var cantidad := GRILLA_SILUETA_ALIMENTO * GRILLA_SILUETA_ALIMENTO
+	var izquierda := PackedInt32Array()
+	var arriba := PackedInt32Array()
+	var derecha := PackedInt32Array()
+	var abajo := PackedInt32Array()
+	izquierda.resize(cantidad)
+	izquierda.fill(maximo_x)
+	arriba.resize(cantidad)
+	arriba.fill(maximo_y)
+	derecha.resize(cantidad)
+	derecha.fill(minimo_x - 1)
+	abajo.resize(cantidad)
+	abajo.fill(minimo_y - 1)
+	for y in range(minimo_y, maximo_y):
+		var local_y := dibujo.position.y + (y + 0.5 - atlas.position.y) / escala.y
+		if local_y < cuerpo.position.y or local_y >= cuerpo.end.y:
+			continue
+		var fila := clampi(floori((local_y - cuerpo.position.y) / cuerpo.size.y * GRILLA_SILUETA_ALIMENTO), 0, GRILLA_SILUETA_ALIMENTO - 1)
+		for x in range(minimo_x, maximo_x):
+			var local_x := dibujo.position.x + (x + 0.5 - atlas.position.x) / escala.x
+			if local_x < cuerpo.position.x or local_x >= cuerpo.end.x:
+				continue
+			pixeles_siluetas_revisados += 1
+			if imagen.get_pixel(x, y).a <= ALPHA_MATERIAL_ALIMENTO:
+				continue
+			var columna := clampi(floori((local_x - cuerpo.position.x) / cuerpo.size.x * GRILLA_SILUETA_ALIMENTO), 0, GRILLA_SILUETA_ALIMENTO - 1)
+			var id := fila * GRILLA_SILUETA_ALIMENTO + columna
+			izquierda[id] = mini(izquierda[id], x)
+			arriba[id] = mini(arriba[id], y)
+			derecha[id] = maxi(derecha[id], x)
+			abajo[id] = maxi(abajo[id], y)
+	for id in cantidad:
+		if derecha[id] < izquierda[id] or abajo[id] < arriba[id]:
+			continue
+		var minimo := dibujo.position + (Vector2(izquierda[id], arriba[id]) - atlas.position) / escala
+		var maximo := dibujo.position + (Vector2(derecha[id] + 1, abajo[id] + 1) - atlas.position) / escala
+		var tamano_zona := cuerpo.size / float(GRILLA_SILUETA_ALIMENTO)
+		var zona := Rect2(cuerpo.position + Vector2(id % GRILLA_SILUETA_ALIMENTO, id / GRILLA_SILUETA_ALIMENTO as int) * tamano_zona, tamano_zona)
+		var ocupado := Rect2(minimo, maximo - minimo).intersection(zona).intersection(cuerpo)
+		if ocupado.has_area():
+			formas.append(ocupado)
+	return formas

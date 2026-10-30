@@ -89,7 +89,7 @@ func _ready() -> void:
 	var ayuda := PanelContainer.new()
 	ayuda.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ayuda.add_theme_stylebox_override("panel", Estilo.caja(Color(0.09, 0.07, 0.05, 0.72), 8, Color.TRANSPARENT, 0, 7))
-	ayuda.add_child(Estilo.etiqueta(tr("Pasá el mouse por una cámara para ver qué hace · clic para mejorarla · arrastrá y usá la rueda para recorrer"), 13, Color(0.88, 0.88, 0.79, 0.7)))
+	ayuda.add_child(Estilo.etiqueta(tr("Mouse: ver · clic: comprar · arrastrá y usá la rueda para recorrer"), 13, Color(0.88, 0.88, 0.79, 0.7)))
 	ayuda.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	ayuda.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	ayuda.position = Vector2(14, -14)
@@ -492,7 +492,7 @@ func _ficha_mejora(id: String, e: Dictionary) -> void:
 	if e.misterio:
 		_lbl_sala.text = tr("Cámara sin excavar")
 		_lbl_rama.text = _nombre_rama(m.rama)
-		_lbl_detalle.text = tr("Se descubre más adelante, en tus viajes.")
+		_lbl_detalle.text = tr("Se descubre viajando.")
 		_lbl_cambio.text = ""
 		_lbl_costo.text = ""
 		_lbl_estado.text = ""
@@ -503,24 +503,24 @@ func _ficha_mejora(id: String, e: Dictionary) -> void:
 	_lbl_sala.text = ("✦ " if m.destino != "" else "") + tr(m.nombre)
 	_lbl_rama.text = _nombre_rama(m.rama)
 	_lbl_detalle.text = tr(m.descripcion)
-	_lbl_estado.text = _efecto_practico(m.stat)
+	_lbl_estado.text = ""
 	if not e.abierta:
 		if m.destino != "" and not Juego.destino_desbloqueado(m.destino):
 			_lbl_cambio.text = tr("Se descubre al llegar a %s") % tr(Mundos.INFO[m.destino].nombre)
 		else:
 			_lbl_cambio.text = texto_requisitos(Juego.requisitos_faltantes(m.requisitos))
 		_lbl_cambio.label_settings.font_color = Estilo.TEXTO_SUAVE
-		_lbl_costo.text = tr("Cámara por desarrollar")
+		_lbl_costo.text = tr("×%d · %s migas") % [maxi(1, oferta.cantidad), Juego.formatear(oferta.costo)]
 		_lbl_costo.label_settings.font_color = Estilo.TEXTO_SUAVE
 		_lbl_pista.text = ""
 		return
 	if maxima:
 		if m.tope_por_destino > 0 and Juego.lugares_completados.size() < Mundos.ORDEN.size():
-			_lbl_cambio.text = tr("Tope alcanzado: cada destino conquistado suma %d niveles.") % m.tope_por_destino
+			_lbl_cambio.text = tr("+%d niveles por destino conquistado.") % m.tope_por_destino
 		elif m.elevable and not Juego.jalea_al_maximo("techo"):
-			_lbl_cambio.text = tr("Tope alcanzado: las Cámaras más hondas de la reina suman niveles.")
+			_lbl_cambio.text = tr("Más niveles en Cámaras más hondas.")
 		else:
-			_lbl_cambio.text = tr("Tu colonia domina esta habilidad.")
+			_lbl_cambio.text = ""
 		_lbl_costo.text = tr("COMPLETA")
 		_lbl_pista.text = ""
 		return
@@ -533,11 +533,11 @@ func _ficha_mejora(id: String, e: Dictionary) -> void:
 		_lbl_cambio.text += "\n" + tr("Hito en nivel %d: daño ×%s") % [hito, _numero_corto(m.bonus_mult)]
 	if oferta.puede:
 		_lbl_costo.text = tr("Comprar ×%d · %s migas") % [oferta.cantidad, Juego.formatear(oferta.costo)]
-		_lbl_pista.text = tr("Clic para mejorar")
-	else:
-		_lbl_costo.text = tr("Faltan %s migas") % Juego.formatear(maxf(0, oferta.costo - Juego.migas))
-		_lbl_costo.label_settings.font_color = Estilo.TEXTO_SUAVE
 		_lbl_pista.text = ""
+	else:
+		_lbl_costo.text = tr("×%d · %s migas") % [maxi(1, oferta.cantidad), Juego.formatear(oferta.costo)]
+		_lbl_costo.label_settings.font_color = Estilo.TEXTO_SUAVE
+		_lbl_pista.text = tr("Faltan %s migas") % Juego.formatear(maxf(0, oferta.costo - Juego.migas))
 
 
 func _ficha_casta(id: String, e: Dictionary) -> void:
@@ -545,7 +545,7 @@ func _ficha_casta(id: String, e: Dictionary) -> void:
 	if e.misterio:
 		_lbl_sala.text = tr("Cámara por desarrollar")
 		_lbl_rama.text = tr("CASTAS")
-		_lbl_detalle.text = tr("Las especialistas aparecen después de tu cuarta expedición.")
+		_lbl_detalle.text = tr("Después de la cuarta expedición.")
 		_lbl_cambio.text = ""
 		_lbl_costo.text = ""
 		_lbl_estado.text = ""
@@ -555,25 +555,25 @@ func _ficha_casta(id: String, e: Dictionary) -> void:
 	_lbl_sala.label_settings.font_color = c.color.lightened(0.25)
 	_lbl_rama.text = tr("CASTA · %s") % tr(c.rol).to_upper()
 	_lbl_detalle.text = tr(c.habilidad)
-	_lbl_estado.text = _panel_castas.consejo_equipo(id)
-	_lbl_pista.text = tr("Clic derecho: ficha completa y evoluciones")
+	_lbl_estado.text = ""
+	_lbl_pista.text = tr("Clic derecho: detalles y evoluciones")
 	var oferta := Juego.cotizar_casta(id, Juego.cantidad_compra)
 	if not e.abierta:
 		_lbl_cambio.text = texto_requisitos(Juego.requisitos_faltantes(c.requisitos))
 		_lbl_cambio.label_settings.font_color = Estilo.TEXTO_SUAVE
-		_lbl_costo.text = tr("Cámara por desarrollar")
+		_lbl_costo.text = tr("×%d · %s migas") % [maxi(1, oferta.cantidad), Juego.formatear(oferta.costo)]
 		_lbl_costo.label_settings.font_color = Estilo.TEXTO_SUAVE
 	elif e.nivel >= e.maximo:
-		_lbl_cambio.text = tr("Compra permanente: esta unidad saldrá en cada expedición.")
+		_lbl_cambio.text = tr("Sale en cada expedición.")
 		_lbl_costo.text = tr("Colonia completa")
 	else:
-		_lbl_cambio.text = tr("Compra permanente: esta unidad saldrá en cada expedición.")
+		_lbl_cambio.text = tr("Sale en cada expedición.")
 		if oferta.puede:
 			_lbl_costo.text = tr("Reclutar ×%d · %s migas") % [maxi(1, oferta.cantidad), Juego.formatear(oferta.costo)]
-			_lbl_pista.text = tr("Clic para reclutar · clic derecho: ficha completa y evoluciones")
 		else:
-			_lbl_costo.text = tr("Faltan %s migas") % Juego.formatear(maxf(0, oferta.costo - Juego.migas))
+			_lbl_costo.text = tr("×%d · %s migas") % [maxi(1, oferta.cantidad), Juego.formatear(oferta.costo)]
 			_lbl_costo.label_settings.font_color = Estilo.TEXTO_SUAVE
+			_lbl_pista.text = tr("Faltan %s migas") % Juego.formatear(maxf(0, oferta.costo - Juego.migas)) + "\n" + tr("Clic derecho: detalles y evoluciones")
 
 
 func _ficha_seccion(id: String, e: Dictionary) -> void:
@@ -585,11 +585,11 @@ func _ficha_seccion(id: String, e: Dictionary) -> void:
 	_lbl_pista.text = tr("Clic para entrar") if e.abierta else ""
 	match id:
 		"viajes":
-			_lbl_detalle.text = tr("Elegí el próximo destino. Conquistaste %d de %d.") % [Juego.lugares_completados.size(), Mundos.ORDEN.size()] if e.abierta else tr("Se abre al conquistar el gran objetivo de la casa.")
+			_lbl_detalle.text = tr("Destinos conquistados: %d / %d.") % [Juego.lugares_completados.size(), Mundos.ORDEN.size()] if e.abierta else tr("Conquistá la casa para viajar.")
 		"castas":
-			_lbl_detalle.text = tr("Fichas completas, evoluciones y equipo de tus especialistas.") if e.abierta else tr("Las especialistas aparecen después de tu cuarta expedición.")
+			_lbl_detalle.text = tr("Castas, equipo y evoluciones.") if e.abierta else tr("Después de la cuarta expedición.")
 		"legado":
-			_lbl_detalle.text = tr("Fundá colonias nuevas y mejorá a la reina. Tenés %d de jalea.") % Juego.jalea if e.abierta else tr("Se abre con tu primer hito o tu primera corona.")
+			_lbl_detalle.text = tr("Mejoras de la reina · %d de jalea.") % Juego.jalea if e.abierta else tr("Se abre con un hito o una corona.")
 
 
 func _nombre_rama(rama: String) -> String:
@@ -788,7 +788,7 @@ func _refrescar() -> void:
 	_boton_run.tooltip_text = tr("Destino: %s") % tr(Mundos.INFO[Juego.lugar_actual].nombre)
 	for cantidad in _cantidades:
 		_cantidades[cantidad].add_theme_stylebox_override("normal", Estilo.caja(Color("536649") if cantidad == Juego.cantidad_compra else Color("282f26"), 10, Color("94b47e") if cantidad == Juego.cantidad_compra else Color("46503f"), 1, 10))
-	_lbl_proxima.text = tr("%d obreras + %d especialistas  ·  %d s  ·  %d cm") % [int(Juego.stat("hormigas_iniciales")), Juego.total_especialistas(), int(Juego.stat("duracion_run")), int(Juego.stat("radio_territorio") / 10.0)]
+	_lbl_proxima.text = tr("%s + %d especialistas  ·  %d s  ·  %d cm") % [_valor_stat("hormigas_iniciales", Juego.stat("hormigas_iniciales")), Juego.total_especialistas(), int(Juego.stat("duracion_run")), int(Juego.stat("radio_territorio") / 10.0)]
 	if Juego.decretos_por_id.has(Juego.decreto):
 		_lbl_proxima.text += "  ·  " + tr(Juego.decretos_por_id[Juego.decreto].nombre)
 	_estados = _calcular_estados()
@@ -835,16 +835,16 @@ func _valor_stat(stat: String, valor: float) -> String:
 	match stat:
 		"duracion_run": return "%.0f s" % valor
 		"intervalo_mordida": return tr("%.2f s entre mordidas") % valor
-		"feromona_cantidad": return tr("%d hormigas") % int(valor)
+		"feromona_cantidad": return tr("1 hormiga") if int(valor) == 1 else tr("%d hormigas") % int(valor)
 		"materiales": return tr(MaterialesCasa.NIVELES[clampi(int(valor), 0, 3)])
 		"velocidad": return tr("%.0f de velocidad") % valor
 		"radio_territorio": return "%.0f cm" % (valor / 10.0)
-		"entradas": return tr("%d accesos secundarios") % mini(6, int(valor))
+		"entradas": return tr("1 acceso secundario") if int(valor) == 1 else tr("%d accesos secundarios") % mini(6, int(valor))
 		"multiplicador_migas": return tr("×%.2f migas") % valor
-		"hormigas_iniciales": return tr("%d obreras") % int(valor)
-		"cria": return tr("%d crías / 10 s") % int(valor)
+		"hormigas_iniciales": return tr("1 obrera") if int(valor) == 1 else tr("%d obreras") % int(valor)
+		"cria": return tr("1 cría / 10 s") if int(valor) == 1 else tr("%d crías / 10 s") % int(valor)
 		"olfato": return tr("%.0f de alcance") % valor
-		"capacidad": return tr("%d bocados") % int(valor)
+		"capacidad": return tr("1 bocado") if int(valor) == 1 else tr("%d bocados") % int(valor)
 		"dano_clic": return tr("%s de daño por pisotón") % Juego.formatear(valor)
 		"pisotones_auto": return tr("%.1f pisotones automáticos/s") % valor
 		"retirada": return tr("%.0f s de retirada") % valor
@@ -862,34 +862,6 @@ func _valor_stat(stat: String, valor: float) -> String:
 	return tr("%s de daño") % ("%.1f" % valor if valor < 1000.0 else Juego.formatear(valor))
 
 
-## Efecto sobre el trabajo que ya existe, no una promesa de producción: ésta
-## depende del material, los caminos y el resto de la colonia.
-func _efecto_practico(stat: String) -> String:
-	match stat:
-		"hormigas_iniciales", "cria": return tr("Más trabajadoras reparten la búsqueda, el corte y las entregas.")
-		"velocidad": return tr("Llegan antes a los recursos y tardan menos en entregar cada carga.")
-		"capacidad": return tr("Juntan más bocados antes de volver: menos viajes para transportar lo extraído.")
-		"dano", "intervalo_mordida": return tr("Recortan los materiales antes. Las cargadoras ayudan a llevarse los restos.")
-		"materiales": return tr("La colonia puede trabajar otro material: no hace falta romperlo a clics.")
-		"entradas": return tr("Al alcanzar otro ambiente pueden entregar allí, sin volver siempre a la entrada principal.")
-		"radio_territorio": return tr("Abre terreno para explorar; las entradas secundarias pueden acortar el regreso.")
-		"olfato": return tr("Encuentran recursos desde más lejos sin necesitar un llamado.")
-		"feromona_cantidad": return tr("El llamado reúne más hormigas cercanas; la colonia sigue buscando sola cuando lo soltás.")
-		"duracion_run": return tr("Tienen más tiempo para extraer y transportar antes de la retirada.")
-		"multiplicador_migas": return tr("Cada recurso entregado vale más. Lo que queda en camino todavía no se cobra.")
-		"pisotones_auto", "dano_clic": return tr("El apoyo automático corta comida cerca del cursor, sin agregar daño al clic manual.")
-		"retirada": return tr("Al final de la expedición tienen más tiempo para entregar lo que llevan.")
-		"frenesi_duracion", "frenesi_ritmo": return tr("Cada depósito carga el frenesí: con veinte seguidos la colonia acelera.")
-		"bonus_destruir": return tr("Terminar una comida o una pieza paga un extra, además de lo que se transporta.")
-		"botin_eventos", "intervalo_doradas": return tr("Pisar las migas doradas y vencer amenazas paga más: conviene mirar la pantalla.")
-		"fuerza_especialistas", "limite_castas": return tr("Las especialistas reclutadas salen en todas las expediciones.")
-		"tesoros_extra": return tr("Las alacenas, heladeras y vitrinas que se abren sueltan más comida.")
-		"domino": return tr("Al caer un mueble devorado sacude a los vecinos: un derrumbe puede abrir varios.")
-		"corrosion_factor": return tr("Las hormigas rojas ablandan los materiales para todo el grupo.")
-		"festin_duracion": return tr("Los festines del restaurante cargan el frenesí al doble.")
-	return tr("Las mejoras se guardan al comprar.")
-
-
 func _comprar(id: String) -> void:
 	var texto := ""
 	if Juego.castas_por_id.has(id) and not Juego.mejoras_por_id.has(id):
@@ -899,9 +871,9 @@ func _comprar(id: String) -> void:
 		var reclutadas := Juego.comprar_castas_lote(id, Juego.cantidad_compra)
 		if reclutadas == 0:
 			Sonido.tocar("no")
-			_aviso(id, tr("Te faltan migas o una casta previa. ¡Otra expedición!"))
+			_aviso(id, tr("Faltan migas o requisitos."))
 			return
-		texto = tr("¡%s ×%d! Salen en todas las próximas expediciones.") % [tr(Juego.castas_por_id[id].nombre), reclutadas]
+		texto = tr("Reclutaste ×%d. Salen en cada expedición.") % reclutadas
 	elif Juego.mejoras_por_id.has(id):
 		if _estados.get(id, {}).get("misterio", false):
 			Sonido.tocar("no")
@@ -911,9 +883,9 @@ func _comprar(id: String) -> void:
 		var compradas := Juego.comprar_lote(id, Juego.cantidad_compra)
 		if compradas == 0:
 			Sonido.tocar("no")
-			_aviso(id, tr("Te faltan migas o una mejora previa. ¡Otra expedición!"))
+			_aviso(id, tr("Faltan migas o requisitos."))
 			return
-		texto = tr("¡%s +%d niveles!\n%s → %s") % [tr(Juego.mejoras_por_id[id].nombre), compradas, _valor_stat(stat, antes), _valor_stat(stat, Juego.stat(stat))]
+		texto = tr("Comprado ×%d\n%s → %s") % [compradas, _valor_stat(stat, antes), _valor_stat(stat, Juego.stat(stat))]
 	else:
 		return
 	Sonido.tocar("comprar", 1.0, 0.01)

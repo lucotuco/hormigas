@@ -83,7 +83,7 @@ func _ready() -> void:
 	print("Simulación de 500 regresos: %d ms (prueba lógica, no benchmark gráfico)." % (Time.get_ticks_msec() - inicio_test))
 	# La vista previa no altera la economía.
 	var antes := Juego.stat("hormigas_iniciales")
-	verificar(Juego.stat_tras_comprar("mas_obreras") == antes + 2 and Juego.stat("hormigas_iniciales") == antes, "la vista previa muestra el valor futuro sin comprar")
+	verificar(Juego.stat_tras_comprar("mas_obreras") == antes + 1 and Juego.stat("hormigas_iniciales") == antes, "la vista previa muestra una obrera adicional sin comprar")
 	print("Pruebas de movimiento: %d fallas." % fallas)
 	run.queue_free()
 	await get_tree().process_frame

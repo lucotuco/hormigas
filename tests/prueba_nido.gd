@@ -102,7 +102,7 @@ func probar_ficha_y_compra() -> void:
 	var lleno: float = tienda._estados.mas_obreras.lleno
 	await clic_en(tienda.posicion_camara("mas_obreras"))
 	verificar(Juego.nivel_de("mas_obreras") == 1 and Juego.migas < 1000, "un clic mejora la cámara")
-	verificar(tienda._estados.mas_obreras.lleno > lleno and tienda._ficha_id == "mas_obreras" and "+1 niveles" in tienda._lbl_estado.text, "la cámara se llena y la ficha muestra el cambio")
+	verificar(tienda._estados.mas_obreras.lleno > lleno and tienda._ficha_id == "mas_obreras" and "Comprado ×1" in tienda._lbl_estado.text and "→" in tienda._lbl_estado.text, "la cámara se llena y la ficha muestra la compra y su cambio")
 	var cavado_antes: float = tienda._corte_tierra.cavado[_tunel("mas_obreras", "cria_acelerada")]
 	await clic_en(tienda.posicion_camara("mas_obreras"))
 	verificar(tienda._corte_tierra.cavado[_tunel("mas_obreras", "cria_acelerada")] > cavado_antes, "el túnel hacia la cámara siguiente se va cavando")

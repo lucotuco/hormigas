@@ -89,6 +89,9 @@ func _ready() -> void:
 	tipo.recompensa = 100
 	run.comidas._crear(tipo, Vector2(-60, 0), 17)
 	var comida: Comida = run.comidas.lista.back()
+	# La roja muerde desde aire junto a la silueta, no desde su nacimiento
+	# lejano ni desde el centro sólido del alimento.
+	roja.global_position = comida.punto_mordida(Vector2.ZERO, run.radio_actual)
 	roja.comida = comida
 	roja.estado = Hormiga.Estado.MORDIENDO
 	roja._reloj_mordida = 0
@@ -98,10 +101,14 @@ func _ready() -> void:
 	comida.aplicar_veneno(dps * 0.5, 3, run)
 	var vida := comida.vida
 	var migas := Juego.migas_run
+	var credito := credito_pendiente(comida.mordiscos)
 	for i in 6:
 		comida._process(0.5)
-	verificar(is_equal_approx(vida - comida.vida, dps * 3), "el veneno hace el daño esperado sin acumularse")
-	verificar(is_equal_approx(Juego.migas_run - migas, dps * 3), "las migas corroídas se acreditan una sola vez")
+	var retirado := vida - comida.vida
+	var pendiente := credito_pendiente(comida.mordiscos)
+	verificar(retirado > 0 and is_equal_approx(retirado + pendiente - credito, dps * 3) and credito_subpixel(comida.mordiscos), "el veneno mantiene su DPS sin apilarse y conserva el trabajo menor a un píxel")
+	var valor_retirado := comida.recompensa * retirado / comida.vida_max * Juego.stat("multiplicador_migas")
+	verificar(is_equal_approx(Juego.migas_run - migas, valor_retirado), "el veneno paga una sola vez el material retirado, nunca el crédito pendiente")
 	comida.aplicar_veneno(dps, 3, run)
 	vida = comida.vida
 	run.activa = false
@@ -137,6 +144,18 @@ func _ready() -> void:
 	print("Castas: %d verificaciones; %d fallas." % [total, fallas])
 	get_tree().quit(0 if fallas == 0 else 1)
 
+
+func credito_pendiente(m: MordiscosMaterial) -> float:
+	var pendiente := 0.0
+	for credito in m._credito:
+		pendiente += credito
+	return pendiente
+
+func credito_subpixel(m: MordiscosMaterial) -> bool:
+	for i in m._credito.size():
+		if m._credito[i] < 0 or m._credito[i] >= m._hp_pixel[i] + 0.000001:
+			return false
+	return true
 
 func verificar(condicion: bool, texto: String) -> void:
 	total += 1

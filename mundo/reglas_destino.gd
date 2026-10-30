@@ -3,7 +3,7 @@ extends Node
 ## Una regla por escenario. Los encadenamientos se procesan con presupuesto,
 ## no con llamadas recursivas ni simulaciones de otros destinos.
 const DESCRIPCIONES := {
-	"casa": "Abrí atajos · el banquito de cartón se puede devorar desde el inicio",
+	"casa": "Migas primero · el cartón es un proyecto para una colonia más grande",
 	"restaurante": "Servicio en cadena · hallar comida duplica la carga de frenesí por 8 s",
 	"museo": "Vitrinas con secretos · la cubierta se abre al 80% y revela cinco alimentos",
 	"obelisco": "Frentes debilitados · cada etapa del monumento aumenta el daño recibido",

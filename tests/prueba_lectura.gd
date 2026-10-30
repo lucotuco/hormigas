@@ -36,19 +36,26 @@ func probar_tienda() -> void:
 	tienda._ver_siguiente_paso()
 	verificar(tienda._mejora_seleccionada == "mordida_madera" and tienda._ficha_mejoras.visible, "ver mejora abre la cámara exacta")
 	verificar(Juego.datos_partida() == antes, "acercar una cámara no compra ni modifica la partida")
-	verificar("otro material" in tienda._lbl_estado.text, "la ficha describe cómo cambia el trabajo de la colonia")
+	verificar(tienda._lbl_estado.text.is_empty() and not tienda._lbl_detalle.text.is_empty(), "la ficha muestra una sola descripción, sin un segundo párrafo repetido")
+	verificar("Requiere" in tienda._lbl_cambio.text and "migas" in tienda._lbl_costo.text, "una mejora cerrada conserva sus requisitos y su precio")
 	Juego.migas = 1.0e7
 	Juego.cantidad_compra = 1
 	tienda._seleccionar_mejora("mas_obreras")
 	var obreras := int(Juego.stat("hormigas_iniciales"))
 	tienda._comprar("mas_obreras")
-	verificar(("%d obreras → %d obreras" % [obreras, int(Juego.stat("hormigas_iniciales"))]) in tienda._lbl_estado.text, "la compra muestra el cambio real antes y después")
+	verificar(("%s → %s" % [tienda._valor_stat("hormigas_iniciales", obreras), tienda._valor_stat("hormigas_iniciales", Juego.stat("hormigas_iniciales"))]) in tienda._lbl_estado.text, "la compra muestra el cambio real antes y después")
 	Juego.cantidad_compra = 10
 	var nivel := Juego.nivel_de("mas_obreras")
 	tienda._comprar("mas_obreras")
-	verificar(Juego.nivel_de("mas_obreras") == nivel + 10 and "+10 niveles" in tienda._lbl_estado.text, "el feedback respeta la cantidad realmente comprada")
-	for stat in ["hormigas_iniciales", "velocidad", "capacidad", "dano", "materiales", "entradas", "radio_territorio", "olfato", "feromona_cantidad", "duracion_run", "multiplicador_migas", "pisotones_auto"]:
-		verificar(not tienda._efecto_practico(stat).is_empty(), "explicación de conducta disponible para " + stat)
+	verificar(Juego.nivel_de("mas_obreras") == nivel + 10 and "Comprado ×10" in tienda._lbl_estado.text, "el feedback respeta la cantidad realmente comprada")
+	var breves := true
+	var sin_migracion := true
+	for m in Juego.mejoras:
+		breves = breves and m.descripcion.length() <= 72
+		sin_migracion = sin_migracion and not "Conserva los niveles" in m.descripcion and not "antiguo Pisotón" in m.descripcion
+	verificar(breves, "las descripciones de las mejoras son breves")
+	verificar(sin_migracion, "las descripciones no muestran notas de migración al jugador")
+	verificar(tienda._valor_stat("hormigas_iniciales", 1) == "1 obrera" and tienda._valor_stat("capacidad", 1) == "1 bocado", "una unidad usa texto singular")
 	verificar("automáticos/s" in tienda._valor_stat("pisotones_auto", 0.5), "los pisotones por segundo no se presentan como daño por mordida")
 	tienda._siguiente_paso = {"accion": "legado", "id": ""}
 	tienda._ver_siguiente_paso()

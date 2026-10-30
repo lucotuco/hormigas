@@ -18,7 +18,7 @@ func _ready() -> void:
 	Juego.reiniciar_estado()
 	var primera := await medir_expedicion()
 	verificar(primera.dieta == 0 and not primera.silla, "el primer arranque no permite desarmar madera antes de aprenderla")
-	verificar(primera.migas > 0 and primera.carton, "ocho obreras recolectan y muestran el cartón sin daño por clic")
+	verificar(primera.obreras == 1 and primera.migas > 0, "una sola obrera extrae y transporta recursos sin daño por clic")
 	var cantidad_inicial := int(Juego.stats_base.hormigas_iniciales)
 	var dano_inicial := float(Juego.stats_base.dano)
 	preparar_primera_fundacion()
@@ -34,14 +34,14 @@ func _ready() -> void:
 	verificar(Juego.jalea == SALDO_COMPARADO - gastado and Juego.legado == SALDO_COMPARADO, "el plan descuenta cada precio y gastar no reduce el legado")
 	verificar(Juego.migas == 0 and Juego.reclutadas.is_empty() and Juego.nivel_de("mandibulas") == 0, "el plan no regala migas, especialistas ni mejoras de la colonia anterior")
 	var plan := await medir_expedicion()
-	verificar(plan.dieta == 1 and plan.silla and plan.tiempo_silla < plan.duracion, "la memoria cambia la primera expedición: ya se desarma una silla de madera")
+	verificar(plan.dieta == 1 and plan.primer_corte >= 0 and plan.madera_transportada > 0, "la cuadrilla de regreso ya recorta madera y la transporta en la primera expedición")
 	verificar(plan.obreras > cantidad_inicial and plan.dano > dano_inicial, "el retorno conserva crecimiento medible aunque se priorice el atajo")
 	verificar(plan.migas > primera.migas and plan.madera_transportada > 0, "el plan cobra madera realmente transportada y supera al arranque desde cero")
 	verificar(plan.migas_antes == 0 and plan.pendiente >= 0, "las ganancias sólo aparecen durante la expedición; las cargas pendientes no se acreditan")
 	preparar_primera_fundacion(["herencia_madera"], 7)
 	verificar(Juego.jalea == 4 and Juego.nivel_jalea("obreras_reales") == 0, "con siete de jalea se puede elegir sólo memoria sin comprar una cuadrilla oculta")
 	var memoria := await medir_expedicion()
-	verificar(memoria.dieta == 1 and memoria.primer_corte >= 0 and memoria.madera_transportada > 0, "el plan accesible de memoria sola ya corta y transporta madera en el primer regreso")
+	verificar(memoria.dieta == 1 and memoria.dano_silla > 0 and memoria.madera_transportada > 0, "el plan accesible de memoria sola ya muerde y transporta madera en el primer regreso, aunque no quite una celda completa")
 	await probar_partida_vieja()
 	print("ARRANQUE DESDE CERO: %s" % JSON.stringify(primera))
 	print("RETORNO COMPRA BARATA: %s" % JSON.stringify(barata))
@@ -89,8 +89,7 @@ func medir_expedicion() -> Dictionary:
 	for parte in r.comidas.partes:
 		if parte.pieza.get("perfil", "") == "silla_inicial":
 			silla = parte
-	var secciones_silla := silla.vivas.size()
-	var resultado := {"migas_antes": migas_antes, "obreras": int(Juego.stat("hormigas_iniciales")), "dano": Juego.stat("dano"), "dieta": int(Juego.stat("materiales")), "duracion": r.duracion_total, "silla": false, "tiempo_silla": -1.0, "primer_corte": -1.0, "carton": false, "madera_transportada": 0.0}
+	var resultado := {"migas_antes": migas_antes, "obreras": int(Juego.stat("hormigas_iniciales")), "dano": Juego.stat("dano"), "dieta": int(Juego.stat("materiales")), "duracion": r.duracion_total, "silla": false, "tiempo_silla": -1.0, "primer_corte": -1.0, "carton": false, "madera_transportada": 0.0, "dano_silla": 0.0}
 	var bonus_muebles := [0.0]
 	r.comidas.comida_destruida.connect(func(comida):
 		if comida is PiezaCasa:
@@ -105,19 +104,21 @@ func medir_expedicion() -> Dictionary:
 		if not resultado.silla and (not is_instance_valid(silla) or silla.muerta):
 			resultado.silla = true
 			resultado.tiempo_silla = r.tiempo_jugado
-		elif is_instance_valid(silla) and resultado.primer_corte < 0 and silla.vivas.size() < secciones_silla:
+		elif is_instance_valid(silla) and resultado.primer_corte < 0 and silla.mordiscos != null and silla.vida < silla.vida_max:
 			resultado.primer_corte = r.tiempo_jugado
 		reloj -= get_process_delta_time()
 		if reloj > 0 or not r.activa or r.retirando:
 			continue
 		reloj = 0.5
-		if is_instance_valid(r.objetivo_practica) and not r.objetivo_practica.muerta:
-			r.feromonas.mantener_en(r.objetivo_practica.position)
-		elif is_instance_valid(silla) and silla.disponible():
-			r.feromonas.mantener_en(silla.punto_mordida(Vector2.ZERO, r.radio_actual))
+		if is_instance_valid(silla) and silla.disponible():
+			# Se prueba la memoria de madera directamente, no terminar primero
+			# el cartón gigante. El cursor señala el recurso, no su acceso externo.
+			r.feromonas.mantener_en(silla.position)
 		else:
 			r.feromonas.soltar()
 	resultado.migas = Juego.migas_run
+	if is_instance_valid(silla):
+		resultado.dano_silla = silla.dano_recibido
 	resultado.pendiente = r.cargas_pendientes
 	resultado.madera_transportada = maxf(0, r.ingresos[1] - bonus_muebles[0])
 	r.queue_free()

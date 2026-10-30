@@ -84,7 +84,9 @@ func probar_hud() -> void:
 	var run := crear_run()
 	await get_tree().process_frame
 	var hud := run.hud
-	verificar(hud._panel_meta.visible and "banquito" in hud._lbl_meta_nombre.text, "el HUD invita a desarmar el banquito desde la primera run")
+	var meta := Juego.proxima_meta()
+	verificar(hud._panel_meta.visible and hud._lbl_meta_titulo.text == "Empezá por las migas cercanas" and "comprar más obreras" in hud._lbl_meta_progreso.text and "cartón puede esperar" in hud._lbl_meta_progreso.text, "el HUD orienta a juntar migas y comprar obreras, dejando el cartón como proyecto posterior")
+	verificar(hud._lbl_meta_nombre.text == meta.nombre and is_equal_approx(hud._barra_meta.value, meta.actual / meta.objetivo * 100.0), "la ayuda inicial conserva la meta económica compartida y su contador, no una barra de completar cartón")
 	verificar(not hud._panel_inferior.visible, "la primera run no muestra prioridades, frenesí ni gran objetivo")
 	run.queue_free()
 	await get_tree().process_frame
@@ -156,7 +158,7 @@ func probar_escala() -> void:
 	await get_tree().create_timer(1.0).timeout
 	var zoom := run.camara.zoom.x
 	var escala := run.colonia.hormigas[0].scale.x / run.colonia.hormigas[0].escala_casta
-	verificar(run.colonia.cantidad() >= 8, "la colonia arranca con al menos 8 obreras")
+	verificar(run.colonia.cantidad() == 1, "la colonia arranca con una sola obrera")
 	verificar(is_equal_approx(escala, clampf(Colonia.ESCALA_EN_PANTALLA / zoom, 1.0, 5.0)) and escala * zoom >= 1.4, "con la cámara alejada las hormigas se ven más grandes")
 	run.queue_free()
 	await get_tree().process_frame

@@ -43,6 +43,10 @@ func morder(dano: float) -> float:
 	queue_free()
 	return recompensa
 
+
+func region_bocado() -> Rect2:
+	return Graficos.regiones.get("resto:%d" % material_id, Rect2())
+
 func _draw() -> void:
 	if Graficos.listo:
 		Graficos.dibujar(self, "resto:%d" % material_id)

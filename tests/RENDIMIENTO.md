@@ -1,4 +1,11 @@
-# Medición gráfica — 27/10/2026
+# Rendimiento gráfico y memoria
+
+La medición vigente de cuerpo/sombra y contacto exterior está al final,
+en **30/10/2026**.
+Las tablas anteriores conservan su contexto histórico: no son un control A/B
+del sistema actual ni una garantía de rendimiento del juego completo.
+
+## Medición gráfica — 27/10/2026 (histórico)
 
 Godot 4.7.2, Windows, GL Compatibility, NVIDIA RTX 3060, ventana de 1280×720.
 Referencia: commit `c3a6832`; comparación con la optimización y materiales nuevos.
@@ -724,3 +731,278 @@ Regresión definitiva después de los ahorros y del límite del llamado:
 Incluye Cámara 222, Periferia 58, Economía 29, Geometría/veneno 34 y Controles
 24. Las suites se ejecutaron headless secuencialmente, nunca durante los perfiles.
 Registros: `.godot/qa/expansion_definitiva_prueba_*.log`.
+
+## Mordiscos y cargas del mismo material — 29/10/2026 (histórico)
+
+Esta sección mide el intento anterior de 64 frentes. No valida las porciones
+limitadas implementadas el 30/10 ni su nuevo ritmo: una franja grande podía
+desaparecer mientras la carga se mostraba miniaturizada. Los resultados nuevos
+se documentan aparte después de comprobar la máscara fina y el contacto.
+
+Godot 4.7.2, GL Compatibility, RTX 3060, **1920×1080**, VSync y límite de
+FPS desactivados, paso fijo 1/60. Cada perfil se ejecutó solo, sin bots ni
+otras suites simultáneas. Son mediciones del balance nuevo, no un A/B de
+costo aislado contra las tablas anteriores.
+
+| Perfil general | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Casa, 5 hormigas | 2,20 ms | 2,36 ms | 3,01 ms |
+| Casa, 150 hormigas | 3,60 ms | 4,22 ms | 5,58 ms |
+| Casa, 500 hormigas | 6,12 ms | 7,52 ms | 9,20 ms |
+| Demolición, 500 hormigas | 8,95 ms | 10,95 ms | 11,64 ms |
+| Evoluciones, 500 hormigas | 7,91 ms | 9,49 ms | 10,99 ms |
+
+| Feromonas, 500 hormigas | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Sin llamado | 7,14 ms | 9,34 ms | 11,43 ms |
+| Cursor / 24 | 7,81 ms | 9,19 ms | 9,79 ms |
+| Cursor / 64 | 8,19 ms | 9,34 ms | 10,54 ms |
+| Sobre muebles / 64 | 8,11 ms | 9,73 ms | 10,77 ms |
+| Suelo sin objetivo / 64 | 7,62 ms | 8,95 ms | 9,53 ms |
+| Objetivo agotado / 64 | 7,88 ms | 9,34 ms | 11,25 ms |
+
+Registros: `.godot/qa/perfil_bocados_general_final.log` y
+`.godot/qa/perfil_bocados_feromonas_final.log`. El atlas sigue en **2048×5504,
+43 MiB**; la muestra de pared entra en el mismo recurso. En el cierre del
+perfil general quedaron 33/64 montones, 141/600 partículas y 25/40 textos.
+
+La pieza conserva hasta 16 celdas físicas y suma cuatro frentes visuales por
+celda, hasta 64 rectángulos decrecientes. El shader consulta uno, sin bucles
+por píxel. Sólo se suben máscaras sucias a 12,5 Hz; los alimentos crean el
+estado al primer bocado. No se recalcula A* por cada astilla visual.
+
+Las cargas son regiones del atlas original, por valor: no leen la GPU ni
+crean texturas, nodos o tweens por mordisco. Se reutiliza el Sprite2D de carga
+y hasta dos muestras más en el CanvasItem de la hormiga. El límite de tres
+es visual, no limita el buche ni descarta dinero. El transporte y el reparto
+65/35 se comprueban por separado de las muestras.
+
+`revision_mordiscos.tscn` prueba con el renderer la monotonía alfa entre
+ataques opuestos (ningún píxel reaparece), el recorte de una comida rotada,
+el retazo del mueble, la fuente liberada y la limpieza al descargar. También
+guarda capturas Full HD `bocados_*.png`. No sustituye observar una sesión
+humana ni garantiza estos tiempos en una GPU integrada o cualquier partida.
+
+La revisión adicional de siluetas cubre **108 bocados iniciales** (27 alimentos,
+cuatro lados): sus retazos contienen material opaco, también en baguettes,
+medialunas y formas con huecos. Para no cortar el aire del cuadrado del sprite,
+se prepara una caché de hasta 64 cajas ocupadas por tipo de comida. Se lee el
+atlas **una sola vez al arrancar**, nunca al morder: en la revisión local costó
+12,55 ms de lectura y 125,03 ms de CPU para 535.776 píxeles. La copia temporal
+de 43 MiB se libera al finalizar; la caché conserva rectángulos, no imágenes.
+Headless usa la geometría rectangular de respaldo y conserva el mismo daño,
+valor y transporte. Las tablas gráficas de esta sección ya incluyen la caché.
+
+Regresión final: **37 suites / 1.445 verificaciones, cero fallas, errores o
+advertencias**. Incluye 42 de recortes y conservación, 14 del arranque individual
+y 15 de primera madera. Esta última conserva las mediciones desde la señal de
+destrucción, antes de liberar el objeto; otras tres repeticiones también pasaron.
+Registros: `.godot/qa/definitiva_lectura_prueba_*.log`.
+
+## Porciones locales, contacto y máscara fina — 30/10/2026
+
+Godot 4.7.2, GL Compatibility, NVIDIA RTX 3060, **1920×1080**. Perfiles
+ejecutados en serie, sin otros tests ni bots simultáneos, con VSync y límite
+de FPS desactivados sólo para medir. `--fixed-fps 60` fija el paso de simulación
+en 1/60 s, no fuerza cuadros de 16,67 ms: la tabla mide tiempo real de cuadro.
+Guardado personal desactivado. Atlas y preparación inicial de navegación
+quedan fuera de la muestra; el reloj normal de Run también está desactivado,
+por lo que no mide duración de expediciones, limpieza ni cierre.
+
+| Perfil general | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Casa, 5 hormigas | 2,55 ms | 3,07 ms | 5,12 ms |
+| Casa, 150 hormigas | 3,95 ms | 4,68 ms | 5,56 ms |
+| Casa, 500 hormigas | 7,00 ms | 8,47 ms | 12,19 ms |
+| Demolición, 500 hormigas | 11,54 ms | 15,58 ms | 21,02 ms |
+| Continuación con evoluciones, 500 hormigas | 12,57 ms | 17,42 ms | 23,80 ms |
+
+Registro: `.godot/qa/porciones_poda_perfil_rendimiento.log`. Cada fase descarta
+60 cuadros y mide 300, semilla 171. Evoluciones continúa después de demolición:
+cambia el trabajo y el material disponible; no es una comparación aislada del
+costo de activar habilidades. Al cierre quedaron 8/64 montones, 70/600
+partículas y 18/40 textos, sin quitar los topes de producción.
+
+| Feromonas, 500 hormigas | Media | p95 | Peor cuadro |
+|---|---:|---:|---:|
+| Sin llamado | 8,57 ms | 11,55 ms | 13,87 ms |
+| Cursor / 24 | 9,48 ms | 12,33 ms | 14,65 ms |
+| Cursor / 64 | 9,13 ms | 11,13 ms | 13,10 ms |
+| Sobre muebles / 64 | 9,21 ms | 11,02 ms | 12,84 ms |
+| Suelo sin objetivo / 64 | 9,18 ms | 11,26 ms | 12,92 ms |
+| Objetivo agotado / 64 | 9,91 ms | 12,27 ms | 15,94 ms |
+
+Registro: `.godot/qa/porciones_poda_perfil_feromonas.log`, semilla 417. Las
+cuatro primeras fases usan 240 cuadros, 40 de preparación y 200 medidos;
+las dos fases finales conservan su fixture específico. Son fases consecutivas,
+no las mismas posiciones y recursos por cuadro ni un control contra el 29/10.
+
+**El estrés de 500 hormigas con evoluciones supera el presupuesto de 60 FPS
+en p95: 17,42 ms frente a 16,67 ms, con un peor cuadro de 23,80 ms.** También
+hay picos de 21,02 ms en demolición. Estas muestras no garantizan 60 FPS
+constantes ni ausencia de tirones, tampoco en esta GPU. No validan GPU
+integrada, hardware más modesto, campaña tardía ni sesiones prolongadas.
+Las franjas de 64 frentes del 29/10 son históricas, no un A/B que permita
+atribuir las diferencias sólo a la máscara o a la poda del contacto.
+
+### Costos y límites del material nuevo
+
+El atlas sigue compartido en **2048×5504 / 43 MiB RGBA8**. Ahora se suma una
+máscara R8 fina por recurso que recibió mordidas, creada de forma diferida:
+los intactos no reservan esa máscara. No es una textura por bocado ni por
+hormiga. Los 43 MiB no incluyen las máscaras, las imágenes/índices de CPU,
+otras texturas, fuentes ni memoria del renderer; no describen la RAM/VRAM total.
+
+Microprueba de configuración de máscara, registrada aparte en
+`.godot/qa/porciones_final_medir_mascara_material.log`:
+
+| Caso | Resolución R8 | Buffer R8 | Configuración CPU |
+|---|---:|---:|---:|
+| Cartón, 110×130 | 56×68 | 3.808 bytes | 0,187 ms |
+| Torre, 1550×2100 | 776×1052 | 816.352 bytes | 7,485 ms |
+| Caso artificial máximo, 4096×4096 | 2048×2048 | 4.194.304 bytes | 15,870 ms |
+
+El límite de **4 MiB es sólo el buffer R8 por objeto**, no toda su memoria:
+también existen `Image`, índices/contadores de CPU y la textura de GPU cuando
+se renderiza. El costo se acumula con la cantidad y el tamaño de recursos
+mordidos. Son tiempos puntuales de inicialización, no FPS ni un máximo duro
+de cuadro; la primera máscara grande puede causar un pico fuera del intervalo
+gráfico preparado. No se presenta el caso artificial como un mueble habitual.
+
+El material conserva hasta 16 celdas lógicas. La búsqueda exacta del contacto
+poda por distancia celdas/bloques que no pueden mejorar el resultado, en vez
+de repetir 16 recorridos completos del árbol por mordida. La máscara pierde
+material de forma irreversible y se actualiza sólo si está sucia, hasta
+12,5 Hz. Las envolventes físicas se sincronizan por lotes de 0,12 s; la
+navegación sigue siendo conservadora entre sincronizaciones, no física por
+cada astilla. Continúan la cuota de seis rutas por cuadro y el corte blando
+de 1,2 ms; un A* ya iniciado no se puede interrumpir.
+
+### Revisión del renderer y pendientes
+
+`.godot/qa/porciones_poda_revision_mordiscos.log` terminó con código 0 y
+**13 verificaciones OK**. Una de ellas agrupa los **108 bocados iniciales**
+del catálogo (27 alimentos desde cuatro lados). Se verifica monotonía de
+los píxeles reales en GPU, hueco y
+retazo con el mismo tamaño, daño extremo limitado a una porción de hasta 6×6,
+persistencia de más del 99% del cartón tras un viaje, fuente liberada y
+descarga sin muestra fantasma. Es QA acotada del renderer, no un playtest.
+
+Pendientes: reducir picos del estrés de 500 con evoluciones, medir en GPU
+integrada/PC modesta y observar sesiones humanas largas, incluyendo el primer
+ahorro y el viaje completo de cada retazo. El inicio autónomo/guiado y la
+regresión lógica se documentan por separado; no se deducen de estos FPS.
+
+### Regresión lógica final
+
+La pasada secuencial de `porciones_definitivas_prueba_*.log` completó las
+**38 suites y 1.604 verificaciones**, todas con código 0 y sin fallas ni errores
+de script. El menú dejó un aviso al salir por un clic de su fixture después de
+reactivar sonido al probar idiomas, no por máscaras R8. La fixture restablece
+el silencio y dos repeticiones con `--verbose` terminaron **56/56**, sin avisos
+ni fugas (`menu_limpieza_verbose3.log` y `menu_limpieza_verbose4.log`). No se
+cambió audio de producción ni el guardado del jugador para hacer pasar la prueba.
+
+## Cuerpo, sombra y contacto exterior — 30/10/2026
+
+### Cambios y costo retenido
+
+Los 59 acabados/orientaciones comparten metadatos de cuerpo opaco prehorneado:
+3.272 rectángulos RLE finos en `datos/siluetas_muebles.json` (unos 170 KB en
+JSON compacto). No se lee el atlas de GPU para decidir el daño ni el valor.
+La navegación conserva hasta 16 bandas; una banda puede tener varios vanos.
+El dibujo de autoría usa `perfil_base`, nunca su propia máscara derivada:
+regenerar metadatos no va deformando el arte en cada arranque.
+
+Una segunda pasada GPU de arranque elimina sólo la transparencia exterior del
+sprite compuesto. Hay transitoriamente dos atlas de 43 MiB (unos **86 MiB**),
+además de otras texturas/memoria; el crudo y los nodos de copia se liberan.
+Después queda el mismo atlas **2048×5504 / 43 MiB**, no dos atlas permanentes.
+La sombra del mobiliario se proyecta con la misma máscara dentro de su dibujo,
+sin nodos, texturas o físicas por bocado. Las primitivas de barras/anillos se
+distinguen en vértices por su transformación UV, no por el tamaño de `TEXTURE`:
+Godot puede conservar el atlas enlazado para una primitiva sin textura.
+
+El material exige aire conectado al exterior y primer contacto sobre el
+segmento; ni una voladora dentro del cuerpo ni un hueco cerrado producen carga.
+Veneno avanza desde su origen, sin el atajo letal de eventos/derrumbes. El aire y
+la frontera se retienen por bloques 8×8 y bits; sólo se propagan aperturas nuevas.
+El nearest prueba primero el píxel proyectado y poda por distancia; veneno
+reutiliza esa consulta en lugar de recorrer hasta 16 fronteras completas.
+
+Las máscaras se preparan al necesitar contacto preciso o extracción, no para
+todo el mapa al cargar; elegir un puesto puede prepararlas antes de morder.
+El máximo de 4 MiB sigue siendo **sólo el buffer R8 por objeto**. Ahora también
+hay índices de aire/frontera y sus árboles, además de las imágenes, contadores
+y textura GPU: no equivale a toda la memoria del objeto ni del juego.
+
+Microprueba final `.godot/qa/cuerpo_definitivo_mascara.log`, sin renderer:
+
+| Caso denso artificial | Buffer R8 | Preparación CPU | 1.000 intentos / cortes reales / CPU |
+|---|---:|---:|---:|
+| 110×130 | 3.808 B | 0,445 ms | 145 cortes / 31,231 ms |
+| 1550×2100 | 816.352 B | 11,268 ms | 63 cortes / 58,344 ms |
+| 4096×4096 | 4.194.304 B | 24,827 ms | 63 cortes / 112,527 ms |
+
+Son intentos desde el exterior global de celdas de una grilla densa, no mil
+bocados exitosos: las celdas interiores inaccesibles no se perforan. No es FPS,
+no usa el RLE real de Eiffel y no se compara directamente con el microbenchmark
+anterior que permitía bocas interiores. La preparación máxima puede causar un
+pico; no se presenta el caso artificial como mueble habitual.
+
+### Renderer real, Full HD
+
+Godot 4.7.2, GL Compatibility, RTX 3060, 1920×1080, VSync desactivado.
+Ejecuciones seriales, sin otros Godot ni procesos de QA a la vez.
+Registro: `.godot/qa/cuerpo_perfil_rendimiento_optimizado.log`.
+
+| Escenario | Media | p95 | Peor |
+|---|---:|---:|---:|
+| Casa, 5 hormigas | 2,16 ms | 2,35 ms | 2,67 ms |
+| Casa, 150 | 2,89 ms | 3,38 ms | 4,24 ms |
+| Casa, 500 | 4,52 ms | 5,62 ms | 6,91 ms |
+| Demolición, 500 | 7,22 ms | 9,70 ms | 14,80 ms |
+| Evoluciones, 500 | 14,48 ms | 21,22 ms | 36,80 ms |
+
+La primera medición de ESTA corrección, antes de podar consultas, dio
+16,14 / 26,11 / 62,57 ms con evoluciones. La instrumentación temporal señaló
+consultas de borde y erosión; se retiró antes de medir el cierre. El mundo y el
+tiempo simulado evolucionan durante cada fase: estas cifras no son un control
+A/B del juego anterior, ni prueban 60 FPS constantes. **El estrés de 500 con
+todas las evoluciones sigue superando 16,67 ms**; reducir esos picos y medir en
+GPU integrada/PC modesta quedan pendientes.
+
+Feromonas final, `.godot/qa/cuerpo_definitivo_feromonas.log`, también en serie:
+
+| Fase, 500 hormigas | Media | p95 | Peor |
+|---|---:|---:|---:|
+| Sin llamado | 7,49 ms | 10,49 ms | 13,37 ms |
+| Cursor, 24 seleccionadas | 7,76 ms | 10,20 ms | 12,32 ms |
+| Cursor máximo, 64 | 8,63 ms | 10,57 ms | 12,69 ms |
+| Cursor sobre muebles | 8,78 ms | 13,61 ms | 16,37 ms |
+| Suelo sin objetivo, 64 | 7,52 ms | 9,62 ms | 10,58 ms |
+| Objetivo agotado, 64 | 7,57 ms | 9,38 ms | 10,92 ms |
+
+También son fases consecutivas de estrés, no una comparación causal entre filas.
+
+### Regresión y revisión gráfica
+
+`cuerpo_definitivo_prueba_*.log`: **39 suites**, todas con código 0 y sin fallas
+ni errores de script. La nueva suite `prueba_material_visible` aporta 130
+verificaciones: borde conectado, cavidad cerrada, voladora interior→borde→carga,
+veneno lateral real y HP/material de todo el catálogo. Se corrigieron fixtures
+viejas que colocaban bocas dentro del cuerpo o heredaban recortes de otra pieza;
+no se relajó el bloqueo de mordidas interiores.
+
+`cuerpo_definitivo_revision_material_visible.log`: **68 verificaciones OK**,
+incluyendo las 59 variantes desde cuatro lados, alpha binaria cuerpo/aire,
+coincidencia del retazo con la RLE, PNG originales, barras y círculo primitivos,
+y cartón antes / un bocado / 32 bocados. La transparencia propia entre las
+patitas es legítima: viaja el mismo fragmento con su alpha, no un rectángulo
+de madera inventado ni una sombra gris. Se comprueba opaco↔material y
+transparente↔aire; no sólo que la muestra contenga algún píxel visible.
+
+`cuerpo_definitivo_revision_mordiscos.log`: **13 verificaciones OK**, incluyendo
+los 108 bocados iniciales de alimentos, monotonía GPU, escala del retazo,
+fuente liberada y descarga. Las capturas son QA acotada; sigue pendiente el
+playtest humano de lectura y satisfacción durante una sesión larga.

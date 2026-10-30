@@ -1,28 +1,28 @@
 id,nombre,forma,color,vida,recompensa,radio,distancia_min,distancia_max,cantidad,zonas,destinos
 miga,Miga,miga,#d8b47a,3,2,5,35,1300,138,cocina,
-azucar,Terrón de azúcar,cuadrado,#f4f1ea,15,12,8,140,2500,63,cocina|comedor,casa|restaurante|museo|eiffel
-galletita,Galletita,galletita,#c98a4b,60,60,16,400,6200,78,cocina|comedor|living|dormitorio|estudio,casa
-queso,Queso,queso,#f2c94c,200,250,22,700,4200,35,cocina|comedor,casa|restaurante
-sandwich,Sándwich,sandwich,#e3c08d,600,900,32,1800,7600,35,comedor|living|dormitorio|estudio,casa|museo
-torta,Torta,torta,#f2a7c3,3000,5000,54,2600,7800,18,comedor|living|estudio,casa
-cereal,Arito de cereal,aro,#e6ba70,8,6,7,70,2200,57,cocina|comedor,casa
-fideo,Fideo,fideo,#edce83,22,20,12,180,2600,40,cocina|comedor,casa|restaurante
-frutilla,Frutilla,frutilla,#d96558,95,110,18,360,3400,40,cocina|comedor,casa|eiffel
-dona,Dona,aro,#e7a6ac,320,420,27,1500,7300,28,comedor|living|dormitorio|estudio,casa
-pizza,Porción de pizza,pizza,#edbe69,1400,2100,42,2400,7800,24,comedor|living|estudio,casa|restaurante|obelisco
-banquete,El gran banquete,torta,#f2a7c3,16000,30000,88,0,9000,0,comedor,
-ravioles,Ravioles,raviol,#f0d79a,300,380,24,600,7000,50,cocina|comedor|estudio,restaurante
-flan,Flan con dulce de leche,flan,#e9b45c,700,1000,34,1500,7600,40,comedor|estudio,restaurante
-pizza_entera,Pizza entera,pizza_entera,#edbe69,2600,4200,52,2400,7800,26,comedor|estudio,restaurante
-canape,Canapé,canape,#d9b37a,80,90,17,300,6000,100,cocina|comedor|estudio,museo
-bombon,Bombón,bombon,#6b3f2a,300,380,24,600,7000,55,comedor|estudio,museo
-torta_gala,Torta de gala,torta_pisos,#f3e6d3,2600,4200,52,2400,7800,30,comedor,museo
-alfajor,Alfajor,alfajor,#8a5634,90,100,17,300,6000,100,cocina,obelisco
-medialuna,Medialuna,medialuna,#e2a858,300,380,24,600,7000,60,cocina,obelisco
-choripan,Choripán,choripan,#d99a5b,1200,1800,40,1500,7600,45,cocina,obelisco
-aceituna,Aceituna,aceituna,#7d8a3c,12,14,8,120,4000,100,cocina|comedor,coliseo
-racimo,Racimo de uvas,racimo,#7b3f6e,300,380,24,600,7000,60,cocina|comedor,coliseo
-pan_romano,Pan romano,pan_romano,#c88a48,2600,4200,52,2400,7800,34,comedor,coliseo
-macaron,Macaron,macaron,#e8a3b8,80,90,17,300,6000,100,cocina|comedor,eiffel
-croissant,Croissant,croissant,#e0a24f,700,1000,34,1500,7600,50,cocina|comedor,eiffel
-baguette,Baguette,baguette,#d9a05b,2600,4200,52,2400,7800,32,cocina|comedor,eiffel
+azucar,Terrón de azúcar,cuadrado,#f4f1ea,20,12,8,140,2500,63,cocina|comedor,casa|restaurante|museo|eiffel
+galletita,Galletita,galletita,#c98a4b,84,60,16,400,6200,78,cocina|comedor|living|dormitorio|estudio,casa
+queso,Queso,queso,#f2c94c,280,250,22,700,4200,35,cocina|comedor,casa|restaurante
+sandwich,Sándwich,sandwich,#e3c08d,900,900,32,1800,7600,35,comedor|living|dormitorio|estudio,casa|museo
+torta,Torta,torta,#f2a7c3,4500,5000,54,2600,7800,18,comedor|living|estudio,casa
+cereal,Arito de cereal,aro,#e6ba70,10,6,7,70,2200,57,cocina|comedor,casa
+fideo,Fideo,fideo,#edce83,30,20,12,180,2600,40,cocina|comedor,casa|restaurante
+frutilla,Frutilla,frutilla,#d96558,135,110,18,360,3400,40,cocina|comedor,casa|eiffel
+dona,Dona,aro,#e7a6ac,480,420,27,1500,7300,28,comedor|living|dormitorio|estudio,casa
+pizza,Porción de pizza,pizza,#edbe69,2100,2100,42,2400,7800,24,comedor|living|estudio,casa|restaurante|obelisco
+banquete,El gran banquete,torta,#f2a7c3,24000,30000,88,0,9000,0,comedor,
+ravioles,Ravioles,raviol,#f0d79a,450,380,24,600,7000,50,cocina|comedor|estudio,restaurante
+flan,Flan con dulce de leche,flan,#e9b45c,1050,1000,34,1500,7600,40,comedor|estudio,restaurante
+pizza_entera,Pizza entera,pizza_entera,#edbe69,3900,4200,52,2400,7800,26,comedor|estudio,restaurante
+canape,Canapé,canape,#d9b37a,112,90,17,300,6000,100,cocina|comedor|estudio,museo
+bombon,Bombón,bombon,#6b3f2a,450,380,24,600,7000,55,comedor|estudio,museo
+torta_gala,Torta de gala,torta_pisos,#f3e6d3,3900,4200,52,2400,7800,30,comedor,museo
+alfajor,Alfajor,alfajor,#8a5634,126,100,17,300,6000,100,cocina,obelisco
+medialuna,Medialuna,medialuna,#e2a858,450,380,24,600,7000,60,cocina,obelisco
+choripan,Choripán,choripan,#d99a5b,1800,1800,40,1500,7600,45,cocina,obelisco
+aceituna,Aceituna,aceituna,#7d8a3c,16,14,8,120,4000,100,cocina|comedor,coliseo
+racimo,Racimo de uvas,racimo,#7b3f6e,450,380,24,600,7000,60,cocina|comedor,coliseo
+pan_romano,Pan romano,pan_romano,#c88a48,3900,4200,52,2400,7800,34,comedor,coliseo
+macaron,Macaron,macaron,#e8a3b8,112,90,17,300,6000,100,cocina|comedor,eiffel
+croissant,Croissant,croissant,#e0a24f,1050,1000,34,1500,7600,50,cocina|comedor,eiffel
+baguette,Baguette,baguette,#d9a05b,3900,4200,52,2400,7800,32,cocina|comedor,eiffel

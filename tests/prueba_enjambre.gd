@@ -145,7 +145,8 @@ func probar_habilidades() -> void:
 		datos.vida = 100
 		r.comidas._crear(datos, Vector2(-70 + i * 15, 0), i)
 		cercanas.append(r.comidas.lista.back())
-	roja.position = cercanas[0].position
+	# El contagio parte de una mordida legítima en el borde del primer recurso.
+	roja.position = cercanas[0].punto_mordida(Vector2.ZERO, r.radio_actual)
 	roja.comida = cercanas[0]
 	roja._reloj_mordida = 0
 	roja._morder(0.1)
@@ -164,17 +165,24 @@ func probar_habilidades() -> void:
 	carpintera.comida = silla
 	carpintera._dano = 2
 	carpintera._reloj_mordida = 0
+	if silla.mordiscos == null:
+		silla._preparar_mordiscos()
+	var area_antes := silla.mordiscos.area_total()
+	var vida_antes := silla.vida
+	var saldo_antes := Juego.migas_run
 	carpintera._morder(0.1)
 	var tocadas := 0
 	for i in silla.vidas.size():
 		if silla.vidas[i] < silla._vidas_iniciales[i]:
 			tocadas += 1
-	verificar(tocadas == 2 and is_equal_approx(silla.dano_recibido, 2 * RolesHormiga.dano("carpintera", 1)), "Corte aserrado reparte el daño entre dos secciones sin multiplicarlo")
+	verificar(tocadas == 1 and silla.dano_recibido > 0 and silla.dano_recibido <= 2 * RolesHormiga.dano("carpintera", 1) and is_equal_approx(vida_antes - silla.vida, silla.dano_recibido), "Corte aserrado trabaja una sola sección por tick y sólo descuenta el material desprendido")
+	var porcion := silla._porcion_reciente
+	verificar(porcion.has_area() and porcion.size.x <= 6.0001 and porcion.size.y <= 6.0001 and is_equal_approx(area_antes - silla.mordiscos.area_total(), porcion.get_area()), "el corte evolucionado sigue siendo una única porción local de hasta seis unidades por lado")
 	var acumulado := 0.0
 	for f in r.comidas.fragmentos:
 		acumulado += f.recompensa
 	var esperado := silla.recompensa * silla.dano_recibido / silla.vida_max * Juego.stat("multiplicador_migas")
-	verificar(carpintera.carga == 0 and carpintera.bocados == 0 and is_equal_approx(acumulado, esperado), "Corte continuo deja exactamente toda la extracción para las transportadoras")
+	verificar(carpintera.carga == 0 and carpintera.bocados == 0 and Juego.migas_run == saldo_antes and is_equal_approx(acumulado, esperado), "Corte continuo deja exactamente toda la extracción para las transportadoras, sin acreditar migas antes de entregarla")
 	r.queue_free()
 	await get_tree().process_frame
 
@@ -237,26 +245,85 @@ func probar_tutorial() -> void:
 	seed(417)
 	var r := crear()
 	r.radio_actual = Juego.stat("radio_territorio")
-	r.process_mode = Node.PROCESS_MODE_INHERIT
-	r.set_process(false)
 	r.colonia._process(3)
 	r.colonia.set_process(false)
+	# Esta prueba aísla el trabajo conjunto de ocho obreras; el arranque real
+	# con una sola y sus primeras compras se cubren en prueba_arranque_solitario.
+	while r.colonia.cantidad() < 8:
+		r.colonia._nacer()
 	var banquito := r.objetivo_practica
 	var inicio := banquito.vida
+	var recompensa := banquito.recompensa * Juego.stat("multiplicador_migas")
+	var cierre := {"veces": 0, "vida": -1.0, "celdas": -1, "area": -1.0}
+	banquito.destruida.connect(func(p: PiezaCasa) -> void:
+		# Capturar dentro de la señal: nunca consultar un nodo ya liberado.
+		cierre.veces += 1
+		cierre.vida = p.vida
+		cierre.celdas = p.vivas.size()
+		cierre.area = p.mordiscos.area_total()
+	)
+	# Aislar el recurso real sin moverlo, crear comida ni alterar su valor:
+	# así depósitos + cargas + suelo se comparan sólo con este cartón.
+	r.comidas._indice.clear()
+	r.comidas._indexar(banquito)
+	r.colonia._hallazgos.clear()
+	banquito._preparar_mordiscos()
+	var area_inicial := banquito.mordiscos.area_total()
+	var obrera: Hormiga = r.colonia.hormigas[0]
+	# Una mordida controlada verifica tamaño/masa; después el viaje y las
+	# siguientes mordidas los ejecuta la IA, sin teletransportar ni descargar.
+	obrera.position = banquito.punto_mordida(Vector2.ZERO, r.radio_actual)
+	obrera.comida = banquito
+	obrera._reloj_mordida = 0
+	obrera._morder(0.1)
+	var primera_porcion := banquito._porcion_reciente
+	var primer_dano := banquito.dano_recibido
+	verificar(inicio == 20 and banquito.rect_mundo.size == Vector2(110, 130) and banquito.recompensa == 180, "el cartón conserva su tamaño de proyecto grande, resistencia y recompensa, sin achicarlo para el fixture")
+	verificar(primera_porcion.has_area() and primera_porcion.size.x <= 6.0001 and primera_porcion.size.y <= 6.0001 and is_equal_approx(area_inicial - banquito.mordiscos.area_total(), primera_porcion.get_area()), "la primera mordida sólo retira una porción visible pequeña y el hueco pierde exactamente esa área")
+	verificar(primer_dano > 0 and is_equal_approx(obrera.carga, recompensa * primer_dano / inicio) and Juego.migas_run == 0 and r.comidas.fragmentos.is_empty(), "la obrera carga el cien por ciento del material que falta, sin cobrarlo antes de volver ni inventar restos")
+	verificar(not banquito.derrumbando and not Juego.hitos.has("primer_derrumbe"), "una mordida pequeña no derrumba el cartón ni concede un hito anticipado")
+	r.process_mode = Node.PROCESS_MODE_INHERIT
+	r.set_process(false)
 	r.feromonas.mantener_en(banquito.position)
 	for i in 2400:
 		await get_tree().process_frame
 		if not is_instance_valid(banquito) or banquito.muerta:
 			break
-	verificar(not is_instance_valid(banquito) or banquito.muerta, "ocho obreras iniciales desmontan el tutorial en menos de 40 segundos")
-	if is_instance_valid(banquito) and not banquito.muerta:
-		print("TUTORIAL vida ", banquito.vida, " seleccion ", r.feromonas.objetivo_comida, " territorio ", r.radio_actual)
-		for h in r.colonia.hormigas:
-			print("  H ", h.position, " estado ", h.estado, " meta ", h.objetivo, " ruta ", h._ruta_fallida, " espera ", h._esperando_ruta, " carga ", h.carga)
-	verificar(inicio == 20 and Juego.hitos.has("primer_derrumbe"), "el tutorial enseña roturas y un derrumbe con premio permanente")
+	var persiste := is_instance_valid(banquito) and not banquito.muerta
+	verificar(persiste, "el cartón grande sigue siendo un proyecto después de cuarenta segundos con ocho obreras, no desaparece de golpe")
+	if not persiste:
+		r.queue_free()
+		await get_tree().process_frame
+		return
+	verificar(banquito.dano_recibido > primer_dano and banquito.vida < inicio and banquito.vida > 0 and not banquito.derrumbando, "el enjambre amplía el desgaste durante los viajes y el resto del cartón persiste")
+	var cargas := 0.0
+	for h in r.colonia.hormigas:
+		cargas += h.carga
+	var suelo := 0.0
+	for f in r.comidas.fragmentos:
+		suelo += f.recompensa
+	var extraido := recompensa * banquito.dano_recibido / inicio
+	verificar(Juego.migas_run > 0 and is_equal_approx(Juego.migas_run + cargas + suelo, extraido), "las entregas reales, lo que sigue en viaje y el suelo conservan exactamente el valor extraído del cartón")
+	verificar(cierre.veces == 0 and not Juego.hitos.has("primer_derrumbe"), "desgastar y transportar no cuentan como completar el cartón ni como provocar un derrumbe")
 	var alimento := r.comidas.lista[0]
 	var vida_antes := alimento.vida
 	r.pisar(alimento.position)
 	verificar(alimento.vida == vida_antes, "el clic manual no daña comida; sólo interactúa con eventos")
+	# Lifecycle separado, NO una medición de la IA: el bulk ambiental prepara
+	# sólo el último 4%; la caída debe retirar los restos y emitir destruida.
+	r.process_mode = Node.PROCESS_MODE_DISABLED
+	var saldo_antes := Juego.migas_run
+	var valor_bulk := banquito.morder_en(banquito.vida - inicio * 0.04, banquito.position)
+	verificar(banquito.derrumbando and not banquito.muerta and banquito.vida > 0 and banquito.vida <= inicio * 0.08, "el fixture bulk sólo habilita el derrumbe cuando quedan restos finales, sin completar todavía el objeto")
+	for i in 16:
+		if not is_instance_valid(banquito) or banquito.muerta:
+			break
+		banquito._process(0.36)
+	verificar(cierre.veces == 1 and cierre.vida == 0 and cierre.celdas == 0 and cierre.area == 0 and Juego.partes_destruidas_run == 1 and Juego.hitos.has("primer_derrumbe"), "el lifecycle completo del cartón emite una sola destrucción y conserva el premio permanente de un derrumbe real")
+	suelo = 0.0
+	for f in r.comidas.fragmentos:
+		suelo += f.recompensa
+	var bonus := recompensa * Juego.stat("bonus_destruir")
+	verificar(is_equal_approx(Juego.migas_run - saldo_antes, bonus) and is_equal_approx(saldo_antes + cargas + suelo + valor_bulk, recompensa), "el cierre bulk conserva todo el material entre entregas, cargas, retorno y escombros, con un único bonus separado")
 	r.queue_free()
 	await get_tree().process_frame

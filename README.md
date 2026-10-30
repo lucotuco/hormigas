@@ -1,6 +1,6 @@
 # Hormigas 🐜
 
-Incremental para PC hecho en **Godot 4.7.2**. Guiás a tu colonia manteniendo el clic donde querés reunir hormigas para que se coma todo lo que hay en la casa. Cada run dura unos segundos; con lo recolectado mejorás el hormiguero, el territorio crece y aparece comida más grande (y más lejos).
+Incremental para PC hecho en **Godot 4.7.2**. Empezás con una sola hormiga y guiás a la colonia manteniendo el clic donde querés reunirla para que se coma lo que hay en la casa. Cada run empieza durando 45 segundos; con lo recolectado mejorás el hormiguero, el territorio crece y aparecen recursos más grandes y lejanos.
 
 ## Arrancar
 
@@ -63,6 +63,8 @@ res://
     dibujo_casa.gd Ilustración de muebles y detalles de la casa
     cocina.gd     Navegación compartida por grilla, con rutas para caminantes y voladoras
     pieza_casa.gd Muebles y tramos de muro comestibles, con colisión y resistencia
+    mordiscos_material.gd MordiscosMaterial: máscara fina irreversible y porción local retirada
+    recorte_bocados.gdshader Máscara compartida de recortes sobre el atlas existente
     materiales_casa.gd Etapas, resistencia, recompensas y división de paredes en tramos
     mundos.gd     Seis destinos y sus planos, objetivos y progresión de campaña
     fragmento_casa.gd Montones de fragmentos transportables, sin física individual
@@ -114,6 +116,8 @@ que llega a una cámara sale de uno de sus requisitos reales.
 - **Pasar el mouse** abre la ficha: nombre, nivel, efecto, el valor antes y
   después, el precio y qué le falta si está cerrada. **Un clic** mejora (o
   recluta, en las castas); clic derecho en una casta abre su ficha completa.
+- Las descripciones van al efecto concreto en una frase breve; no repiten
+  explicaciones generales, historia de migraciones ni instrucciones en cada cámara.
 - Se recorre **arrastrando** y con la **rueda**. Al entrar encuadra lo ya
   explorado; la leyenda de arriba a la izquierda encuadra cada rama y cuenta
   cuántas cámaras podés comprar en cada una. "Ver mejora" acerca la cámara.
@@ -152,11 +156,16 @@ fuera del objeto que se está devorando. La corrosión marca la rotura sin teñi
 todo el mueble. Las juntas del piso se filtran al alejar la cámara y la textura
 sólo aporta relieve suave, evitando el damero de colores del atlas original.
 
-Obelisco, torre, arcos, plantas, sillas e inodoros tienen perfiles de material
-ajustados a su dibujo. Los márgenes transparentes ya no bloquean el camino ni
+Los muebles y monumentos tienen perfiles de material ajustados a su dibujo.
+`datos/siluetas_muebles.json` conserva el cuerpo opaco de cada acabado y
+orientación, separado de su sombra proyectada. El cuerpo completo se ajusta
+al rectángulo físico: no queda un reborde dibujado fuera de la zona comestible.
+La navegación usa hasta 16 bandas con sus vanos; la máscara de mordida conserva
+el contorno fino por filas. Los márgenes transparentes no bloquean el camino ni
 reciben mordidas; los vanos grandes se pueden atravesar. Esos perfiles se
-preparan una vez y se recortan al destruir secciones. Se conservan la resistencia
-total, las recompensas y los cuatro pisos de la torre. La orientación de las
+preparan una vez y se recortan al destruir secciones. Adaptar el perfil a su
+dibujo no cambia la resistencia ni la recompensa asignadas por el balance;
+se conservan los cuatro pisos de la torre. La orientación de las
 hormigas apunta al material cercano y se recalcula sólo al cambiar de contacto
 o romperse esa pieza.
 
@@ -220,8 +229,11 @@ Mandíbulas fuertes a nivel 4, juntar las migas de cada
 dieta, después el gran objetivo y por último el próximo viaje. Las migas de la
 run en curso ya cuentan, y avisa cuando alcanza para comprar.
 
-La colonia arranca con 8 obreras y, con la cámara alejada, las hormigas se
-dibujan más grandes (`Colonia.ESCALA_EN_PANTALLA`) para que se lea qué hacen.
+La colonia nueva arranca con **una obrera**; Más obreras suma **una por nivel**.
+La primera cuesta 12 migas y la mordida base deja 0,95 s entre ataques, sin
+reducir velocidad, olfato ni calidad de navegación. Con la cámara alejada,
+las hormigas se dibujan más grandes (`Colonia.ESCALA_EN_PANTALLA`) para que
+se lea qué hacen. Las colonias con jalea/decreto conservan sus bonus de arranque.
 
 ### De comer migas a devorar la casa
 
@@ -232,32 +244,64 @@ correspondientes:
 | Dieta | Qué incorpora | Requisito / costo |
 |---|---|---|
 | Comida del piso | Los alimentos habituales | Desde el inicio |
-| Madera y telas | Sillas, mesas, muebles, sillones, cama y macetas | Mandíbulas fuertes 4; 1.500 migas |
-| Materiales resistentes | Electrodomésticos, mesadas y sanitarios | Madera y telas; 450.000 migas |
-| Paredes | Muros divididos en tramos de hasta 420 unidades | Materiales resistentes; 12.000.000 migas |
+| Madera y telas | Sillas, mesas, muebles, sillones, cama y macetas | Mandíbulas fuertes 4 + Mordida rápida 1; 1.800 migas |
+| Materiales resistentes | Electrodomésticos, mesadas y sanitarios | Madera y telas; 550.000 migas |
+| Paredes | Muros divididos en tramos de hasta 420 unidades | Materiales resistentes; 15.000.000 migas |
 
-El ritmo inicial es más gradual por los costos de obreras, daño, carga y
-multiplicadores, no por empeorar movimiento u olfato. Con el mismo mapa nuevo,
-la comparación económica final del bot pasó de 15,83 a 23,87 minutos hasta fundar
-(+50,8%); madera, de 6,35 a 8,36. Son minutos activos simulados, sin pensar en
-la tienda ni una garantía de duración humana. Memoria y Cuadrilla siguen
-costando 3 y 6 jaleas y permiten volver sin repetir el ahorro de madera.
-Los niveles y saldos de partidas anteriores no se recobran ni se reinician.
+El balance individual del 29/10 aumenta aproximadamente 20–25% los demás
+precios, la resistencia común de muebles/muros ×1,6 y la vida de los alimentos
+medianos/grandes sin aumentar sus recompensas. Las migas iniciales conservan
+3 de vida y 2 de valor; el cartón, 20/180. El primer precio de obrera no sube.
+La prueba corta pagó la segunda hormiga tras una expedición guiada o dos
+autónomas. El piloto materiales → primera fundación terminó en 35,11 minutos
+activos y 27 expediciones, sin contar decisiones de tienda. No es una duración
+humana garantizada ni valida la campaña tardía.
+
+**Comparación histórica del 28/10, con ocho obreras iniciales:** precios
+anteriores/nuevos sobre el mismo mapa dieron 15,83→23,87 minutos hasta fundar
+(+50,8%) y 6,35→8,36 para madera. No describe el balance individual actual.
+Memoria y Cuadrilla siguen costando 3 y 6 jaleas y evitan repetir el ahorro
+de madera. Las partidas anteriores conservan niveles y saldos sin recobros;
+la población se recalcula con la nueva base y una obrera por nivel. Ver
+`docs/DISENO_PROGRESION.md` para cifras, contexto y límites de los pilotos.
 
 Mantené el clic sobre la pieza: las hormigas se acercan a su **borde accesible**,
 la muerden, transportan las migas y vuelven. Los materiales bloqueados no
 reciben daño. Sólo las hormigas y su corrosión extraen material de muebles y
 muros. Al señalar una pieza, el HUD muestra su fase, las trabajadoras,
-su resistencia y la dieta requerida. El daño recorta la silueta junto a la mordida:
-cada objeto tiene como máximo 16 celdas lógicas y una máscara de dibujo. Las
-celdas agotadas dejan huecos transitables. Al perder soportes, los restos caen
-por etapas, sin cientos de cuerpos físicos.
+su resistencia y la dieta requerida. El daño recorta la silueta junto a la
+mordida: **una porción sólida de hasta 6×6 unidades del mundo**, no una franja
+proporcional a todo el daño. Una máscara fina irreversible conserva cada
+recorte, incluso al cambiar de lado. La fuerza paga el trabajo de corte;
+únicamente el área desprendida descuenta resistencia y produce valor. El
+trabajo menor a un píxel se acumula sin fabricar una carga. La caja grande
+requiere muchos viajes, no desaparece un cuarto por una sola astilla.
+La navegación conserva hasta 16 celdas lógicas; las cavidades pequeñas no
+crean cuerpos físicos. Las mordidas normales tampoco borran automáticamente
+el último 8% del mueble. Los eventos de derrumbe siguen siendo otra mecánica.
 
-Cada extracción normal entrega 65% del valor a la hormiga y deja 35% en fragmentos;
-el material que cae en un derrumbe queda como fragmentos para recoger. Los
+Cada extracción normal entrega el **100% del valor de esa porción** a la hormiga:
+el agujero y la carga corresponden al mismo material. El daño ambiental conserva
+su reparto 65/35; el material que cae en un derrumbe queda para recoger. Los
 montones se agrupan por zona y material, hasta 64 activos, conservando su valor
 al fusionarse. No reciben otra vez el multiplicador ni el bonus de destrucción.
 Las cargadoras los priorizan y las voladoras no levantan montones pesados.
+La carga muestra hasta **tres retazos por hormiga**, muestreados del material
+retirado con su orientación; desaparecen al entregar. Los montones agrupados
+usan un aspecto común por material: no guardan una pieza visual por cada
+fragmento fusionado. Los retazos reutilizan el mismo atlas y conservan su tamaño
+del mundo compensando la escala visual de la hormiga y del atlas. Cada recurso
+mordido o consultado para un contacto preciso prepara una máscara R8 retenida;
+no se crea textura, nodo ni cuerpo físico por bocado. Es diferida, no se reserva
+para todo el mapa al cargar; elegir un puesto puede prepararla antes del primer
+bocado. Sólo se sube el desgaste sucio
+a 12,5 Hz. La silueta de comidas está prehorneada en `datos/siluetas_comidas.json`,
+idéntica con renderer y headless. `tests/exportar_siluetas.tscn` permite obtenerla
+de nuevo si cambia el arte. `tests/exportar_material_muebles.tscn` genera los
+metadatos del mobiliario (incluir los CSV y ambos JSON en una exportación).
+Las bocas trabajan desde aire conectado al exterior, no desde el interior del
+cuerpo ni de una cavidad cerrada. La sombra se proyecta desde el material que
+queda usando la misma máscara: no cuenta como resistencia ni viaja como carga.
 Con Corte aserrado, la carpintera deja el 100% en montones y sigue cortando:
 el transporte queda a cargo de la colonia, sin multiplicar la recompensa.
 Alacenas, heladeras, bibliotecas y vitrinas revelan comida al abrirse; hay un
@@ -548,10 +592,11 @@ autonomía de las hormigas, respuesta a las órdenes, primera media hora y
 coherencia artística antes de sumar monedas o destinos.
 
 - La primera silla de madera cercana al nido usa el perfil `silla_inicial`
-  (140 de resistencia / 420 de valor, en `stats_base.csv`). Requiere madera,
-  pierde secciones y se transporta normalmente. No se facilita el resto de la
-  campaña. El HUD permite encontrarla al comprar la dieta; el cartón del
-  tutorial ya no cuenta como una silla de madera para los hitos.
+  (280 de resistencia / 420 de valor, en `stats_base.csv`). Requiere madera,
+  pierde material y se transporta normalmente: aumentar su vida no aumenta
+  su premio. El HUD permite encontrarla al comprar la dieta. El cartón del
+  tutorial conserva 20 de resistencia / 180 de valor y no cuenta como silla
+  de madera para los hitos.
 - Las fichas de castas explican equipos y limitaciones reales; no agregan un
   multiplicador por juntar dos clases. Las evoluciones siguen siendo dos y
   se pueden cambiar entre expediciones.
@@ -602,11 +647,11 @@ cantidad de cuadros procesados, no agrandando el delta. Con
 `BOT_ESTADO=archivo.json` se puede cortar y retomar por tandas; con `BOT_LOG`
 también escribe el registro en un archivo. No corre en CI.
 
-**Referencia previa a la integración de menú, eventos y decretos:**
+**Referencia histórica del 28/10, previa al arranque individual y al balance actual:**
 
 Las mediciones anteriores a esta revisión usaban tiempo ×8 y daño por clic.
 No son comparables: cambiaban los presupuestos de navegación y mordida por
-segundo simulado. Piloto final de esta revisión (28/10, desde cero, con
+segundo simulado. Piloto de aquella revisión (28/10, desde cero, con
 dispersión por sectores, entradas, retirada y Corte aserrado continuo, sin
 guardado real ni compras prefijadas). Los minutos incluyen la retirada:
 
@@ -806,8 +851,9 @@ tamaño de las hormigas en pantalla:
 godot --headless --fixed-fps 60 --path . res://tests/prueba_progresion.tscn
 ```
 
-IA cooperativa, reservas, cuatro evoluciones, migración del equipo, reglas de
-los seis destinos y tutorial completado por ocho obreras con el llamado fijo:
+IA cooperativa, reservas, cuatro evoluciones, migración del equipo y reglas
+de los seis destinos; el tutorial se prueba con una colonia de ensayo y el
+llamado fijo, no se presupone que el arranque actual tenga ocho obreras:
 
 ```bash
 godot --headless --fixed-fps 60 --path . res://tests/prueba_enjambre.tscn
@@ -825,6 +871,12 @@ renderer real guarda capturas a los 10 y 40 s en `.godot/qa/dispersion_*.png`.
 recursos pendientes y circulación por los mapas ampliados. `revision_nido.tscn`,
 `revision_archivo.tscn` y `revision_poblacion.tscn` capturan el árbol, los tiempos
 y los seis destinos con el renderer real, sin tocar la partida del jugador.
+
+`tests/prueba_arranque_solitario.tscn` comprueba una sola obrera real y la
+segunda comprada con ingresos de una o dos expediciones. `prueba_mordiscos.tscn`
+verifica recortes acumulativos, límites y conservación del valor;
+`revision_mordiscos.tscn` permite revisar material retirado y carga con el
+renderer. Los resultados gráficos y sus límites están en `tests/RENDIMIENTO.md`.
 
 ## Exportar
 

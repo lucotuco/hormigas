@@ -1,5 +1,10 @@
 # Diseño de la progresión: de la casa a la Torre Eiffel
 
+> Extracción vigente: la revisión «Bocado local y carga de la porción real»
+> del 30/10 reemplaza los recortes por frentes del 29/10. Se conserva el
+> arranque individual, pero los pilotos anteriores —incluido el de 35,11
+> minutos— son históricos: no predicen ni validan el ritmo de esta revisión.
+
 ## El problema
 
 Con el balance anterior, un jugador activo compraba **todas** las mejoras y
@@ -517,3 +522,215 @@ de esos destinos para que cada uno pida su propia colonia.
   especial programado en `Juego` (ver `EFECTOS_JALEA`).
 - `mundo/mundos.gd`: `vida_meta` y `coronas` de cada destino.
 - `Juego.JALEA_POR_CORONA`, `Juego.DIVISOR_JALEA_MIGAS`, `Juego.BONUS_LEGADO`.
+
+## Arranque con una sola obrera (29/10, revisión posterior)
+
+El nuevo pedido cambia la escala de la colonia, no la calidad de sus
+decisiones. Se empieza con **una obrera**; Más obreras suma **una** por nivel.
+La primera compra conserva el precio de 12 migas: es la excepción al aumento
+de costos, para que ganar una segunda trabajadora no requiera decenas de
+expediciones. Su crecimiento sigue siendo ×1,55 y se mantienen los topes.
+No se compensa con nacimientos gratuitos, daño por clic ni ingreso automático.
+
+La mordida base pasa de 0,6 a **0,95 segundos**, conservando un punto de daño.
+La velocidad 95, olfato 45, territorio 620, capacidad uno y expedición de
+45 segundos no cambian. Los tiempos de decisión, navegación y admisión de
+rutas tampoco se usan para desacelerar el juego. Las mejoras de velocidad y
+frecuencia siguen haciendo crecer esas capacidades.
+
+Las demás mejoras cuestan aproximadamente **20–25% más**. Algunos ejemplos:
+Mandíbulas 18→22, Buche 40→50, Madera 1500→1800, Resistentes 450K→550K y
+Paredes 12M→15M. No cambian los requisitos, los hitos multiplicativos ni los
+efectos de las otras mejoras. Los precios y las reglas de las castas y la
+jalea se conservan; también Memoria por tres y Cuadrilla por seis.
+
+Para que los objetos duren y se pueda leer el trabajo de corte, la resistencia
+de muebles y muros se multiplica por **1,6**, sin multiplicar su recompensa.
+Se aplica una sola vez antes del perfil inicial y del tutorial. La primera
+silla tiene **280 de vida y 420 de valor**, frente a 140/420: ya no mantiene
+la antigua proporción de tres migas por daño. El cartón conserva 20/180.
+Los alimentos medianos/grandes ganan entre 33% y 50% de vida, manteniendo
+su recompensa, cantidad y distribución. Cereal y aceituna suben menos; las
+migas de arranque conservan sus tres de vida y dos de valor. No se añaden
+instancias, física por fragmento, recursos nuevos ni un mapa en segundo plano.
+
+Una partida existente conserva dinero, niveles, castas, jalea e historial sin
+cobros retroactivos. Los niveles se evalúan con el nuevo balance: ocho niveles
+de Más obreras ahora son nueve obreras totales sin otros bonus, no el antiguo
+total de veinticuatro. No hay una migración que regale niveles para mantener
+la población previa. Las colonias fundadas conservan las Memorias y los
+beneficios comprados; la Cuadrilla con Numerosa arranca con siete obreras
+efectivas, frente a una desde cero.
+
+La validación de aquella revisión separó tres preguntas. `prueba_arranque_solitario` simuló las
+primeras expediciones sin ingresos prefijados, sola y guiada con el llamado,
+y exigía poder pagar la segunda obrera en una o dos expediciones con el recorte anterior.
+`prueba_primera_madera` usa explícitamente ocho obreras después de siete
+niveles comprados y observa recorte, persistencia del resto y transporte;
+no lo presenta como la colonia inicial. `prueba_primer_retorno` compara los
+planes reales desde el mismo saldo, sin exigir que aprender madera derrumbe
+la silla de inmediato. Las tablas anteriores de 21–24 minutos no calibran
+este arranque. Las mediciones siguientes se hicieron después de integrar
+los recortes y las cargas reales, con paso 1/60, ×1 y guardado personal
+deshabilitado. Ninguna de estas pruebas demuestra diversión humana.
+
+### Primera validación del arranque individual (histórica, 29/10)
+
+Las cuatro suites específicas reúnen 91 verificaciones, sin fallos en una
+pasada headless aislada. Con semilla 417, sin ingresos prefijados ni compras
+automáticas, la segunda obrera se pudo pagar con 12 migas al terminar la
+segunda expedición autónoma (~91,15 s activos; ingresos 8,07 y 8,60) o la
+primera guiada al **centro del cartón** (~45,25 s; ingreso 35,10). La primera
+entrega ocurrió alrededor de 5,87 y 7,18 s respectivamente. Esas mediciones
+no incluyen pensar en la tienda y no aseguran que todas las personas sigan
+la misma ruta o consigan el mismo ingreso.
+
+La prueba de madera con ocho obreras compradas y Mandíbulas 4 mostró un
+recorte de la silla inicial a ~6,2 s, primera entrega a ~4,13 s y 241,8 migas
+de madera entregadas al cierre. A los cinco segundos conservaba 248 de sus
+280 de vida; terminó con 32, sin derrumbarse de golpe. Una silla estándar
+de 1120 de vida mostró su primer recorte completo a ~19,17 s con la misma
+colonia. Los umbrales comprueban avance visible, persistencia y transporte,
+no exigen volver al antiguo derrumbe dentro de una expedición.
+
+Desde la misma fixture de primera fundación y siete jaleas, Cuadrilla pagada
+por seis produjo ~313,66 migas, de las cuales ~111,23 fueron madera realmente
+transportada; Memoria por tres produjo ~205,55 y ~14,06 de madera. Ambos usan
+Numerosa, que aporta crías durante la expedición. Memoria sola dañó la silla
+sin agotar una celda entera; no se presenta ese daño parcial como una pieza
+devorada. Son comparaciones del primer regreso, no un ganador universal.
+
+### Piloto hasta la primera fundación con el balance individual (histórico, 29/10)
+
+Una pasada de `tests/medir_ritmo_casa.tscn`, semilla 417, política materiales,
+`BOT_FUNDAR_CASA=1`, `BOT_RETORNO=0` y `BOT_JALEA=retorno`, terminó en
+**35,11 minutos activos y 27 expediciones**. Comenzó desde cero, sin un
+snapshot de compras previas. Se conservaron las huellas de las tres tablas,
+IA, piezas, comidas y estado global entre el inicio y el cierre. No se usó
+el modo `RITMO_BASELINE`, que sólo repone precios históricos y ya no
+representaría por sí solo un control del antiguo arranque de ocho obreras.
+
+| Suceso | Minuto activo de expediciones |
+|---|---:|
+| Cartón terminado | 1,89 |
+| Primera especialista | 3,28 |
+| Mandíbulas 4 | 7,41 |
+| Madera comprada | 15,28 |
+| Primer recorte / transporte de madera | 15,36 / 15,37 |
+| Primera silla de madera terminada | 15,47 |
+| Resistentes comprados | 29,22 |
+| Paredes compradas | 33,31 |
+| Gran mesa devorada | 33,73 |
+| Cierre / primera fundación | 35,11 |
+
+La colonia ganó diez jaleas, pagó Cuadrilla por seis y conservó cuatro.
+La primera especialista aparece antes que la dieta de madera; el aumento
+del tiempo no depende de esconder todos los roles hasta el minuto quince.
+La silla del piloto cayó unos 11,1 segundos después de iniciar la expedición
+posterior a la compra de madera: esa colonia ya tenía ocho obreras, mejoras
+y especialistas, no era la única hormiga con que se empieza. El cierre incluye
+las entregas y la retirada, no el tiempo de pensar y comprar en la tienda.
+
+Este piloto describe una estrategia automática que compra por precio y ahorra
+para dietas; no valida todas las rutas de compra ni promete treinta y cinco
+minutos a una persona. La cola de navegación con presupuesto temporal puede
+variar las trayectorias. No se compara su duración como un A/B aislado con las
+tablas anteriores, que tenían otra población, resistencia, árbol y transporte.
+La campaña posterior y las sesiones humanas siguen pendientes de validación.
+
+### Mordida por frentes y carga representativa (histórico, 29/10)
+
+Cada celda física mantiene cuatro frentes visuales que sólo pierden material.
+El daño quita una franja en el lado atacado y la hormiga conserva una región
+del mismo atlas para mostrar lo que transporta, con un tirón breve hacia la
+boca. Al cambiar de lado no se mueve el agujero acumulado. Comidas y muebles
+usan el mismo principio, sin cuerpos físicos por fragmento ni imágenes por
+mordida. Las 16 celdas físicas y la cuota de navegación no aumentan.
+
+La muestra visual está acotada a tres retazos por hormiga; no representa una
+simulación volumétrica ni cambia el valor de la carga. Se mantienen el reparto
+65/35, los montones de Corte continuo y la acreditación separada de veneno y
+bonus de destrucción. Un mueble no entra en derrumbe automático hasta quedar
+con un 8% de su resistencia; los restos finales caen de a una celda cada 0,35 s.
+
+Las 82 descripciones de mejora ocupan como máximo 45 caracteres. Las fichas
+conservan efecto, antes/después, costo y requisitos, sin el segundo párrafo de
+ayuda. La versión de contenido pasa a **4** para no comparar récords del nuevo
+ritmo/resistencia con los anteriores; el historial y la partida se conservan.
+
+Las mediciones gráficas Full HD y sus límites están en `tests/RENDIMIENTO.md`.
+
+## Bocado local y carga de la porción real (30/10)
+
+La revisión anterior acumulaba daño visual por frentes, pero seguía pudiendo
+retirar una franja grande con una mordida y achicar después la muestra cargada.
+Validar daño, monotonía e ingresos no demostraba igualdad de tamaño entre lo
+retirado, el hueco y la carga. Esa limitación invalida presentar los 35,11
+minutos o las primeras expediciones guiadas al cartón como tiempos del sistema
+nuevo; se conservan arriba como historial, no se extrapolan.
+
+El bocado normal se limita ahora a una porción local de **hasta seis unidades
+de mundo por lado**. La región aceptada de la fuente, el hueco que deja y la
+muestra que viaja deben conservar su escala real. El daño alto no autoriza
+vaciar varias celdas para mostrar luego una carga pequeña. Sólo el material
+efectivamente retirado descuenta resistencia y produce valor; la extracción
+normal viaja completa con la hormiga, sin el antiguo reparto automático 65/35.
+Esto no agrega recompensas: una porción no se vuelve a pagar al transportarla
+ni por cambiar de representación. Las rutas especiales de montones, corrosión
+y derrumbe deben mantener su propia conservación del valor.
+
+El cartón conserva su rectángulo de 110×130, 20 de vida y 180 de valor. No se
+convierte en una caja diminuta ni en una fuente de dinero regalado: requiere
+hacer crecer la colonia, no mantener una hormiga arrancando bloques enormes.
+El desgaste del mapa sigue reiniciándose entre expediciones. Un chip máximo de 6×6 ocupa sólo el
+0,252% de ese rectángulo; no es lógico cobrar por un daño entero si no se
+retiró el material que ese daño representaba. Endurecer únicamente el cartón
+o encoger virtualmente la carga tampoco corrige esa correspondencia.
+
+Por eso el arranque guiado de `prueba_arranque_solitario` apunta a **migas
+pequeñas ya generadas dentro del territorio** y cambia de objetivo al
+agotarlas. No crea alimentos, no los acerca, no daña por script ni acredita
+premios antes de entregarlos. Conserva la garantía de una sola obrera real.
+El criterio acordado para esta revisión es poder pagar la segunda trabajadora
+con ingresos de hasta cinco expediciones autónomas (cuatro minutos activos)
+o tres guiadas, con primera entrega antes de diez segundos, sin simular saldos
+ni dar dinero. Se acepta explícitamente un arranque más lento: no se promete
+conservar las una o dos expediciones de la geometría anterior. La medición
+se realizó después de corregir contacto, raster, agotamiento y reparto de HP
+por área; los resultados siguientes no se extrapolan a la campaña.
+
+El bot adopta esa misma preferencia antes de aprender materiales. En modo
+`materiales`, una dieta aprendida conserva su orden explícita; los grandes
+objetivos mantienen prioridad cuando se pueden trabajar. El cartón deja de
+atraer toda la colonia mientras haya alimentos accesibles. Cambia la política
+inicial respecto de los pilotos anteriores: no se deben presentar como una
+comparación A/B que sólo haya variado la geometría. La campaña y el retorno
+tras fundar requieren nuevas mediciones; no se asignan tiempos por estimación.
+
+### Medición del primer ingreso y de la segunda obrera (30/10)
+
+Con semilla 417, paso 1/60 y tiempo ×1, `prueba_arranque_solitario` pasó sus
+25 verificaciones y `prueba_ritmo_economia`, las 36. Ambas terminaron sin errores
+ni guardado personal. Todas las expediciones usaron una sola obrera real; la
+compra se hizo al cierre con el saldo obtenido, no con ingresos prefijados.
+
+| Arranque | Ingresos sucesivos | Compra de la segunda obrera | Tiempo activo acumulado |
+|---|---|---|---:|
+| Autónomo | 1,9063 · 4,9891 · 4,5910 · 1,9063 | Expedición 4; paga 12 de un saldo de 13,3927 | 181,00 s |
+| Guiado a migas existentes | 5,6250 · 4,3750 · 5,0000 | Expedición 3; paga 12 de un saldo de 15,0000 | 136,62 s |
+
+Las primeras entregas quedaron entre 5,87–5,90 s en autonomía y 1,80–1,87 s
+en la guía. Se señalaron ocho migas reales entre las tres expediciones guiadas,
+cambiando al agotarlas. La guía no crea ni mueve recursos, no extrae por script
+y no aumenta su valor. El primer precio sigue siendo 12 y el siguiente 18;
+no se introdujo un descuento para maquillar los nuevos bocados.
+
+Son resultados de una pasada sintética y no una promesa de tiempo humano.
+No incluyen pensar en la tienda. La navegación con presupuesto temporal puede
+variar trayectorias e ingresos, aunque la semilla sea la misma. No validan
+la duración hasta madera, la primera fundación ni los destinos posteriores:
+el piloto de 35,11 minutos pertenece exclusivamente a la física anterior.
+
+El contenido se identifica ahora con **versión de mapa 5**, para separar
+récords de esta extracción/ritmo de los frentes de la versión 4. El formato
+de guardado no cambia y se conserva el archivo histórico de expediciones.

@@ -25,6 +25,39 @@ ingreso se observa a 10 Hz y puede incluir premios o corrosión: **no es una
 medición de primera entrega**. Las compras y los hitos se registran por señal.
 No inspecciona cada hormiga ni añade procesos al juego normal.
 
+## Contexto vigente para quien observa
+
+La partida nueva empieza con **una obrera**; Más obreras cuesta inicialmente
+12 migas y suma **una por nivel**. La mordida base es de 0,95 s y la expedición
+inicial dura 45 s, conservando velocidad, olfato e IA. La comprobación guiada
+actual apunta a migas pequeñas existentes, no a la caja grande de cartón.
+Las mediciones del 29/10 guiadas al cartón preceden al bocado local y no
+describen el nuevo ritmo. El piloto del 30/10 pagó la segunda hormiga de 12
+migas tras cuatro expediciones autónomas (~181 s activos) o tres guiadas a
+migas existentes (~137 s), sin regalos. No imponer esos plazos a participantes
+ni sugerirles compras. Anotar si reconocen el cambio de una a dos y si el
+arranque lento despierta interés o los hace esperar sin propósito.
+
+El cartón tiene 20 de resistencia y 180 de valor; la primera silla de madera,
+280/420. Su resistencia no aumenta la recompensa. Observar si entienden que
+las mordidas retiran material, ven salir una muestra en la carga y distinguen
+extraer, transportar y cobrar. No exigir que una obrera derrumbe el cartón o
+que Memoria sola elimine una celda de silla en la primera expedición.
+
+Los recortes acumulan lo retirado y no deben reaparecer al cambiar de flanco.
+El bocado normal retira una porción local de hasta seis unidades de mundo
+por lado: fuente, hueco y carga deben mantener la misma escala, sin encoger
+la muestra después de quitar un bloque grande. El material retirado viaja
+completo; ya no se reparte automáticamente 65/35 entre carga y montones.
+La navegación sigue agrupada por celdas: un pequeño mordisco visible no
+garantiza un paso transitable. La caja de cartón conserva 110×130 y es un
+proyecto para una colonia más capaz, no una fuente de 180 migas instantáneas
+para la primera hormiga. El desgaste del escenario se reinicia en cada expedición.
+Se reutiliza el mismo atlas, sin textura ni cuerpo por bocado. La representación
+sigue siendo estilizada, no una simulación volumétrica ni una garantía de
+detalle distinguible para cada mordida tardía. Separar problemas observados
+de esas limitaciones previstas.
+
 ## Cómo observar sin enseñar
 
 Hagan primero 5–10 sesiones con personas que no hayan visto el proyecto.
@@ -35,7 +68,7 @@ demostración hecha por ustedes.
 Anotar, con permiso para observar su juego:
 
 - Cuándo entienden que la colonia trabaja sola y para qué sirve el llamado.
-- Si notan recortes/fragmentos y quieren probar un mueble nuevo.
+- Si notan recortes, retazos y fragmentos; si relacionan la carga con lo retirado y quieren probar un mueble nuevo.
 - Qué compra eligen, qué creen que cambiará y si después pueden reconocerlo.
 - Cuándo no saben qué hacer, esperan sin propósito, piden ayuda o quieren salir.
 - Si entienden qué pierden/conservan al fundar y si el regreso se siente más fuerte.

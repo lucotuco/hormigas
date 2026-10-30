@@ -220,6 +220,9 @@ func probar_paneles() -> void:
 	config.find_child("Idioma_en", true, false).pressed.emit()
 	verificar(Juego.idioma == "en" and cambio[0], "elegir English cambia el idioma y avisa a la pantalla")
 	Ajustes.cambiar("idioma", "es")
+	# Reaplicar Ajustes también activa el audio. El test ya verificó esa
+	# opción; el resto de sus clics sigue silenciado, como las otras suites.
+	Sonido.silenciado = true
 	config.queue_free()
 	var tienda: Control = preload("res://ui/tienda.tscn").instantiate()
 	add_child(tienda)
