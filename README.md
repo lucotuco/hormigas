@@ -179,9 +179,9 @@ El gran banquete está en el comedor. El territorio inicial es de 620 unidades;
 Excavar permite abrir progresivamente el resto de la casa.
 
 Las feromonas son un **llamado al punto actual del cursor**, no un camino.
-Al mantener el clic, las 24 hormigas disponibles más cercanas se aproximan;
+Al mantener el clic, las 8 hormigas disponibles más cercanas se aproximan;
 la mejora Llamado potente aumenta esa cantidad de a tres y Coordinación de a una
-(máximo 64 a la vez). **El clic no hace daño**: sólo da una orden a las hormigas.
+(63 con las dos al máximo; el tope técnico es 64). **El clic no hace daño**: sólo da una orden a las hormigas.
 Las amenazas y premios sí responden al clic. Se conserva la mejora automática
 de `main`, pero no vuelve el daño manual sobre alimentos o muebles.
 La compra antigua `pisoton` conserva sus niveles como Coordinación; `pisada`

@@ -24,10 +24,11 @@ func _ready() -> void:
 	var punto := Vector2(-100, 140)
 	referencia.sort_custom(func(a: Hormiga, b: Hormiga) -> bool: return a.position.distance_squared_to(punto) < b.position.distance_squared_to(punto))
 	f.mantener_en(punto)
-	var exactas := f.seleccionadas.size() == 24
-	for i in 24:
+	var llamadas := f.cantidad_atraidas()
+	var exactas := llamadas == 8 and f.seleccionadas.size() == llamadas
+	for i in llamadas:
 		exactas = exactas and f.llama_a(referencia[i])
-	verificar(exactas, "el heap devuelve exactamente las 24 disponibles más cercanas entre 500")
+	verificar(exactas, "el heap devuelve exactamente las 8 disponibles más cercanas entre 500")
 	# El objetivo compartido puede desaparecer entre dos muestreos de 0.2 s.
 	var temporal := Comida.new()
 	run.add_child(temporal)
@@ -38,7 +39,7 @@ func _ready() -> void:
 	Juego.niveles = {"pisoton": 25, "rastro_persistente": 10}
 	Juego._cache_stats.clear()
 	f._actualizar_cercanas()
-	verificar(f.seleccionadas.size() == 64 and f.cantidad_atraidas() == 64, "las mejoras conservadas respetan el máximo de 64 llamadas")
+	verificar(f.seleccionadas.size() == 63 and f.cantidad_atraidas() == 63, "Rastro y Coordinación al máximo llaman a 63: ningún nivel queda sin efecto bajo el tope de 64")
 	var guardado := Juego.datos_partida()
 	Juego.reiniciar_estado()
 	Juego.restaurar_partida(guardado)
@@ -224,7 +225,8 @@ func probar_presupuesto() -> void:
 	for h in run.feromonas.seleccionadas.values():
 		if h.position.distance_to(run.feromonas.posicion) < 16:
 			llegaron += 1
-	verificar(llegaron == 64, "las 64 llamadas llegan aun con la cuota activada (%d/64)" % llegaron)
+	var llamadas := run.feromonas.cantidad_atraidas()
+	verificar(llegaron == llamadas, "las %d llamadas llegan aun con la cuota activada (%d)" % [llamadas, llegaron])
 	if DisplayServer.get_name() != "headless":
 		run.hud._process(1.0 / 60)
 		run.feromonas.queue_redraw()

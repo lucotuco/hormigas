@@ -1,7 +1,8 @@
 class_name Feromonas
 extends Node2D
 ## Las unidades más cercanas al cursor responden mientras se mantiene el clic.
-const MAX_ATRAIDAS := 24
+## Tope de hormigas que responden a la vez, por más mejoras que haya.
+const MAX_ATRAIDAS := 64
 const INTERVALO_SELECCION := 0.2
 const INTERVALO_VISUAL := 1.0 / 30.0
 var activa := false
@@ -33,7 +34,7 @@ func radio_visual() -> float:
 
 
 func cantidad_atraidas() -> int:
-	return clampi(int(Juego.stat("feromona_cantidad")), 1, 64)
+	return clampi(int(Juego.stat("feromona_cantidad")), 1, MAX_ATRAIDAS)
 
 
 func mantener_en(pos: Vector2, desde_mouse := false) -> void:

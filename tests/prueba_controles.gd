@@ -17,6 +17,9 @@ func _ready() -> void:
 		c.queue_free()
 	run.comidas.lista.clear()
 	var f := run.feromonas
+	# Con seis niveles de Llamado potente responden 26 (8 de base + 18).
+	Juego.niveles.rastro_persistente = 6
+	Juego._cache_stats.clear()
 	var h := run.colonia._nacer()
 	h.position = Vector2(-130, 90)
 	h._velocidad = 100
@@ -54,15 +57,15 @@ func _ready() -> void:
 		ant.position = Vector2(-100 - i * 3, 120)
 	f.mantener_en(Vector2(-100, 120))
 	f._actualizar_cercanas()
-	verificar(f.seleccionadas.size() == Feromonas.MAX_ATRAIDAS, "se eligen las 24 más cercanas sin ordenar a toda la colonia")
+	verificar(f.seleccionadas.size() == 26 and f.cantidad_atraidas() == 26, "se eligen las 26 más cercanas sin ordenar a toda la colonia")
 	f.mantener_en(Vector2(0, -550))
 	f._actualizar_cercanas()
 	verificar(f.llama_a(lejos) and not f.seleccionadas.is_empty(), "un punto alejado igual atrae a las más cercanas sin exigir que ya estén al lado")
-	Juego.niveles.rastro_persistente = 2
+	Juego.niveles.rastro_persistente = 8
 	Juego._cache_stats.clear()
 	f._actualizar_cercanas()
-	verificar(f.seleccionadas.size() == 30, "Llamado potente aumenta en tres por nivel las hormigas que responden")
-	Juego.niveles.rastro_persistente = 0
+	verificar(f.seleccionadas.size() == 32, "Llamado potente aumenta en tres por nivel las hormigas que responden")
+	Juego.niveles.rastro_persistente = 6
 	Juego._cache_stats.clear()
 	var tipo: Dictionary = Juego.comidas[2].duplicate()
 	tipo.vida = 100

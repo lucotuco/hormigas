@@ -7,7 +7,7 @@ intervalo_mordida,0.95,Segundos entre mordidas
 tamano_bocado,6,Lado máximo en unidades del mundo de una porción arrancada; no crece con el daño ni con el zoom
 capacidad,1,Mordidas que junta una hormiga antes de volver al hormiguero
 olfato,45,Distancia en píxeles a la que una hormiga detecta comida
-feromona_cantidad,24,Hormigas más cercanas que responden al llamado mientras mantenés el clic
+feromona_cantidad,8,Hormigas más cercanas que responden al llamado mientras mantenés el clic
 duracion_run,45,Segundos que dura cada run
 radio_territorio,620,Radio en píxeles del territorio explorable
 multiplicador_migas,1,Multiplicador de todas las migas recolectadas
