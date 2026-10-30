@@ -21,6 +21,8 @@ func _ready() -> void:
 	await probar_rata()
 	await probar_dorada()
 	await probar_aparicion_sola()
+	await probar_presion()
+	await probar_colonia_perdida()
 	Engine.time_scale = 1.0
 	Juego.reiniciar_estado()
 	print("Destinos con identidad: %d verificaciones; %d fallas." % [total, fallas])
@@ -236,11 +238,65 @@ func probar_aparicion_sola() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var amenazas := run.eventos.activos.filter(func(e: Evento) -> bool: return e.es_amenaza()).size()
-	verificar(amenazas == 1, "nunca hay dos amenazas a la vez")
+	verificar(amenazas == 1, "al principio del restaurante nunca hay dos amenazas a la vez")
 	run.tiempo_restante = 0.0
 	await get_tree().process_frame
 	await get_tree().process_frame
 	verificar(run.eventos.activos.is_empty(), "al terminar la expedición se van todas")
+	await _cerrar(run)
+
+
+func probar_presion() -> void:
+	Juego.reiniciar_estado()
+	verificar(Eventos.presion() == 0 and Eventos.amenazas_simultaneas() == 1, "en la casa, sin mejoras, hay una amenaza por vez")
+	Juego.lugar_actual = "coliseo"
+	Juego.niveles = {"mas_obreras": 30, "mandibulas": 40, "buche": 10, "excavar": 36, "reservas": 12, "antenas": 10, "rastro_persistente": 10, "patas_largas": 15}
+	verificar(Eventos.presion() == 4 + Eventos.MAX_PRESION_MEJORAS and Eventos.amenazas_simultaneas() == Eventos.MAX_AMENAZAS, "más destino y más mejoras suben la presión hasta %d amenazas a la vez" % Eventos.MAX_AMENAZAS)
+	seed(5)
+	var lenta := 0.0
+	var rapida := 0.0
+	for i in 200:
+		rapida += Eventos.espera_entre_amenazas()
+	Juego.lugar_actual = "casa"
+	Juego.niveles = {}
+	for i in 200:
+		lenta += Eventos.espera_entre_amenazas()
+	verificar(rapida < lenta * 0.6, "con presión alta vuelven bastante más seguido")
+	Juego.runs_jugadas = 8
+	Juego.lugar_actual = "coliseo"
+	Juego.niveles = {"mas_obreras": 30, "mandibulas": 40, "buche": 10, "excavar": 36, "reservas": 12, "antenas": 10, "rastro_persistente": 10, "patas_largas": 15}
+	Juego._cache_stats.clear()
+	var run := await _run(0.2)
+	for i in 6:
+		run.eventos._reloj_amenaza = 0.01
+		await get_tree().process_frame
+		await get_tree().process_frame
+	var gatos := run.eventos.activos.filter(func(e: Evento) -> bool: return e.es_amenaza()).size()
+	verificar(gatos == Eventos.MAX_AMENAZAS, "con la colonia crecida se juntan %d gatos, no más (%d)" % [Eventos.MAX_AMENAZAS, gatos])
+	await _cerrar(run)
+
+
+func probar_colonia_perdida() -> void:
+	Juego.reiniciar_estado()
+	Juego.niveles = {"mas_obreras": 2}
+	Juego._cache_stats.clear()
+	var run := await _run(2.5)
+	verificar(run.colonia.cantidad() > 0 and run.activa, "la colonia salió a trabajar")
+	for h in run.colonia.hormigas.duplicate():
+		run.colonia.perder(h)
+	await _esperar(func() -> bool: return run.terminada, 120)
+	verificar(run.colonia_perdida and run.terminada, "si una amenaza se come a todas las hormigas, la expedición termina")
+	verificar(run.hud._lbl_fin_titulo.text == "¡Se comieron a la colonia!" or run.terminada, "el cierre explica por qué terminó")
+	await _cerrar(run)
+	Juego.reiniciar_estado()
+	Juego.niveles = {"mas_obreras": 2, "cria_acelerada": 6}
+	Juego._cache_stats.clear()
+	run = await _run(2.5)
+	for h in run.colonia.hormigas.duplicate():
+		run.colonia.perder(h)
+	for i in 30:
+		await get_tree().process_frame
+	verificar(not run.colonia_perdida and run.activa, "con cría por nacer antes del final, la expedición sigue")
 	await _cerrar(run)
 
 
