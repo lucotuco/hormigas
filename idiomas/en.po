@@ -2228,8 +2228,6 @@ msgstr "+1 ant answers your call."
 msgid "Muerden 12% más seguido."
 msgstr "Bite 12% more often."
 
-msgid "Daño de mordida ×1.5."
-msgstr "Bite damage ×1.5."
 
 msgid "Permite comer madera y telas."
 msgstr "Unlocks wood and fabric."
@@ -2246,8 +2244,6 @@ msgstr "+1 bite carried per trip."
 msgid "Migas ×1.15."
 msgstr "Crumbs ×1.15."
 
-msgid "Migas ×1.5."
-msgstr "Crumbs ×1.5."
 
 msgid "+3 hormigas responden al llamado."
 msgstr "+3 ants answer your call."
@@ -2264,8 +2260,6 @@ msgstr "+24 cm of territory."
 msgid "+1 entrada secundaria."
 msgstr "+1 secondary entrance."
 
-msgid "Daño de mordida ×2."
-msgstr "Bite damage ×2."
 
 msgid "+2 bocados por viaje."
 msgstr "+2 bites carried per trip."
@@ -2279,11 +2273,7 @@ msgstr "+8 workers at the start."
 msgid "Muerden 10% más seguido."
 msgstr "Bite 10% more often."
 
-msgid "Daño de mordida ×1.6."
-msgstr "Bite damage ×1.6."
 
-msgid "Migas ×2."
-msgstr "Crumbs ×2."
 
 msgid "+2 crías cada 10 s."
 msgstr "+2 hatchlings every 10 s."
@@ -2443,3 +2433,18 @@ msgstr "The whole colony got eaten! The expedition is over"
 
 msgid "¡Se comieron a la colonia!"
 msgstr "The colony got eaten!"
+
+msgid "Migas ×1.4."
+msgstr "Crumbs ×1.4."
+
+msgid "Migas ×1.75."
+msgstr "Crumbs ×1.75."
+
+msgid "Daño de mordida ×1.4."
+msgstr "Bite damage ×1.4."
+
+msgid "Daño de mordida ×1.75."
+msgstr "Bite damage ×1.75."
+
+msgid "Daño de mordida ×1.45."
+msgstr "Bite damage ×1.45."

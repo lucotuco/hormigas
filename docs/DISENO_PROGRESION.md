@@ -779,3 +779,70 @@ Lo que muestran las dos pasadas:
   últimos 15 niveles de Coordinación no hacían nada. Ahora el base es 8: el
   máximo da 63, y cada nivel cuenta desde la primera expedición. La pasada de
   control llegó a la madera en el minuto 38,7, dentro del ruido.
+
+### Rebalance de la campaña (30/10, noche)
+
+Pedido: que el principio cueste, que después se sienta el despegue y que el
+resto del juego no caiga en dos expediciones. Se probaron 17 variantes con el
+bot (dos en paralelo). Esto es lo que quedó.
+
+**Arranque.** La madera cuesta 700 (antes 1800) y pide Mandíbulas 3 (antes 4).
+La gran mesa de la casa baja de 1000 a 600 de `vida_meta`. Con 1000, la colonia
+podía trabarse varias expediciones después de comprar los muros: una pasada
+fundó con 3 de jalea y su segunda colonia tardó 30 minutos en volver. Sólo
+abaratar la madera (1100) no movía nada, porque el bot llega a ahorrar recién
+cuando lo más barato cuesta lo mismo que una expedición. Bajar el crecimiento
+de precios de las mejoras básicas tampoco cambió la madera.
+
+**Bola de nieve.** Se moderaron los multiplicadores más fuertes: Recolección
+eficiente ×1,15 → ×1,12, Huevos dorados ×1,5 → ×1,4, Acero ×1,5 → ×1,4,
+Titanio ×2 → ×1,75, Legión ×1,6 → ×1,45, Haute cuisine ×2 → ×1,75 y Corazón
+×1,5 → ×1,4. Con la mitad de ese recorte (×1,10, ×1,3, ×1,5…) el restaurante
+quedaba imposible y la colonia fundaba con 9 de jalea. Con este, el ingreso del
+restaurante pasa de ~10B a 0,3–2B por expedición y crece por precio, no de un
+salto.
+
+**Grandes objetivos** (`vida_meta`): restaurante 1500 (igual), museo
+950 → 28.500, Obelisco 7.200 → 600.000, Coliseo 2,3e5 → 1,5e8 y Torre Eiffel
+4,8e7 → 1,2e10. Las memorias de la reina bajan: metal 10 → 5 y piedra
+30 → 12. Así la segunda y la tercera vuelta a la casa duran 4 y 1–2
+expediciones.
+
+**El bot.** Ahora ataca el gran objetivo sólo cuando estima que lo puede tirar
+(ver README). Antes atacaba siempre: como el mapa se repone, se quedaba sin
+ingresos y fundaba trabado. El modo de calibración por runs (`BOT_RUNS_DESTINO`)
+quedó, pero con los bocados de la versión 5 sobreestima: un objetivo
+invulnerable no suelta trozos y las hormigas muerden sin volver. Por eso los
+valores se ajustaron a mano.
+
+| Hito (minutos de bot) | Antes (A / B) | Ahora (f4 / f3) |
+|---|---:|---:|
+| Madera | 36,9 / 41,9 | 18,8 / 18,6 |
+| Casa | 61,7 / 89,7 | 50,1 / 52,4 |
+| Restaurante | 67,7 / 93,0 | 59,2 / 65,0 |
+| Museo | 91,2 / 124,2 | 107,8 / 96,0 |
+| Obelisco | 111,3 / 146,4 | 114,6 / 119,2 |
+| Coliseo | 114,0 / 150,6 | 139,8 / 149,3 |
+| Torre Eiffel | 117,9 / ~173 | 152,6 / 166,7* |
+
+\* La pasada f3 se midió con 1,5e10. En el minuto 166,7 le hizo a la Torre
+15,5Qa de 15,6Qa, se quedó a un 0,6% y fundó una cuarta vez. Por eso quedó
+1,2e10 (12,5Qa): con ese valor cae en esa expedición, y f4 también la tira.
+
+Expediciones en cada destino nuevo, contando todas las colonias hasta tirarlo:
+restaurante 3–4, museo 3–5, Obelisco 2, Coliseo 3–4 (con una fundación en el
+medio) y Torre Eiffel 3 o más. Antes era 1 en cada uno desde el museo. El bot
+funda 3 veces: al llegar al restaurante, al museo y al trabarse en el Coliseo.
+
+Pendiente:
+
+- **La primera vuelta a la casa sigue larga:** 10–11 expediciones, unos 18
+  minutos. Con 5 de jalea por corona y Reservas a 2 bajaba, pero rompe el
+  diseño del primer retorno (7 de jalea, Cuadrilla 6) que cubren
+  `prueba_primer_retorno` y `prueba_preparacion_fundar`. Queda para hablarlo.
+- **La Torre Eiffel pide una colonia con ~300–400 de legado.** Cerca de
+  1,2e10 se decide por pocas expediciones: si una colonia queda corta,
+  funda una cuarta vez (unos 15–20 minutos más).
+- **Desde el Obelisco el ingreso se despega del daño:** hay expediciones de
+  Sx, pero el daño al objetivo sigue en Qa. La jalea por migas (raíz cuarta)
+  sigue el ingreso y la cuarta fundación puede dar decenas de miles.

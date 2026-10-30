@@ -687,6 +687,19 @@ la resistencia de ese destino en `FACTOR_CALIBRACION` (1,3)
 siguiente lo conquista. Al final imprime `CALIBRADO {...}` con los valores para
 `mundo/mundos.gd`.
 
+Con `BOT_RUNS_DESTINO=N` la resistencia se fija después de N runs en el destino
+(por `BOT_FACTOR`), sin esperar a que la colonia se trabe. **Ojo:** desde los
+bocados de la versión 5, un objetivo invulnerable no suelta trozos. Las hormigas
+llamadas muerden sin volver nunca al nido, y el daño aplicado
+(`trabajo_recibido`) sobreestima lo que una colonia extrae de un objetivo real.
+Los valores de la versión 5 se ajustaron a mano con pasadas normales del bot,
+mirando `meta X/Y` en cada destino.
+
+El bot ataca el gran objetivo sólo cuando estima que lo puede tirar: escala el
+daño de su último intento por la potencia actual (daño × hormigas ÷ intervalo de
+mordida) y además reintenta cada 4 runs. Como el mapa se repone, atacar un
+objetivo que no cae deja la run sin ingresos.
+
 Para recalibrar un solo destino: copiá el `estado_<destino>.json` que el bot guarda
 al conquistar el anterior, poné un `vida_meta.json` junto al estado (por
 ejemplo `{"coliseo": 1e30}`) para hacerlo invulnerable, mirá en el registro
