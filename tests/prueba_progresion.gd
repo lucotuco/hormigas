@@ -57,7 +57,7 @@ func probar_partida_vieja() -> void:
 func probar_proxima_meta() -> void:
 	Juego.reiniciar_estado()
 	var meta := Juego.proxima_meta()
-	verificar(meta.tipo == "nivel" and meta.objetivo == 4.0 and meta.actual == 0.0, "la primera meta es subir Mandíbulas fuertes a nivel 4")
+	verificar(meta.tipo == "nivel" and meta.objetivo == 3.0 and meta.actual == 0.0, "la primera meta es subir Mandíbulas fuertes a nivel 3")
 	Juego.niveles = {"mandibulas": 4}
 	Juego._cache_stats.clear()
 	meta = Juego.proxima_meta()

@@ -16,6 +16,10 @@ extends Node
 ##   BOT_LOG      archivo donde agregar el registro (además de imprimirlo)
 ##   BOT_CALIBRAR si existe, modo calibración (ver más abajo)
 ##   BOT_FACTOR   factor de calibración (por defecto FACTOR_CALIBRACION)
+##   BOT_RUNS_DESTINO con BOT_CALIBRAR: fija la vida_meta de cada destino
+##                nuevo cuando la colonia lleva esa cantidad de runs ahí, con el
+##                máximo daño que le hizo por BOT_FACTOR (menos de 1 deja
+##                margen para el ruido entre pasadas).
 ##   BOT_TRABADO  runs sin progreso antes de pensar en fundar (por defecto RUNS_TRABADO)
 ##   BOT_ORDEN    "materiales" dirige primero al material recién aprendido;
 ##                "cercania" prioriza alimento cercano (por defecto). Ambos
@@ -75,6 +79,10 @@ const FACTOR_CALIBRACION := 1.3
 var factor_calibracion := FACTOR_CALIBRACION
 const INVULNERABLE := 1e40
 var calibrar := false
+## Con BOT_RUNS_DESTINO: runs que la colonia juega en un destino sin calibrar
+## antes de fijar su vida_meta (0 = sólo al trabarse, como antes).
+var runs_por_destino := 0
+var runs_en_destino := 0
 var calibrado: Dictionary = {}
 var max_dano_destino := 0.0
 var _dano_meta := 0.0
@@ -92,6 +100,11 @@ var fundar_en_casa := false
 var jalea_retorno := false
 var solo_memoria := false
 var _run_observada: Run
+## Último intento contra el gran objetivo de cada destino en esta colonia:
+## {destino: {"dano", "potencia"}}. El mapa se repone en cada run, así que
+## atacar un objetivo que no cae no deja nada: conviene juntar migas y volver
+## cuando la colonia pueda tirarlo.
+var intentos_meta: Dictionary = {}
 var _piezas_observadas: Dictionary = {}
 var _bonus_muebles := 0.0
 
@@ -126,6 +139,8 @@ func _ready() -> void:
 		runs_trabado = int(OS.get_environment("BOT_TRABADO"))
 	if OS.has_environment("BOT_FACTOR"):
 		factor_calibracion = float(OS.get_environment("BOT_FACTOR"))
+	if OS.has_environment("BOT_RUNS_DESTINO"):
+		runs_por_destino = int(OS.get_environment("BOT_RUNS_DESTINO"))
 	if inicio_ruta != "" and FileAccess.file_exists(inicio_ruta):
 		var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(inicio_ruta))
 		Juego.restaurar_partida(d.partida)
@@ -152,6 +167,13 @@ func _ready() -> void:
 		var ganado: float = await jugar_run()
 		if calibrar and donde != "casa" and not calibrado.has(donde):
 			max_dano_destino = maxf(max_dano_destino, _dano_meta)
+			runs_en_destino += 1
+			if runs_por_destino > 0 and runs_en_destino >= runs_por_destino and max_dano_destino > 0.0 and _base_meta > 0.0:
+				calibrado[donde] = factor_calibracion * max_dano_destino / _base_meta
+				Mundos.vida_meta_forzada[donde] = calibrado[donde]
+				anotar("== calibrado %s tras %d runs: vida_meta %s (máximo daño %s)" % [donde, runs_en_destino, str(calibrado[donde]), Juego.formatear(max_dano_destino)])
+				max_dano_destino = 0.0
+				runs_en_destino = 0
 		if Juego.coronas_cobradas.size() > cobradas or ganado > mejor_run_colonia * MEJORA_MINIMA:
 			trabado = 0
 		else:
@@ -173,6 +195,7 @@ func _ready() -> void:
 				anotar("== calibrado %s: vida_meta %s (máximo daño de la colonia %s)" % [donde, str(calibrado[donde]), Juego.formatear(max_dano_destino)])
 			fundar()
 			max_dano_destino = 0.0
+			runs_en_destino = 0
 		comprar()
 		# Las compras ocurren entre expediciones. Registrarlas acá evita fechar
 		# una dieta al terminar la run siguiente, como hacía el piloto anterior.
@@ -192,6 +215,7 @@ func jugar_run() -> float:
 	_dano_meta = 0.0
 	var run: Run = RUN.instantiate()
 	add_child(run)
+	var ir_por_meta := _conviene_meta(run)
 	_run_observada = run
 	_piezas_observadas.clear()
 	_bonus_muebles = 0.0
@@ -223,7 +247,7 @@ func jugar_run() -> float:
 			if dieta == 0 and miga != null:
 				mejor = miga
 			var meta := run.objetivo_mapa
-			if is_instance_valid(meta) and not meta.muerta and meta.disponible() and meta.en_territorio(run.radio_actual):
+			if ir_por_meta and is_instance_valid(meta) and not meta.muerta and meta.disponible() and meta.en_territorio(run.radio_actual):
 				var punto := meta.punto_mordida(Vector2.ZERO, run.radio_actual)
 				if punto != Vector2.INF:
 					run.feromonas.mantener_en(punto)
@@ -249,7 +273,10 @@ func jugar_run() -> float:
 	if is_instance_valid(meta):
 		vida_meta = meta.vida_max
 		dano_meta = meta.dano_recibido
-		_dano_meta = dano_meta
+		# Invulnerable, el objetivo no suelta trozos: se mide el daño aplicado.
+		_dano_meta = maxf(dano_meta, meta.trabajo_recibido) if calibrar and Juego.lugar_actual != "casa" else dano_meta
+		if ir_por_meta and meta.disponible():
+			intentos_meta[Juego.lugar_actual] = {"dano": _dano_meta, "potencia": _potencia(), "run": runs_colonia}
 		_base_meta = meta.vida_max / Mundos.vida_meta(Juego.lugar_actual)
 	elif run.objetivo_completado:
 		dano_meta = INF
@@ -340,6 +367,10 @@ func conviene_fundar() -> bool:
 		return false
 	if fundar_en_casa and Juego.fundaciones == 0 and Juego.coronas_cobradas.has("casa"):
 		return true
+	# Calibrando por runs, la colonia juega sus runs en el destino nuevo antes
+	# de pensar en fundar (salvo que esté trabada del todo).
+	if calibrar and runs_por_destino > 0 and Juego.lugar_actual != "casa" and not calibrado.has(Juego.lugar_actual) and trabado < RUNS_TRABADO_MAXIMO:
+		return false
 	var ganada := Juego.jalea_por_fundar()
 	if runs_colonia >= RUNS_COLONIA_MADURA and ganada >= maxi(GANANCIA_MINIMA_DOBLE, 2 * Juego.legado):
 		return true
@@ -349,7 +380,29 @@ func conviene_fundar() -> bool:
 	return Juego.jalea_por_fundar() >= minimo or trabado >= RUNS_TRABADO_MAXIMO
 
 
+## Fuerza aproximada de la colonia para estimar si el gran objetivo cae.
+func _potencia() -> float:
+	var hormigas := Juego.stat("hormigas_iniciales")
+	for id in Juego.reclutadas:
+		hormigas += int(Juego.reclutadas[id])
+	return Juego.stat("dano") * hormigas / maxf(Juego.stat("intervalo_mordida"), 0.01)
+
+
+func _conviene_meta(run: Run) -> bool:
+	if calibrar and Juego.lugar_actual != "casa" and not calibrado.has(Juego.lugar_actual):
+		return true
+	var meta := run.objetivo_mapa
+	if not is_instance_valid(meta) or not intentos_meta.has(Juego.lugar_actual):
+		return true
+	var intento: Dictionary = intentos_meta[Juego.lugar_actual]
+	# La potencia no mide todo (velocidad, castas, olfato): cada tanto reintenta.
+	if runs_colonia - int(intento.run) >= 4:
+		return true
+	return float(intento.dano) * _potencia() / maxf(float(intento.potencia), 1e-9) >= 0.8 * meta.vida_max
+
+
 func fundar() -> void:
+	intentos_meta.clear()
 	var ganada := Juego.jalea_por_fundar()
 	var donde := Juego.lugar_actual
 	var preparacion: Array[String] = []

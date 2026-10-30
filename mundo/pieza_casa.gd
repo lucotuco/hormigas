@@ -53,6 +53,9 @@ var _tiempo_caida := 0.0
 ## Daño total recibido en esta run. Lo usa el bot de balance: con vidas enormes,
 ## restar vida_max - vida pierde precisión.
 var dano_recibido := 0.0
+## Daño aplicado aunque no alcance para desprender un trozo. El bot lo usa
+## para calibrar grandes objetivos que empiezan invulnerables.
+var trabajo_recibido := 0.0
 ## El gran objetivo es un mueble mucho más resistente: su vida se multiplica
 ## por Mundos.vida_meta(destino). Ver README (bot de balance).
 const RECOMPENSA_META := 4.0
@@ -598,6 +601,7 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float) -> float:
 		else:
 			real = mordiscos.recortar(elegida, trabajo, pos)
 		presupuesto -= trabajo
+		trabajo_recibido += trabajo
 		if real <= 0:
 			break
 		if mordiscos.ultima_porcion.get_area() > _porcion_reciente.get_area():
