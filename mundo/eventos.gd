@@ -17,6 +17,15 @@ const PRIMERA_AMENAZA := Vector2(12.0, 18.0)
 const ENTRE_AMENAZAS := Vector2(35.0, 50.0)
 const PRIMERA_DORADA := Vector2(18.0, 28.0)
 const ENTRE_DORADAS := Vector2(45.0, 70.0)
+## Presión: cuánto avanzó la colonia. Cada destino suma 1 y cada
+## NIVELES_POR_PRESION niveles de mejoras comprados en esta colonia suman 1
+## (hasta MAX_PRESION_MEJORAS). Con más presión las amenazas vienen más
+## seguido y pueden juntarse varias a la vez. Son las mismas amenazas, más.
+const NIVELES_POR_PRESION := 40
+const MAX_PRESION_MEJORAS := 4
+const MAX_AMENAZAS := 4
+## Cada punto de presión acorta la espera entre amenazas un 12%.
+const ACORTA_POR_PRESION := 0.12
 ## Botín: la stat botin_eventos (parte de lo juntado en la expedición) con
 ## este mínimo, para que siempre valga.
 const BOTIN_BASE := 50.0
@@ -27,25 +36,51 @@ var _reloj_amenaza := 0.0
 var _reloj_dorada := 0.0
 
 
+## 0 en la casa al empezar; hasta 9 en la Torre Eiffel con la colonia crecida.
+static func presion() -> int:
+	var niveles := 0
+	for id in Juego.niveles:
+		niveles += int(Juego.niveles[id])
+	return maxi(0, Mundos.ORDEN.find(Juego.lugar_actual)) + mini(MAX_PRESION_MEJORAS, niveles / NIVELES_POR_PRESION)
+
+
+## Cuántas amenazas puede haber a la vez (una bandada de palomas cuenta como una).
+static func amenazas_simultaneas() -> int:
+	return mini(MAX_AMENAZAS, 1 + presion() / 2)
+
+
+static func espera_entre_amenazas() -> float:
+	return randf_range(ENTRE_AMENAZAS.x, ENTRE_AMENAZAS.y) / (1.0 + ACORTA_POR_PRESION * presion())
+
+
 func iniciar(r: Run) -> void:
 	run = r
-	_reloj_amenaza = randf_range(PRIMERA_AMENAZA.x, PRIMERA_AMENAZA.y)
+	_reloj_amenaza = randf_range(PRIMERA_AMENAZA.x, PRIMERA_AMENAZA.y) / (1.0 + ACORTA_POR_PRESION * presion())
 	_reloj_dorada = randf_range(PRIMERA_DORADA.x, PRIMERA_DORADA.y) * Juego.stat("intervalo_doradas")
 
 
 func _process(delta: float) -> void:
 	if not is_instance_valid(run) or not run.activa:
 		return
-	if Juego.revelado("amenazas") and not hay_amenaza():
+	if Juego.revelado("amenazas") and grupos_de_amenaza() < amenazas_simultaneas():
 		_reloj_amenaza -= delta
 		if _reloj_amenaza <= 0.0:
-			_reloj_amenaza = randf_range(ENTRE_AMENAZAS.x, ENTRE_AMENAZAS.y)
+			_reloj_amenaza = espera_entre_amenazas()
 			aparecer(AMENAZAS.get(Juego.lugar_actual, "arana"))
 	if Juego.revelado("doradas"):
 		_reloj_dorada -= delta
 		if _reloj_dorada <= 0.0:
 			_reloj_dorada = randf_range(ENTRE_DORADAS.x, ENTRE_DORADAS.y) * Juego.stat("intervalo_doradas")
 			aparecer("dorada")
+
+
+## Amenazas activas; una bandada de palomas cuenta como un grupo.
+func grupos_de_amenaza() -> int:
+	var cuenta := 0
+	for e in activos:
+		if is_instance_valid(e) and e.es_amenaza() and not e.resuelto:
+			cuenta += 1
+	return ceili(float(cuenta) / PALOMAS_POR_BANDADA) if Juego.lugar_actual == "obelisco" else cuenta
 
 
 func hay_amenaza() -> bool:

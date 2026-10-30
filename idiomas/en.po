@@ -2437,3 +2437,9 @@ msgstr "1 hatchling / 10 s"
 
 msgid "1 bocado"
 msgstr "1 bite carried"
+
+msgid "¡Se comieron a toda la colonia! Termina la expedición"
+msgstr "The whole colony got eaten! The expedition is over"
+
+msgid "¡Se comieron a la colonia!"
+msgstr "The colony got eaten!"

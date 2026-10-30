@@ -111,6 +111,11 @@ func _process(delta: float) -> void:
 				run.efectos.chispas(Vector2.ZERO, Color(1.0, 0.95, 0.7), 6)
 
 
+## ¿Nace otra cría dentro de `segundos`? (Las minis necesitan una reina viva.)
+func nacera_antes_de(segundos: float) -> bool:
+	return _activa and _intervalo_cria > 0.0 and not colonia_llena() and _intervalo_cria - _reloj_cria <= segundos
+
+
 func colonia_llena() -> bool:
 	return hormigas.size() >= MAX_HORMIGAS
 

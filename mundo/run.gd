@@ -64,6 +64,8 @@ var _carga_pisadas := 0.0
 var _ultimo_deposito := -100.0
 var _ultimo_tic := -1
 var limpieza_lograda := false
+## Una amenaza se comió a todas las hormigas y no queda ninguna por salir.
+var colonia_perdida := false
 var limpieza_completa := false
 var tiempo_limpieza := 0.0
 var nuevo_record_limpieza := false
@@ -163,9 +165,23 @@ func _process(delta: float) -> void:
 	if segundos <= 5 and segundos != _ultimo_tic and segundos > 0:
 		_ultimo_tic = segundos
 		Sonido.tocar("tic", 1.0 + (5 - segundos) * 0.08, 0.0)
+	if _colonia_sin_hormigas():
+		colonia_perdida = true
+		_iniciar_retirada()
+		hud.mostrar_aviso(tr("¡Se comieron a toda la colonia! Termina la expedición"))
+		return
 	if tiempo_restante <= 0.0:
 		tiempo_restante = 0.0
 		_iniciar_retirada()
+
+
+## Sin hormigas en el mapa, ninguna por salir y sin una cría que llegue antes
+## del final, la expedición ya no puede hacer nada: termina.
+func _colonia_sin_hormigas() -> bool:
+	_colonia_operativa = _colonia_operativa or colonia.cantidad() > 0
+	if not _colonia_operativa or colonia.cantidad() > 0 or colonia._por_salir > 0:
+		return false
+	return not colonia.nacera_antes_de(tiempo_restante)
 
 
 func _comprobar_limpieza() -> bool:

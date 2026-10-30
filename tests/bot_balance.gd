@@ -241,7 +241,7 @@ func jugar_run() -> float:
 	minutos += (run.tiempo_jugado + run.tiempo_retirada) / 60.0
 	var ganado := Juego.migas_run
 	var partes := Juego.partes_destruidas_run
-	anotar("   producción %.1f/s · ingresos comida/muebles/estructura (incluyen bonus) %s · cargas sin entregar %s · fin %s" % [run.produccion_run, JSON.stringify(run.ingresos), Juego.formatear(run.cargas_pendientes), "limpieza" if run.limpieza_lograda else "tiempo"])
+	anotar("   producción %.1f/s · ingresos comida/muebles/estructura (incluyen bonus) %s · cargas sin entregar %s · fin %s" % [run.produccion_run, JSON.stringify(run.ingresos), Juego.formatear(run.cargas_pendientes), "limpieza" if run.limpieza_lograda else ("colonia perdida" if run.colonia_perdida else "tiempo")])
 	# Daño hecho al gran objetivo en esta run (para calibrar vida_meta).
 	var meta := run.objetivo_mapa
 	var dano_meta := 0.0

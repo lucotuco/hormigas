@@ -57,7 +57,9 @@ func aplicar() -> void:
 	Juego.usar_idioma(idioma if idioma != "" else Juego.idioma_del_sistema())
 	Sonido.volumen = volumen
 	Sonido.silenciado = not sonido
-	if DisplayServer.get_name() != "headless":
+	# Dentro de la pestaña "Juego" del editor la ventana es del editor: cambiarle
+	# el modo desacomoda el área de juego y el clic queda corrido del puntero.
+	if DisplayServer.get_name() != "headless" and not Engine.is_embedded_in_editor():
 		var modo := DisplayServer.WINDOW_MODE_FULLSCREEN if pantalla_completa else DisplayServer.WINDOW_MODE_WINDOWED
 		if DisplayServer.window_get_mode() != modo:
 			DisplayServer.window_set_mode(modo)

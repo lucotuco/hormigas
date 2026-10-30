@@ -366,7 +366,7 @@ func mostrar_aviso(texto: String) -> void:
 
 func mostrar_fin() -> void:
 	_lbl_aviso.hide()
-	_lbl_fin_titulo.text = (tr("¡Mapa despejado!") if run.limpieza_completa else tr("¡Zona despejada!")) if run.limpieza_lograda else tr("¡Se acabó el tiempo!")
+	_lbl_fin_titulo.text = (tr("¡Mapa despejado!") if run.limpieza_completa else tr("¡Zona despejada!")) if run.limpieza_lograda else (tr("¡Se comieron a la colonia!") if run.colonia_perdida else tr("¡Se acabó el tiempo!"))
 	_lbl_fin_migas.text = tr("+%s migas") % Juego.formatear(Juego.migas_run)
 	_lbl_fin_resumen.text = tr("%s migas/s · %s") % [Juego.formatear_corto(run.produccion_run), (tr("%+.0f%% frente al récord anterior") % run.mejora_produccion) if run.tenia_record else tr("primer registro en este destino")]
 	_lbl_fin_detalle.text = tr("Comidas: %d · Partes de la casa: %d\nMejor combo: x%d\nTotal en el hormiguero: %s") % [
