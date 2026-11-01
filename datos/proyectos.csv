@@ -1,0 +1,21 @@
+id,destino,nombre,detalle,premio,objetos,vida_relativa,entrada,alijo
+restaurante_servicio,restaurante,Paso de camareros,Despejá los dos carritos que conectan la cocina y la barra.,Un acceso y alijo de ravioles,carrito_cocina@carrito:1000:500|carrito_barra@carrito:1100:3750,0.15,1,ravioles
+restaurante_despensa,restaurante,La despensa de servicio,Abrí la alacena y vaciá el canasto de la cocina.,Alijo de ravioles,alacena@alacena:-800:900|canasto@canasto:600:1050,0.35,0,ravioles
+restaurante_cocina,restaurante,La cocina industrial,Desarmá la cocina y la heladera del servicio.,Alijo de flan,cocina@cocina:-150:-900|heladera@heladera:1100:-850,0.65,0,flan
+restaurante_salon,restaurante,El salón del fondo,Devorá la mesa del fondo y sus dos sillas señaladas.,Alijo de pizza,mesa@mesa_comedor:4800:3200|silla_norte@silla:4920:2900|silla_sur@silla:5500:3920,1.0,0,pizza_entera
+museo_conservacion,museo,Salida de conservación,Despejá el carrito y la biblioteca junto al paso del archivo.,Un acceso y alijo de sándwiches,carrito@carrito:-650:2100|biblioteca@biblioteca:1050:1400,0.15,1,sandwich
+museo_archivo,museo,El archivo,Devorá las dos bibliotecas del archivo señaladas.,Alijo de canapés,estante_norte@biblioteca:-700:1400|estante_sur@biblioteca:-700:2800,0.35,0,canape
+museo_vitrinas,museo,Las vitrinas de gala,Abrí y desarmá las dos vitrinas del ala norte.,Alijo de bombones y Sondeo de escondites,vitrina_oeste@vitrina:2200:-500|vitrina_este@vitrina:5400:-500,0.65,0,bombon
+museo_galeria,museo,La galería de piedra,Desmontá la columna y el ánfora de la galería.,Alijo de torta de gala,columna@columna:1900:300|anfora@anfora:2650:1000,1.0,0,torta_gala
+obelisco_paseo,obelisco,Camino a la colonia,Despejá el banco y el mobiliario del paseo sur.,Un acceso y alijo de pizza,banco@banco:500:3100|papelera@papelera:1350:3400|farol@farol:1600:3400,0.15,1,pizza
+obelisco_kiosco,obelisco,El kiosco de la esquina,Vaciá el kiosco y desarmá el cartel de la avenida.,Alijo de choripán,kiosco@kiosco:-700:600|cartel@cartel:1800:500,0.35,0,choripan
+obelisco_parada,obelisco,Parada porteña,Desarmá el colectivo y el taxi junto al cruce.,Alijo de medialunas,colectivo@colectivo:1600:-215|taxi@taxi:4800:-220,0.65,0,medialuna
+obelisco_fuente,obelisco,La fuente de la plaza,Devorá la fuente de la explanada.,Alijo de alfajor,fuente@fuente:800:1700,0.45,0,alfajor
+coliseo_corredor,coliseo,El corredor de la arena,Despejá las dos columnas del corredor occidental.,Un acceso y alijo de uvas,columna_norte@columna:1900:1000|columna_sur@columna:1900:2400,0.35,1,racimo
+coliseo_anforas,coliseo,Ánforas del acceso,Vaciá las dos ánforas del acceso a la arena.,Alijo de aceitunas,anfora_norte@anfora:700:1600|anfora_sur@anfora:1100:3700,0.35,0,aceituna
+coliseo_fuente,coliseo,La fuente romana,Desmontá la fuente y la columna del acceso.,Alijo de uvas,fuente@fuente:100:2400|columna@columna:400:600,0.65,0,racimo
+coliseo_arcadas,coliseo,Las arcadas del este,Devorá tres arcos vecinos del borde oriental.,Alijo de pan romano y Trabajo de cantera,arco_centro@arco:5770:1540|arco_sur@arco:5628.278:2241.141|arco_norte@arco:5628.278:838.859,1.0,0,pan_romano
+eiffel_jardines,eiffel,Paseo de los jardines,Despejá el banco y el mobiliario del jardín occidental.,Un acceso y alijo de croissants,banco@banco:-400:1800|farol@farol:1600:600|papelera@papelera:100:1400,0.15,1,croissant
+eiffel_picnic,eiffel,Picnic en el Champ de Mars,Devorá la mesa y la silla del picnic occidental.,Alijo de macarons,mesa@mesa:200:800|silla@silla:400:1300,0.35,0,macaron
+eiffel_libros,eiffel,Los bouquinistes,Vaciá los dos puestos de libros de los jardines.,Alijo de croissants y Puente aéreo,kiosco_oeste@kiosco:-750:600|kiosco_este@kiosco:5400:-500,0.65,0,croissant
+eiffel_fuente,eiffel,La fuente de la esplanada,Desmontá la fuente frente a la torre.,Alijo de baguette,fuente@fuente:2800:-600,0.45,0,baguette

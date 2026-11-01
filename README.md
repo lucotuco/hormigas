@@ -18,7 +18,7 @@ Incremental para PC hecho en **Godot 4.7.2**. Empezás con una sola hormiga y gu
 | Moverse por el mapa | Arrastrar con botón derecho o central; también WASD o flechas |
 | Volver al hormiguero y al encuadre automático | R |
 | Ver el plano de la casa completa | H |
-| Enfocar el gran objetivo del destino | G o botón Gran objetivo |
+| Enfocar el proyecto pendiente o el gran objetivo del destino | G o botón del objetivo |
 | Priorizar alimentos, muebles o estructuras | Botones de la barra inferior; el llamado manual siempre manda |
 | Pausa (seguir, configuración, estadísticas, terminar o salir al menú) | Esc |
 | Silenciar sonido | M |
@@ -67,6 +67,8 @@ res://
     recorte_bocados.gdshader Máscara compartida de recortes sobre el atlas existente
     materiales_casa.gd Etapas, resistencia, recompensas y división de paredes en tramos
     mundos.gd     Seis destinos y sus planos, objetivos y progresión de campaña
+    proyectos_campana.gd Catálogo de proyectos físicos por destino, desde datos/proyectos.csv
+    recorrido_destino.gd Progreso de proyectos, premios y objetivo sugerido sin proceso por cuadro
     fragmento_casa.gd Montones de fragmentos transportables, sin física individual
     roles_hormiga.gd Afinidades por material, carga y preferencias de las castas
     hormiguero.gd  La entrada del hormiguero en (0, 0)
@@ -377,9 +379,31 @@ compras concretas que alcanzaría a pagar el saldo después de fundar.
 La tienda tiene pestañas **Mejoras**, **Castas**, **Viajes** y **Jalea real**.
 Los destinos son casa, restaurante, museo, Obelisco, Coliseo y Torre Eiffel.
 Cada uno tiene su propio plano y un gran objetivo: mesa familiar, barra del
-chef, escultura, Obelisco, arco imperial y torre. Devorar ese objetivo abre el
-destino siguiente y entrega de 1 a 6 coronas. `G` permite localizarlo; la niebla
-y los requisitos de material siguen vigentes.
+chef, escultura, Obelisco, arco imperial y torre. La casa conserva su recorrido
+inicial; los otros cinco destinos suman cuatro proyectos cada uno. Para la
+primera conquista hay que terminar los proyectos y el gran objetivo: recién
+entonces se abre el siguiente viaje y se entregan de 1 a 6 coronas.
+
+Son **20 proyectos sobre 42 objetos físicos**, no encargos de juntar una cifra:
+la cocina y el salón del restaurante, las vitrinas y el archivo del museo,
+el kiosco y los vehículos porteños, las ánforas y arcadas romanas, los puestos
+de libros y jardines de París. Se pueden hacer en cualquier orden. Viajes
+muestra objetos pendientes, premio y progreso; `G` lleva al próximo objetivo
+accesible sin mantener el llamado anterior. La niebla y las dietas siguen vigentes.
+
+**Un objeto de proyecto completamente devorado queda terminado** entre
+expediciones y fundaciones. El daño parcial no se guarda: no se reconstruye una
+máscara rota desde un porcentaje de vida. Cada proyecto paga una sola vez un
+alijo regional real; el de acceso habilita además una entrada local, dentro de
+los topes de entradas existentes. Tres proyectos abren nuevas evoluciones.
+Después de la conquista histórica, los muebles vuelven como recursos normales,
+sin resistencia de misión ni premios de proyecto repetidos.
+
+La partida sube a versión 8 y el mapa a 6. Los récords nuevos distinguen qué
+objetos estaban pendientes al iniciar. Las partidas anteriores conservan sus
+victorias: los proyectos de destinos ya conquistados se consideran cumplidos,
+sin premios retroactivos. Para jugar toda la campaña ampliada hace falta una
+partida nueva; no se borra ni se reinicia automáticamente la partida existente.
 
 **Fundar colonia** (pestaña Jalea real, con confirmación) reinicia migas,
 mejoras y castas y los convierte en **jalea real**: 3 por corona de la colonia
@@ -389,7 +413,7 @@ las dietas aprendidas, conservar migas o castas), poder (daño, migas, obreras,
 tiempo) y reglas nuevas (hallazgos compartidos, más niveles de tope, corona doble).
 Toda la jalea ganada en la historia da además +3% de daño y migas por punto,
 aunque se gaste. Se conservan los destinos visitados, sus adaptaciones y topes,
-los hitos, el árbol y el archivo de tiempos. **La colonia nueva vuelve a la casa**
+los hitos, los proyectos terminados, el árbol y el archivo de tiempos. **La colonia nueva vuelve a la casa**
 y debe reconquistar cada gran objetivo para abrir el viaje siguiente; haber
 visitado un destino no permite saltarse ese recorrido. Cada gran objetivo paga
 sus coronas una vez por colonia.
@@ -529,7 +553,7 @@ pausa sin conservar el objetivo anterior.
 
 ### Evoluciones y equipo
 
-En la ficha de casta se desbloquean cuatro evoluciones persistentes. Se eligen
+En la ficha de casta se desbloquean siete evoluciones persistentes. Se eligen
 **hasta dos por expedición**, sin pagar ni perder compras. Al desbloquearlas
 se equipan automáticamente si hay lugar. Las hormigas copian ese equipo al nacer.
 
@@ -539,6 +563,9 @@ se equipan automáticamente si hay lugar. Las hormigas copian ese equipo al nace
 | Nube corrosiva | 3 rojas, Mandíbulas 4 | Contagia hasta dos objetivos próximos cada 1,5 s |
 | Barrido de restos | 3 cargadoras, Mandíbulas 4 | Recoge hasta dos montones adicionales a menos de 48 px |
 | Camada real | 1 reina, Mandíbulas 8 | Tres minis por tanda; mantiene los topes de 24 por reina y 500 en la colonia |
+| Sondeo de escondites | 1 voladora, Mandíbulas 4 y vitrinas de gala | Una extracción real abre antes el tesoro de muebles con escondite, sin borrar el mueble ni duplicar el tesoro |
+| Trabajo de cantera | 1 demoledora, Mandíbulas 8 y arcadas del este | Corta piedra/metal de forma continua y deja el material extraído para transportarlo |
+| Puente aéreo | 3 voladoras, Mandíbulas 8 y bouquinistes | Permite retirar montones pesados de material resistente; no montones de muro |
 
 Se conservan al fundar una colonia y al cargar partidas anteriores. La variante
 activa usa al menos la primera evolución visual del atlas existente; no carga
@@ -646,6 +673,12 @@ Usa pasos de 1/60 s, `Engine.time_scale = 1` y FPS ilimitados: acelera por
 cantidad de cuadros procesados, no agrandando el delta. Con
 `BOT_ESTADO=archivo.json` se puede cortar y retomar por tandas; con `BOT_LOG`
 también escribe el registro en un archivo. No corre en CI.
+
+En la campaña por proyectos (mapa 6), el bot sigue el objeto sugerido y
+anota por separado objetos, proyectos y conquista real. Comer el monumento
+antes de los proyectos no equivale a terminar el destino. El piloto nuevo
+es parcial: llegó desde cero a casa y los dos primeros proyectos del
+restaurante; todavía no permite afirmar la duración de toda la ampliación.
 
 **Referencia histórica del 28/10, previa al arranque individual y al balance actual:**
 
@@ -864,7 +897,7 @@ tamaño de las hormigas en pantalla:
 godot --headless --fixed-fps 60 --path . res://tests/prueba_progresion.tscn
 ```
 
-IA cooperativa, reservas, cuatro evoluciones, migración del equipo y reglas
+IA cooperativa, reservas, evoluciones, migración del equipo y reglas
 de los seis destinos; el tutorial se prueba con una colonia de ensayo y el
 llamado fijo, no se presupone que el arranque actual tenga ocho obreras:
 
@@ -890,6 +923,15 @@ segunda comprada con ingresos de una o dos expediciones. `prueba_mordiscos.tscn`
 verifica recortes acumulativos, límites y conservación del valor;
 `revision_mordiscos.tscn` permite revisar material retirado y carga con el
 renderer. Los resultados gráficos y sus límites están en `tests/RENDIMIENTO.md`.
+
+Los proyectos nuevos se cubren en `prueba_proyectos_estado.tscn`,
+`prueba_proyectos_mundo.tscn` y `prueba_proyectos_ui.tscn` (progreso, premios,
+migración y lectura). `prueba_evoluciones_viaje.tscn` comprueba extracción real,
+tesoros y logística sin duplicar valor. `prueba_aire_material.tscn` contrasta el
+aire/frontera contra un flood independiente. La revisión visual es
+`revision_proyectos.tscn`; el estrés gráfico específico, `perfil_proyectos.tscn`.
+Todas desactivan el guardado personal. El perfil usa daño artificial declarado:
+no sirve para estimar duración de campaña ni rendimiento habitual.
 
 ## Exportar
 

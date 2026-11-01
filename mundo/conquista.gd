@@ -28,6 +28,21 @@ static func celebrar(r: Run, pieza: PiezaCasa, entregadas: int) -> Conquista:
 	return c
 
 
+## Un lateral puede terminar después del monumento. El cierre sigue mostrando
+## el lugar conquistado, sin conservar nodos devorados entre expediciones.
+static func celebrar_destino(r: Run, entregadas: int) -> Conquista:
+	var plano := Mundos.plano(Juego.lugar_actual)
+	var indice := int(str(plano.meta).get_slice(":", 1))
+	var mueble: Dictionary = plano.muebles[indice]
+	var c := Conquista.new()
+	c.run = r
+	c._rect = mueble.rect
+	c._color = mueble.color
+	r.add_child(c)
+	c._empezar(entregadas)
+	return c
+
+
 func _empezar(entregadas: int) -> void:
 	var centro := _rect.get_center()
 	var tamano := _rect.size.length()

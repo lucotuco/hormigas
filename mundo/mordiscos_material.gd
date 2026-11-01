@@ -10,6 +10,7 @@ const PASO_MAXIMO := 2.0
 const LADO_BLOQUE := 8
 static var _morton_x := PackedInt32Array()
 static var _morton_y := PackedInt32Array()
+static var _bits_por_byte := PackedByteArray()
 
 var ultima_porcion := Rect2()
 var _rect_mundo := Rect2()
@@ -534,6 +535,10 @@ func _visitar_bloque_aire(bx: int, by: int, lado: int) -> void:
 	var y0 := by * LADO_BLOQUE
 	var x1 := mini(x0 + LADO_BLOQUE, _ancho)
 	var y1 := mini(y0 + LADO_BLOQUE, _alto)
+	# El conteo exacto del árbol demuestra que ningún píxel puede recibir
+	# aire. Evitar ocho llamadas por lado también durante la preparación.
+	if _arbol[_hojas[bloque]] == (x1 - x0) * (y1 - y0):
+		return
 	if lado <= 1:
 		var x := x0 if lado == 0 else x1 - 1
 		for y in range(y0, y1):
@@ -563,12 +568,21 @@ func _propagar_aire() -> void:
 			var y0 := by * LADO_BLOQUE
 			var x1 := mini(x0 + LADO_BLOQUE, _ancho)
 			var y1 := mini(y0 + LADO_BLOQUE, _alto)
-			for y in range(y0, y1):
-				_marcar_frontera(x0 - 1, y)
-				_marcar_frontera(x1, y)
-			for x in range(x0, x1):
-				_marcar_frontera(x, y0 - 1)
-				_marcar_frontera(x, y1)
+			# Entre dos bloques vacíos no puede haber material de frontera.
+			# Sólo visitar los bordes con un vecino que todavía contiene cuerpo;
+			# el flood conserva las mismas cuatro conexiones y cavidades cerradas.
+			if bx > 0 and _arbol[_hojas[bloque - 1]] > 0:
+				for y in range(y0, y1):
+					_marcar_frontera(x0 - 1, y)
+			if bx + 1 < _columnas_bloques and _arbol[_hojas[bloque + 1]] > 0:
+				for y in range(y0, y1):
+					_marcar_frontera(x1, y)
+			if by > 0 and _arbol[_hojas[bloque - _columnas_bloques]] > 0:
+				for x in range(x0, x1):
+					_marcar_frontera(x, y0 - 1)
+			if by + 1 < _filas_bloques and _arbol[_hojas[bloque + _columnas_bloques]] > 0:
+				for x in range(x0, x1):
+					_marcar_frontera(x, y1)
 		else:
 			var x := entrada % _ancho
 			var y := entrada / _ancho as int
@@ -633,12 +647,17 @@ func _rect_pixels(rect: Rect2i) -> Rect2:
 
 func _borrar_rectangulo(celda: int, rect: Rect2i, semilla := Vector2i(-1, -1)) -> void:
 	var frentes: Array[int] = []
-	for y in range(rect.position.y, rect.end.y):
-		for x in range(rect.position.x, rect.end.x):
-			if _pixeles[y * _ancho + x] != 0:
-				if semilla.x < 0 and _frontera_exterior(x, y):
-					frentes.append(y * _ancho + x)
-				_borrar_pixel(celda, x, y)
+	if semilla.x >= 0 and rect.size.x * rect.size.y >= 32:
+		# _extraer_frente ya demostró que TODO este rectángulo está sólido.
+		# Sólo agrupar su mantenimiento: mismos píxeles, semilla y flood.
+		_borrar_solido(celda, rect)
+	else:
+		for y in range(rect.position.y, rect.end.y):
+			for x in range(rect.position.x, rect.end.x):
+				if _pixeles[y * _ancho + x] != 0:
+					if semilla.x < 0 and _frontera_exterior(x, y):
+						frentes.append(y * _ancho + x)
+					_borrar_pixel(celda, x, y)
 	_aplicar_bloques()
 	_actualizar_limites(celda)
 	if semilla.x >= 0:
@@ -647,6 +666,55 @@ func _borrar_rectangulo(celda: int, rect: Rect2i, semilla := Vector2i(-1, -1)) -
 		for indice in frentes:
 			_marcar_aire(indice % _ancho, indice / _ancho as int)
 	_propagar_aire()
+
+
+func _borrar_solido(celda: int, rect: Rect2i) -> void:
+	var area := rect.size.x * rect.size.y
+	_vivos[celda] -= area
+	_cantidad_vivos -= area
+	var fila_base := celda * _alto_celda - (celda / _grilla.x as int) * _alto_celda
+	var columna_base := celda * _ancho_celda - (celda % _grilla.x) * _ancho_celda
+	for y in range(rect.position.y, rect.end.y):
+		_filas_vivas[fila_base + y] -= rect.size.x
+		if _filas_vivas[fila_base + y] == 0:
+			_limites_sucios[celda] = 1
+		var indice := y * _ancho + rect.position.x
+		var fin := indice + rect.size.x
+		while indice + 8 <= fin:
+			_pixeles.encode_u64(indice, 0)
+			indice += 8
+		while indice < fin:
+			_pixeles[indice] = 0
+			indice += 1
+	for x in range(rect.position.x, rect.end.x):
+		_columnas_vivas[columna_base + x] -= rect.size.y
+		if _columnas_vivas[columna_base + x] == 0:
+			_limites_sucios[celda] = 1
+	for by in range(rect.position.y / LADO_BLOQUE as int, (rect.end.y - 1) / LADO_BLOQUE as int + 1):
+		var y0 := maxi(rect.position.y, by * LADO_BLOQUE)
+		var y1 := mini(rect.end.y, (by + 1) * LADO_BLOQUE)
+		for bx in range(rect.position.x / LADO_BLOQUE as int, (rect.end.x - 1) / LADO_BLOQUE as int + 1):
+			var x0 := maxi(rect.position.x, bx * LADO_BLOQUE)
+			var ancho := mini(rect.end.x, (bx + 1) * LADO_BLOQUE) - x0
+			var bloque := by * _columnas_bloques + bx
+			var fila_bits := ((1 << ancho) - 1) << (x0 % LADO_BLOQUE)
+			var mascara := 0
+			var frontera_retirada := 0
+			for y in range(y0, y1):
+				var desplazamiento := (y % LADO_BLOQUE) * LADO_BLOQUE
+				mascara |= fila_bits << desplazamiento
+				frontera_retirada += _bits_por_byte[(_frontera_bits[bloque] >> desplazamiento) & fila_bits]
+			if frontera_retirada > 0:
+				_frontera_bits[bloque] &= ~mascara
+				_frontera_celdas[celda] -= frontera_retirada
+				if _frontera_sucia[bloque] == 0:
+					_frontera_sucia[bloque] = 1
+					_bloques_frontera.append(bloque)
+				_deltas_frontera[bloque] -= frontera_retirada
+			if _deltas_bloque[bloque] == 0:
+				_bloques_tocados.append(bloque)
+			_deltas_bloque[bloque] += ancho * (y1 - y0)
+	_textura_sucia = true
 
 
 func _borrar_pixel(celda: int, x: int, y: int) -> void:
@@ -822,6 +890,8 @@ static func _preparar_codigos_morton() -> void:
 	var cantidad := MAX_LADO_MASCARA / LADO_BLOQUE as int
 	_morton_x.resize(cantidad)
 	_morton_y.resize(cantidad)
+	_bits_por_byte.resize(256)
+	_bits_por_byte[0] = 0
 	for i in cantidad:
 		var codigo := i
 		codigo = (codigo | (codigo << 4)) & 0x0f0f
@@ -829,6 +899,7 @@ static func _preparar_codigos_morton() -> void:
 		codigo = (codigo | (codigo << 1)) & 0x5555
 		_morton_x[i] = codigo
 		_morton_y[i] = codigo << 1
+		_bits_por_byte[i] = _bits_por_byte[i >> 1] + (i & 1)
 
 
 func _buscar_pixel(celda: int, pos: Vector2, zona := Rect2(), solo_frontera := false) -> int:

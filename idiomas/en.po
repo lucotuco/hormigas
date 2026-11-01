@@ -291,20 +291,8 @@ msgstr "Keep growing"
 msgid "El mundo es un banquete"
 msgstr "The world is a feast"
 
-msgid "Devorá el gran objetivo para abrir el siguiente destino. Al fundar volvés a la casa y reconquistás los viajes; las adaptaciones y el historial se conservan."
-msgstr "Devour the grand target to unlock the next destination. Founding returns you to the house to reconquer your travels; adaptations and history are kept."
-
 msgid "Gran objetivo: %s · %d coronas"
 msgstr "Grand target: %s · %d crowns"
-
-msgid "Requiere devorar: %s en esta colonia"
-msgstr "Requires devouring: %s in this colony"
-
-msgid "CONQUISTADO · Gran objetivo: %s · coronas ya cobradas en esta colonia"
-msgstr "CONQUERED · Grand target: %s · crowns already claimed by this colony"
-
-msgid "CONQUISTADO · Gran objetivo: %s · %d coronas disponibles otra vez"
-msgstr "CONQUERED · Grand target: %s · %d crowns available again"
 
 msgid "La reina y la jalea real"
 msgstr "The queen and the royal jelly"
@@ -1595,9 +1583,6 @@ msgstr "Hold click to call ants"
 msgid "Al conquistar: "
 msgstr "On conquest: "
 
-msgid "Mejor intento %.0f%% · %s migas/s"
-msgstr "Best attempt %.0f%% · %s crumbs/s"
-
 msgid "\nRequiere %d %s y Mandíbulas nivel %d. Elegí hasta dos sin perder lo desbloqueado."
 msgstr "\nRequires %d %s and Mandibles level %d. Choose up to two without losing unlocks."
 
@@ -1792,9 +1777,6 @@ msgstr "Could not export the archive. Choose another folder."
 
 msgid "Archivo exportado: %s"
 msgstr "Archive exported: %s"
-
-msgid "VISITADO · "
-msgstr "VISITED · "
 
 msgid "Volver al hormiguero"
 msgstr "Back to the nest"
@@ -2448,3 +2430,270 @@ msgstr "Bite damage ×1.75."
 
 msgid "Daño de mordida ×1.45."
 msgstr "Bite damage ×1.45."
+
+msgid "Completá los proyectos y devorá el gran objetivo. Los proyectos se conservan al fundar."
+msgstr "Complete the projects and devour the main objective. Projects are kept after founding a colony."
+
+msgid "Conquistá %s en esta colonia"
+msgstr "Conquer %s with this colony"
+
+msgid "CONQUISTADO · coronas cobradas"
+msgstr "CONQUERED · crowns claimed"
+
+msgid "DEVORADO · completá los proyectos para conquistar el destino."
+msgstr "DEVOURED · finish the projects to conquer this destination."
+
+msgid "Gran objetivo · %d coronas"
+msgstr "Main objective · %d crowns"
+
+msgid "Gran objetivo devorado · faltan proyectos"
+msgstr "Main objective devoured · projects remaining"
+
+msgid "Mejor intento del recorrido %.0f%% · %s migas/s"
+msgstr "Best route attempt %.0f%% · %s crumbs/s"
+
+msgid "Orden libre. Se conservan los objetos completos, no el daño parcial."
+msgstr "Any order. Fully devoured objects are kept, but partial damage is not."
+
+msgid "Premio: %s"
+msgstr "Reward: %s"
+
+msgid "Proyectos: %d/%d"
+msgstr "Projects: %d/%d"
+
+msgid "RECORRIDO · %d/%d proyectos"
+msgstr "ROUTE · %d/%d projects"
+
+msgid "VISITADO · %d coronas por reconquistar"
+msgstr "VISITED · %d crowns to reclaim"
+
+msgid "\nRecorrido: %.0f%% · mejor intento %.0f%%"
+msgstr "\nRoute: %.0f%% · best attempt %.0f%%"
+
+msgid "%s · %d%% devorado"
+msgstr "%s · %d%% devoured"
+
+msgid "Objetivo del recorrido"
+msgstr "Route objective"
+
+msgid "PROYECTO DEL RECORRIDO"
+msgstr "ROUTE PROJECT"
+
+msgid "Recorrido"
+msgstr "Route"
+
+msgid "Proyecto completado: %s"
+msgstr "Project completed: %s"
+
+msgid "Proyecto pendiente: %s"
+msgstr "Project pending: %s"
+
+msgid "%d de %d objetos devorados"
+msgstr "%d of %d objects devoured"
+
+msgid "Gran objetivo devorado. Terminá los proyectos del lugar para viajar."
+msgstr "Main objective devoured. Finish this destination's projects to travel."
+
+msgid "Proyecto terminado: %s"
+msgstr "Project finished: %s"
+
+msgid "Proyecto"
+msgstr "Project"
+
+msgid "Paso de camareros"
+msgstr "Waiters' passage"
+
+msgid "Despejá los dos carritos que conectan la cocina y la barra."
+msgstr "Clear the two carts connecting the kitchen and the counter."
+
+msgid "Un acceso y alijo de ravioles"
+msgstr "An entrance and a ravioli stash"
+
+msgid "La despensa de servicio"
+msgstr "The service pantry"
+
+msgid "Abrí la alacena y vaciá el canasto de la cocina."
+msgstr "Open the cabinet and empty the kitchen basket."
+
+msgid "Alijo de ravioles"
+msgstr "A ravioli stash"
+
+msgid "La cocina industrial"
+msgstr "The industrial kitchen"
+
+msgid "Desarmá la cocina y la heladera del servicio."
+msgstr "Dismantle the stove and the kitchen refrigerator."
+
+msgid "Alijo de flan"
+msgstr "A flan stash"
+
+msgid "El salón del fondo"
+msgstr "The back dining room"
+
+msgid "Devorá la mesa del fondo y sus dos sillas señaladas."
+msgstr "Devour the back table and its two marked chairs."
+
+msgid "Alijo de pizza"
+msgstr "A pizza stash"
+
+msgid "Salida de conservación"
+msgstr "Conservation exit"
+
+msgid "Despejá el carrito y la biblioteca junto al paso del archivo."
+msgstr "Clear the cart and the bookcase by the archive passage."
+
+msgid "Un acceso y alijo de sándwiches"
+msgstr "An entrance and a sandwich stash"
+
+msgid "El archivo"
+msgstr "The archive"
+
+msgid "Devorá las dos bibliotecas del archivo señaladas."
+msgstr "Devour the two marked bookcases in the archive."
+
+msgid "Alijo de canapés"
+msgstr "A canapé stash"
+
+msgid "Las vitrinas de gala"
+msgstr "The gala display cases"
+
+msgid "Abrí y desarmá las dos vitrinas del ala norte."
+msgstr "Open and dismantle the two display cases in the north wing."
+
+msgid "Alijo de bombones y Sondeo de escondites"
+msgstr "A chocolate stash and Hideout probing"
+
+msgid "La galería de piedra"
+msgstr "The stone gallery"
+
+msgid "Desmontá la columna y el ánfora de la galería."
+msgstr "Dismantle the column and the amphora in the gallery."
+
+msgid "Alijo de torta de gala"
+msgstr "A gala cake stash"
+
+msgid "Camino a la colonia"
+msgstr "The way back to the colony"
+
+msgid "Despejá el banco y el mobiliario del paseo sur."
+msgstr "Clear the bench and the street furniture on the south walk."
+
+msgid "Un acceso y alijo de pizza"
+msgstr "An entrance and a pizza stash"
+
+msgid "El kiosco de la esquina"
+msgstr "The corner kiosk"
+
+msgid "Vaciá el kiosco y desarmá el cartel de la avenida."
+msgstr "Empty the kiosk and dismantle the avenue sign."
+
+msgid "Alijo de choripán"
+msgstr "A choripán stash"
+
+msgid "Parada porteña"
+msgstr "The Buenos Aires stop"
+
+msgid "Desarmá el colectivo y el taxi junto al cruce."
+msgstr "Dismantle the bus and the taxi by the crossing."
+
+msgid "Alijo de medialunas"
+msgstr "A medialuna stash"
+
+msgid "La fuente de la plaza"
+msgstr "The plaza fountain"
+
+msgid "Devorá la fuente de la explanada."
+msgstr "Devour the fountain in the esplanade."
+
+msgid "Alijo de alfajor"
+msgstr "An alfajor stash"
+
+msgid "El corredor de la arena"
+msgstr "The arena passage"
+
+msgid "Despejá las dos columnas del corredor occidental."
+msgstr "Clear the two columns in the western passage."
+
+msgid "Un acceso y alijo de uvas"
+msgstr "An entrance and a grape stash"
+
+msgid "Ánforas del acceso"
+msgstr "Entrance amphorae"
+
+msgid "Vaciá las dos ánforas del acceso a la arena."
+msgstr "Empty the two amphorae at the arena entrance."
+
+msgid "Alijo de aceitunas"
+msgstr "An olive stash"
+
+msgid "La fuente romana"
+msgstr "The Roman fountain"
+
+msgid "Desmontá la fuente y la columna del acceso."
+msgstr "Dismantle the fountain and the entrance column."
+
+msgid "Alijo de uvas"
+msgstr "A grape stash"
+
+msgid "Las arcadas del este"
+msgstr "The eastern arcades"
+
+msgid "Devorá tres arcos vecinos del borde oriental."
+msgstr "Devour three neighboring arches along the eastern edge."
+
+msgid "Alijo de pan romano y Trabajo de cantera"
+msgstr "A Roman bread stash and Quarry work"
+
+msgid "Paseo de los jardines"
+msgstr "The garden walk"
+
+msgid "Despejá el banco y el mobiliario del jardín occidental."
+msgstr "Clear the bench and the furniture in the western garden."
+
+msgid "Un acceso y alijo de croissants"
+msgstr "An entrance and a croissant stash"
+
+msgid "Picnic en el Champ de Mars"
+msgstr "Picnic on the Champ de Mars"
+
+msgid "Devorá la mesa y la silla del picnic occidental."
+msgstr "Devour the table and the chair at the western picnic spot."
+
+msgid "Alijo de macarons"
+msgstr "A macaron stash"
+
+msgid "Los bouquinistes"
+msgstr "The bouquinistes"
+
+msgid "Vaciá los dos puestos de libros de los jardines."
+msgstr "Empty the two book stalls in the gardens."
+
+msgid "Alijo de croissants y Puente aéreo"
+msgstr "A croissant stash and Air bridge"
+
+msgid "La fuente de la esplanada"
+msgstr "The esplanade fountain"
+
+msgid "Desmontá la fuente frente a la torre."
+msgstr "Dismantle the fountain in front of the tower."
+
+msgid "Alijo de baguette"
+msgstr "A baguette stash"
+
+msgid "Sondeo de escondites"
+msgstr "Hideout probing"
+
+msgid "Una mordida real abre antes el escondite del mueble. No crea otro tesoro ni rompe su cuerpo."
+msgstr "A real bite opens a furniture hideout early. It does not create another treasure or destroy its body."
+
+msgid "Trabajo de cantera"
+msgstr "Quarry work"
+
+msgid "Deja en el suelo los trozos resistentes y de pared que extrae. La colonia los transporta."
+msgstr "Leaves extracted tough-material and wall chunks on the ground. The colony carries them home."
+
+msgid "Puente aéreo"
+msgstr "Air bridge"
+
+msgid "Las voladoras llevan restos de material resistente por el aire. No levantan montones de muro."
+msgstr "Flying ants carry tough-material debris through the air. They cannot pick up piles of wall debris."

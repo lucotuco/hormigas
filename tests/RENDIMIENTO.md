@@ -1,7 +1,7 @@
 # Rendimiento gráfico y memoria
 
-La medición vigente de cuerpo/sombra y contacto exterior está al final,
-en **30/10/2026**.
+La medición de cuerpo/sombra y contacto exterior está al final de **30/10/2026**;
+la ampliación por proyectos y su estrés específico, en **1/11/2026**.
 Las tablas anteriores conservan su contexto histórico: no son un control A/B
 del sistema actual ni una garantía de rendimiento del juego completo.
 
@@ -1006,3 +1006,76 @@ transparente↔aire; no sólo que la muestra contenga algún píxel visible.
 los 108 bocados iniciales de alimentos, monotonía GPU, escala del retazo,
 fuente liberada y descarga. Las capturas son QA acotada; sigue pendiente el
 playtest humano de lectura y satisfacción durante una sesión larga.
+
+## Proyectos y evoluciones de viaje — 1/11/2026
+
+La ampliación conserva el atlas, los muebles y los límites de población/restos.
+Los veinte proyectos son datos y eventos de destrucción: no tienen procesos
+por cuadro ni búsquedas añadidas a cada hormiga. El objetivo sugerido conserva
+su referencia hasta que termina; el marcador se redibuja al mover cámara,
+cambiar objetivo o revelar territorio. La interfaz no reconstruye el catálogo
+por depósito. Los checkpoints se agrupan en una llamada diferida por cuadro.
+
+Se agregan dos podas exactas del aire: un bloque completamente sólido no
+recibe visitas de aire, y entre bloques vacíos no se intentan marcar píxeles
+de frontera. Misma conectividad de cuatro vecinos, semilla, máscara y HP.
+Comparación serial headless de 28 objetos reales contra una subclase con el
+algoritmo anterior: buffers, bits y árboles idénticos. Torre: preparación
+153,34→79,86 ms; arco imperial: 56,36→49,57 ms. **No son FPS**; una preparación
+de 80 ms todavía puede producir un tirón al primer contacto. La nueva suite
+`prueba_aire_material` verifica aparte aire y frontera contra un flood por píxel,
+incluyendo cavidades cerradas y bloques incompletos. Con la comparación del
+borrado por bloques suma 30 verificaciones.
+
+### Estrés nuevo y límite detectado
+
+`perfil_proyectos.tscn` usa renderer real, Full HD, VSync desactivado, 500 hormigas
+de seis roles, 90 cuadros de preparación y 360 de medición por destino. Es un
+**stress artificial**, no un piloto de balance: velocidad 300, capacidad 6 y
+daño igual al 0,5% del primer proyecto para ejercitar cortes y restos incluso
+en escenarios tardíos. No se fuerzan HP y los eventos se desactivan para
+conservar las 500 unidades. Se mantienen hasta seis rutas por cuadro y 64
+montones. Los resultados de fases sucesivas no son un A/B causal entre equipos.
+
+La instrumentación puntual encontró el pico mayor en la erosión del veneno,
+no en nuevas búsquedas de IA: un daño de 1.175.489 sobre una biblioteca nativa
+ejecutó cientos de extracciones de frente y tardó unos 396 ms en una llamada.
+También hubo golpes ambientales de vaciado de 46–67 ms. El diagnóstico
+temporal se retiró de producción. No se aplicó el atajo de vaciar una celda
+por presupuesto letal: saltearía la oclusión y el material de cavidades cerradas.
+
+Se agregó borrado por bloques sólo en rectángulos sólidos de al menos 32
+píxeles que el extractor ya eligió. Conserva la misma semilla, orden de cortes,
+flood y DDA; no cambia HP, DPS ni carga. Comparación final serial en los 28
+objetos, tras cada corte local y de daño alto: estado completo idéntico
+(buffer, árboles, aire, frontera, filas/columnas, límites y crédito). El caso
+de biblioteca de 360×900 pasó de 374,17 a 324,44 ms **totales** en el barrido
+de daño alto por celdas/cuatro orígenes del microbenchmark, no por frame.
+Los recortes chicos mantuvieron el costo cercano al anterior. Registro:
+`.godot/qa/contenido_batch_reales_final.log`.
+
+Cierre gráfico serial, Godot 4.7.2/GL Compatibility/RTX 3060, 1920×1080,
+sin bot ni otras pruebas activas. Registro:
+`.godot/qa/contenido_20261101_perfil_final.log`.
+
+| Destino / equipo, 500 hormigas | Media | p95 | Peor |
+|---|---:|---:|---:|
+| Museo / Sondeo + Barrido | 10,73 ms | 13,54 ms | 358,73 ms |
+| Coliseo / Cantera + Contagio | 10,89 ms | 17,96 ms | 192,48 ms |
+| Eiffel / Cantera + Puente | 9,76 ms | 13,19 ms | 112,02 ms |
+
+La preparación de la torre sigue cerca de 80 ms y la erosión masiva todavía
+produce picos importantes. Queda pendiente reducir búsquedas/propagación de
+daño extremo y medir primer contacto en GPU integrada. **La optimización no
+eliminó los tirones de este estrés**: las medias/p95 no demuestran ausencia de
+picos ni 60 FPS constantes. No extrapolar este daño artificial al rendimiento
+habitual, ni usar esa diferencia para ignorar el límite detectado.
+
+### Regresión y lectura
+
+44 suites lógicas completas sin fallas ni errores de script. Cobertura nueva:
+catálogo, conservación/persistencia por objeto, migración, checkpoints,
+idempotencia de coronas/alijos, contexto de récord y las tres evoluciones.
+`revision_proyectos.tscn`: 52 verificaciones en español e inglés, Full HD y
+1000×620; cuatro proyectos visibles, hover real respetado y objetivo de cámara
+coherente con el HUD. No se carga ni se escribe la partida personal.

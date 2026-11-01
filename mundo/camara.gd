@@ -169,6 +169,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func ver_objetivo() -> void:
 	_manual = true
+	run.feromonas.soltar()
+	var objetivo := run.objetivo_actual()
+	if is_instance_valid(objetivo) and not objetivo.muerta:
+		mirar(objetivo.rect_mundo.get_center(), objetivo.rect_mundo.size)
+		return
 	var plano := Mundos.plano(Juego.lugar_actual)
 	var indice := int(str(plano.meta).get_slice(":", 1))
 	var r: Rect2 = plano.muebles[indice].rect

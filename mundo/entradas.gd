@@ -42,7 +42,7 @@ func iniciar(r: Run) -> void:
 	actualizar()
 
 func actualizar() -> void:
-	var limite := mini(6, int(Juego.stat("entradas")))
+	var limite := mini(6, int(Juego.stat("entradas")) + Juego.entradas_proyectos(Juego.lugar_actual))
 	for candidata in _candidatas:
 		if puntos.size() > limite:
 			break

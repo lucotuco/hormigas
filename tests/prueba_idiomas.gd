@@ -92,6 +92,8 @@ func claves_del_juego() -> Dictionary:
 		_sumar(claves, [d.nombre, d.descripcion])
 	for a in Juego.adaptaciones:
 		_sumar(claves, [a.nombre, a.descripcion])
+	for proyecto in ProyectosCampana.todos():
+		_sumar(claves, [proyecto.nombre, proyecto.detalle, proyecto.premio])
 	for e in EvolucionesHormiga.DATOS.values():
 		_sumar(claves, [e.nombre, e.detalle])
 	_sumar(claves, ReglasDestino.DESCRIPCIONES.values())

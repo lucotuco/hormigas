@@ -85,6 +85,15 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 		# El gran objetivo cierra el destino: pide la dieta completa aunque sea
 		# de madera. Si no, se comía apenas se desbloqueaba la madera.
 		mat.nivel = maxi(int(mat.nivel), NIVEL_META)
+	if not String(datos.get("objetivo_proyecto", "")).is_empty():
+		# Cada frente conserva su dieta, valor y dibujo originales. Su trabajo
+		# se compara con la misma meta canónica; no endurece ni reemplaza ésta.
+		var plano := Mundos.plano(Juego.lugar_actual)
+		var indice_meta := int(String(plano.meta).trim_prefix("mueble:"))
+		var meta_original: Dictionary = plano.muebles[indice_meta]
+		var material_meta := MaterialesCasa.definir(meta_original.tipo, meta_original.rect, meta_original.color)
+		mat.vida = float(material_meta.vida) * float(Mundos.INFO[Juego.lugar_actual].factor) \
+			* Juego.stat("resistencia_muebles") * Mundos.vida_meta(Juego.lugar_actual) * float(datos.proyecto_vida)
 	if datos.get("practica", false):
 		mat.nombre = tr("Banquito de cartón")
 		mat.vida = 20.0
@@ -849,3 +858,19 @@ func _draw() -> void:
 		draw_rect(Rect2(-ancho * 0.5, local.position.y - 22, ancho * vida / vida_max, 10), Color("c5d98b"))
 		for i in range(1, 4):
 			draw_line(Vector2(-ancho * 0.5 + ancho * i / 4, local.position.y - 22), Vector2(-ancho * 0.5 + ancho * i / 4, local.position.y - 12), Color("444b39"), 2)
+
+
+## Sondeo adelanta el mismo escondite; no extrae cuerpo ni acredita ingresos.
+## El llamador lo habilita sólo después de desprender una porción real.
+func abrir_escondite() -> bool:
+	if muerta or _tesoro_abierto or pieza.tipo not in ["alacena", "heladera", "biblioteca", "vitrina"]:
+		return false
+	var comidas := get_parent() as Comidas
+	if comidas == null or comidas._tesoros >= 24:
+		return false
+	_tesoro_abierto = true
+	comidas.revelar_tesoro(_impacto if dano_recibido > 0 else global_position, nivel_requerido)
+	_sucio = true
+	set_process(true)
+	queue_redraw()
+	return true

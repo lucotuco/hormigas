@@ -37,6 +37,7 @@ var terminada := false
 var combo := 0
 var objetivo_mapa: PiezaCasa
 var objetivo_practica: PiezaCasa
+var recorrido: RecorridoDestino
 var reglas: ReglasDestino
 var entradas: EntradasHormiguero
 var retirando := false
@@ -104,6 +105,9 @@ func _ready() -> void:
 			objetivo_practica = parte
 	for c in comidas.lista:
 		resistencia_total += c.vida_max
+	recorrido = RecorridoDestino.new()
+	add_child(recorrido)
+	recorrido.iniciar(self)
 	comidas.comida_destruida.connect(_on_comida_destruida)
 	niebla.radio = radio_actual
 	camara.ajustar_a_radio(radio_actual, true)
@@ -113,6 +117,7 @@ func _ready() -> void:
 		tween.tween_interval(0.4)
 		tween.tween_property(self, "radio_actual", radio_objetivo, DURACION_EXPANSION) \
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		tween.tween_callback(recorrido.queue_redraw)
 		hud.mostrar_aviso(tr("¡El territorio creció!"))
 		Sonido.tocar("crecer", 1.0, 0.0)
 
@@ -125,6 +130,11 @@ func _ready() -> void:
 	eventos.iniciar(self)
 	eventos.botin_terminado.connect(_registrar_fin_botin)
 	activa = true
+	recorrido.queue_redraw()
+	# Un checkpoint entre el último objeto y su celebración puede contener
+	# todo el trabajo hecho sin la corona. Resolverlo no repone ni paga material.
+	if recorrido.conquista_pendiente():
+		_conquistar_destino()
 	hud._actualizar_meta()
 
 
@@ -266,6 +276,11 @@ func depositar(cantidad: float, origen := Vector2.ZERO, categoria := 0, desglose
 	Sonido.tocar("deposito", notas[(combo - 1) % notas.size()], 0.0)
 
 
+## Objetivo sugerido del recorrido; no cambia la libertad de las hormigas.
+func objetivo_actual() -> PiezaCasa:
+	return recorrido.objetivo_actual() if is_instance_valid(recorrido) else objetivo_mapa
+
+
 func _on_comida_destruida(comida: Comida) -> void:
 	if comida is FragmentoCasa:
 		return
@@ -278,12 +293,8 @@ func _on_comida_destruida(comida: Comida) -> void:
 			Juego.obtener_hito("primera_silla")
 			if _sillas_devoradas >= 4:
 				Juego.obtener_hito("cuatro_sillas")
-		if comida.pieza.get("meta", false) and not objetivo_completado:
-			objetivo_completado = true
-			var entregadas := Juego.completar_destino()
-			if Juego.lugar_actual in ["obelisco", "coliseo", "eiffel"]:
-				Juego.obtener_hito("primer_monumento")
-			Conquista.celebrar(self, comida, entregadas)
+		if recorrido.registrar_destruccion(comida) and not objetivo_completado:
+			_conquistar_destino()
 		if Juego.lugar_actual == "casa" and PlanoCasa.ambiente_en(comida.position) == "cocina":
 			var queda := false
 			for parte in comidas.partes:
@@ -305,6 +316,16 @@ func _on_comida_destruida(comida: Comida) -> void:
 	hud.migas_voladoras(a_pantalla(pos), int(clampf(comida.radio / 2.5, 2, 16)))
 	camara.sacudir(clampf(comida.radio * 0.35, 2.0, 18.0))
 	Sonido.tocar("romper", clampf(1.7 - comida.radio / 45.0, 0.5, 1.7))
+
+
+func _conquistar_destino() -> void:
+	if objetivo_completado:
+		return
+	objetivo_completado = true
+	var entregadas := Juego.completar_destino()
+	if Juego.lugar_actual in ["obelisco", "coliseo", "eiffel"]:
+		Juego.obtener_hito("primer_monumento")
+	Conquista.celebrar_destino(self, entregadas)
 
 ## El clic manual sólo interactúa con eventos; no rompe alimentos ni muebles.
 ## Se conserva la mejora automática incorporada en main, limitada por cuadro.
@@ -389,6 +410,7 @@ func _iniciar_retirada() -> void:
 		return
 	activa = false
 	retirando = true
+	recorrido.queue_redraw()
 	feromonas.soltar()
 	colonia._activa = false
 	retiro_restante = Juego.stat("retirada")
@@ -423,8 +445,9 @@ func _cerrar() -> void:
 	retirando = false
 	feromonas.soltar()
 	terminada = true
+	recorrido.queue_redraw()
 	colonia.detener()
-	progreso_objetivo = 1.0 if objetivo_completado else (clampf(1.0 - objetivo_mapa.vida / objetivo_mapa.vida_max, 0, 1) if is_instance_valid(objetivo_mapa) else 0.0)
+	progreso_objetivo = 1.0 if objetivo_completado else recorrido.progreso()
 	produccion_run = Juego.migas_run / maxf(1, tiempo_jugado + tiempo_retirada)
 	var previa := float(Juego.records_destino.get(Juego.lugar_actual, {}).get("produccion", 0.0))
 	tenia_record = previa > 0
@@ -436,6 +459,7 @@ func _cerrar() -> void:
 		nuevo_record_limpieza = Juego.registrar_limpieza({
 			"destino": Juego.lugar_actual, "dieta": int(Juego.stat("materiales")),
 			"territorio": Juego.stat("radio_territorio"), "version_mapa": Mundos.VERSION_CONTENIDO,
+			"recorrido": recorrido.contexto_inicial,
 			"completa": limpieza_completa, "tiempo_limpieza": tiempo_limpieza,
 			"tiempo_total": tiempo_jugado + tiempo_retirada, "retirando": tiempo_retirada,
 			"migas": Juego.migas_run, "produccion": produccion_run, "pendiente": cargas_pendientes,

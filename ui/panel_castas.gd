@@ -164,9 +164,9 @@ func _crear_ficha() -> Control:
 	ficha.add_child(_lbl_evoluciones)
 	for id in EvolucionesHormiga.DATOS:
 		var datos: Dictionary = EvolucionesHormiga.DATOS[id]
-		var boton := Estilo.boton(datos.nombre, 13, Color("303c2b"), Color("8eaa72"))
+		var boton := Estilo.boton(tr(datos.nombre), 13, Color("303c2b"), Color("8eaa72"))
 		boton.toggle_mode = true
-		boton.tooltip_text = tr(datos.detalle) + tr("\nRequiere %d %s y Mandíbulas nivel %d. Elegí hasta dos sin perder lo desbloqueado.") % [datos.unidades, tr(Juego.castas_por_id[datos.casta].nombre), datos.mandibulas]
+		boton.tooltip_text = _ayuda_evolucion(datos)
 		boton.pressed.connect(_alternar_evolucion.bind(id))
 		ficha.add_child(boton)
 		_evoluciones[id] = boton
@@ -200,7 +200,7 @@ func _cambio_mejora(_id: String, _nivel: int) -> void:
 func _refrescar() -> void:
 	var c: Dictionary = Juego.castas_por_id[seleccion]
 	_lbl_evoluciones.text = tr("EVOLUCIONES · %d / %d activas · cambio gratuito") % [Juego.evoluciones_equipadas.size(), EvolucionesHormiga.MAX_EQUIPADAS]
-	_detalle_evolucion.text = ""
+	var detalles := PackedStringArray()
 	for id in _evoluciones:
 		var boton: Button = _evoluciones[id]
 		var datos: Dictionary = EvolucionesHormiga.DATOS[id]
@@ -208,10 +208,16 @@ func _refrescar() -> void:
 		boton.disabled = not Juego.evoluciones_desbloqueadas.has(id)
 		boton.set_pressed_no_signal(Juego.evolucion_activa(id))
 		boton.text = ("✓ " if Juego.evolucion_activa(id) else "○ ") + tr(datos.nombre) + (tr(" · bloqueada") if boton.disabled else "")
+		boton.tooltip_text = _ayuda_evolucion(datos)
 		if boton.visible:
-			_detalle_evolucion.text = tr(datos.detalle)
+			var detalle := tr(datos.nombre) + "\n" + tr(datos.detalle)
 			if boton.disabled:
-				_detalle_evolucion.text += tr("\nRequiere %d %s y Mandíbulas nivel %d.") % [datos.unidades, tr(Juego.castas_por_id[datos.casta].nombre), datos.mandibulas]
+				detalle += tr("\nRequiere %d %s y Mandíbulas nivel %d.") % [datos.unidades, tr(Juego.castas_por_id[datos.casta].nombre), datos.mandibulas]
+			var proyecto := _requisito_proyecto_evolucion(datos)
+			if proyecto != "":
+				detalle += "\n" + proyecto
+			detalles.append(detalle)
+	_detalle_evolucion.text = "\n\n".join(detalles)
 
 	_retrato.tipo = seleccion
 	_nombre.text = tr(c.nombre)
@@ -250,6 +256,22 @@ func _refrescar() -> void:
 		fila.boton.add_theme_stylebox_override("hover", Estilo.caja(Color(color, 0.15), 12, color, 1, 0))
 		fila.boton.add_theme_stylebox_override("pressed", Estilo.caja(Color(color, 0.22), 12, color, 2, 0))
 		fila.boton.add_theme_stylebox_override("focus", Estilo.caja(Color.TRANSPARENT, 12, color, 2, 0))
+
+
+func _requisito_proyecto_evolucion(datos: Dictionary) -> String:
+	var id: String = datos.get("proyecto", "")
+	if id == "":
+		return ""
+	var proyecto := ProyectosCampana.por_id(id)
+	if proyecto.is_empty():
+		return ""
+	return (tr("Proyecto completado: %s") if Juego.proyecto_completo(id) else tr("Proyecto pendiente: %s")) % tr(proyecto.nombre)
+
+
+func _ayuda_evolucion(datos: Dictionary) -> String:
+	var ayuda := tr(datos.detalle) + tr("\nRequiere %d %s y Mandíbulas nivel %d. Elegí hasta dos sin perder lo desbloqueado.") % [datos.unidades, tr(Juego.castas_por_id[datos.casta].nombre), datos.mandibulas]
+	var proyecto := _requisito_proyecto_evolucion(datos)
+	return ayuda + ("\n" + proyecto if proyecto != "" else "")
 
 
 ## Explica conductas existentes; las parejas no dan multiplicadores ocultos.
