@@ -48,6 +48,9 @@ var _reloj_dibujo := 0.0
 var _reloj_caida := 0.0
 var _impacto := Vector2.ZERO
 var _tesoro_abierto := false
+var _tesoro_pendiente := false
+var _componentes: Array[Dictionary] = []
+var _componentes_mask := 0
 var _distancia_nido := 0.0
 var _tiempo_caida := 0.0
 ## Daño total recibido en esta run. Lo usa el bot de balance: con vidas enormes,
@@ -85,6 +88,15 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 		# El gran objetivo cierra el destino: pide la dieta completa aunque sea
 		# de madera. Si no, se comía apenas se desbloqueaba la madera.
 		mat.nivel = maxi(int(mat.nivel), NIVEL_META)
+	if not String(datos.get("objetivo_proyecto", "")).is_empty():
+		# Cada frente conserva su dieta, valor y dibujo originales. Su trabajo
+		# se compara con la misma meta canónica; no endurece ni reemplaza ésta.
+		var plano := Mundos.plano(Juego.lugar_actual)
+		var indice_meta := int(String(plano.meta).trim_prefix("mueble:"))
+		var meta_original: Dictionary = plano.muebles[indice_meta]
+		var material_meta := MaterialesCasa.definir(meta_original.tipo, meta_original.rect, meta_original.color)
+		mat.vida = float(material_meta.vida) * float(Mundos.INFO[Juego.lugar_actual].factor) \
+			* Juego.stat("resistencia_muebles") * Mundos.vida_meta(Juego.lugar_actual) * float(datos.proyecto_vida)
 	if datos.get("practica", false):
 		mat.nombre = tr("Banquito de cartón")
 		mat.vida = 20.0
@@ -100,8 +112,19 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 		grilla = Vector2i(4, 2)
 	elif datos.get("meta", false):
 		grilla = Vector2i(4, 4)
+	var componentes_id: String = datos.get("componentes_id", "")
+	if not componentes_id.is_empty():
+		var perfil_componentes := ComponentesProyecto.objetivo(componentes_id)
+		if not perfil_componentes.is_empty():
+			grilla = perfil_componentes.grilla
+			_componentes.assign(perfil_componentes.componentes)
+			_tesoro_abierto = Juego.tesoro_proyecto_abierto(componentes_id)
 	_formas_originales.assign(SiluetaMueble.rectangulos(datos))
 	_material_original.assign(SiluetaMueble.material(datos))
+	if not _componentes.is_empty() and SiluetaMueble.datos_material(datos).is_empty():
+		# Cocina ya recortó su descriptor para navegar; eso NO redefine el
+		# material original ni redistribuye su HP sobre las partes restantes.
+		_material_original.assign(_formas_originales)
 	if _material_original.is_empty():
 		_material_original.assign(datos.get("recortes", [rect_mundo]))
 	_rectangular = _formas_originales.size() == 1 and _formas_originales[0] == rect_mundo
@@ -170,12 +193,17 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 	while _cortes.size() < 16:
 		_cortes.append(Vector4(0, 0, 0, 0))
 	_celdas_ocupadas = vivas.size()
+	_restaurar_componentes()
 	_reconstruir_formas()
 	for esquina in [rect_mundo.position, Vector2(rect_mundo.end.x, rect_mundo.position.y), Vector2(rect_mundo.position.x, rect_mundo.end.y), rect_mundo.end]:
 		var mas_cerca := -1
 		var menor := INF
-		for i in vivas:
-			var d := _distancia_celda(i, esquina)
+		for i in celdas.size():
+			if _vidas_iniciales[i] <= 0:
+				continue
+			var d := INF
+			for forma: Rect2 in _formas_por_celda[i]:
+				d = minf(d, esquina.distance_squared_to(esquina.clamp(forma.position, forma.end)))
 			if d < menor:
 				menor = d
 				mas_cerca = i
@@ -188,6 +216,7 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 	_mascara.set_shader_parameter("grilla", grilla)
 	_mascara.set_shader_parameter("material_id", nivel_requerido)
 	_mascara.set_shader_parameter("cortes", _cortes)
+	_mascara.set_shader_parameter("celdas_omitidas", _componentes_mask)
 	material = _mascara
 	if not pieza.pared:
 		if Graficos.listo:
@@ -195,6 +224,71 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 		else:
 			Graficos.preparado.connect(_preparar_sombra, CONNECT_ONE_SHOT)
 	set_process(false)
+
+
+func _restaurar_componentes() -> void:
+	# Se conserva el denominador original de HP/valor. No ejecutar mordidas,
+	# derrumbes, descubrimientos ni señales al cargar un componente terminado.
+	for componente: Dictionary in _componentes:
+		if not Juego.componente_proyecto_completo(componente.id):
+			continue
+		if componente.tesoro and not _tesoro_abierto:
+			_tesoro_pendiente = true
+		for i: int in componente.celdas:
+			_componentes_mask |= 1 << i
+			vidas[i] = 0.0
+			_cortes[i].x = 0.0
+			vivas.erase(i)
+			_formas_activas_por_celda[i] = []
+			_limites_fisicos[i] = Rect2()
+	if _componentes_mask == 0:
+		return
+	_tiene_retroceso = true
+	vida = 0.0
+	for restante in vidas:
+		vida += restante
+	etapa = clampi(int((1.0 - vida / vida_max) * 4.0 + 0.00001), 0, 3)
+
+
+func _registrar_componentes_terminados() -> void:
+	for componente: Dictionary in _componentes:
+		if Juego.componente_proyecto_completo(componente.id):
+			continue
+		var terminado := true
+		var material_real := false
+		for i: int in componente.celdas:
+			material_real = material_real or _vidas_iniciales[i] > 0
+			if vidas[i] > 0:
+				terminado = false
+				break
+		if not terminado or not material_real or not Juego.registrar_componente_proyecto(componente.id):
+			continue
+		if componente.tesoro:
+			_tesoro_pendiente = not _tesoro_abierto
+		var run := get_parent().get_parent() as Run
+		if run != null and is_instance_valid(run.hud):
+			run.hud.mostrar_aviso(tr("Componente terminado: %s") % tr(componente.nombre))
+
+
+## Se llama sólo después de retirar material real. Cargar no genera comida;
+## un límite de tesoros lleno no hace perder el escondite en la próxima run.
+func _reintentar_escondite_pendiente() -> void:
+	if _tesoro_pendiente and not muerta:
+		abrir_escondite()
+
+
+## Consulta acotada para el HUD, nunca una búsqueda nueva por hormiga.
+func resumen_componentes() -> Dictionary:
+	if _componentes.is_empty():
+		return {}
+	var resumen := {"completados": 0, "total": _componentes.size(), "nombre": "", "id": ""}
+	for componente: Dictionary in _componentes:
+		if Juego.componente_proyecto_completo(componente.id):
+			resumen.completados += 1
+		elif resumen.id == "" or componente.celdas.has(_celda_contacto):
+			resumen.id = componente.id
+			resumen.nombre = componente.nombre
+	return resumen
 
 
 func _preparar_sombra() -> void:
@@ -246,7 +340,8 @@ func _area_formas(formas: Array) -> float:
 func _preparar_mordiscos() -> void:
 	# Los muebles intactos no reservan imágenes ni texturas de desgaste.
 	mordiscos = MordiscosMaterial.new()
-	mordiscos.configurar(rect_mundo, grilla, _material_por_celda, _vidas_iniciales)
+	# Las celdas restauradas ya no existen: no rasterizarlas ni recrear su HP.
+	mordiscos.configurar(rect_mundo, grilla, _material_por_celda, vidas)
 	if DisplayServer.get_name() != "headless":
 		_mascara.set_shader_parameter("mascara_bocados", mordiscos.textura_mascara())
 		_mascara.set_shader_parameter("usar_mascara", true)
@@ -269,10 +364,9 @@ func contiene_punto(pos: Vector2, margen := 0.0) -> bool:
 	return false
 
 func dentro_silueta(pos: Vector2, margen := 0.0) -> bool:
-	for forma in _formas_originales:
-		if forma.grow(margen).has_point(pos):
-			return true
-	return false
+	# La selección usa el mismo contorno vivo que el contacto/navegación.
+	# Consultar el original volvía seleccionables las partes ya devoradas.
+	return contiene_punto(pos, margen)
 
 func material_cercano(pos: Vector2) -> Vector2:
 	if mordiscos != null:
@@ -547,9 +641,19 @@ func morder_veneno(dano: float, origen: Vector2) -> float:
 	return _extraer_pieza(dano, origen, -1.0)
 
 
-func _extraer_pieza(dano: float, pos: Vector2, lado_max: float) -> float:
+func factor_erosion() -> float:
+	return 1.0 + Juego.stat("corrosion_factor") if corrosion > 0 else 1.0
+
+
+func erosion_paso(dano: float, origen: Vector2) -> float:
+	trabajo_erosion_admitido = 0
+	erosion_continua = false
+	return _extraer_pieza(dano, origen, -1.0, true)
+
+
+func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := false) -> float:
 	_porcion_reciente = Rect2()
-	if not disponible() or not is_finite(dano) or dano <= 0 or not pos.is_finite():
+	if not disponible() or not is_finite(dano) or dano < 0 or (dano == 0 and not por_pasos) or not pos.is_finite():
 		return 0
 	if mordiscos == null:
 		_preparar_mordiscos()
@@ -560,14 +664,18 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float) -> float:
 	_impacto = pos
 	_porcion_reciente = Rect2()
 	var antes := vida
-	var presupuesto := minf(dano * (1.0 + Juego.stat("corrosion_factor") if corrosion > 0 else 1.0), vida)
+	# La cola capturó la corrosión al emitirse el trabajo, no al procesarlo
+	# varios cuadros después. Reanudar con daño0 nunca vuelve a multiplicarlo.
+	var presupuesto := minf(dano * (1.0 if por_pasos else factor_erosion()), vida)
 	var agujero := false
 	var zona_rotura := Rect2()
-	while presupuesto > 0 and not vivas.is_empty():
+	while (presupuesto > 0 or por_pasos) and not vivas.is_empty():
 		var elegida := -1
 		var distancia := INF
 		var fila := 0
-		if lado_max < 0:
+		if por_pasos and _celda_erosion in vivas and mordiscos.erosion_pagable(_celda_erosion):
+			elegida = _celda_erosion
+		elif lado_max < 0:
 			# El mismo nearest exacto que la boca: primero el AABB vivo más
 			# cercano y sólo otras celdas que puedan mejorarlo. El veneno no
 			# necesita consultar las 16 fronteras en cada medio segundo.
@@ -594,10 +702,19 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float) -> float:
 			break
 		var real := minf(presupuesto, vidas[elegida])
 		var trabajo := real
-		if lado_max > 0:
+		if por_pasos:
+			real = mordiscos.recortar_frente_paso(elegida, trabajo, pos)
+			trabajo = mordiscos.ultimo_trabajo_erosion
+			trabajo_erosion_admitido += trabajo
+			erosion_continua = real > 0 and mordiscos.erosion_pagable(elegida)
+			# Retener sólo el crédito de ESTA transacción. Al agotarlo o perder
+			# visibilidad se elige de nuevo el frente global, igual que en bulk.
+			_celda_erosion = elegida if erosion_continua else -1
+		elif lado_max > 0:
 			real = mordiscos.recortar_local(elegida, presupuesto, pos, lado_max)
 		elif lado_max < 0:
 			real = mordiscos.recortar_frente(elegida, trabajo, pos)
+			trabajo = mordiscos.ultimo_trabajo_frente
 		else:
 			real = mordiscos.recortar(elegida, trabajo, pos)
 		presupuesto -= trabajo
@@ -618,9 +735,10 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float) -> float:
 		if vidas[elegida] == 0.0:
 			mordiscos.limpiar_celda(elegida)
 			vivas.erase(elegida)
+			_registrar_componentes_terminados()
 			agujero = true
 			zona_rotura = r if not zona_rotura.has_area() else zona_rotura.merge(r)
-		if lado_max > 0:
+		if lado_max > 0 or por_pasos:
 			break
 	if vivas.is_empty():
 		vida = 0
@@ -628,21 +746,23 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float) -> float:
 	if extraido <= 0:
 		return 0
 	dano_recibido += extraido
+	_reintentar_escondite_pendiente()
 	var run: Run = get_parent().get_parent()
 	var nueva_etapa := clampi(int((1.0 - vida / vida_max) * 4 + 0.00001), 0, 3)
 	if nueva_etapa > etapa:
 		etapa = nueva_etapa
 		run.reglas.etapa_alcanzada(self)
 	run.registrar_extraccion(extraido)
+	if is_instance_valid(run.cola_erosion):
+		run.cola_erosion.despertar(self)
 	var valor := recompensa * extraido / vida_max * Juego.stat("multiplicador_migas")
 	if lado_max <= 0:
 		get_parent().soltar_fragmento(pos, valor * 0.35, nivel_requerido)
 	if agujero and lado_max <= 0:
 		_actualizar_colision(zona_rotura)
 	var umbral_tesoro := 0.8 if Juego.lugar_actual == "museo" and pieza.tipo == "vitrina" else 0.5
-	if not _tesoro_abierto and vida < vida_max * umbral_tesoro and pieza.tipo in ["alacena", "heladera", "biblioteca", "vitrina"]:
-		_tesoro_abierto = true
-		get_parent().revelar_tesoro(pos, nivel_requerido)
+	if _componentes.is_empty() and not _tesoro_abierto and vida < vida_max * umbral_tesoro and pieza.tipo in ["alacena", "heladera", "biblioteca", "vitrina"]:
+		abrir_escondite()
 	_sucio = true
 	set_process(true)
 	if vivas.is_empty():
@@ -758,7 +878,7 @@ func _actualizar_mascara() -> void:
 func _process(delta: float) -> void:
 	if muerta:
 		return
-	if not get_parent().get_parent().activa:
+	if not get_parent().get_parent().activa and not get_parent().get_parent().cerrando_erosion:
 		return
 	if _geometria_pendiente:
 		_reloj_geometria -= delta
@@ -789,6 +909,7 @@ func _process(delta: float) -> void:
 				_cortes[i].x = 0
 				mordiscos.limpiar_celda(i)
 				vivas.pop_back()
+				_registrar_componentes_terminados()
 				zona = celdas[i] if not zona.has_area() else zona.merge(celdas[i])
 				run.registrar_extraccion(extraido)
 				get_parent().soltar_fragmento(_impacto, recompensa * extraido / vida_max * Juego.stat("multiplicador_migas"), nivel_requerido)
@@ -849,3 +970,32 @@ func _draw() -> void:
 		draw_rect(Rect2(-ancho * 0.5, local.position.y - 22, ancho * vida / vida_max, 10), Color("c5d98b"))
 		for i in range(1, 4):
 			draw_line(Vector2(-ancho * 0.5 + ancho * i / 4, local.position.y - 22), Vector2(-ancho * 0.5 + ancho * i / 4, local.position.y - 12), Color("444b39"), 2)
+
+
+## Sondeo adelanta el mismo escondite; no extrae cuerpo ni acredita ingresos.
+## El llamador lo habilita sólo después de desprender una porción real.
+func abrir_escondite() -> bool:
+	if muerta or _tesoro_abierto or pieza.tipo not in ["alacena", "heladera", "biblioteca", "vitrina"]:
+		return false
+	var comidas := get_parent() as Comidas
+	if comidas == null or comidas._tesoros >= 24:
+		return false
+	var objetivo_id: String = pieza.get("componentes_id", "")
+	var autorizar := Callable()
+	if not objetivo_id.is_empty():
+		if Juego.tesoro_proyecto_abierto(objetivo_id):
+			_tesoro_abierto = true
+			_tesoro_pendiente = false
+			return false
+		# Comidas registra antes del primer spawn con posición válida, nunca
+		# antes de comprobar si puede caer al menos un alimento.
+		autorizar = Juego.registrar_tesoro_proyecto.bind(objetivo_id)
+	var creadas := comidas.revelar_tesoro(_impacto if dano_recibido > 0 else global_position, nivel_requerido, autorizar)
+	if creadas <= 0:
+		return false
+	_tesoro_abierto = true
+	_tesoro_pendiente = false
+	_sucio = true
+	set_process(true)
+	queue_redraw()
+	return true

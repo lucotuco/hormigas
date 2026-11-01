@@ -8,6 +8,7 @@ extends Control
 ## Capas, de abajo hacia arriba, todas dentro de `mundo` (que es lo único que
 ## se mueve al arrastrar o hacer zoom, sin redibujar):
 ##   fondo     tierra, túneles cavados y rastros (se redibuja al comprar)
+##   huellas   materiales reutilizados y descubrimientos permanentes (por hito)
 ##   transito  hormigas que caminan por los túneles cavados (30 Hz)
 ##   camaras   cámaras y lo que guardan (se redibuja al comprar)
 ##   resalte   cámaras comprables, la del mouse y el estallido al comprar
@@ -22,6 +23,7 @@ const ARRASTRE_MINIMO := 7.0
 
 var mundo: Control
 var fondo: CapaFondo
+var capa_huellas: CapaHuellas
 var transito: TransitoNido
 var capa_camaras: CapaCamaras
 var resalte: CapaResalte
@@ -30,6 +32,8 @@ var etiquetas: Dictionary = {}
 
 ## id -> {kit, mezcla, color, nivel, maximo, lleno, abierta, puede, lejana, misterio, extra}
 var estados: Dictionary = {}
+## Historia permanente separada del nivel de las cámaras de esta colonia.
+var huellas: Dictionary = {}
 ## Un valor por túnel de PlanoHormiguero.TUNELES: cuánto está cavado (0 a 1)
 ## y el rastro que deja ("" si ninguno).
 var cavado: Array[float] = []
@@ -60,10 +64,11 @@ func _init() -> void:
 	mundo.size = PlanoHormiguero.TAMANO
 	add_child(mundo)
 	fondo = CapaFondo.new()
+	capa_huellas = CapaHuellas.new()
 	transito = TransitoNido.new()
 	capa_camaras = CapaCamaras.new()
 	resalte = CapaResalte.new()
-	for capa in [fondo, transito, capa_camaras, resalte]:
+	for capa in [fondo, capa_huellas, transito, capa_camaras, resalte]:
 		capa.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		capa.size = PlanoHormiguero.TAMANO
 		capa.set("arbol", self)
@@ -144,6 +149,19 @@ func _sin_comprables(datos: Dictionary) -> Dictionary:
 		d.erase("puede")
 		copia[id] = d
 	return copia
+
+
+## El historial sólo invalida su capa. Ni las migas, ni el zoom ni el pulso
+## de compras reconstruyen los recuerdos o agregan actores al hormiguero.
+func actualizar_huellas(nuevas: Dictionary) -> void:
+	if huellas == nuevas:
+		return
+	var provisiones_antes: bool = "provisiones" in huellas.get("descubrimientos", [])
+	var provisiones_ahora: bool = "provisiones" in nuevas.get("descubrimientos", [])
+	huellas = nuevas.duplicate(true)
+	capa_huellas.queue_redraw()
+	if provisiones_antes != provisiones_ahora:
+		capa_camaras.queue_redraw()
 
 
 # =====================================================================
@@ -392,6 +410,14 @@ class CapaFondo extends Control:
 		return salida
 
 
+class CapaHuellas extends Control:
+	var arbol: ArbolHormiguero
+
+	func _draw() -> void:
+		if arbol != null:
+			HuellasNido.dibujar(self, arbol.huellas)
+
+
 class CapaCamaras extends Control:
 	var arbol: ArbolHormiguero
 
@@ -438,6 +464,8 @@ class CapaCamaras extends Control:
 				ArteCamara.punteado(self, "comun", centro, r.size, Color(0.92, 0.776, 0.49, 0.75 if not e.lejana else 0.35))
 			if not e.misterio:
 				ArteCamara.contenido(self, kit, centro, r.size, e.lleno, orden, e.mezcla, e.extra)
+			if id == "buche" and "provisiones" in arbol.huellas.get("descubrimientos", []):
+				ArteCamara.primeras_provisiones(self, r)
 
 	func _mover(puntos: PackedVector2Array, d: Vector2) -> PackedVector2Array:
 		var salida := PackedVector2Array()

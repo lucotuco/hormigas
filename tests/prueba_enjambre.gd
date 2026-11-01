@@ -200,11 +200,22 @@ func probar_destinos() -> void:
 	r = crear("museo")
 	var vitrina: PiezaCasa
 	for p in r.comidas.partes:
-		if p.pieza.tipo == "vitrina" and not p.pieza.get("meta", false):
+		if p.pieza.tipo == "vitrina" and not p.pieza.get("meta", false) and not p.pieza.has("componentes_id"):
 			vitrina = p
 			break
 	vitrina.morder_en(vitrina.vida_max * 0.21, vitrina.rect_mundo.position)
-	verificar(vitrina._tesoro_abierto and r.comidas._tesoros == 5, "la vitrina abre su contenido al perder un 20% y revela cinco alimentos")
+	verificar(vitrina._tesoro_abierto and r.comidas._tesoros == 5, "la vitrina nativa abre su contenido al perder un 20% y revela cinco alimentos")
+	for p in r.comidas.partes:
+		if p.pieza.get("componentes_id", "") == "museo_vitrinas/vitrina_oeste":
+			vitrina = p
+			break
+	vitrina.morder_en(vitrina.vida_max * 0.21, vitrina.rect_mundo.position)
+	verificar(not vitrina._tesoro_abierto, "el porcentaje global no reemplaza el expositor del proyecto")
+	var expositor := ComponentesProyecto.componente("museo_vitrinas/vitrina_oeste#expositor_central")
+	for celda: int in expositor.celdas:
+		if vitrina.vidas[celda] > 0:
+			vitrina.morder_en(vitrina.vidas[celda], vitrina._formas_por_celda[celda][0].get_center())
+	verificar(vitrina._tesoro_abierto and r.comidas._tesoros == 10, "el expositor central terminado revela otros cinco alimentos una sola vez")
 	r.queue_free()
 	await get_tree().process_frame
 	r = crear("obelisco")

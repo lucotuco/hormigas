@@ -28,5 +28,6 @@ frenesi_ritmo,1.5,Multiplicador de velocidad y mordida durante el frenesí
 bonus_destruir,0.25,Migas extra al destruir una comida o una pieza (proporción de su valor)
 botin_eventos,0.12,Parte de las migas de la run que paga vencer una amenaza o pisar una miga dorada
 intervalo_doradas,1,Multiplica el tiempo de espera entre migas doradas
+peso_voladora_alzada,2,Peso máximo que lleva una voladora con Puente aéreo; no autoriza muros
 fuerza_especialistas,1,Multiplica el daño de las castas especialistas
 limite_castas,0,Unidades extra que se pueden reclutar de cada casta

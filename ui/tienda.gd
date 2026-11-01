@@ -57,6 +57,8 @@ var _lbl_estado: Label
 var _lbl_pista: Label
 var _aviso_compra := {"id": "", "texto": ""}
 var _estados: Dictionary = {}
+var _huellas: Dictionary = {}
+var _huellas_pendientes := true
 
 
 func _ready() -> void:
@@ -131,9 +133,9 @@ func _ready() -> void:
 	columna.add_child(pie)
 	_area_nido.resized.connect(_acomodar_paneles)
 	Juego.migas_cambiaron.connect(_on_migas_cambiaron)
-	Juego.partida_borrada.connect(_refrescar)
+	Juego.partida_borrada.connect(_refrescar_historia)
 	Juego.modo_compra_cambio.connect(_refrescar)
-	Juego.progreso_cambio.connect(_refrescar)
+	Juego.progreso_cambio.connect(_refrescar_historia)
 	Juego.casta_comprada.connect(func(_id: String, _cantidad: int) -> void: _refrescar())
 	_migas_mostradas = Juego.migas
 	_refrescar()
@@ -160,6 +162,8 @@ func zona_explorada() -> Rect2:
 		var e: Dictionary = _estados[id]
 		if e.nivel > 0 or (e.abierta and not e.misterio):
 			zona = zona.merge(PlanoHormiguero.rect(id))
+	for region in HuellasNido.regiones(_huellas):
+		zona = zona.merge(region)
 	return zona.grow(40)
 
 
@@ -478,6 +482,7 @@ func _mostrar_ficha(id: String) -> void:
 		"seccion": _ficha_seccion(id, e)
 		"casta": _ficha_casta(id, e)
 		_: _ficha_mejora(id, e)
+	_agregar_descubrimiento(id)
 	if _aviso_compra.id == id:
 		_lbl_estado.text = _aviso_compra.texto
 	for etiqueta in [_lbl_rama, _lbl_detalle, _lbl_cambio, _lbl_costo, _lbl_estado, _lbl_pista]:
@@ -485,6 +490,27 @@ func _mostrar_ficha(id: String) -> void:
 	_ficha_mejoras.show()
 	_ficha_mejoras.reset_size()
 	_posicionar_ficha()
+
+
+## Un premio ya ganado en la ficha existente, no otra notificación ni una
+## tarea para cobrar. El nivel y el precio siguen siendo los de esta colonia.
+func _agregar_descubrimiento(id: String) -> void:
+	if _estados.get(id, {}).get("misterio", false):
+		return
+	var hito := ""
+	match id:
+		"mandibulas", "mordida_madera", "carpintera": hito = "primera_silla"
+		"buche", "antenas": hito = "primer_tesoro"
+		"excavar", "demoledora": hito = "primer_derrumbe"
+	if hito != "" and Juego.hitos.has(hito):
+		_lbl_estado.text = tr("Se conserva al fundar: %s") % tr(Juego.HITOS[hito].premio)
+	elif id == "entradas" and Juego.lugares_completados.has("casa"):
+		for adaptacion in Juego.adaptaciones:
+			if adaptacion.destino == "casa":
+				_lbl_estado.text = tr("Se conserva al fundar: %s") % tr(adaptacion.descripcion)
+				break
+	elif id == "viajes" and not _huellas.get("conjuntos", {}).is_empty():
+		_lbl_estado.text = tr("Los recuerdos del recorrido se conservan al fundar.")
 
 
 func _ficha_mejora(id: String, e: Dictionary) -> void:
@@ -778,10 +804,23 @@ func _ir_al_menu() -> void:
 
 
 func _on_migas_cambiaron(_total: float) -> void:
+	# terminar_run actualiza esta estadística antes de emitir la señal. El
+	# saldo solo no prueba un hallazgo, y comprar no reconstruye los recuerdos.
+	if Juego.estadistica("migas_totales") > 0 and not "provisiones" in _huellas.get("descubrimientos", []):
+		_huellas_pendientes = true
+	_refrescar()
+
+
+func _refrescar_historia() -> void:
+	_huellas_pendientes = true
 	_refrescar()
 
 
 func _refrescar() -> void:
+	if _huellas_pendientes:
+		_huellas = HuellasNido.capturar()
+		_huellas_pendientes = false
+		_corte_tierra.actualizar_huellas(_huellas)
 	_boton_run.text = tr("Explorar") + "  →"
 	_actualizar_revelados()
 	_actualizar_siguiente_paso()

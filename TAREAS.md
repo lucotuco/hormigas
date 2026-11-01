@@ -1,5 +1,38 @@
 # Tareas
 
+## Componentes y consecuencias — 1/11
+
+- [x] Adelantar Sondeo al restaurante, Cantera al museo y Puente aéreo a Buenos Aires, sin cambiar precios ni requisitos de unidades/Mandíbulas.
+- [x] Definir 35 componentes reconocibles en doce muebles existentes, incluidos cartón y alacena opcionales de Casa; sin tocar la primera silla.
+- [x] Restaurar sólo componentes completos en cuerpo, sombra, contacto y navegación; conservar denominadores de HP/valor originales.
+- [x] Guardado v9/mapa7, conservación al fundar y contexto de récord por componentes/escondites; sin porcentaje de daño guardado.
+- [x] Recuerdos del primer retorno, hitos y proyectos dentro del hormiguero; permanentes pero sin premios numéricos nuevos ni refresco por saldo.
+- [x] Acceso adelantado de proyecto independiente de los seis normales comprados, sin mover entradas activas ni sumar rutas fuera de la cola.
+- [x] Repartir corrosión en servicios pequeños compartidos; crédito separado de carga y cierre no bloqueante que drena sólo trabajo ya emitido.
+- [x] Cerrar regresión lógica: 48 suites sin fallas. Revisión GPU de componentes/restauración (46), proyectos (52), hormiguero (7) y mordiscos (13, incluye 108 bocados/lados).
+- [x] Medir 500 hormigas con gráficos y registrar trabajo pendiente y pico de primera preparación; no tratar el presupuesto suave como techo absoluto.
+- [x] Comparar erosión de 28 objetos × tres orígenes y corregir admisión de crédito y bloqueo de otros orígenes por un tramo aparcado; equivalencia sin diferencias.
+- [x] Repetir seis expediciones iniciales con daño/ingresos reales y guardado aislado: una obrera, segunda comprada tras dos expediciones, sin regalar recursos.
+- [x] Retomar una copia del piloto anterior por dos expediciones completas: despensa terminada y Sondeo desbloqueado con hojas conservadas; no presentarlo como campaña nueva completa.
+- [ ] Fraccionar preparación inicial de máscaras grandes: quedan picos de 61/91 ms y p95 de 19,81 ms en Coliseo; validar GPU integrada.
+- [ ] Medir de nuevo campaña completa y hacer playtest humano; no extrapolar las horas de la campaña anterior.
+
+## Campaña con proyectos propios — 1/11
+
+- [x] Agregar 20 proyectos sobre 42 objetos físicos de los cinco destinos posteriores a casa, con zonas y comidas regionales reconocibles.
+- [x] Conservar objetos completamente devorados entre expediciones/fundaciones; no reconstruir daño parcial desde un porcentaje ni repetir premios.
+- [x] Primera conquista con proyectos y objetivo final en orden libre; reconquista histórica con muebles normales y regreso a casa al fundar.
+- [x] Recompensas concretas: alijo físico regional, acceso local y tres evoluciones de logística/trabajo, manteniendo dos equipadas como máximo.
+- [x] Viajes con cuatro proyectos legibles, requisitos de evoluciones y HUD/G alineados al objeto pendiente, sin reemplazar la inspección real bajo cursor.
+- [x] Guardado v8 y mapa v6, migración de victorias previas sin premios retroactivos y récords separados por recorrido inicial.
+- [x] Mantener precios, inicio, velocidad e IA base; no sumar búsquedas por proyecto a cada hormiga y conservar presupuestos de navegación/población/restos.
+- [x] Regresión: 44 suites sin fallas. Revisión gráfica: 52 verificaciones, español/inglés en Full HD y 1000×620.
+- [x] Podar preparación de aire sin cambiar máscara/conectividad: comparación idéntica en 28 objetos reales y 18 verificaciones independientes.
+- [x] Agrupar borrado de rectángulos sólidos ya seleccionados, manteniendo orden de erosión, masa y oclusión; 30 verificaciones de equivalencia con el borrado anterior.
+- [x] Piloto parcial desde cero con daño e ingresos normales: llega a los dos primeros proyectos de restaurante. No valida duración de campaña tardía ni primer rebirth.
+- [ ] Validar el recorrido ampliado con personas, especialmente primer acceso y última fuente; no presentar tiempos del bot como duración humana garantizada.
+- [ ] Reducir el pico residual de erosión con veneno de daño extremo y medir GPU integrada; no sustituirlo por vaciado arbitrario de celdas o menor calidad de IA.
+
 ## Cuerpo, contacto y sombra coherentes — 30/10
 
 - [x] Separar cuerpo opaco de sombra en el atlas compuesto, sin regenerar texturas por mordida.

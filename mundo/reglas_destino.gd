@@ -5,7 +5,7 @@ extends Node
 const DESCRIPCIONES := {
 	"casa": "Migas primero · el cartón es un proyecto para una colonia más grande",
 	"restaurante": "Servicio en cadena · hallar comida duplica la carga de frenesí por 8 s",
-	"museo": "Vitrinas con secretos · la cubierta se abre al 80% y revela cinco alimentos",
+	"museo": "Vitrinas con secretos · desarmalas para revelar comida",
 	"obelisco": "Frentes debilitados · cada etapa del monumento aumenta el daño recibido",
 	"coliseo": "Efecto dominó · los arcos devorados sacuden hasta dos vecinos",
 	"eiffel": "Desarmado por pisos · vaciá la base antes de subir a la siguiente sección",

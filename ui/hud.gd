@@ -58,6 +58,8 @@ var _objetivo_paso: PiezaCasa
 var _silla_inicial: PiezaCasa
 var _silla_buscada := false
 var _columna_progresion: VBoxContainer
+var _tipo_meta_actual := ""
+var _tiene_proyectos := false
 
 var _ventana: VentanaModal
 var _cartel: PanelContainer
@@ -206,6 +208,7 @@ class IndicadorEventos extends Control:
 
 
 func _ready() -> void:
+	_tiene_proyectos = not Juego.resumen_proyectos(Juego.lugar_actual).is_empty()
 	var raiz := Control.new()
 	raiz.set_anchors_preset(Control.PRESET_FULL_RECT)
 	raiz.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -247,6 +250,8 @@ func _process(delta: float) -> void:
 	_lbl_tiempo.text = "%d s" % int(ceil(restante))
 	if run.retirando:
 		_lbl_tiempo.text = tr("Regreso · %d s") % ceili(run.retiro_restante)
+	if run.cerrando_erosion:
+		_lbl_tiempo.text = tr("Terminando corrosión…")
 	_barra_tiempo.value = restante / maxf(run.duracion_total, 0.01) * 100.0
 	if restante <= 5.0 and run.activa:
 		var parpadeo := 0.5 + 0.5 * sin(_reloj * 14.0)
@@ -262,11 +267,10 @@ func _process(delta: float) -> void:
 		_lbl_etapa.text = tr("DIETA %d/4 · %s") % [int(Juego.stat("materiales")) + 1, tr(MaterialesCasa.NIVELES[clampi(int(Juego.stat("materiales")), 0, 3)])]
 		_lbl_lugar.text = tr(Mundos.INFO[Juego.lugar_actual].nombre)
 		_actualizar_meta()
-		_lbl_meta.text = (tr("✓ Gran objetivo completado") if run.objetivo_completado else tr("Gran objetivo: %s") % tr(Mundos.INFO[Juego.lugar_actual].meta)) + "  [G]"
+		_actualizar_estado_recorrido()
 		_lbl_frenesi.text = tr("¡FRENESÍ! %.1f s") % run.frenesi_restante if run.frenesi_restante > 0 else tr("Frenesí · depósitos consecutivos")
 		_barra_frenesi.value = run.frenesi_restante / Juego.stat("frenesi_duracion") * 100 if run.frenesi_restante > 0 else run.frenesi
-		var c := run.comidas.comida_en(run.get_global_mouse_position(), run.radio_actual, true)
-		mostrar_inspeccion(c)
+		_actualizar_inspeccion_actual()
 		_lbl_llamado.visible = run.feromonas.activa
 		if _lbl_llamado.visible:
 			var datos := run.feromonas.resumen()
@@ -380,7 +384,7 @@ func mostrar_fin() -> void:
 	else:
 		_lbl_fin_detalle.text += tr("\nTiempo de expedición: %.1f s") % (run.tiempo_jugado + run.tiempo_retirada)
 	var record: Dictionary = Juego.records_destino.get(Juego.lugar_actual, {})
-	_lbl_fin_detalle.text += tr("\nGran objetivo: %.0f%% · mejor intento %.0f%%") % [run.progreso_objetivo * 100, float(record.get("objetivo", 0)) * 100]
+	_lbl_fin_detalle.text += (tr("\nRecorrido: %.0f%% · mejor intento %.0f%%") if _tiene_proyectos else tr("\nGran objetivo: %.0f%% · mejor intento %.0f%%")) % [run.progreso_objetivo * 100, float(record.get("objetivo", 0)) * 100]
 	if run.cargas_pendientes > 0:
 		_lbl_fin_detalle.text += tr("\nQuedaron %s en camino: más velocidad o entradas acortan la vuelta.") % Juego.formatear_corto(run.cargas_pendientes)
 	var meta := Juego.proxima_meta()
@@ -759,6 +763,10 @@ func _crear_proxima_meta(raiz: Control) -> void:
 
 
 func _ver_paso() -> void:
+	# Un proyecto pudo terminar entre el refresco del HUD y el clic. Resolver
+	# otra vez evita enfocar su objeto anterior, sin recorrer las piezas aquí.
+	if _tipo_meta_actual in ["proyecto", "objetivo"]:
+		_objetivo_paso = run.objetivo_actual()
 	if not is_instance_valid(_objetivo_paso) or not _objetivo_paso.disponible() or not run.activa:
 		return
 	run.feromonas.soltar()
@@ -780,6 +788,7 @@ func _actualizar_meta() -> void:
 	if meta.get("accion", "") not in ["legado", "viajes"] and is_instance_valid(_silla_inicial) and _silla_inicial.disponible() and not Juego.hitos.has("primera_silla"):
 		meta = {"tipo": "madera", "nombre": tr("Tu primera silla de madera")}
 		_objetivo_paso = _silla_inicial
+	_tipo_meta_actual = meta.tipo
 	var actual := 0.0
 	var objetivo := 1.0
 	var texto := ""
@@ -796,8 +805,22 @@ func _actualizar_meta() -> void:
 			actual = meta.actual
 			objetivo = maxf(1.0, meta.objetivo)
 			texto = tr("nivel %d / %d · %s") % [int(actual), int(objetivo), meta.detalle]
+		"proyecto":
+			actual = float(meta.get("actual", 0.0))
+			objetivo = maxf(1.0, float(meta.get("objetivo", 1.0)))
+			texto = meta.detalle
+			if run.activa:
+				_objetivo_paso = run.objetivo_actual()
+			if is_instance_valid(_objetivo_paso) and not _objetivo_paso.muerta:
+				objetivo = maxf(1.0, _objetivo_paso.vida_max)
+				actual = objetivo - _objetivo_paso.vida
+				texto += "\n" + tr("%s · %d%% devorado") % [_objetivo_paso.nombre, int(actual / objetivo * 100.0)]
+				var componentes := _objetivo_paso.resumen_componentes()
+				if not componentes.is_empty():
+					texto += "\n" + tr("Partes conservadas: %d/%d · %s") % [componentes.completados, componentes.total, tr(componentes.nombre)]
 		"objetivo":
-			var gran := run.objetivo_mapa
+			var gran := run.objetivo_actual() if run.activa else run.objetivo_mapa
+			_objetivo_paso = gran
 			if is_instance_valid(gran) and not gran.muerta:
 				objetivo = maxf(1.0, gran.vida_max)
 				actual = objetivo - gran.vida
@@ -807,7 +830,7 @@ func _actualizar_meta() -> void:
 		_:
 			actual = 1.0
 			texto = meta.detalle
-	_lbl_meta_titulo.text = tr("GRAN OBJETIVO") if meta.tipo == "objetivo" else (tr("SIGUIENTE PASO") if meta.tipo in ["viaje", "madera"] or meta.get("accion", "") == "legado" else tr("PRÓXIMO DESBLOQUEO"))
+	_lbl_meta_titulo.text = tr("PROYECTO DEL RECORRIDO") if meta.tipo == "proyecto" else (tr("GRAN OBJETIVO") if meta.tipo == "objetivo" else (tr("SIGUIENTE PASO") if meta.tipo in ["viaje", "madera"] or meta.get("accion", "") == "legado" else tr("PRÓXIMO DESBLOQUEO")))
 	if inicio_con_migas:
 		_lbl_meta_titulo.text = tr("Empezá por las migas cercanas")
 	_lbl_meta_nombre.text = meta.nombre
@@ -826,6 +849,18 @@ func _actualizar_meta() -> void:
 		Sonido.tocar("comprar", 1.2, 0.0)
 		mostrar_aviso(tr("¡Ya podés comprar: %s!") % meta.nombre)
 	_meta_lista = lista
+
+
+func _actualizar_estado_recorrido() -> void:
+	var estado := tr("Gran objetivo: %s") % tr(Mundos.INFO[Juego.lugar_actual].meta)
+	if Juego.coronas_cobradas.has(Juego.lugar_actual):
+		estado = tr("✓ Gran objetivo completado")
+	elif Juego.meta_destino_devorada(Juego.lugar_actual):
+		estado = tr("Gran objetivo devorado · faltan proyectos")
+	elif _tipo_meta_actual == "proyecto":
+		estado = tr("Objetivo del recorrido")
+	_lbl_meta.text = estado + "  [G]"
+	_boton_objetivo.text = (tr("Recorrido") if _tiene_proyectos else tr("Gran objetivo")) + " [G]"
 
 
 ## Muestra sólo las mecánicas que el jugador ya desbloqueó.
@@ -880,8 +915,26 @@ func mostrar_inspeccion(c: Comida) -> void:
 	_lbl_objetivo.text = "" # las reglas están en Viajes; no tapar el mapa vacío
 	if c is PiezaCasa:
 		_lbl_objetivo.text = tr("%s · %s\n%s / %s de resistencia · %d trabajadoras\n%s") % [c.nombre, c.nombre_etapa(), Juego.formatear(c.vida), Juego.formatear(c.vida_max), c.trabajadoras, tr("Mantené clic para llamar hormigas") if c.disponible() else tr("Requiere: %s") % tr(MaterialesCasa.NIVELES[c.nivel_requerido])]
+		var componentes: Dictionary = c.resumen_componentes()
+		if not componentes.is_empty():
+			_lbl_objetivo.text += "\n" + tr("Partes conservadas: %d/%d · %s") % [componentes.completados, componentes.total, tr(componentes.nombre)]
 	elif c is FragmentoCasa:
 		_lbl_objetivo.text = tr("%s · %s migas\nPeso %d · las cargadoras priorizan estos restos") % [c.nombre, Juego.formatear(c.recompensa), c.peso]
+
+
+## La inspección real bajo el cursor siempre manda. Sólo en espacio vacío
+## se usa el objetivo del recorrido como referencia; Casa no cambia.
+func _actualizar_inspeccion_actual() -> void:
+	var bajo_cursor := run.comidas.comida_en(run.get_global_mouse_position(), run.radio_actual, true)
+	mostrar_inspeccion(_objeto_para_inspeccion(bajo_cursor))
+
+
+func _objeto_para_inspeccion(bajo_cursor: Comida) -> Comida:
+	if is_instance_valid(bajo_cursor):
+		return bajo_cursor
+	if _tiene_proyectos and _tipo_meta_actual in ["proyecto", "objetivo"]:
+		return run.objetivo_actual()
+	return null
 
 
 # =====================================================================
@@ -893,7 +946,7 @@ func pausado() -> bool:
 
 
 func pausar() -> void:
-	if not is_inside_tree() or not is_node_ready() or not run.activa or pausado():
+	if not is_inside_tree() or not is_node_ready() or (not run.activa and not run.cerrando_erosion) or pausado():
 		return
 	run.feromonas.soltar()
 	run.camara.arrastrando = false

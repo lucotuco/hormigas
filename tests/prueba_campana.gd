@@ -26,6 +26,15 @@ func _ready() -> void:
 			anterior = p
 		verificar(segura, "%s tiene una ruta transitable hasta su objetivo" % id)
 		var coronas := Juego.coronas
+		# Ciclo de campaña por daño administrativo, no medición del enjambre:
+		# los proyectos terminan primero y la meta conserva su gran cierre.
+		var proyectos: Array[PiezaCasa] = []
+		for parte in run.comidas.partes:
+			if parte.pieza.has("objetivo_proyecto"):
+				proyectos.append(parte)
+		for parte in proyectos:
+			parte.morder(parte.vida_max * 2)
+		verificar(Juego.proyectos_completos(id) and not run.objetivo_completado and Juego.coronas == coronas, "%s termina sus proyectos sin adelantar la corona ni el clímax" % id)
 		meta.morder(meta.vida + 1)
 		verificar(run.objetivo_completado and Juego.lugares_completados.has(id) and Juego.coronas == coronas + int(Mundos.INFO[id].coronas), "%s entrega coronas una sola vez" % id)
 		var titulo: String = run.hud._lbl_cartel_titulo.text

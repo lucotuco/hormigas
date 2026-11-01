@@ -42,6 +42,8 @@ func _ready() -> void:
 		# La navegación usa el material visible, no el margen transparente del
 		# sprite. Los perfiles son compartidos y se preparan una sola vez.
 		var formas := SiluetaMueble.rectangulos(pieza)
+		if pieza.has("componentes_id"):
+			formas = ComponentesProyecto.formas_restantes(pieza, formas, Juego.componentes_proyecto_devorados)
 		if formas.size() != 1 or formas[0] != pieza.rect:
 			pieza.recortes = formas
 		_obstaculos[pieza.clave] = pieza

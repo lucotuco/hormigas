@@ -5,6 +5,11 @@ var modo := "viajes"
 var _contenido: VBoxContainer
 ## La ventana de fundar, mientras está abierta.
 var _confirmar: VentanaFundar
+## Referencias de la vista actual; no se guardan ni consultan el mapa.
+var _tarjetas_destino: Dictionary = {}
+var _filas_proyectos: Dictionary = {}
+var _fila_gran_objetivo: Label
+var _grid_proyectos: GridContainer
 
 func _ready() -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -37,12 +42,16 @@ func _texto(texto: String, tamano := 14, color := Color("b8baa9")) -> Label:
 	return label
 
 func _viajes() -> void:
+	_tarjetas_destino.clear()
+	_filas_proyectos.clear()
+	_grid_proyectos = null
 	_contenido.add_child(_texto(tr("El mundo es un banquete"), 28, Estilo.TEXTO))
-	_contenido.add_child(_texto(tr("Devorá el gran objetivo para abrir el siguiente destino. Al fundar volvés a la casa y reconquistás los viajes; las adaptaciones y el historial se conservan.")))
+	_contenido.add_child(_texto(tr("Completá los proyectos y devorá el gran objetivo. Los proyectos se conservan al fundar.")))
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 14)
 	grid.add_theme_constant_override("v_separation", 14)
+	grid.resized.connect(func() -> void: grid.columns = 3 if grid.size.x >= 760 else 2)
 	_contenido.add_child(grid)
 	for id in Mundos.ORDEN:
 		var datos: Dictionary = Mundos.INFO[id]
@@ -50,10 +59,11 @@ func _viajes() -> void:
 		var actual: bool = Juego.lugar_actual == id
 		var boton := Estilo.boton("", 16, Color("33412e") if actual else Color("232b24"), Color("91ad7b") if abierto else Color("465043"))
 		boton.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		boton.custom_minimum_size.y = 124
+		boton.custom_minimum_size.y = 96
 		boton.disabled = not abierto
 		boton.pressed.connect(Juego.elegir_destino.bind(id))
 		grid.add_child(boton)
+		_tarjetas_destino[id] = boton
 		var margen := MarginContainer.new()
 		margen.set_anchors_preset(Control.PRESET_FULL_RECT)
 		margen.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -64,26 +74,106 @@ func _viajes() -> void:
 		columna.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		margen.add_child(columna)
 		columna.add_child(_texto(("● " if actual else "") + tr(datos.nombre), 19, Estilo.TEXTO if abierto else Estilo.TEXTO_SUAVE))
-		columna.add_child(_texto(tr(datos.subtitulo), 13))
-		var detalle := tr("Gran objetivo: %s · %d coronas") % [tr(datos.meta), datos.coronas]
-		if not abierto:
-			var anterior: String = Mundos.ORDEN[Mundos.ORDEN.find(id) - 1]
-			detalle = tr("Requiere devorar: %s en esta colonia") % tr(Mundos.INFO[anterior].meta)
-			if Juego.lugares_completados.has(id):
-				detalle = tr("VISITADO · ") + detalle
-		elif Juego.coronas_cobradas.has(id):
-			detalle = tr("CONQUISTADO · Gran objetivo: %s · coronas ya cobradas en esta colonia") % tr(datos.meta)
-		elif Juego.lugares_completados.has(id):
-			detalle = tr("CONQUISTADO · Gran objetivo: %s · %d coronas disponibles otra vez") % [tr(datos.meta), datos.coronas]
-		columna.add_child(_texto(detalle, 12, Color("d1c490")))
-		columna.add_child(_texto(tr(ReglasDestino.DESCRIPCIONES[id]), 12))
-		for adaptacion in Juego.adaptaciones:
-			if adaptacion.destino == id:
-				columna.add_child(_texto(("✓ " if Juego.lugares_completados.has(id) else tr("Al conquistar: ")) + tr(adaptacion.nombre) + " · " + tr(adaptacion.descripcion), 12, Color("b8d89b")))
-		boton.custom_minimum_size.y = 230
-		var record: Dictionary = Juego.records_destino.get(id, {})
-		if not record.is_empty():
-			columna.add_child(_texto(tr("Mejor intento %.0f%% · %s migas/s") % [float(record.objetivo) * 100, Juego.formatear_corto(record.produccion)], 12))
+		columna.add_child(_texto(_estado_destino(id), 12, Color("d1c490")))
+		var resumen := Juego.resumen_proyectos(id)
+		if not resumen.is_empty():
+			columna.add_child(_texto(tr("Proyectos: %d/%d") % [_proyectos_terminados(resumen), resumen.size()], 12, Estilo.TEXTO_SUAVE))
+		# El contenido manda el alto, también con nombres largos en inglés.
+		# Sólo seis tarjetas: recalcular al cambiar su ancho, nunca por cuadro.
+		var ajustar_alto := func() -> void:
+			var alto := maxf(96, columna.get_combined_minimum_size().y + 28)
+			if not is_equal_approx(boton.custom_minimum_size.y, alto):
+				boton.custom_minimum_size.y = alto
+		columna.minimum_size_changed.connect(ajustar_alto)
+		boton.resized.connect(ajustar_alto)
+	_contenido.add_child(_recorrido_destino(Juego.lugar_actual))
+
+
+func _estado_destino(id: String) -> String:
+	var datos: Dictionary = Mundos.INFO[id]
+	if Juego.coronas_cobradas.has(id):
+		return tr("CONQUISTADO · coronas cobradas")
+	if Juego.meta_destino_devorada(id):
+		return tr("Gran objetivo devorado · faltan proyectos")
+	if not Juego.destino_desbloqueado(id):
+		var anterior: String = Mundos.ORDEN[Mundos.ORDEN.find(id) - 1]
+		return tr("Conquistá %s en esta colonia") % tr(Mundos.INFO[anterior].nombre)
+	if Juego.lugares_completados.has(id):
+		return tr("VISITADO · %d coronas por reconquistar") % int(datos.coronas)
+	return tr("Gran objetivo: %s · %d coronas") % [tr(datos.meta), int(datos.coronas)]
+
+
+func _proyectos_terminados(resumen: Array) -> int:
+	var total := 0
+	for proyecto in resumen:
+		if Juego.proyecto_completo(proyecto.id):
+			total += 1
+	return total
+
+
+## Sólo el destino actual se amplía: cuatro proyectos reales y su gran meta.
+## Las otras cinco tarjetas siguen siendo accesos compactos, no otra pantalla.
+func _recorrido_destino(id: String) -> Control:
+	var datos: Dictionary = Mundos.INFO[id]
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", Estilo.caja(Color("283326"), 14, Color("71845b"), 1, 16))
+	var columna := VBoxContainer.new()
+	columna.add_theme_constant_override("separation", 8)
+	panel.add_child(columna)
+	columna.add_child(_texto(tr(datos.nombre), 22, Estilo.TEXTO))
+	columna.add_child(_texto(tr(datos.subtitulo), 13, Estilo.TEXTO_SUAVE))
+	var resumen := Juego.resumen_proyectos(id)
+	if not resumen.is_empty():
+		columna.add_child(_texto(tr("RECORRIDO · %d/%d proyectos") % [_proyectos_terminados(resumen), resumen.size()], 12, Estilo.ACENTO))
+		columna.add_child(_texto(tr("Orden libre. Se conservan los objetos completos, no el daño parcial."), 12, Estilo.TEXTO_SUAVE))
+		var grid := GridContainer.new()
+		_grid_proyectos = grid
+		grid.columns = 1
+		grid.add_theme_constant_override("h_separation", 8)
+		grid.add_theme_constant_override("v_separation", 8)
+		grid.resized.connect(func() -> void: grid.columns = 2 if grid.size.x >= 760 else 1)
+		columna.add_child(grid)
+		for proyecto in resumen:
+			var fila := PanelContainer.new()
+			fila.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var completo := Juego.proyecto_completo(proyecto.id)
+			fila.add_theme_stylebox_override("panel", Estilo.caja(Color("293a29") if completo else Color("222b23"), 9, Color("668650") if completo else Color("46543e"), 1, 10))
+			grid.add_child(fila)
+			_filas_proyectos[proyecto.id] = fila
+			var cuerpo := VBoxContainer.new()
+			cuerpo.add_theme_constant_override("separation", 3)
+			fila.add_child(cuerpo)
+			var cabecera := HBoxContainer.new()
+			var nombre := _texto(("✓ " if completo else "○ ") + tr(proyecto.nombre), 15, Color("c4dda4") if completo else Estilo.TEXTO)
+			nombre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			cabecera.add_child(nombre)
+			cabecera.add_child(Estilo.etiqueta("%d/%d" % [proyecto.completados, proyecto.total], 13, Estilo.TEXTO_SUAVE))
+			cuerpo.add_child(cabecera)
+			cuerpo.add_child(_texto(tr(proyecto.detalle), 12, Estilo.TEXTO_SUAVE))
+			cuerpo.add_child(_texto(tr("Premio: %s") % tr(proyecto.premio), 12, Color("c8dca6") if completo else Color("d4c598")))
+	_colocar_gran_objetivo(columna, id)
+	columna.add_child(_texto(tr(ReglasDestino.DESCRIPCIONES[id]), 12))
+	for adaptacion in Juego.adaptaciones:
+		if adaptacion.destino == id:
+			columna.add_child(_texto(("✓ " if Juego.lugares_completados.has(id) else tr("Al conquistar: ")) + tr(adaptacion.nombre) + " · " + tr(adaptacion.descripcion), 12, Color("b8d89b")))
+	var record: Dictionary = Juego.records_destino.get(id, {})
+	if not record.is_empty():
+		columna.add_child(_texto(tr("Mejor intento del recorrido %.0f%% · %s migas/s") % [float(record.objetivo) * 100, Juego.formatear_corto(record.produccion)], 12))
+	return panel
+
+
+func _colocar_gran_objetivo(columna: VBoxContainer, id: String) -> void:
+	var datos: Dictionary = Mundos.INFO[id]
+	var cobrado := Juego.coronas_cobradas.has(id)
+	var devorado := Juego.meta_destino_devorada(id)
+	_fila_gran_objetivo = _texto(("✓ " if cobrado else "○ ") + tr(datos.meta), 17, Estilo.ACENTO)
+	columna.add_child(_fila_gran_objetivo)
+	var detalle := tr("Gran objetivo · %d coronas") % int(datos.coronas)
+	if cobrado:
+		detalle = tr("CONQUISTADO · coronas cobradas")
+	elif devorado:
+		detalle = tr("DEVORADO · completá los proyectos para conquistar el destino.")
+	columna.add_child(_texto(detalle, 12, Color("d1c490")))
 
 ## Pestaña Jalea real: resumen, fundar con vista previa, árbol de la reina e hitos.
 func _legado() -> void:

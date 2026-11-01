@@ -212,6 +212,10 @@ func probar_voladora_y_veneno() -> void:
 	for i in 6:
 		var antes := pieza.mordiscos._pixeles.duplicate()
 		pieza._process(0.5)
+		for paso in 10000:
+			if not run.cola_erosion.tiene_pendientes():
+				break
+			run.cola_erosion.procesar(100000000, 32)
 		var m := pieza.mordiscos
 		var tam := m.tamano_mascara()
 		var aire := aire_exterior(m._pixeles, tam)

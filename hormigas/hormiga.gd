@@ -80,6 +80,8 @@ var _corte := false
 var _contagio := false
 var _barrido := false
 var _camada := false
+var _sondeo := false
+var _cantera := false
 var _proxima_memoria := 0.0
 var _animacion: Array[Rect2] = []
 var _tipo_animacion := ""
@@ -123,8 +125,10 @@ func iniciar(r: Run, tipo := "obrera") -> void:
 	_contagio = tipo == "roja" and Juego.evolucion_activa("contagio")
 	_barrido = tipo == "cargadora" and Juego.evolucion_activa("barrido")
 	_camada = tipo == "reina" and Juego.evolucion_activa("camada")
+	_sondeo = tipo == "voladora" and Juego.evolucion_activa("sondeo")
+	_cantera = tipo == "demoledora" and Juego.evolucion_activa("cantera")
 	_evolucion = Juego.nivel_visual()
-	if _corte or _contagio or _barrido or _camada:
+	if _corte or _contagio or _barrido or _camada or _sondeo or _cantera or (tipo == "voladora" and Juego.evolucion_activa("puente")):
 		_evolucion = maxi(1, _evolucion)
 	if casta == "reina" and Juego.hitos.has("primer_monumento"):
 		_evolucion = 2
@@ -225,7 +229,7 @@ func _pensar() -> void:
 			elegida = null
 		if elegida != null and _comidas_sin_ruta.has(elegida.get_instance_id()):
 			elegida = null
-		if elegida is FragmentoCasa and elegida.peso > RolesHormiga.peso_maximo(casta):
+		if elegida is FragmentoCasa and not RolesHormiga.puede_cargar(casta, elegida):
 			elegida = null
 		# Una orden sobre suelo o sobre comida ya agotada sigue reuniendo a la
 		# colonia, pero al llegar no la deja inmóvil entre migas libres. La
@@ -436,7 +440,7 @@ func _morder(delta: float) -> void:
 	var actual := comida
 	var carga_previa := carga
 	var lado_bocado := Juego.stat("tamano_bocado")
-	var corte_continuo: bool = _corte and actual is PiezaCasa and actual.nivel_requerido == 1
+	var corte_continuo: bool = actual is PiezaCasa and ((_corte and actual.nivel_requerido == 1) or (_cantera and actual.nivel_requerido in [2, 3]))
 	if actual is PiezaCasa:
 		var dano := _dano * RolesHormiga.dano(casta, actual.nivel_requerido) * run.reglas.factor_dano(actual)
 		carga += actual.morder_local(dano, global_position, lado_bocado)
@@ -459,9 +463,9 @@ func _morder(delta: float) -> void:
 		_material_carga = -1
 	var extraido := carga - carga_previa
 	if corte_continuo:
-		# La carpintera evolucionada produce en el frente; la colonia transporta.
+		# Corte/Cantera producen en el frente; la colonia transporta.
 		# El corte local no genera un 35% adicional: cae exactamente su valor.
-		run.comidas.soltar_fragmento(global_position, carga - carga_previa, 1)
+		run.comidas.soltar_fragmento(global_position, extraido, actual.nivel_requerido)
 		carga = carga_previa
 	elif not actual is FragmentoCasa:
 		_carga_origen[0 if _material_carga <= 0 else (2 if _material_carga >= 3 else 1)] += carga - carga_previa
@@ -481,6 +485,8 @@ func _morder(delta: float) -> void:
 		# Trabajar una superficie dura no es haber desprendido un trozo. El
 		# trabajo queda en el recurso; no se inventa carga ni se llena el buche.
 		return
+	if _sondeo and actual is PiezaCasa:
+		actual.abrir_escondite()
 	bocados += 1
 	_color_carga = actual.color
 	_tiempo_bocado = _reloj_vida
@@ -579,7 +585,7 @@ func _elegir_destino_al_azar() -> void:
 ## Sin tipo a propósito: la comida pudo haber sido destruida (liberada) y un
 ## parámetro tipado tiraría error al recibir un objeto liberado.
 func _comida_valida(c) -> bool:
-	return is_instance_valid(c) and c.disponible()
+	return is_instance_valid(c) and c.disponible() and (not c is FragmentoCasa or RolesHormiga.puede_cargar(casta, c))
 
 
 func _draw() -> void:

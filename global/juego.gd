@@ -25,7 +25,7 @@ const HITOS := {
 var cantidad_compra := 1 # 0 = máximo que alcanza
 
 const RUTA_PARTIDA := "user://partida.json"
-const VERSION_PARTIDA := 7
+const VERSION_PARTIDA := 9
 const MAX_ARCHIVO_EXPEDICIONES := 128
 const MAX_RECORDS_LIMPIEZA := 1024
 const RUTA_STATS := "res://datos/stats_base.csv"
@@ -77,6 +77,14 @@ var radio_visto: float = 0.0             # último radio de territorio que vio e
 var lugar_actual := "casa"
 var lugares_completados: Dictionary = {}
 var coronas_cobradas: Dictionary = {}    # destinos que ya pagaron coronas en esta colonia
+## Sólo objetos enteros: no se guardan HP, máscaras ni recursos parciales.
+## El historial de proyectos sobrevive a fundar; la meta se repite por colonia.
+var objetivos_proyecto_devorados: Dictionary = {}
+var metas_devoradas: Dictionary = {}
+## Sólo componentes físicos enteros. Nunca porcentajes de HP ni imágenes.
+var componentes_proyecto_devorados: Dictionary = {}
+var tesoros_proyecto_abiertos: Dictionary = {}
+var _guardado_proyectos_pendiente := false
 var hitos: Dictionary = {}
 ## Jalea real ganada en toda la historia: da el bonus pasivo (no baja al gastar).
 var legado := 0
@@ -110,8 +118,10 @@ func registrar_record(produccion: float, objetivo: float) -> void:
 ## Las marcas sólo compiten en el mismo mapa, dieta y alcance. El historial se
 ## acota y nunca participa en la IA ni se recorre durante la expedición.
 func clave_limpieza(registro: Dictionary) -> String:
-	return "%s:v%d:d%d:r%d:%d" % [registro.destino, registro.version_mapa, registro.dieta,
+	var clave := "%s:v%d:d%d:r%d:%d" % [registro.destino, registro.version_mapa, registro.dieta,
 		roundi(float(registro.territorio)), int(registro.completa)]
+	var recorrido: String = registro.get("recorrido", "")
+	return clave + ":" + recorrido if not recorrido.is_empty() else clave
 
 
 func _validar_limpieza(datos) -> Dictionary:
@@ -121,6 +131,9 @@ func _validar_limpieza(datos) -> Dictionary:
 		if typeof(datos.get(campo)) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(datos[campo])):
 			return {}
 	if not datos.get("completa") is bool:
+		return {}
+	var recorrido = datos.get("recorrido", "")
+	if not recorrido is String or recorrido.length() > 64:
 		return {}
 	for campo in ["colonia", "expedicion"]:
 		var numero = datos.get(campo, 0)
@@ -138,6 +151,7 @@ func _validar_limpieza(datos) -> Dictionary:
 		"produccion": maxf(0, float(datos.produccion)), "pendiente": maxf(0, float(datos.pendiente)),
 		"colonia": maxi(0, int(datos.get("colonia", 0))), "expedicion": maxi(0, int(datos.get("expedicion", 0))),
 		"fecha": str(datos.get("fecha", "")).left(32)}
+	registro.recorrido = recorrido
 	return registro
 
 
@@ -213,7 +227,8 @@ func oportunidades_jalea() -> String:
 func actualizar_evoluciones() -> void:
 	for id in EvolucionesHormiga.DATOS:
 		var datos: Dictionary = EvolucionesHormiga.DATOS[id]
-		if cantidad_casta(datos.casta) >= datos.unidades and nivel_de("mandibulas") >= datos.mandibulas and not evoluciones_desbloqueadas.has(id):
+		var proyecto: String = datos.get("proyecto", "")
+		if cantidad_casta(datos.casta) >= datos.unidades and nivel_de("mandibulas") >= datos.mandibulas and (proyecto.is_empty() or proyecto_completo(proyecto)) and not evoluciones_desbloqueadas.has(id):
 			evoluciones_desbloqueadas[id] = true
 			if evoluciones_equipadas.size() < EvolucionesHormiga.MAX_EQUIPADAS:
 				evoluciones_equipadas.append(id)
@@ -661,6 +676,15 @@ func _condicion_revelar(id: String) -> bool:
 ## tipo "migas": juntar migas para comprar una dieta; "nivel": subir la mejora
 ## que la habilita; "objetivo": comer el gran objetivo; "viaje": ir al próximo destino.
 func proxima_meta() -> Dictionary:
+	# Un proyecto ya trabajable ofrece contenido concreto antes de pedir la
+	# siguiente dieta. La casa no tiene proyectos y conserva su arranque.
+	if not coronas_cobradas.has(lugar_actual):
+		var proyecto := _proyecto_trabajable(lugar_actual, int(stat("materiales")))
+		if not proyecto.is_empty():
+			return {"tipo": "proyecto", "nombre": tr(proyecto.nombre),
+				"detalle": tr("%d de %d objetos devorados") % [proyecto.completados, proyecto.total],
+				"actual": float(proyecto.completados), "objetivo": float(proyecto.total),
+				"id": proyecto.id, "accion": "mapa", "seccion": "hogar"}
 	for id in DIETAS:
 		if nivel_de(id) >= 1:
 			continue
@@ -688,6 +712,132 @@ func proxima_meta() -> Dictionary:
 			"id": Mundos.ORDEN[indice + 1], "accion": "viajes", "seccion": "viajes"}
 	return {"tipo": "viaje", "nombre": tr("Fundar una colonia nueva"), "detalle": tr("convertí coronas y migas en jalea real"),
 		"id": "", "accion": "legado", "seccion": "legado"}
+
+
+func _proyecto_trabajable(destino: String, dieta: int) -> Dictionary:
+	for proyecto in resumen_proyectos(destino):
+		if proyecto.completados >= proyecto.total:
+			continue
+		for objetivo: Dictionary in proyecto.objetivos:
+			if not objetivo_proyecto_completo(objetivo.id) and MaterialesCasa.nivel_tipo(objetivo.tipo) <= dieta:
+				return proyecto
+	return {}
+
+
+func objetivo_proyecto_completo(id: String) -> bool:
+	return objetivos_proyecto_devorados.get(id, false) == true
+
+
+## El ID global identifica un objeto, no una instancia de una expedición.
+## Registrar de nuevo nunca paga recursos ni vuelve a emitir progreso.
+func registrar_objetivo_proyecto(id: String) -> bool:
+	if objetivo_proyecto_completo(id) or ProyectosCampana.objetivo(id).is_empty():
+		return false
+	objetivos_proyecto_devorados[id] = true
+	_completar_componentes_objetivo(id)
+	actualizar_evoluciones()
+	_programar_guardado_proyectos()
+	progreso_cambio.emit()
+	return true
+
+
+func componente_proyecto_completo(id: String) -> bool:
+	return componentes_proyecto_devorados.get(id, false) == true
+
+
+func registrar_componente_proyecto(id: String) -> bool:
+	if componente_proyecto_completo(id) or ComponentesProyecto.componente(id).is_empty():
+		return false
+	componentes_proyecto_devorados[id] = true
+	_programar_guardado_proyectos()
+	progreso_cambio.emit()
+	return true
+
+
+func tesoro_proyecto_abierto(objetivo: String) -> bool:
+	return tesoros_proyecto_abiertos.get(objetivo, false) == true
+
+
+func registrar_tesoro_proyecto(objetivo: String) -> bool:
+	if tesoro_proyecto_abierto(objetivo) or not ComponentesProyecto.objetivo_tiene_tesoro(objetivo):
+		return false
+	tesoros_proyecto_abiertos[objetivo] = true
+	_programar_guardado_proyectos()
+	return true
+
+
+func _completar_componentes_objetivo(objetivo: String, cerrar_tesoro_antiguo := false) -> void:
+	for id in ComponentesProyecto.ids_objetivo(objetivo):
+		componentes_proyecto_devorados[id] = true
+	# Sólo la migración antigua necesita normalizar un escondite consumido.
+	# En juego registrar una parte/objeto no simula que apareció su comida.
+	if cerrar_tesoro_antiguo and ComponentesProyecto.objetivo_tiene_tesoro(objetivo):
+		tesoros_proyecto_abiertos[objetivo] = true
+
+
+func meta_destino_devorada(destino: String) -> bool:
+	return Mundos.INFO.has(destino) and metas_devoradas.get(destino, false) == true
+
+
+func registrar_meta_destino() -> bool:
+	if not Mundos.INFO.has(lugar_actual) or meta_destino_devorada(lugar_actual):
+		return false
+	metas_devoradas[lugar_actual] = true
+	_programar_guardado_proyectos()
+	progreso_cambio.emit()
+	return true
+
+
+func _programar_guardado_proyectos() -> void:
+	if not guardado_habilitado or _guardado_proyectos_pendiente:
+		return
+	_guardado_proyectos_pendiente = true
+	_guardar_proyectos_pendientes.call_deferred()
+
+
+func _guardar_proyectos_pendientes() -> void:
+	if _guardado_proyectos_pendiente:
+		guardar()
+
+
+func proyecto_completo(id: String) -> bool:
+	var proyecto := ProyectosCampana.por_id(id)
+	if proyecto.is_empty() or proyecto.objetivos.is_empty():
+		return false
+	for objetivo: Dictionary in proyecto.objetivos:
+		if not objetivo_proyecto_completo(objetivo.id):
+			return false
+	return true
+
+
+func proyectos_completos(destino: String) -> bool:
+	if not Mundos.INFO.has(destino):
+		return false
+	for proyecto in ProyectosCampana.del_destino(destino):
+		if not proyecto_completo(proyecto.id):
+			return false
+	return true
+
+
+## Las fichas reciben copias profundas: nunca pueden modificar el catálogo.
+func resumen_proyectos(destino: String) -> Array[Dictionary]:
+	var resumen: Array[Dictionary] = []
+	for original in ProyectosCampana.del_destino(destino):
+		var fila: Dictionary = original.duplicate(true)
+		fila.total = fila.objetivos.size()
+		fila.completados = 0
+		for objetivo: Dictionary in fila.objetivos:
+			fila.completados += int(objetivo_proyecto_completo(objetivo.id))
+		resumen.append(fila)
+	return resumen
+
+
+func entradas_proyectos(destino: String) -> int:
+	var entradas := 0
+	for proyecto in ProyectosCampana.del_destino(destino):
+		if proyecto_completo(proyecto.id):
+			entradas += maxi(0, int(proyecto.entrada))
+	return entradas
 
 
 func nivel_visual() -> int:
@@ -725,6 +875,14 @@ func elegir_destino(id: String) -> bool:
 ## destino no las vuelve a dar hasta fundar una colonia nueva.
 ## Devuelve las coronas entregadas (0 si ya se habían cobrado).
 func completar_destino() -> int:
+	if not Mundos.INFO.has(lugar_actual):
+		return 0
+	# API administrativa de las fixtures. El juego sólo la llama cuando meta
+	# y proyectos ya están terminados; no se cobran aquí sus recursos físicos.
+	for objetivo in ProyectosCampana.objetivos_destino(lugar_actual):
+		objetivos_proyecto_devorados[objetivo.id] = true
+		_completar_componentes_objetivo(objetivo.id)
+	metas_devoradas[lugar_actual] = true
 	lugares_completados[lugar_actual] = true
 	_cache_stats.clear()
 	var entregadas := 0
@@ -826,6 +984,7 @@ func fundar_colonia(decreto_nuevo := "", compras_jalea: Array[String] = []) -> b
 		sumar_estadistica("jalea_gastada", plan.costo)
 	coronas = 0
 	coronas_cobradas.clear()
+	metas_devoradas.clear()
 	lugar_actual = "casa"
 	fundaciones += 1
 	migas = conservar_migas
@@ -959,6 +1118,9 @@ func terminar_run() -> void:
 # =====================================================================
 
 func guardar() -> void:
+	# Un checkpoint normal incluye los cambios de proyectos y consume la
+	# solicitud diferida. No volver a serializar al resolver la misma conquista.
+	_guardado_proyectos_pendiente = false
 	if not guardado_habilitado:
 		return
 	var archivo := FileAccess.open(RUTA_PARTIDA, FileAccess.WRITE)
@@ -978,6 +1140,8 @@ func datos_partida() -> Dictionary:
 		"mejor_run": mejor_run,
 		"radio_visto": radio_visto,
 		"lugar": lugar_actual, "destinos": lugares_completados, "coronas_cobradas": coronas_cobradas, "hitos": hitos,
+		"objetivos_proyecto_devorados": objetivos_proyecto_devorados.duplicate(), "metas_devoradas": metas_devoradas.duplicate(),
+		"componentes_proyecto_devorados": componentes_proyecto_devorados.duplicate(), "tesoros_proyecto_abiertos": tesoros_proyecto_abiertos.duplicate(),
 		"legado": legado, "coronas": coronas, "fundaciones": fundaciones, "prioridad": prioridad,
 		"descubiertos": descubiertos,
 		"jalea": jalea, "niveles_jalea": niveles_jalea, "migas_colonia": migas_colonia,
@@ -999,6 +1163,7 @@ func cargar() -> void:
 
 
 func restaurar_partida(datos: Dictionary) -> void:
+	_guardado_proyectos_pendiente = false
 	_run_cobrada = true
 	_restaurar_archivo(datos)
 	records_destino = {}
@@ -1029,6 +1194,8 @@ func restaurar_partida(datos: Dictionary) -> void:
 		for id in cobradas_guardadas:
 			if Mundos.INFO.has(id) and cobradas_guardadas[id] == true:
 				coronas_cobradas[id] = true
+	_restaurar_proyectos(datos)
+	_restaurar_componentes(datos)
 	var hitos_guardados = datos.get("hitos", {})
 	if hitos_guardados is Dictionary:
 		for id in hitos_guardados:
@@ -1113,7 +1280,68 @@ func restaurar_partida(datos: Dictionary) -> void:
 				descubiertos[id] = true
 
 
+func _restaurar_proyectos(datos: Dictionary) -> void:
+	objetivos_proyecto_devorados = {}
+	metas_devoradas = {}
+	var objetivos = datos.get("objetivos_proyecto_devorados", {})
+	if objetivos is Dictionary:
+		for id in objetivos:
+			if id is String and objetivos[id] is bool and objetivos[id] and not ProyectosCampana.objetivo(id).is_empty():
+				objetivos_proyecto_devorados[id] = true
+	# Una victoria histórica prueba que sus proyectos ya no deben exigirse.
+	# También normaliza capturas v8 con el registro parcial o vacío, sin pagar
+	# alijos, ingresos ni coronas retroactivas ni saltar la meta de esta colonia.
+	for destino in lugares_completados:
+		for objetivo in ProyectosCampana.objetivos_destino(destino):
+			objetivos_proyecto_devorados[objetivo.id] = true
+	var metas = datos.get("metas_devoradas", {})
+	if metas is Dictionary:
+		for destino in metas:
+			if destino is String and Mundos.INFO.has(destino) and metas[destino] is bool and metas[destino]:
+				metas_devoradas[destino] = true
+	# Una corona ya cobrada prueba que esa meta se devoró en esta colonia.
+	# Sólo heredar la victoria histórica no debe saltar la reconquista.
+	for destino in coronas_cobradas:
+		metas_devoradas[destino] = true
+
+
+func _restaurar_componentes(datos: Dictionary) -> void:
+	componentes_proyecto_devorados = {}
+	tesoros_proyecto_abiertos = {}
+	var componentes = datos.get("componentes_proyecto_devorados", {})
+	if componentes is Dictionary:
+		for id in componentes:
+			if id is String and componentes[id] is bool and componentes[id] and not ComponentesProyecto.componente(id).is_empty():
+				componentes_proyecto_devorados[id] = true
+	var tesoros = datos.get("tesoros_proyecto_abiertos", {})
+	if tesoros is Dictionary:
+		for id in tesoros:
+			if id is String and tesoros[id] is bool and tesoros[id] and ComponentesProyecto.objetivo_tiene_tesoro(id):
+				tesoros_proyecto_abiertos[id] = true
+	# Una victoria anterior conserva todos sus componentes. No aparecen
+	# tesoros, cargas ni premios al abrir una partida vieja.
+	for objetivo in objetivos_proyecto_devorados:
+		_completar_componentes_objetivo(objetivo, int(datos.get("version", 0)) < 9)
+	# Recuperar el checkpoint entre el último componente y el callback final.
+	# No exige volver a crear un objeto vacío ni reproduce su premio.
+	var vistos: Dictionary = {}
+	for id in componentes_proyecto_devorados.keys():
+		var objetivo: String = ComponentesProyecto.componente(id).objetivo
+		if vistos.has(objetivo) or ProyectosCampana.objetivo(objetivo).is_empty():
+			continue
+		vistos[objetivo] = true
+		var completo := true
+		for componente_id in ComponentesProyecto.ids_objetivo(objetivo):
+			if not componente_proyecto_completo(componente_id):
+				completo = false
+				break
+		if completo:
+			objetivos_proyecto_devorados[objetivo] = true
+			_completar_componentes_objetivo(objetivo)
+
+
 func reiniciar_estado() -> void:
+	_guardado_proyectos_pendiente = false
 	_run_cobrada = false
 	migas_run = 0.0
 	records_destino.clear()
@@ -1128,6 +1356,10 @@ func reiniciar_estado() -> void:
 	lugar_actual = "casa"
 	lugares_completados.clear()
 	coronas_cobradas.clear()
+	objetivos_proyecto_devorados.clear()
+	metas_devoradas.clear()
+	componentes_proyecto_devorados.clear()
+	tesoros_proyecto_abiertos.clear()
 	hitos.clear()
 	legado = 0
 	jalea = 0

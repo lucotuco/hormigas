@@ -163,6 +163,9 @@ func _ready() -> void:
 	for n in runs:
 		elegir_destino()
 		var cobradas := Juego.coronas_cobradas.size()
+		var proyectos_previos := Juego.objetivos_proyecto_devorados.size()
+		var componentes_previos := Juego.componentes_proyecto_devorados.size()
+		var metas_previas := Juego.metas_devoradas.size()
 		var donde := Juego.lugar_actual
 		var ganado: float = await jugar_run()
 		if calibrar and donde != "casa" and not calibrado.has(donde):
@@ -174,7 +177,7 @@ func _ready() -> void:
 				anotar("== calibrado %s tras %d runs: vida_meta %s (máximo daño %s)" % [donde, runs_en_destino, str(calibrado[donde]), Juego.formatear(max_dano_destino)])
 				max_dano_destino = 0.0
 				runs_en_destino = 0
-		if Juego.coronas_cobradas.size() > cobradas or ganado > mejor_run_colonia * MEJORA_MINIMA:
+		if Juego.coronas_cobradas.size() > cobradas or Juego.objetivos_proyecto_devorados.size() > proyectos_previos or Juego.componentes_proyecto_devorados.size() > componentes_previos or Juego.metas_devoradas.size() > metas_previas or ganado > mejor_run_colonia * MEJORA_MINIMA:
 			trabado = 0
 		else:
 			trabado += 1
@@ -216,6 +219,7 @@ func jugar_run() -> float:
 	var run: Run = RUN.instantiate()
 	add_child(run)
 	var ir_por_meta := _conviene_meta(run)
+	var clave_meta := _clave_objetivo(run.objetivo_actual())
 	_run_observada = run
 	_piezas_observadas.clear()
 	_bonus_muebles = 0.0
@@ -246,13 +250,17 @@ func jugar_run() -> float:
 			var dieta := int(Juego.stat("materiales"))
 			if dieta == 0 and miga != null:
 				mejor = miga
-			var meta := run.objetivo_mapa
+			var meta := run.objetivo_actual()
+			var nueva_clave := _clave_objetivo(meta)
+			if nueva_clave != clave_meta:
+				clave_meta = nueva_clave
+				ir_por_meta = _conviene_meta(run)
 			if ir_por_meta and is_instance_valid(meta) and not meta.muerta and meta.disponible() and meta.en_territorio(run.radio_actual):
 				var punto := meta.punto_mordida(Vector2.ZERO, run.radio_actual)
 				if punto != Vector2.INF:
 					run.feromonas.mantener_en(punto)
 			else:
-				var parte := _material_cercano(run) if orden_materiales and dieta > 0 else null
+				var parte := _material_cercano(run, not ir_por_meta) if orden_materiales and dieta > 0 else null
 				if parte != null:
 					run.feromonas.mantener_en(parte.punto_mordida(Vector2.ZERO, run.radio_actual))
 				elif mejor:
@@ -268,6 +276,9 @@ func jugar_run() -> float:
 	anotar("   producción %.1f/s · ingresos comida/muebles/estructura (incluyen bonus) %s · cargas sin entregar %s · fin %s" % [run.produccion_run, JSON.stringify(run.ingresos), Juego.formatear(run.cargas_pendientes), "limpieza" if run.limpieza_lograda else ("colonia perdida" if run.colonia_perdida else "tiempo")])
 	# Daño hecho al gran objetivo en esta run (para calibrar vida_meta).
 	var meta := run.objetivo_mapa
+	var pendiente := run.objetivo_actual()
+	if is_instance_valid(pendiente) and ir_por_meta and pendiente.disponible():
+		intentos_meta[_clave_objetivo(pendiente)] = {"dano": pendiente.dano_recibido, "potencia": _potencia(), "run": runs_colonia}
 	var dano_meta := 0.0
 	var vida_meta := 0.0
 	if is_instance_valid(meta):
@@ -275,8 +286,6 @@ func jugar_run() -> float:
 		dano_meta = meta.dano_recibido
 		# Invulnerable, el objetivo no suelta trozos: se mide el daño aplicado.
 		_dano_meta = maxf(dano_meta, meta.trabajo_recibido) if calibrar and Juego.lugar_actual != "casa" else dano_meta
-		if ir_por_meta and meta.disponible():
-			intentos_meta[Juego.lugar_actual] = {"dano": _dano_meta, "potencia": _potencia(), "run": runs_colonia}
 		_base_meta = meta.vida_max / Mundos.vida_meta(Juego.lugar_actual)
 	elif run.objetivo_completado:
 		dano_meta = INF
@@ -316,10 +325,16 @@ func _registrar_destruccion(comida) -> void:
 		_marcar("carton", _run_observada.tiempo_jugado)
 	elif comida.pieza.get("meta", false):
 		_marcar("gran_objetivo_%s" % Juego.lugar_actual, _run_observada.tiempo_jugado)
+	elif comida.pieza.has("objetivo_proyecto"):
+		_marcar("objeto_%s" % comida.pieza.objetivo_proyecto, _run_observada.tiempo_jugado)
+		if Juego.proyecto_completo(comida.pieza.proyecto_id):
+			_marcar("proyecto_%s" % comida.pieza.proyecto_id, _run_observada.tiempo_jugado)
 	elif comida.pieza.tipo == "silla":
 		_marcar("silla", _run_observada.tiempo_jugado)
 	else:
 		_marcar("pieza_dieta_%d" % comida.nivel_requerido, _run_observada.tiempo_jugado)
+	if _run_observada.objetivo_completado:
+		_marcar("conquista_%s" % Juego.lugar_actual, _run_observada.tiempo_jugado)
 
 
 func _marcar(hito: String, segundos_run := 0.0) -> void:
@@ -334,11 +349,13 @@ func _marcar(hito: String, segundos_run := 0.0) -> void:
 
 ## Un material recién aprendido debe poder probarse con una orden explícita.
 ## No hace daño por clic ni llama a toda la colonia: usa el llamado real.
-func _material_cercano(run: Run) -> PiezaCasa:
+func _material_cercano(run: Run, evitar_proyectos := false) -> PiezaCasa:
 	var elegida: PiezaCasa
 	var distancia := INF
 	var dieta := int(Juego.stat("materiales"))
 	for parte in run.comidas.partes:
+		if evitar_proyectos and parte.pieza.has("objetivo_proyecto"):
+			continue
 		if parte.nivel_requerido != dieta or not parte.disponible() or not parte.en_territorio(run.radio_actual):
 			continue
 		var punto := parte.punto_mordida(Vector2.ZERO, run.radio_actual)
@@ -388,13 +405,18 @@ func _potencia() -> float:
 	return Juego.stat("dano") * hormigas / maxf(Juego.stat("intervalo_mordida"), 0.01)
 
 
+func _clave_objetivo(parte: PiezaCasa) -> String:
+	return str(parte.pieza.get("objetivo_proyecto", Juego.lugar_actual)) if is_instance_valid(parte) else Juego.lugar_actual
+
+
 func _conviene_meta(run: Run) -> bool:
 	if calibrar and Juego.lugar_actual != "casa" and not calibrado.has(Juego.lugar_actual):
 		return true
-	var meta := run.objetivo_mapa
-	if not is_instance_valid(meta) or not intentos_meta.has(Juego.lugar_actual):
+	var meta := run.objetivo_actual()
+	var clave := _clave_objetivo(meta)
+	if not is_instance_valid(meta) or not intentos_meta.has(clave):
 		return true
-	var intento: Dictionary = intentos_meta[Juego.lugar_actual]
+	var intento: Dictionary = intentos_meta[clave]
 	# La potencia no mide todo (velocidad, castas, olfato): cada tanto reintenta.
 	if runs_colonia - int(intento.run) >= 4:
 		return true

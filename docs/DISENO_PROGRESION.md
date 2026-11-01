@@ -846,3 +846,150 @@ Pendiente:
 - **Desde el Obelisco el ingreso se despega del daño:** hay expediciones de
   Sx, pero el daño al objetivo sigue en Qa. La jalea por migas (raíz cuarta)
   sigue el ingreso y la cuarta fundación puede dar decenas de miles.
+
+## Campaña ampliada por proyectos — 1/11
+
+Pedido: más duración con contenido y formas de trabajar, no con un aumento
+general de precios. Esta pasada no cambia costos existentes, mordida,
+velocidad, olfato ni el inicio de una obrera. La casa y su primera fundación
+conservan el recorrido vigente; se expande el tramo que antes podía saltarse
+comiendo sólo el monumento.
+
+`datos/proyectos.csv` define cuatro proyectos para cada destino posterior a la
+casa: veinte proyectos y cuarenta y dos objetivos físicos. Cada objetivo tiene
+un identificador semántico estable y corresponde a un mueble existente del
+plano, no a una copia decorativa ni al índice de un array. Las zonas tienen
+tema propio: servicio/cocina/salón; conservación/archivo/vitrinas/galería;
+paseo/kiosco/parada/fuente; corredor/ánforas/fuente/arcadas; jardines/picnic/
+bouquinistes/fuente. No se cargan mapas inactivos, más atlas ni procesos por
+proyecto y por cuadro.
+
+La primera conquista pide los cuatro proyectos y el objetivo final, en
+cualquier orden. Sólo se conserva un objeto **totalmente devorado**. Los
+proyectos terminados y sus objetos sobreviven a expediciones y fundaciones;
+el daño parcial sigue reiniciándose. Al reconquistar un destino histórico se
+reponen los muebles normales, pero no se repiten proyectos, resistencia de
+misión ni premios. Las coronas y el objetivo canónico siguen siendo por colonia,
+y fundar devuelve a casa. Un checkpoint con todo terminado entrega su corona
+pendiente una sola vez; la carga no reproduce alijos.
+
+La resistencia total de cada proyecto se expresa como fracción de la vida del
+objetivo canónico **sin cambiar éste**, repartida entre sus objetos. El proyecto
+de acceso usa 0,15 (0,35 en Roma por el piso de resistencia de sus columnas);
+los otros usan 0,35 / 0,65 / 1, salvo las fuentes individuales finales de
+Buenos Aires y París, que usan 0,45: no deben equivaler por sí solas a otro
+monumento entero. El total nuevo es 2,15 objetivos canónicos en restaurante y
+museo, 2,35 en Roma y 1,60 en Buenos Aires/París. No son multiplicadores de recompensa: cada mueble
+conserva el valor, material, silueta y porción física nativos. Son presupuestos
+iniciales que requieren validación de ritmo, no una duración garantizada.
+
+Cada proyecto completado revela una comida regional física, una sola vez;
+el proyecto de acceso agrega una entrada local útil para la logística y
+respeta el máximo existente. No se acreditan migas sin transporte. Además:
+
+- Museo/vitrinas: Sondeo de escondites. Tras extraer material de verdad,
+  una voladora abre temprano el tesoro existente; comparte su marca de abierto
+  y el máximo de 24 tesoros.
+- Roma/arcadas: Trabajo de cantera. La demoledora deja su extracción real de
+  materiales resistentes/muros en montones y continúa trabajando. No duplica
+  valor; las cargadoras retiran esos restos.
+- París/bouquinistes: Puente aéreo. Las voladoras levantan montones de peso 2
+  y material resistente, pero no de muro ni mezclas con muro. Reutiliza la
+  elegibilidad compartida de IA, llamado y recogida.
+
+Se mantienen dos evoluciones equipadas como máximo. Las reglas se cachean al
+nacer y la selección de objetivo sugerido sólo cambia al terminar una pieza;
+no se agrega una búsqueda por proyecto a cada hormiga. El techo sigue en
+500 hormigas, 64 montones y seis pedidos de ruta por cuadro.
+
+Guardado versión 8, mapa versión 6. Se migran destinos históricamente
+conquistados como proyectos completos sin premios retroactivos, también ante
+snapshots con campos nuevos parciales. No se le quita una victoria al jugador.
+El archivo de tiempos incluye un hash del recorrido inicial (pendientes,
+estado del objetivo canónico y si hay repoblación histórica), evitando comparar
+una misión nueva contra un escenario ya despejado.
+
+Validación lógica: 44 suites sin fallas; revisión gráfica: 52 verificaciones,
+español/inglés en Full HD y ventana de 1000×620. La medición de duración
+anterior (150,6–154,9 minutos activos de bot, sin tienda) corresponde al mapa 5,
+**no a esta ampliación**. No extrapolarla ni afirmar ocho o diez horas hasta
+medir el nuevo recorrido y probarlo con personas. El rendimiento vigente y
+sus límites se registran en `tests/RENDIMIENTO.md`.
+
+Piloto parcial nuevo, semilla 417, paso 1/60 y tiempo ×1, sin HP forzados ni
+guardado personal: casa conquistada a 75,28 minutos; Paso de camareros a
+78,78; Despensa de servicio a 81,70. Se interrumpió deliberadamente durante
+la expedición 56 para cerrar la revisión de material/rendimiento. El último
+checkpoint completo tiene 55 expediciones y 80,70 minutos; el segundo proyecto
+figura sólo en el log posterior. No hubo fundaciones en este tramo. Esta
+muestra comprueba que se llega a los primeros proyectos con ingresos y daño
+reales, pero **no mide la campaña completa ni el primer rebirth**. No es una
+comparación A/B del arranque: no interpretar la diferencia con muestras
+anteriores como tiempo añadido por los proyectos, que empiezan después de casa.
+
+## Componentes y consecuencias — 1/11, mapa 7
+
+La siguiente pasada no aumenta precios ni baja velocidad/IA. Adelanta Sondeo
+a la despensa del restaurante, Trabajo de cantera a la galería del museo y
+Puente aéreo a la parada porteña: quedan destinos para aprovecharlos, no sólo
+una recompensa al final del viaje donde se aprende. Se mantienen los requisitos
+de unidades/Mandíbulas y el máximo de dos evoluciones equipadas.
+
+Doce muebles existentes se subdividen en 35 componentes escritos en
+`datos/componentes_proyecto.csv`: dos hojas, compartimentos, estantes,
+expositores y brocales/cuencos. No son nuevos objetos ni física por astilla;
+comparten atlas y la grilla original de hasta dieciséis celdas. Un componente
+se termina sólo cuando no queda material real en ninguna de sus celdas.
+Conserva HP máximo y valor originales: la próxima expedición no vuelve a
+repartir la resistencia o recompensa del material ausente entre las partes vivas.
+El shader de cuerpo/sombra y la navegación inicial omiten las mismas celdas,
+sin preparar una máscara R8 hasta la primera extracción nueva.
+
+Persisten únicamente componentes completos; el daño de una sección pendiente
+se regenera. Eso se dice en el HUD como partes conservadas y nombre de la parte
+siguiente, no como un porcentaje guardado. Terminar una parte no da otra corona,
+alijo ni bonus de destrucción. Los escondites tienen marca única por mueble;
+una puerta y Sondeo comparten el mismo hallazgo. La primera alacena y el cartón
+de Casa ofrecen partes opcionales, sin resistencia de misión ni requisito para
+la conquista. La silla inicial no cambia.
+
+El acceso de logística es propio y adelantado, anclado al último objeto declarado
+del proyecto; no consume los seis accesos normales comprados. Nunca se mueven
+entradas existentes durante una expedición. El máximo es centro + seis normales
++ un acceso de proyecto; selección acotada sólo al iniciar un regreso, sin otro A*.
+
+El hormiguero conserva recuerdos visuales del primer retorno con ingresos,
+silla, tesoro, derrumbe, conquista de Casa y proyectos. No pagan bonus adicionales:
+muestran el historial real y conviven con las cámaras compradas, que sí se
+reinician al fundar. Se redibuja al cambiar ese historial, no con cada cambio de saldo.
+
+Guardado v9: componentes y escondites validados por catálogo. Las victorias
+históricas implican sus componentes completos sin premios retroactivos. Un
+checkpoint tras el último componente puede recuperar el objetivo completo al
+cargar, sin reproducir alijos. Fundar conserva estas marcas y vuelve a Casa;
+la repoblación de destinos ya conquistados sigue siendo de recursos nativos.
+El contexto del récord incluye las partes y escondites iniciales del destino.
+
+La corrosión ambiental procesa porciones pequeñas en una cola compartida,
+no un vaciado entero dentro del tick de un mueble. Se admite el trabajo una
+sola vez y se acredita sólo material extraído; el crédito pendiente no se lleva
+en el buche. Al cerrar se drena el trabajo ya ganado, sin seguir emitiendo veneno
+futuro ni hacer trabajar hormigas. La espera cuenta como tiempo de expedición y
+permite cámara/pausa. El presupuesto de tiempo es suave: la preparación inicial
+de una máscara todavía es indivisible; medirla por separado y no prometer 1 ms
+como techo absoluto ni 60 FPS constantes en equipos no probados.
+
+Los tiempos del piloto anterior no validan esta variante. Hace falta un recorrido
+completo y observación humana antes de asignarle una nueva duración comercial.
+
+Chequeo corto de esta pasada: seis expediciones nuevas, semilla 417, paso 1/60
+y tiempo ×1, alcanzaron 4,57 minutos netos; la segunda obrera se compró tras
+dos expediciones con ingresos reales. Aparte se retomó una **copia** del
+checkpoint anterior (55 expediciones / 80,70 minutos) durante dos expediciones
+completas: la despensa terminó a 84,62 y el checkpoint57 cerró a 87,23, con
+Sondeo desbloqueado y ambas hojas de la alacena conservadas. Se detuvo el
+piloto propio al comenzar la siguiente expedición; su tiempo parcial no integra
+la muestra. Registros `componentes_piloto6_20261101.txt` y
+`componentes_piloto_restaurante_20261101.txt` dentro de `.godot/qa/`.
+No es una campaña nueva completa ni una comparación A/B: el segundo tramo
+hereda el estado del mapa anterior y no mide cuánto tardaría una persona.

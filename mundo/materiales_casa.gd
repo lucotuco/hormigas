@@ -5,8 +5,11 @@ const NIVELES := ["Comida del piso", "Madera y telas", "Materiales resistentes",
 const MADERA := ["banco", "silla", "mesa", "mesa_comedor", "ratona", "escritorio", "mesita", "sofa", "sillon", "cama", "biblioteca", "ropero", "alacena", "aparador", "consola", "planta", "canasto", "carrito", "kiosco"]
 const NOMBRES := {"banco": "Banco de plaza", "silla": "Silla", "mesa": "Mesa de cocina", "mesa_comedor": "Mesa del comedor", "ratona": "Mesa ratona", "escritorio": "Escritorio", "mesita": "Mesa de luz", "sofa": "Sofá", "sillon": "Sillón", "cama": "Cama", "biblioteca": "Biblioteca", "ropero": "Ropero", "alacena": "Alacena", "aparador": "Aparador", "consola": "Consola", "planta": "Maceta", "pileta": "Pileta", "mesada": "Mesada", "cocina": "Cocina", "heladera": "Heladera", "television": "Televisor", "banera": "Bañera", "lavabo": "Lavabo", "inodoro": "Inodoro", "lavarropas": "Lavarropas", "pared": "Tramo de pared", "vitrina": "Vitrina", "escultura": "Escultura", "obelisco": "Obelisco", "arco": "Arco", "torre": "Torre", "canasto": "Canasto", "carrito": "Carrito de servicio", "kiosco": "Kiosco", "colectivo": "Colectivo porteño", "taxi": "Taxi porteño", "farol": "Farol", "papelera": "Papelera", "cartel": "Cartel de la avenida", "columna": "Columna de piedra", "anfora": "Ánfora", "fuente": "Fuente"}
 
+static func nivel_tipo(tipo: String) -> int:
+	return 3 if tipo in ["pared", "arco", "escultura", "obelisco", "torre", "columna", "fuente"] else (1 if tipo in MADERA else 2)
+
 static func definir(tipo: String, rect: Rect2, color: Color) -> Dictionary:
-	var nivel := 3 if tipo in ["pared", "arco", "escultura", "obelisco", "torre", "columna", "fuente"] else (1 if tipo in MADERA else 2)
+	var nivel := nivel_tipo(tipo)
 	var escala := clampf(rect.get_area() / 32000.0, 1, 18)
 	var vida := (700.0 if nivel == 1 else (4200.0 if nivel == 2 else 14000.0)) * sqrt(escala)
 	return {"id": tipo, "nombre": NOMBRES.get(tipo, tipo.capitalize()), "forma": "casa", "color": color, "vida": vida, "recompensa": vida * (3.0 if nivel == 1 else 5.0), "radio": rect.size.length() * 0.5, "nivel": nivel}
@@ -14,11 +17,30 @@ static func definir(tipo: String, rect: Rect2, color: Color) -> Dictionary:
 static func piezas() -> Array[Dictionary]:
 	var resultado: Array[Dictionary] = []
 	var muebles := PlanoCasa.muebles()
+	var destino := Juego.lugar_actual
+	var historico := Juego.lugares_completados.has(destino)
+	var meta_pendiente := Juego.meta_destino_devorada(destino) and not Juego.coronas_cobradas.has(destino)
+	var clave_meta: String = Mundos.plano(destino).meta
 	for i in muebles.size():
 		var m: Dictionary = muebles[i]
 		var clave := "mueble:%d" % i
+		if clave == clave_meta and meta_pendiente:
+			continue
+		var objetivo_id: String = m.get("objetivo_proyecto", "") if not historico else ""
+		if not objetivo_id.is_empty() and Juego.objetivo_proyecto_completo(objetivo_id):
+			continue
 		var perfil: String = m.get("perfil", "") if Juego.lugar_actual == "casa" and not m.get("practica", false) else ""
-		resultado.append({"clave": clave, "tipo": m.tipo, "rect": m.rect, "color": m.color, "mueble": i, "pared": false, "dibujo": m, "meta": clave == Mundos.plano(Juego.lugar_actual).meta, "practica": m.get("practica", false), "perfil": perfil})
+		var pieza := {"clave": clave, "tipo": m.tipo, "rect": m.rect, "color": m.color, "mueble": i, "pared": false, "dibujo": m, "meta": clave == clave_meta, "practica": m.get("practica", false), "perfil": perfil}
+		if not objetivo_id.is_empty():
+			for campo in ["proyecto_id", "objetivo_proyecto", "proyecto_vida"]:
+				pieza[campo] = m[campo]
+		if not historico:
+			var componentes_id := ComponentesProyecto.id_para_pieza(pieza, destino)
+			if not componentes_id.is_empty():
+				if ComponentesProyecto.objetivo_terminado(componentes_id, Juego.componentes_proyecto_devorados):
+					continue
+				pieza.componentes_id = componentes_id
+		resultado.append(pieza)
 	# Los muros se comen por tramos; no desaparece una habitación de un bocado.
 	var paredes := PlanoCasa.paredes()
 	for i in paredes.size():

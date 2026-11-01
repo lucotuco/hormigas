@@ -37,6 +37,14 @@ var terminada := false
 var combo := 0
 var objetivo_mapa: PiezaCasa
 var objetivo_practica: PiezaCasa
+var recorrido: RecorridoDestino
+var cola_erosion: ColaErosion
+var cerrando_erosion := false
+var tiempo_espera_erosion := 0.0
+var _accion_cierre_erosion := ""
+var _modo_colonia_erosion := Node.PROCESS_MODE_INHERIT
+var _modo_eventos_erosion := Node.PROCESS_MODE_INHERIT
+var _modo_reglas_erosion := Node.PROCESS_MODE_INHERIT
 var reglas: ReglasDestino
 var entradas: EntradasHormiguero
 var retirando := false
@@ -80,6 +88,10 @@ var _tiempo_fin_botin := 0.0
 func _ready() -> void:
 	Engine.time_scale = 1.0
 	Juego.iniciar_run()
+	cola_erosion = ColaErosion.new()
+	add_child(cola_erosion)
+	cola_erosion.iniciar(self)
+	cola_erosion.drenada.connect(_on_erosion_drenada)
 	duracion_total = Juego.stat("duracion_run")
 	tiempo_restante = duracion_total
 	camara.vista_cambiada.connect(feromonas.queue_redraw)
@@ -97,13 +109,16 @@ func _ready() -> void:
 	add_child(reglas)
 	reglas.run = self
 	for parte in comidas.partes:
-		resistencia_total += parte.vida_max
+		resistencia_total += parte.vida
 		if parte.pieza.get("meta", false):
 			objetivo_mapa = parte
 		if parte.pieza.get("practica", false):
 			objetivo_practica = parte
 	for c in comidas.lista:
 		resistencia_total += c.vida_max
+	recorrido = RecorridoDestino.new()
+	add_child(recorrido)
+	recorrido.iniciar(self)
 	comidas.comida_destruida.connect(_on_comida_destruida)
 	niebla.radio = radio_actual
 	camara.ajustar_a_radio(radio_actual, true)
@@ -113,6 +128,7 @@ func _ready() -> void:
 		tween.tween_interval(0.4)
 		tween.tween_property(self, "radio_actual", radio_objetivo, DURACION_EXPANSION) \
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		tween.tween_callback(recorrido.queue_redraw)
 		hud.mostrar_aviso(tr("¡El territorio creció!"))
 		Sonido.tocar("crecer", 1.0, 0.0)
 
@@ -125,10 +141,17 @@ func _ready() -> void:
 	eventos.iniciar(self)
 	eventos.botin_terminado.connect(_registrar_fin_botin)
 	activa = true
+	recorrido.queue_redraw()
+	# Un checkpoint entre el último objeto y su celebración puede contener
+	# todo el trabajo hecho sin la corona. Resolverlo no repone ni paga material.
+	if recorrido.conquista_pendiente():
+		_conquistar_destino()
 	hud._actualizar_meta()
 
 
 func _exit_tree() -> void:
+	if is_instance_valid(cola_erosion):
+		cola_erosion.cancelar()
 	Engine.time_scale = 1.0
 
 
@@ -136,6 +159,11 @@ func _process(delta: float) -> void:
 	_reloj += delta
 	niebla.radio = radio_actual
 	camara.ajustar_a_radio(radio_actual)
+	if cerrando_erosion:
+		# La espera es tiempo de expedición, no segundos gratis de recolección.
+		tiempo_espera_erosion += delta
+		tiempo_jugado += delta
+		return
 	if retirando:
 		tiempo_retirada += delta
 		retiro_restante = maxf(0, retiro_restante - delta)
@@ -187,6 +215,15 @@ func _colonia_sin_hormigas() -> bool:
 func _comprobar_limpieza() -> bool:
 	if not activa or retirando or terminada:
 		return false
+	if not _clasificar_limpieza():
+		return false
+	_iniciar_retirada()
+	return true
+
+
+## Clasifica sin iniciar otra transición: también se usa al liquidar erosión
+## ganada antes de vencer el reloj, cuando las hormigas ya están detenidas.
+func _clasificar_limpieza() -> bool:
 	# No confundir la salida inicial o la expansión animada con un escenario
 	# sin trabajo. Tampoco retirar mientras una cadena puede producir restos.
 	_colonia_operativa = _colonia_operativa or colonia.cantidad() > 0
@@ -206,7 +243,6 @@ func _comprobar_limpieza() -> bool:
 	limpieza_lograda = true
 	limpieza_completa = estado.completa
 	tiempo_limpieza = maxf(0.001, minf(tiempo_jugado, maxf(comidas.ultimo_cambio, _tiempo_fin_botin)))
-	_iniciar_retirada()
 	return true
 
 
@@ -266,6 +302,11 @@ func depositar(cantidad: float, origen := Vector2.ZERO, categoria := 0, desglose
 	Sonido.tocar("deposito", notas[(combo - 1) % notas.size()], 0.0)
 
 
+## Objetivo sugerido del recorrido; no cambia la libertad de las hormigas.
+func objetivo_actual() -> PiezaCasa:
+	return recorrido.objetivo_actual() if is_instance_valid(recorrido) else objetivo_mapa
+
+
 func _on_comida_destruida(comida: Comida) -> void:
 	if comida is FragmentoCasa:
 		return
@@ -278,12 +319,8 @@ func _on_comida_destruida(comida: Comida) -> void:
 			Juego.obtener_hito("primera_silla")
 			if _sillas_devoradas >= 4:
 				Juego.obtener_hito("cuatro_sillas")
-		if comida.pieza.get("meta", false) and not objetivo_completado:
-			objetivo_completado = true
-			var entregadas := Juego.completar_destino()
-			if Juego.lugar_actual in ["obelisco", "coliseo", "eiffel"]:
-				Juego.obtener_hito("primer_monumento")
-			Conquista.celebrar(self, comida, entregadas)
+		if recorrido.registrar_destruccion(comida) and not objetivo_completado:
+			_conquistar_destino()
 		if Juego.lugar_actual == "casa" and PlanoCasa.ambiente_en(comida.position) == "cocina":
 			var queda := false
 			for parte in comidas.partes:
@@ -305,6 +342,16 @@ func _on_comida_destruida(comida: Comida) -> void:
 	hud.migas_voladoras(a_pantalla(pos), int(clampf(comida.radio / 2.5, 2, 16)))
 	camara.sacudir(clampf(comida.radio * 0.35, 2.0, 18.0))
 	Sonido.tocar("romper", clampf(1.7 - comida.radio / 45.0, 0.5, 1.7))
+
+
+func _conquistar_destino() -> void:
+	if objetivo_completado:
+		return
+	objetivo_completado = true
+	var entregadas := Juego.completar_destino()
+	if Juego.lugar_actual in ["obelisco", "coliseo", "eiffel"]:
+		Juego.obtener_hito("primer_monumento")
+	Conquista.celebrar_destino(self, entregadas)
 
 ## El clic manual sólo interactúa con eventos; no rompe alimentos ni muebles.
 ## Se conserva la mejora automática incorporada en main, limitada por cuadro.
@@ -387,8 +434,11 @@ func registrar_ingreso(cantidad: float, categoria := 0) -> void:
 func _iniciar_retirada() -> void:
 	if retirando or terminada:
 		return
+	if _esperar_erosion("retirada"):
+		return
 	activa = false
 	retirando = true
+	recorrido.queue_redraw()
 	feromonas.soltar()
 	colonia._activa = false
 	retiro_restante = Juego.stat("retirada")
@@ -406,6 +456,8 @@ func _iniciar_retirada() -> void:
 func _terminar() -> void:
 	if terminada:
 		return
+	if _esperar_erosion("terminar"):
+		return
 	_cerrar()
 	Sonido.tocar("fin", 1.0, 0.0)
 	# Cámara lenta un instante antes de mostrar el resultado.
@@ -419,12 +471,16 @@ func _terminar() -> void:
 func _cerrar() -> void:
 	if terminada:
 		return
+	if _esperar_erosion("cerrar"):
+		return
 	activa = false
 	retirando = false
 	feromonas.soltar()
 	terminada = true
+	cola_erosion.cancelar()
+	recorrido.queue_redraw()
 	colonia.detener()
-	progreso_objetivo = 1.0 if objetivo_completado else (clampf(1.0 - objetivo_mapa.vida / objetivo_mapa.vida_max, 0, 1) if is_instance_valid(objetivo_mapa) else 0.0)
+	progreso_objetivo = 1.0 if objetivo_completado else recorrido.progreso()
 	produccion_run = Juego.migas_run / maxf(1, tiempo_jugado + tiempo_retirada)
 	var previa := float(Juego.records_destino.get(Juego.lugar_actual, {}).get("produccion", 0.0))
 	tenia_record = previa > 0
@@ -436,6 +492,7 @@ func _cerrar() -> void:
 		nuevo_record_limpieza = Juego.registrar_limpieza({
 			"destino": Juego.lugar_actual, "dieta": int(Juego.stat("materiales")),
 			"territorio": Juego.stat("radio_territorio"), "version_mapa": Mundos.VERSION_CONTENIDO,
+			"recorrido": recorrido.contexto_inicial,
 			"completa": limpieza_completa, "tiempo_limpieza": tiempo_limpieza,
 			"tiempo_total": tiempo_jugado + tiempo_retirada, "retirando": tiempo_retirada,
 			"migas": Juego.migas_run, "produccion": produccion_run, "pendiente": cargas_pendientes,
@@ -445,6 +502,8 @@ func _cerrar() -> void:
 
 func salir_al_menu() -> void:
 	get_tree().paused = false
+	if not terminada and _esperar_erosion("menu"):
+		return
 	if not terminada:
 		_cerrar()
 	get_tree().change_scene_to_file(ESCENA_MENU)
@@ -457,6 +516,52 @@ func _mostrar_fin() -> void:
 
 func ir_a_tienda() -> void:
 	get_tree().change_scene_to_file(ESCENA_TIENDA)
+
+
+## La barrera conserva las transacciones ya emitidas sin congelar el árbol:
+## cámara, UI y cola siguen atendiendo cuadros; no nacen ni trabajan hormigas.
+func _esperar_erosion(accion: String) -> bool:
+	if cerrando_erosion:
+		if accion == "menu" or (accion == "terminar" and _accion_cierre_erosion != "menu"):
+			_accion_cierre_erosion = accion
+		return true
+	if not is_instance_valid(cola_erosion):
+		return false
+	cola_erosion.cerrar_emision()
+	if not cola_erosion.tiene_pendientes():
+		return false
+	cerrando_erosion = true
+	_accion_cierre_erosion = accion
+	activa = false
+	feromonas.soltar()
+	_modo_colonia_erosion = colonia.process_mode
+	_modo_eventos_erosion = eventos.process_mode
+	_modo_reglas_erosion = reglas.process_mode
+	colonia.process_mode = Node.PROCESS_MODE_DISABLED
+	eventos.process_mode = Node.PROCESS_MODE_DISABLED
+	reglas.process_mode = Node.PROCESS_MODE_DISABLED
+	cola_erosion.iniciar_cierre()
+	return true
+
+
+func _on_erosion_drenada() -> void:
+	if not cerrando_erosion or terminada:
+		return
+	var accion := _accion_cierre_erosion
+	_accion_cierre_erosion = ""
+	if accion == "retirada" and tiempo_restante <= 0 and not colonia_perdida and not limpieza_lograda:
+		if _clasificar_limpieza():
+			# La máscara terminó ahora: incluir toda la espera de liquidación.
+			tiempo_limpieza = maxf(0.001, tiempo_jugado)
+	cerrando_erosion = false
+	colonia.process_mode = _modo_colonia_erosion
+	eventos.process_mode = _modo_eventos_erosion
+	reglas.process_mode = _modo_reglas_erosion
+	match accion:
+		"menu": salir_al_menu()
+		"retirada": _iniciar_retirada()
+		"terminar": _terminar()
+		_: _cerrar()
 
 
 ## Convierte una posición del mundo a coordenadas de pantalla (para el HUD).

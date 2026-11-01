@@ -17,11 +17,22 @@ static func dano(casta: String, material: int) -> float:
 	return valor
 
 static func peso_maximo(casta: String) -> int:
+	if casta == "voladora" and Juego.evolucion_activa("puente"):
+		return maxi(1, int(Juego.stat("peso_voladora_alzada")))
 	return 1 if casta in ["voladora", "mini", "veloz"] else (4 if casta == "cargadora" else 2)
+
+static func puede_cargar(casta: String, resto: FragmentoCasa) -> bool:
+	if resto.peso > peso_maximo(casta):
+		return false
+	# Resistentes y paredes pesan dos, pero Puente no autoriza muros ni
+	# montones mixtos con muro. La búsqueda y la recogida usan la misma regla.
+	if casta == "voladora":
+		return resto.material_id <= (2 if Juego.evolucion_activa("puente") else 1)
+	return true
 
 static func afinidad(casta: String, c: Comida) -> float:
 	if c is FragmentoCasa:
-		if c.peso > peso_maximo(casta):
+		if not puede_cargar(casta, c):
 			return 0
 		return 4.0 if casta == "cargadora" else 1.4
 	if c is PiezaCasa:
