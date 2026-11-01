@@ -46,6 +46,9 @@ var _mascara_pendiente := false
 var _reloj_mascara := 0.0
 var _grilla_bocado := Vector2i.ONE
 var _cantidad_celdas_bocado := 1
+var trabajo_erosion_admitido := 0.0
+var erosion_continua := false
+var _celda_erosion := -1
 
 
 func configurar(tipo: Dictionary, semilla: int) -> void:
@@ -173,9 +176,9 @@ func morder_local(dano: float, pos: Vector2, lado_max := 6.0) -> float:
 	return _extraer_alimento(dano, pos, lado_max)
 
 
-func _extraer_alimento(dano: float, pos: Vector2, lado_max: float) -> float:
+func _extraer_alimento(dano: float, pos: Vector2, lado_max: float, por_pasos := false) -> float:
 	_porcion_reciente = Rect2()
-	if muerta or not is_finite(dano) or dano <= 0.0 or not pos.is_finite():
+	if muerta or not is_finite(dano) or dano < 0.0 or (dano == 0 and not por_pasos) or not pos.is_finite():
 		return 0.0
 	var presupuesto := minf(dano, vida)
 	if mordiscos == null:
@@ -184,40 +187,52 @@ func _extraer_alimento(dano: float, pos: Vector2, lado_max: float) -> float:
 	var pendiente := presupuesto
 	var real := 0.0
 	for paso in _cantidad_celdas_bocado:
-		if pendiente <= 0:
+		if pendiente <= 0 and not por_pasos:
 			break
 		var elegida := -1
 		var menor := INF
-		for i in _cantidad_celdas_bocado:
-			var punto := mordiscos.punto_frontera(i, local) if lado_max != 0 else mordiscos.punto_celda(i, local)
-			if punto == Vector2.INF:
-				continue
-			var distancia := local.distance_squared_to(punto)
-			if distancia < menor:
-				menor = distancia
-				elegida = i
+		if por_pasos and mordiscos.erosion_pagable(_celda_erosion):
+			elegida = _celda_erosion
+		else:
+			for i in _cantidad_celdas_bocado:
+				var punto := mordiscos.punto_frontera(i, local) if lado_max != 0 else mordiscos.punto_celda(i, local)
+				if punto == Vector2.INF:
+					continue
+				var distancia := local.distance_squared_to(punto)
+				if distancia < menor:
+					menor = distancia
+					elegida = i
 		if elegida < 0:
 			break
 		var retirado := minf(pendiente, mordiscos.vida_celda(elegida))
 		var trabajo := retirado
-		if lado_max > 0:
+		if por_pasos:
+			retirado = mordiscos.recortar_frente_paso(elegida, trabajo, local)
+			trabajo = mordiscos.ultimo_trabajo_erosion
+			trabajo_erosion_admitido += trabajo
+			erosion_continua = retirado > 0 and mordiscos.erosion_pagable(elegida)
+			_celda_erosion = elegida if erosion_continua else -1
+		elif lado_max > 0:
 			var escala_mundo := maxf(0.0001, maxf(absf(global_scale.x), absf(global_scale.y)))
 			retirado = mordiscos.recortar_local(elegida, pendiente, local, lado_max / escala_mundo)
 		elif lado_max < 0:
 			retirado = mordiscos.recortar_frente(elegida, trabajo, local)
+			trabajo = mordiscos.ultimo_trabajo_frente
 		else:
 			retirado = mordiscos.recortar(elegida, trabajo, local)
 		if mordiscos.ultima_porcion.get_area() > _porcion_reciente.get_area():
 			_porcion_reciente = mordiscos.ultima_porcion
 		pendiente = maxf(0, pendiente - trabajo)
 		real += retirado
-		if lado_max > 0:
+		if lado_max > 0 or por_pasos:
 			break
 	if real <= 0:
 		return 0.0
 	vida = maxf(0, vida - real)
 	if get_parent() is Comidas:
 		get_parent().get_parent().registrar_extraccion(real)
+		if is_instance_valid(get_parent().get_parent().cola_erosion):
+			get_parent().get_parent().cola_erosion.despertar(self)
 	_sacudida = minf(_sacudida + 0.18, 0.6)
 	_destello = 0.045
 	_mascara_pendiente = true
@@ -279,6 +294,8 @@ func aplicar_veneno(dano_por_segundo: float, duracion: float, run: Run, origen :
 	_veneno_dps = maxf(_veneno_dps, dano_por_segundo)
 	veneno_restante = maxf(veneno_restante, duracion)
 	_run_veneno = run
+	if is_instance_valid(run.cola_erosion):
+		run.cola_erosion.registrar_fuente(self)
 	set_process(true)
 	_mostrar_veneno()
 
@@ -294,6 +311,42 @@ func morder_veneno(dano: float, origen: Vector2) -> float:
 	if not mordiscos.aire_exterior(local):
 		local = mordiscos.origen_exterior(0, local)
 	return _extraer_alimento(dano, to_global(local), -1.0)
+
+
+func factor_erosion() -> float:
+	return 1.0
+
+
+## Una transacción física pequeña; el crédito no retirado no es una recompensa.
+func erosion_paso(dano: float, origen: Vector2) -> float:
+	trabajo_erosion_admitido = 0
+	erosion_continua = false
+	if muerta:
+		return 0
+	if mordiscos == null:
+		_preparar_mordiscos()
+	var local := to_local(origen)
+	if not mordiscos.aire_exterior(local):
+		local = mordiscos.origen_exterior(0, local)
+	return _extraer_alimento(dano, to_global(local), -1.0, true)
+
+
+func terminar_tramo_erosion() -> void:
+	_celda_erosion = -1
+	erosion_continua = false
+
+
+func _emitir_trabajo_veneno() -> void:
+	if _veneno_acumulado > 0 and is_instance_valid(_run_veneno) and is_instance_valid(_run_veneno.cola_erosion):
+		_run_veneno.cola_erosion.encolar(self, _veneno_dps * _veneno_acumulado, _origen_veneno)
+	_veneno_acumulado = 0
+
+
+## Cierra sólo tiempo ya transcurrido, no los segundos futuros del efecto.
+func cerrar_emision_veneno() -> void:
+	_emitir_trabajo_veneno()
+	veneno_restante = 0
+	_veneno_dps = 0
 
 
 func _process(delta: float) -> void:
@@ -328,12 +381,11 @@ func _procesar_veneno(delta: float) -> void:
 			veneno_restante = maxf(0, veneno_restante - tiempo)
 			_veneno_acumulado += tiempo
 			if _veneno_acumulado >= 0.5 or veneno_restante <= 0:
-				var migas := morder_veneno(_veneno_dps * _veneno_acumulado, _origen_veneno)
-				_veneno_acumulado = 0
-				_run_veneno.registrar_ingreso(migas, 2 if self is PiezaCasa and self.nivel_requerido >= 3 else (1 if self is PiezaCasa else 0))
-				_run_veneno.efectos.numero(global_position + Vector2(0, -radio), migas, Color("b7d68b"), 0.7)
+				_emitir_trabajo_veneno()
 				if veneno_restante <= 0:
 					_veneno_dps = 0
+					if is_instance_valid(_run_veneno.cola_erosion):
+						_run_veneno.cola_erosion.olvidar_fuente(self)
 				if muerta:
 					return
 

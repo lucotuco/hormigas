@@ -34,7 +34,7 @@ func _contar_cambio() -> void:
 
 func probar_catalogo_y_registro() -> void:
 	Juego.reiniciar_estado()
-	verificar(Juego.VERSION_PARTIDA == 8 and Juego.datos_partida().version == 8, "el guardado identifica el esquema8 de proyectos")
+	verificar(Juego.VERSION_PARTIDA == 9 and Juego.datos_partida().version == 9, "el guardado identifica el esquema9 de componentes")
 	verificar(ProyectosCampana.todos().size() == 20 and Juego.proyectos_completos("casa"), "hay veinte proyectos y la casa conserva su arranque sin proyectos")
 	verificar(not Juego.proyectos_completos("inventado") and not Juego.proyecto_completo("inventado"), "IDs desconocidos no simulan proyectos o destinos terminados")
 	verificar(Juego.resumen_proyectos("inventado").is_empty() and Juego.entradas_proyectos("inventado") == 0, "consultar un destino desconocido no concede entradas")

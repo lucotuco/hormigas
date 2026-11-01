@@ -164,6 +164,7 @@ func _ready() -> void:
 		elegir_destino()
 		var cobradas := Juego.coronas_cobradas.size()
 		var proyectos_previos := Juego.objetivos_proyecto_devorados.size()
+		var componentes_previos := Juego.componentes_proyecto_devorados.size()
 		var metas_previas := Juego.metas_devoradas.size()
 		var donde := Juego.lugar_actual
 		var ganado: float = await jugar_run()
@@ -176,7 +177,7 @@ func _ready() -> void:
 				anotar("== calibrado %s tras %d runs: vida_meta %s (máximo daño %s)" % [donde, runs_en_destino, str(calibrado[donde]), Juego.formatear(max_dano_destino)])
 				max_dano_destino = 0.0
 				runs_en_destino = 0
-		if Juego.coronas_cobradas.size() > cobradas or Juego.objetivos_proyecto_devorados.size() > proyectos_previos or Juego.metas_devoradas.size() > metas_previas or ganado > mejor_run_colonia * MEJORA_MINIMA:
+		if Juego.coronas_cobradas.size() > cobradas or Juego.objetivos_proyecto_devorados.size() > proyectos_previos or Juego.componentes_proyecto_devorados.size() > componentes_previos or Juego.metas_devoradas.size() > metas_previas or ganado > mejor_run_colonia * MEJORA_MINIMA:
 			trabado = 0
 		else:
 			trabado += 1

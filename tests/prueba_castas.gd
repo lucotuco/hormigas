@@ -104,6 +104,10 @@ func _ready() -> void:
 	var credito := credito_pendiente(comida.mordiscos)
 	for i in 6:
 		comida._process(0.5)
+		for paso in 10000:
+			if not run.cola_erosion.tiene_pendientes():
+				break
+			run.cola_erosion.procesar(100000000, 32)
 	var retirado := vida - comida.vida
 	var pendiente := credito_pendiente(comida.mordiscos)
 	verificar(retirado > 0 and is_equal_approx(retirado + pendiente - credito, dps * 3) and credito_subpixel(comida.mordiscos), "el veneno mantiene su DPS sin apilarse y conserva el trabajo menor a un píxel")
@@ -149,11 +153,13 @@ func credito_pendiente(m: MordiscosMaterial) -> float:
 	var pendiente := 0.0
 	for credito in m._credito:
 		pendiente += credito
+	for credito in m._credito_erosion:
+		pendiente += credito
 	return pendiente
 
 func credito_subpixel(m: MordiscosMaterial) -> bool:
 	for i in m._credito.size():
-		if m._credito[i] < 0 or m._credito[i] >= m._hp_pixel[i] + 0.000001:
+		if m._credito[i] < 0 or m._credito[i] >= m._hp_pixel[i] + 0.000001 or m._credito_erosion[i] < 0 or m._credito_erosion[i] >= m._hp_pixel[i] + 0.000001:
 			return false
 	return true
 

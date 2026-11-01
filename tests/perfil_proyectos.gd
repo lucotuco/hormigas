@@ -97,5 +97,6 @@ func medir(configuracion: Dictionary) -> void:
 	for ms in tiempos:
 		suma += ms
 	print("PROYECTOS %s %s: %.2f ms media | %.2f p95 | %.2f peor | dibujos %.0f | rutas/cuadro %d | restos %d/%d" % [configuracion.destino, "+".join(configuracion.equipo), suma / tiempos.size(), tiempos[341], tiempos.back(), dibujos / tiempos.size(), max_pedidos, run.comidas.fragmentos.size(), Comidas.MAX_FRAGMENTOS])
+	print("EROSIÓN %s: %d operaciones/cuadro máx | operación %.2f ms máx | %d recursos pendientes | trabajo emitido %.2f / admitido %.2f | ingresos reales %.2f" % [configuracion.destino, run.cola_erosion.max_operaciones_cuadro, run.cola_erosion.max_operacion_usec / 1000.0, run.cola_erosion.cantidad_pendientes(), run.cola_erosion.trabajo_emitido, run.cola_erosion.trabajo_admitido, run.cola_erosion.ingresos_reales])
 	run.queue_free()
 	await get_tree().process_frame

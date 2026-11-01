@@ -250,6 +250,8 @@ func _process(delta: float) -> void:
 	_lbl_tiempo.text = "%d s" % int(ceil(restante))
 	if run.retirando:
 		_lbl_tiempo.text = tr("Regreso · %d s") % ceili(run.retiro_restante)
+	if run.cerrando_erosion:
+		_lbl_tiempo.text = tr("Terminando corrosión…")
 	_barra_tiempo.value = restante / maxf(run.duracion_total, 0.01) * 100.0
 	if restante <= 5.0 and run.activa:
 		var parpadeo := 0.5 + 0.5 * sin(_reloj * 14.0)
@@ -813,6 +815,9 @@ func _actualizar_meta() -> void:
 				objetivo = maxf(1.0, _objetivo_paso.vida_max)
 				actual = objetivo - _objetivo_paso.vida
 				texto += "\n" + tr("%s · %d%% devorado") % [_objetivo_paso.nombre, int(actual / objetivo * 100.0)]
+				var componentes := _objetivo_paso.resumen_componentes()
+				if not componentes.is_empty():
+					texto += "\n" + tr("Partes conservadas: %d/%d · %s") % [componentes.completados, componentes.total, tr(componentes.nombre)]
 		"objetivo":
 			var gran := run.objetivo_actual() if run.activa else run.objetivo_mapa
 			_objetivo_paso = gran
@@ -910,6 +915,9 @@ func mostrar_inspeccion(c: Comida) -> void:
 	_lbl_objetivo.text = "" # las reglas están en Viajes; no tapar el mapa vacío
 	if c is PiezaCasa:
 		_lbl_objetivo.text = tr("%s · %s\n%s / %s de resistencia · %d trabajadoras\n%s") % [c.nombre, c.nombre_etapa(), Juego.formatear(c.vida), Juego.formatear(c.vida_max), c.trabajadoras, tr("Mantené clic para llamar hormigas") if c.disponible() else tr("Requiere: %s") % tr(MaterialesCasa.NIVELES[c.nivel_requerido])]
+		var componentes: Dictionary = c.resumen_componentes()
+		if not componentes.is_empty():
+			_lbl_objetivo.text += "\n" + tr("Partes conservadas: %d/%d · %s") % [componentes.completados, componentes.total, tr(componentes.nombre)]
 	elif c is FragmentoCasa:
 		_lbl_objetivo.text = tr("%s · %s migas\nPeso %d · las cargadoras priorizan estos restos") % [c.nombre, Juego.formatear(c.recompensa), c.peso]
 
@@ -938,7 +946,7 @@ func pausado() -> bool:
 
 
 func pausar() -> void:
-	if not is_inside_tree() or not is_node_ready() or not run.activa or pausado():
+	if not is_inside_tree() or not is_node_ready() or (not run.activa and not run.cerrando_erosion) or pausado():
 		return
 	run.feromonas.soltar()
 	run.camara.arrastrando = false

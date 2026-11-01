@@ -926,3 +926,70 @@ muestra comprueba que se llega a los primeros proyectos con ingresos y daño
 reales, pero **no mide la campaña completa ni el primer rebirth**. No es una
 comparación A/B del arranque: no interpretar la diferencia con muestras
 anteriores como tiempo añadido por los proyectos, que empiezan después de casa.
+
+## Componentes y consecuencias — 1/11, mapa 7
+
+La siguiente pasada no aumenta precios ni baja velocidad/IA. Adelanta Sondeo
+a la despensa del restaurante, Trabajo de cantera a la galería del museo y
+Puente aéreo a la parada porteña: quedan destinos para aprovecharlos, no sólo
+una recompensa al final del viaje donde se aprende. Se mantienen los requisitos
+de unidades/Mandíbulas y el máximo de dos evoluciones equipadas.
+
+Doce muebles existentes se subdividen en 35 componentes escritos en
+`datos/componentes_proyecto.csv`: dos hojas, compartimentos, estantes,
+expositores y brocales/cuencos. No son nuevos objetos ni física por astilla;
+comparten atlas y la grilla original de hasta dieciséis celdas. Un componente
+se termina sólo cuando no queda material real en ninguna de sus celdas.
+Conserva HP máximo y valor originales: la próxima expedición no vuelve a
+repartir la resistencia o recompensa del material ausente entre las partes vivas.
+El shader de cuerpo/sombra y la navegación inicial omiten las mismas celdas,
+sin preparar una máscara R8 hasta la primera extracción nueva.
+
+Persisten únicamente componentes completos; el daño de una sección pendiente
+se regenera. Eso se dice en el HUD como partes conservadas y nombre de la parte
+siguiente, no como un porcentaje guardado. Terminar una parte no da otra corona,
+alijo ni bonus de destrucción. Los escondites tienen marca única por mueble;
+una puerta y Sondeo comparten el mismo hallazgo. La primera alacena y el cartón
+de Casa ofrecen partes opcionales, sin resistencia de misión ni requisito para
+la conquista. La silla inicial no cambia.
+
+El acceso de logística es propio y adelantado, anclado al último objeto declarado
+del proyecto; no consume los seis accesos normales comprados. Nunca se mueven
+entradas existentes durante una expedición. El máximo es centro + seis normales
++ un acceso de proyecto; selección acotada sólo al iniciar un regreso, sin otro A*.
+
+El hormiguero conserva recuerdos visuales del primer retorno con ingresos,
+silla, tesoro, derrumbe, conquista de Casa y proyectos. No pagan bonus adicionales:
+muestran el historial real y conviven con las cámaras compradas, que sí se
+reinician al fundar. Se redibuja al cambiar ese historial, no con cada cambio de saldo.
+
+Guardado v9: componentes y escondites validados por catálogo. Las victorias
+históricas implican sus componentes completos sin premios retroactivos. Un
+checkpoint tras el último componente puede recuperar el objetivo completo al
+cargar, sin reproducir alijos. Fundar conserva estas marcas y vuelve a Casa;
+la repoblación de destinos ya conquistados sigue siendo de recursos nativos.
+El contexto del récord incluye las partes y escondites iniciales del destino.
+
+La corrosión ambiental procesa porciones pequeñas en una cola compartida,
+no un vaciado entero dentro del tick de un mueble. Se admite el trabajo una
+sola vez y se acredita sólo material extraído; el crédito pendiente no se lleva
+en el buche. Al cerrar se drena el trabajo ya ganado, sin seguir emitiendo veneno
+futuro ni hacer trabajar hormigas. La espera cuenta como tiempo de expedición y
+permite cámara/pausa. El presupuesto de tiempo es suave: la preparación inicial
+de una máscara todavía es indivisible; medirla por separado y no prometer 1 ms
+como techo absoluto ni 60 FPS constantes en equipos no probados.
+
+Los tiempos del piloto anterior no validan esta variante. Hace falta un recorrido
+completo y observación humana antes de asignarle una nueva duración comercial.
+
+Chequeo corto de esta pasada: seis expediciones nuevas, semilla 417, paso 1/60
+y tiempo ×1, alcanzaron 4,57 minutos netos; la segunda obrera se compró tras
+dos expediciones con ingresos reales. Aparte se retomó una **copia** del
+checkpoint anterior (55 expediciones / 80,70 minutos) durante dos expediciones
+completas: la despensa terminó a 84,62 y el checkpoint57 cerró a 87,23, con
+Sondeo desbloqueado y ambas hojas de la alacena conservadas. Se detuvo el
+piloto propio al comenzar la siguiente expedición; su tiempo parcial no integra
+la muestra. Registros `componentes_piloto6_20261101.txt` y
+`componentes_piloto_restaurante_20261101.txt` dentro de `.godot/qa/`.
+No es una campaña nueva completa ni una comparación A/B: el segundo tramo
+hereda el estado del mapa anterior y no mide cuánto tardaría una persona.

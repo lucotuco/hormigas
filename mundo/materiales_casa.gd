@@ -34,6 +34,12 @@ static func piezas() -> Array[Dictionary]:
 		if not objetivo_id.is_empty():
 			for campo in ["proyecto_id", "objetivo_proyecto", "proyecto_vida"]:
 				pieza[campo] = m[campo]
+		if not historico:
+			var componentes_id := ComponentesProyecto.id_para_pieza(pieza, destino)
+			if not componentes_id.is_empty():
+				if ComponentesProyecto.objetivo_terminado(componentes_id, Juego.componentes_proyecto_devorados):
+					continue
+				pieza.componentes_id = componentes_id
 		resultado.append(pieza)
 	# Los muros se comen por tramos; no desaparece una habitación de un bocado.
 	var paredes := PlanoCasa.paredes()

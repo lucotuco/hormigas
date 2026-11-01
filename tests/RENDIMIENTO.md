@@ -1079,3 +1079,70 @@ idempotencia de coronas/alijos, contexto de récord y las tres evoluciones.
 `revision_proyectos.tscn`: 52 verificaciones en español e inglés, Full HD y
 1000×620; cuatro proyectos visibles, hover real respetado y objetivo de cámara
 coherente con el HUD. No se carga ni se escribe la partida personal.
+
+## Erosión por servicios y componentes conservados — 1/11, mapa 7
+
+La corrosión deja de ejecutar todo el daño de un tick dentro de una llamada.
+`ColaErosion` comparte hasta 32 servicios por cuadro con presupuesto suave de
+1 ms; cada servicio retira una sola porción de hasta 16 unidades de lado.
+Al cerrar, hasta 128 servicios/4 ms suaves liquidan sólo trabajo ya emitido.
+No siguen trabajando las hormigas, el veneno no gana segundos futuros y la
+espera se contabiliza en la expedición. Cámara y pausa permanecen disponibles.
+La preparación de una máscara sigue indivisible: el presupuesto NO limita el
+peor caso de esa primera operación. Medir el máximo, no sólo la media.
+
+La admisión de crédito y el valor extraído son distintos. No se paga trabajo
+en espera ni se mezcla con crédito de buche; se conserva el 65/35 ambiental de
+muebles y la masa real. Se corrigió también el descuento de crédito de la ruta
+síncrona: antes podía descartar el sobrante al saturar una celda con crédito
+subpíxel previo. Un tramo sin frente accesible se aparca individualmente, sin
+bloquear otros orígenes del recurso ni insistir por cuadro hasta que cambie
+la geometría o llegue un tick. Sólo trabajo accesible participa del drenaje;
+aparcar no da dinero ni obliga a esperar indefinidamente.
+
+Diagnóstico real: 28 objetos × tres orígenes, máscara y HP iguales después
+de cada aplicación; cero diferencias al final. Antes de corregir admisión y
+bloqueo por origen había 14 comparaciones divergentes, incluyendo la torre.
+Registro `.godot/qa/equivalencia_cola_real_fix2.log`. La suite permanente
+`prueba_erosion_presupuestada` pasó 47 verificaciones (masa, tres siluetas reales,
+crédito previo, otros orígenes, cierre, pausa, limpieza y referencias liberadas).
+
+Los componentes conservados usan el mismo atlas y como máximo dieciséis bits
+por pieza para omitir secciones iniciales; no crean R8 al cargar. Se hornea la
+navegación una vez con los mismos huecos. Los recuerdos del hormiguero comparten
+una capa retenida que cambia sólo con el historial. El acceso adelantado suma
+un punto a la selección al iniciar regreso (máximo ocho contando el centro),
+sin otro A* ni búsquedas de proyectos por hormiga/cuadro.
+
+### Cierre medido en GPU real
+
+Godot 4.7.2, GL Compatibility, RTX 3060, 1920×1080, pruebas/bots en serie.
+Escena de estrés de 500 hormigas, con daño artificial explícito (no balance ni
+FPS habituales). Registro `.godot/qa/componentes_cierre_perfil_proyectos.log`.
+
+| Destino / equipo | Media | p95 | Peor | Peor de la pasada anterior |
+|---|---:|---:|---:|---:|
+| Museo / Sondeo + Barrido | 10,62 ms | 14,84 ms | 21,73 ms | 358,73 ms |
+| Coliseo / Cantera + Contagio | 11,16 ms | 19,81 ms | 60,66 ms | 192,48 ms |
+| Eiffel / Cantera + Puente | 10,87 ms | 15,59 ms | 91,44 ms | 112,02 ms |
+
+El costo continuo no desaparece: se reparte entre cuadros. El p95 subió
+respecto de la pasada anterior y en Coliseo todavía supera 16,67 ms; **no son
+60 FPS constantes**. Los picos mayores ahora coinciden con preparación inicial
+de máscaras: arco grande 49,64 ms y torre 80,76 ms sólo de configuración.
+Queda pendiente fraccionar esa preparación y medir GPU integrada.
+
+La cola ejecutó como máximo 12/10/9 operaciones por cuadro en estos tres casos,
+con operación individual de 0,84/0,75/0,89 ms. Esos máximos NO incluyen máscaras
+preparadas por una mordida normal. Al cortar la muestra había 2/1/3 recursos
+activos todavía en cola: el trabajo no admitido no se pagó, y esta escena
+destruye sus fixtures al terminar. Por eso no se interpreta el perfil como
+igual cantidad de daño ya liquidado en el mismo frame; la equivalencia de
+material/valor y el drenaje completo se verifican aparte en la suite lógica.
+
+Regresión completa final: 48 suites sin fallas ni errores de script.
+Revisión gráfica con renderer real: componentes 46 verificaciones y proyectos
+52, además de hormiguero y mordiscos (incluye 108 primeros bocados del catálogo
+desde cuatro lados). Capturas de componentes intactos/restaurados, máscara sin
+R8 inicial y lectura inglesa también en ventana de 1000×620. Sin tocar el
+guardado personal.

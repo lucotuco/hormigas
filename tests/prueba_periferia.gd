@@ -30,7 +30,7 @@ func _ready() -> void:
 	for id in Mundos.ORDEN:
 		for m in Mundos.plano(id).muebles_interiores:
 			claves_anteriores[Graficos.clave_mueble(m)] = true
-	verificar(Mundos.VERSION_CONTENIDO == 6, "los proyectos físicos separan los récords anteriores por versión")
+	verificar(Mundos.VERSION_CONTENIDO == 7, "los componentes físicos separan los récords anteriores por versión")
 	for id in Mundos.ORDEN:
 		Juego.reiniciar_estado()
 		Juego.lugar_actual = id

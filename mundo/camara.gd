@@ -140,13 +140,13 @@ func _input(event: InputEvent) -> void:
 	# La liberación se recibe aunque el arrastre termine encima de un panel.
 	if event is InputEventMouseButton and not event.pressed and event.button_index == _boton_arrastre:
 		arrastrando = false
-	if event is InputEventMouseMotion and arrastrando and run.activa:
+	if event is InputEventMouseMotion and arrastrando and (run.activa or run.cerrando_erosion):
 		desplazar(event.relative)
 		get_viewport().set_input_as_handled()
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not run.activa:
+	if not run.activa and not run.cerrando_erosion:
 		return
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:
@@ -204,7 +204,7 @@ func sacudir(intensidad: float) -> void:
 
 
 func _process(delta: float) -> void:
-	if run.activa:
+	if run.activa or run.cerrando_erosion:
 		var direccion := Vector2(
 			float(Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT)) - float(Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT)),
 			float(Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN)) - float(Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP)))

@@ -198,7 +198,7 @@ func probar_destino(destino: String) -> void:
 		verificar(Juego.destino_desbloqueado(Mundos.ORDEN[siguiente]), destino + ": los proyectos y la meta abren el viaje siguiente")
 	verificar(Juego.completar_destino() == 0 and Juego.coronas == coronas_antes + int(Mundos.INFO[destino].coronas), destino + ": repetir la victoria no vuelve a cobrar coronas")
 	regreso.entradas.actualizar()
-	verificar(regreso.entradas.puntos.size() <= 7, destino + ": mantiene el nido y un máximo de seis accesos secundarios")
+	verificar(regreso.entradas.puntos.size() <= 8, destino + ": mantiene el nido, seis accesos normales y uno propio del proyecto")
 	var plano_hecho := MaterialesCasa.piezas()
 	var recuperadas := 0
 	for pieza: Dictionary in plano_hecho:

@@ -1,5 +1,22 @@
 # Tareas
 
+## Componentes y consecuencias — 1/11
+
+- [x] Adelantar Sondeo al restaurante, Cantera al museo y Puente aéreo a Buenos Aires, sin cambiar precios ni requisitos de unidades/Mandíbulas.
+- [x] Definir 35 componentes reconocibles en doce muebles existentes, incluidos cartón y alacena opcionales de Casa; sin tocar la primera silla.
+- [x] Restaurar sólo componentes completos en cuerpo, sombra, contacto y navegación; conservar denominadores de HP/valor originales.
+- [x] Guardado v9/mapa7, conservación al fundar y contexto de récord por componentes/escondites; sin porcentaje de daño guardado.
+- [x] Recuerdos del primer retorno, hitos y proyectos dentro del hormiguero; permanentes pero sin premios numéricos nuevos ni refresco por saldo.
+- [x] Acceso adelantado de proyecto independiente de los seis normales comprados, sin mover entradas activas ni sumar rutas fuera de la cola.
+- [x] Repartir corrosión en servicios pequeños compartidos; crédito separado de carga y cierre no bloqueante que drena sólo trabajo ya emitido.
+- [x] Cerrar regresión lógica: 48 suites sin fallas. Revisión GPU de componentes/restauración (46), proyectos (52), hormiguero (7) y mordiscos (13, incluye 108 bocados/lados).
+- [x] Medir 500 hormigas con gráficos y registrar trabajo pendiente y pico de primera preparación; no tratar el presupuesto suave como techo absoluto.
+- [x] Comparar erosión de 28 objetos × tres orígenes y corregir admisión de crédito y bloqueo de otros orígenes por un tramo aparcado; equivalencia sin diferencias.
+- [x] Repetir seis expediciones iniciales con daño/ingresos reales y guardado aislado: una obrera, segunda comprada tras dos expediciones, sin regalar recursos.
+- [x] Retomar una copia del piloto anterior por dos expediciones completas: despensa terminada y Sondeo desbloqueado con hojas conservadas; no presentarlo como campaña nueva completa.
+- [ ] Fraccionar preparación inicial de máscaras grandes: quedan picos de 61/91 ms y p95 de 19,81 ms en Coliseo; validar GPU integrada.
+- [ ] Medir de nuevo campaña completa y hacer playtest humano; no extrapolar las horas de la campaña anterior.
+
 ## Campaña con proyectos propios — 1/11
 
 - [x] Agregar 20 proyectos sobre 42 objetos físicos de los cinco destinos posteriores a casa, con zonas y comidas regionales reconocibles.

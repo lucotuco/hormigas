@@ -25,7 +25,7 @@ const HITOS := {
 var cantidad_compra := 1 # 0 = máximo que alcanza
 
 const RUTA_PARTIDA := "user://partida.json"
-const VERSION_PARTIDA := 8
+const VERSION_PARTIDA := 9
 const MAX_ARCHIVO_EXPEDICIONES := 128
 const MAX_RECORDS_LIMPIEZA := 1024
 const RUTA_STATS := "res://datos/stats_base.csv"
@@ -81,6 +81,9 @@ var coronas_cobradas: Dictionary = {}    # destinos que ya pagaron coronas en es
 ## El historial de proyectos sobrevive a fundar; la meta se repite por colonia.
 var objetivos_proyecto_devorados: Dictionary = {}
 var metas_devoradas: Dictionary = {}
+## Sólo componentes físicos enteros. Nunca porcentajes de HP ni imágenes.
+var componentes_proyecto_devorados: Dictionary = {}
+var tesoros_proyecto_abiertos: Dictionary = {}
 var _guardado_proyectos_pendiente := false
 var hitos: Dictionary = {}
 ## Jalea real ganada en toda la historia: da el bonus pasivo (no baja al gastar).
@@ -731,10 +734,45 @@ func registrar_objetivo_proyecto(id: String) -> bool:
 	if objetivo_proyecto_completo(id) or ProyectosCampana.objetivo(id).is_empty():
 		return false
 	objetivos_proyecto_devorados[id] = true
+	_completar_componentes_objetivo(id)
 	actualizar_evoluciones()
 	_programar_guardado_proyectos()
 	progreso_cambio.emit()
 	return true
+
+
+func componente_proyecto_completo(id: String) -> bool:
+	return componentes_proyecto_devorados.get(id, false) == true
+
+
+func registrar_componente_proyecto(id: String) -> bool:
+	if componente_proyecto_completo(id) or ComponentesProyecto.componente(id).is_empty():
+		return false
+	componentes_proyecto_devorados[id] = true
+	_programar_guardado_proyectos()
+	progreso_cambio.emit()
+	return true
+
+
+func tesoro_proyecto_abierto(objetivo: String) -> bool:
+	return tesoros_proyecto_abiertos.get(objetivo, false) == true
+
+
+func registrar_tesoro_proyecto(objetivo: String) -> bool:
+	if tesoro_proyecto_abierto(objetivo) or not ComponentesProyecto.objetivo_tiene_tesoro(objetivo):
+		return false
+	tesoros_proyecto_abiertos[objetivo] = true
+	_programar_guardado_proyectos()
+	return true
+
+
+func _completar_componentes_objetivo(objetivo: String, cerrar_tesoro_antiguo := false) -> void:
+	for id in ComponentesProyecto.ids_objetivo(objetivo):
+		componentes_proyecto_devorados[id] = true
+	# Sólo la migración antigua necesita normalizar un escondite consumido.
+	# En juego registrar una parte/objeto no simula que apareció su comida.
+	if cerrar_tesoro_antiguo and ComponentesProyecto.objetivo_tiene_tesoro(objetivo):
+		tesoros_proyecto_abiertos[objetivo] = true
 
 
 func meta_destino_devorada(destino: String) -> bool:
@@ -843,6 +881,7 @@ func completar_destino() -> int:
 	# y proyectos ya están terminados; no se cobran aquí sus recursos físicos.
 	for objetivo in ProyectosCampana.objetivos_destino(lugar_actual):
 		objetivos_proyecto_devorados[objetivo.id] = true
+		_completar_componentes_objetivo(objetivo.id)
 	metas_devoradas[lugar_actual] = true
 	lugares_completados[lugar_actual] = true
 	_cache_stats.clear()
@@ -1102,6 +1141,7 @@ func datos_partida() -> Dictionary:
 		"radio_visto": radio_visto,
 		"lugar": lugar_actual, "destinos": lugares_completados, "coronas_cobradas": coronas_cobradas, "hitos": hitos,
 		"objetivos_proyecto_devorados": objetivos_proyecto_devorados.duplicate(), "metas_devoradas": metas_devoradas.duplicate(),
+		"componentes_proyecto_devorados": componentes_proyecto_devorados.duplicate(), "tesoros_proyecto_abiertos": tesoros_proyecto_abiertos.duplicate(),
 		"legado": legado, "coronas": coronas, "fundaciones": fundaciones, "prioridad": prioridad,
 		"descubiertos": descubiertos,
 		"jalea": jalea, "niveles_jalea": niveles_jalea, "migas_colonia": migas_colonia,
@@ -1155,6 +1195,7 @@ func restaurar_partida(datos: Dictionary) -> void:
 			if Mundos.INFO.has(id) and cobradas_guardadas[id] == true:
 				coronas_cobradas[id] = true
 	_restaurar_proyectos(datos)
+	_restaurar_componentes(datos)
 	var hitos_guardados = datos.get("hitos", {})
 	if hitos_guardados is Dictionary:
 		for id in hitos_guardados:
@@ -1264,6 +1305,41 @@ func _restaurar_proyectos(datos: Dictionary) -> void:
 		metas_devoradas[destino] = true
 
 
+func _restaurar_componentes(datos: Dictionary) -> void:
+	componentes_proyecto_devorados = {}
+	tesoros_proyecto_abiertos = {}
+	var componentes = datos.get("componentes_proyecto_devorados", {})
+	if componentes is Dictionary:
+		for id in componentes:
+			if id is String and componentes[id] is bool and componentes[id] and not ComponentesProyecto.componente(id).is_empty():
+				componentes_proyecto_devorados[id] = true
+	var tesoros = datos.get("tesoros_proyecto_abiertos", {})
+	if tesoros is Dictionary:
+		for id in tesoros:
+			if id is String and tesoros[id] is bool and tesoros[id] and ComponentesProyecto.objetivo_tiene_tesoro(id):
+				tesoros_proyecto_abiertos[id] = true
+	# Una victoria anterior conserva todos sus componentes. No aparecen
+	# tesoros, cargas ni premios al abrir una partida vieja.
+	for objetivo in objetivos_proyecto_devorados:
+		_completar_componentes_objetivo(objetivo, int(datos.get("version", 0)) < 9)
+	# Recuperar el checkpoint entre el último componente y el callback final.
+	# No exige volver a crear un objeto vacío ni reproduce su premio.
+	var vistos: Dictionary = {}
+	for id in componentes_proyecto_devorados.keys():
+		var objetivo: String = ComponentesProyecto.componente(id).objetivo
+		if vistos.has(objetivo) or ProyectosCampana.objetivo(objetivo).is_empty():
+			continue
+		vistos[objetivo] = true
+		var completo := true
+		for componente_id in ComponentesProyecto.ids_objetivo(objetivo):
+			if not componente_proyecto_completo(componente_id):
+				completo = false
+				break
+		if completo:
+			objetivos_proyecto_devorados[objetivo] = true
+			_completar_componentes_objetivo(objetivo)
+
+
 func reiniciar_estado() -> void:
 	_guardado_proyectos_pendiente = false
 	_run_cobrada = false
@@ -1282,6 +1358,8 @@ func reiniciar_estado() -> void:
 	coronas_cobradas.clear()
 	objetivos_proyecto_devorados.clear()
 	metas_devoradas.clear()
+	componentes_proyecto_devorados.clear()
+	tesoros_proyecto_abiertos.clear()
 	hitos.clear()
 	legado = 0
 	jalea = 0

@@ -28,6 +28,10 @@ var _vivos := PackedInt32Array()
 var _vidas_iniciales := PackedFloat64Array()
 var _hp_pixel := PackedFloat64Array()
 var _credito := PackedFloat64Array()
+## El trabajo ambiental en espera nunca llena el buche de otra hormiga.
+var _credito_erosion := PackedFloat64Array()
+var ultimo_trabajo_erosion := 0.0
+var ultimo_trabajo_frente := 0.0
 var _cursores_bulk := PackedInt32Array()
 var _aire_bloques := PackedByteArray()
 var _aire_bits := PackedInt64Array()
@@ -114,6 +118,8 @@ func configurar(rect_mundo: Rect2, grilla: Vector2i, formas_por_celda: Array, vi
 	_hp_pixel.fill(0)
 	_credito.resize(_cantidad_celdas)
 	_credito.fill(0)
+	_credito_erosion.resize(_cantidad_celdas)
+	_credito_erosion.fill(0)
 	_cursores_bulk.resize(_cantidad_celdas)
 	_cursores_bulk.fill(0)
 	_filas_vivas.resize(_cantidad_celdas * _alto_celda)
@@ -155,8 +161,8 @@ func recortar_local(celda: int, dano: float, pos: Vector2, lado_max: float) -> f
 	return _extraer_frente(celda, pos, lado_max)
 
 
-func _extraer_frente(celda: int, pos: Vector2, lado_max: float) -> float:
-	var disponibles := _pixeles_pagables(celda)
+func _extraer_frente(celda: int, pos: Vector2, lado_max: float, erosion := false) -> float:
+	var disponibles := _pixeles_pagables(celda, erosion)
 	if disponibles <= 0:
 		return 0.0
 	var limite_x := mini(_ancho_celda, floori(lado_max / _paso.x + 0.000001))
@@ -176,7 +182,7 @@ func _extraer_frente(celda: int, pos: Vector2, lado_max: float) -> float:
 		_borrar_rectangulo(celda, limite_vivo, Vector2i(sx, sy))
 		ultima_porcion = _rect_pixels(limite_vivo)
 		var completo := area_limite * _hp_pixel[celda]
-		_credito[celda] = maxf(0, _credito[celda] - completo)
+		_descontar_credito(celda, completo, erosion)
 		return completo
 	var cx0 := (celda % _grilla.x) * _ancho_celda
 	var cy0 := (celda / _grilla.x as int) * _alto_celda
@@ -220,8 +226,32 @@ func _extraer_frente(celda: int, pos: Vector2, lado_max: float) -> float:
 	_borrar_rectangulo(celda, mejor, Vector2i(sx, sy))
 	ultima_porcion = _rect_pixels(mejor)
 	var retirado := mejor_area * _hp_pixel[celda]
-	_credito[celda] = maxf(0, _credito[celda] - retirado)
+	_descontar_credito(celda, retirado, erosion)
 	return retirado
+
+
+func _descontar_credito(celda: int, cantidad: float, erosion: bool) -> void:
+	if erosion:
+		_credito_erosion[celda] = maxf(0, _credito_erosion[celda] - cantidad)
+	else:
+		_credito[celda] = maxf(0, _credito[celda] - cantidad)
+
+
+## Una sola porción por servicio de la cola; reanudar con daño0 no reacredita.
+func recortar_frente_paso(celda: int, dano: float, pos: Vector2, lado_max := 16.0) -> float:
+	ultima_porcion = Rect2()
+	ultimo_trabajo_erosion = 0
+	if celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0 or dano < 0 or not is_finite(dano) or not pos.is_finite() or lado_max <= 0 or not is_finite(lado_max):
+		return 0
+	var credito := minf(vida_celda(celda), _credito_erosion[celda] + dano)
+	ultimo_trabajo_erosion = maxf(0, credito - _credito_erosion[celda])
+	_credito_erosion[celda] = credito
+	var origen := pos if aire_exterior(pos) else origen_exterior(celda, pos)
+	return _extraer_frente(celda, origen, lado_max, true)
+
+
+func erosion_pagable(celda: int) -> bool:
+	return celda >= 0 and celda < _cantidad_celdas and _vivos[celda] > 0 and _pixeles_pagables(celda, true) > 0
 
 
 func recortar(celda: int, dano: float, pos: Vector2) -> float:
@@ -250,9 +280,12 @@ func recortar_bulk(celda: int, dano: float, pos: Vector2) -> float:
 func recortar_frente(celda: int, dano: float, pos: Vector2, lado_max := 16.0) -> float:
 	## Corrosión: ni un presupuesto letal saltea la frontera exterior.
 	ultima_porcion = Rect2()
+	ultimo_trabajo_frente = 0
 	if not _entrada_valida(celda, dano, pos) or lado_max <= 0 or not is_finite(lado_max):
 		return 0.0
-	_credito[celda] = minf(vida_celda(celda), _credito[celda] + dano)
+	var credito := minf(vida_celda(celda), _credito[celda] + dano)
+	ultimo_trabajo_frente = maxf(0, credito - _credito[celda])
+	_credito[celda] = credito
 	return _recortar_frente_acreditado(celda, pos, lado_max)
 
 
@@ -281,6 +314,7 @@ func limpiar_celda(celda: int) -> void:
 	var origen := Vector2i((celda % _grilla.x) * _ancho_celda, (celda / _grilla.x as int) * _alto_celda)
 	_borrar_rectangulo(celda, Rect2i(origen, Vector2i(_ancho_celda, _alto_celda)))
 	_credito[celda] = 0
+	_credito_erosion[celda] = 0
 
 
 func vida_celda(celda: int) -> float:
@@ -631,9 +665,9 @@ func _entrada_valida(celda: int, dano: float, pos: Vector2) -> bool:
 	return celda >= 0 and celda < _cantidad_celdas and _vivos[celda] > 0 and dano > 0 and is_finite(dano) and pos.is_finite()
 
 
-func _pixeles_pagables(celda: int) -> int:
+func _pixeles_pagables(celda: int, erosion := false) -> int:
 	# La tolerancia es relativa al tamaño del píxel, nunca un HP absoluto.
-	var cociente := _credito[celda] / _hp_pixel[celda]
+	var cociente := (_credito_erosion[celda] if erosion else _credito[celda]) / _hp_pixel[celda]
 	return mini(_vivos[celda], floori(cociente + minf(0.000001, absf(cociente) * 0.0000000001)))
 
 

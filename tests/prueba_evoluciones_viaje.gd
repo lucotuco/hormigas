@@ -44,7 +44,9 @@ func equipar(ids: Array) -> void:
 
 func probar_desbloqueos() -> void:
 	preparar_requisitos()
+	var proyectos_tempranos := {"sondeo": "restaurante_despensa", "cantera": "museo_galeria", "puente": "obelisco_parada"}
 	for id in NUEVAS:
+		verificar(EvolucionesHormiga.DATOS[id].proyecto == proyectos_tempranos[id], "%s se aprende antes de Roma y París para tener recorrido útil" % id)
 		verificar(not Juego.evoluciones_desbloqueadas.has(id), "%s no se desbloquea sólo con mandíbulas y reclutas" % id)
 	for id in NUEVAS:
 		var proyecto := ProyectosCampana.por_id(EvolucionesHormiga.DATOS[id].proyecto)
@@ -60,7 +62,7 @@ func probar_desbloqueos() -> void:
 	Juego.restaurar_partida(datos)
 	verificar(Juego.evoluciones_desbloqueadas.size() == 3 and Juego.evolucion_activa("cantera") and Juego.evolucion_activa("puente"), "desbloqueos por viaje y equipo sobreviven al roundtripJSON")
 	Juego.coronas = 1
-	verificar(Juego.fundar_colonia() and Juego.evolucion_activa("puente") and Juego.proyecto_completo("eiffel_libros"), "fundar conserva proyectos y evoluciones aunque reinicie los reclutas")
+	verificar(Juego.fundar_colonia() and Juego.evolucion_activa("puente") and Juego.proyecto_completo("obelisco_parada"), "fundar conserva proyectos y evoluciones aunque reinicie los reclutas")
 	Juego.restaurar_partida({"version": 7, "evoluciones": {"corte": true, "contagio": true, "barrido": true, "camada": true}, "equipadas": ["corte", "camada"]})
 	verificar(Juego.evoluciones_desbloqueadas.size() == 4 and Juego.evolucion_activa("corte") and Juego.evolucion_activa("camada"), "una partida anterior conserva sus cuatro evoluciones sin requisitos nuevos")
 	verificar(not Juego.evoluciones_desbloqueadas.has("sondeo") and not Juego.evoluciones_desbloqueadas.has("cantera") and not Juego.evoluciones_desbloqueadas.has("puente"), "la migración no regala conductas de proyectos no conquistados")

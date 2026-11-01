@@ -7,6 +7,8 @@ uniform sampler2D mascara_bocados : filter_nearest, repeat_disable;
 uniform bool usar_mascara = false;
 // Compatibilidad de llamadas antiguas. El dibujo ya no depende de 64 frentes.
 uniform ivec2 grilla = ivec2(3, 4);
+// Componentes terminados: como máximo dieciséis bits, sin reservar otra R8.
+uniform int celdas_omitidas = 0;
 uniform vec4 frentes[64];
 uniform vec4 cortes[16];
 uniform int material_id = 1;
@@ -20,6 +22,12 @@ float material_en(vec2 punto) {
 	vec2 uv = (punto + tamano * 0.5) / max(tamano, vec2(0.0001));
 	if (any(lessThan(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))) {
 		return 0.0;
+	}
+	if (celdas_omitidas != 0) {
+		ivec2 celda = min(ivec2(floor(uv * vec2(grilla))), grilla - ivec2(1));
+		if ((celdas_omitidas & (1 << (celda.y * grilla.x + celda.x))) != 0) {
+			return 0.0;
+		}
 	}
 	return usar_mascara ? texture(mascara_bocados, uv).r : 1.0;
 }
@@ -60,11 +68,8 @@ void fragment() {
 	} else {
 	vec2 uv = (local + tamano * 0.5) / max(tamano, vec2(0.0001));
 	if (all(greaterThanEqual(uv, vec2(0.0))) && all(lessThan(uv, vec2(1.0)))) {
-		float material = 1.0;
-		if (usar_mascara) {
-			material = texture(mascara_bocados, uv).r;
-			color.a *= material;
-		}
+		float material = material_en(local);
+		color.a *= material;
 		if (corrosion > 0.0 && material > 0.0) {
 			vec2 hasta_borde = min(uv, vec2(1.0) - uv) * tamano;
 			float borde = min(hasta_borde.x, hasta_borde.y);

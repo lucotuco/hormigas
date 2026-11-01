@@ -25,7 +25,7 @@ func _ready() -> void:
 		await get_tree().process_frame
 		get_window().size = Vector2i(1920, 1080)
 		_preparar("eiffel")
-		for proyecto in ["museo_vitrinas", "eiffel_libros"]:
+		for proyecto in ["restaurante_despensa", "obelisco_parada"]:
 			for objetivo in ProyectosCampana.por_id(proyecto).objetivos:
 				Juego.registrar_objetivo_proyecto(objetivo.id)
 		var castas := preload("res://ui/tienda.tscn").instantiate()

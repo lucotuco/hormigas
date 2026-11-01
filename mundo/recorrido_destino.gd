@@ -1,7 +1,7 @@
 class_name RecorridoDestino
 extends Node2D
 ## Proyectos físicos: consultas al generar y eventos al devorar, no IA extra.
-## Sólo los objetos terminados persisten. Una barra de HP nunca reconstruye
+## Persisten objetos o componentes enteros. Una barra de HP nunca reconstruye
 ## material mordido ni inventa carga para la expedición siguiente.
 var run: Run
 var contexto_inicial := ""
@@ -23,10 +23,21 @@ func iniciar(r: Run) -> void:
 		if not Juego.objetivo_proyecto_completo(objetivo.id):
 			_objetivos_inicio.append(objetivo.id)
 	_meta_pendiente_inicio = not Juego.meta_destino_devorada(Juego.lugar_actual) or Juego.coronas_cobradas.has(Juego.lugar_actual)
-	if not ProyectosCampana.del_destino(Juego.lugar_actual).is_empty():
+	var componentes_iniciales: Array[String] = []
+	for id: String in Juego.componentes_proyecto_devorados:
+		var datos_componente := ComponentesProyecto.componente(id)
+		var datos_objetivo := ComponentesProyecto.objetivo(str(datos_componente.get("objetivo", "")))
+		if datos_objetivo.get("destino", "") == Juego.lugar_actual:
+			componentes_iniciales.append("c:" + id)
+	for id: String in Juego.tesoros_proyecto_abiertos:
+		if ComponentesProyecto.objetivo(id).get("destino", "") == Juego.lugar_actual:
+			componentes_iniciales.append("t:" + id)
+	componentes_iniciales.sort()
+	if not ProyectosCampana.del_destino(Juego.lugar_actual).is_empty() or not componentes_iniciales.is_empty():
 		var contexto := PackedStringArray(_objetivos_inicio)
 		contexto.append("meta:%d" % int(_meta_pendiente_inicio))
 		contexto.append("historico:%d" % int(Juego.lugares_completados.has(Juego.lugar_actual)))
+		contexto.append_array(PackedStringArray(componentes_iniciales))
 		contexto_inicial = "|".join(contexto).sha256_text()
 	r.camara.vista_cambiada.connect(queue_redraw)
 	_elegir_objetivo()

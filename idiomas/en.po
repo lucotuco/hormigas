@@ -1676,8 +1676,8 @@ msgstr "Crumbs first · the cardboard is a project for a larger colony"
 msgid "Servicio en cadena · hallar comida duplica la carga de frenesí por 8 s"
 msgstr "Chain service · finding food doubles frenzy charge for 8 s"
 
-msgid "Vitrinas con secretos · la cubierta se abre al 80% y revela cinco alimentos"
-msgstr "Secret showcases · the cover opens at 80% and reveals five food items"
+msgid "Vitrinas con secretos · desarmalas para revelar comida"
+msgstr "Secret showcases · dismantle them to reveal food"
 
 msgid "Frentes debilitados · cada etapa del monumento aumenta el daño recibido"
 msgstr "Weakened fronts · each monument stage increases damage taken"
@@ -2515,8 +2515,8 @@ msgstr "The service pantry"
 msgid "Abrí la alacena y vaciá el canasto de la cocina."
 msgstr "Open the cabinet and empty the kitchen basket."
 
-msgid "Alijo de ravioles"
-msgstr "A ravioli stash"
+msgid "Alijo de ravioles y Sondeo de escondites"
+msgstr "A ravioli stash and Hideout probing"
 
 msgid "La cocina industrial"
 msgstr "The industrial kitchen"
@@ -2560,8 +2560,8 @@ msgstr "The gala display cases"
 msgid "Abrí y desarmá las dos vitrinas del ala norte."
 msgstr "Open and dismantle the two display cases in the north wing."
 
-msgid "Alijo de bombones y Sondeo de escondites"
-msgstr "A chocolate stash and Hideout probing"
+msgid "Alijo de bombones"
+msgstr "A chocolate stash"
 
 msgid "La galería de piedra"
 msgstr "The stone gallery"
@@ -2569,8 +2569,8 @@ msgstr "The stone gallery"
 msgid "Desmontá la columna y el ánfora de la galería."
 msgstr "Dismantle the column and the amphora in the gallery."
 
-msgid "Alijo de torta de gala"
-msgstr "A gala cake stash"
+msgid "Alijo de torta de gala y Trabajo de cantera"
+msgstr "A gala cake stash and Quarry work"
 
 msgid "Camino a la colonia"
 msgstr "The way back to the colony"
@@ -2596,8 +2596,8 @@ msgstr "The Buenos Aires stop"
 msgid "Desarmá el colectivo y el taxi junto al cruce."
 msgstr "Dismantle the bus and the taxi by the crossing."
 
-msgid "Alijo de medialunas"
-msgstr "A medialuna stash"
+msgid "Alijo de medialunas y Puente aéreo"
+msgstr "A medialuna stash and Air bridge"
 
 msgid "La fuente de la plaza"
 msgstr "The plaza fountain"
@@ -2641,8 +2641,8 @@ msgstr "The eastern arcades"
 msgid "Devorá tres arcos vecinos del borde oriental."
 msgstr "Devour three neighboring arches along the eastern edge."
 
-msgid "Alijo de pan romano y Trabajo de cantera"
-msgstr "A Roman bread stash and Quarry work"
+msgid "Alijo de pan romano"
+msgstr "A Roman bread stash"
 
 msgid "Paseo de los jardines"
 msgstr "The garden walk"
@@ -2668,8 +2668,8 @@ msgstr "The bouquinistes"
 msgid "Vaciá los dos puestos de libros de los jardines."
 msgstr "Empty the two book stalls in the gardens."
 
-msgid "Alijo de croissants y Puente aéreo"
-msgstr "A croissant stash and Air bridge"
+msgid "Alijo de croissants"
+msgstr "A croissant stash"
 
 msgid "La fuente de la esplanada"
 msgstr "The esplanade fountain"
@@ -2679,6 +2679,78 @@ msgstr "Dismantle the fountain in front of the tower."
 
 msgid "Alijo de baguette"
 msgstr "A baguette stash"
+
+msgid "Se conserva al fundar: %s"
+msgstr "Kept when founding: %s"
+
+msgid "Los recuerdos del recorrido se conservan al fundar."
+msgstr "Memories from your journey are kept when founding a colony."
+
+msgid "Terminando corrosión…"
+msgstr "Finishing corrosion…"
+
+msgid "Partes conservadas: %d/%d · %s"
+msgstr "Parts kept: %d/%d · %s"
+
+msgid "Componente terminado: %s"
+msgstr "Component finished: %s"
+
+msgid "Solapa izquierda"
+msgstr "Left flap"
+
+msgid "Solapa derecha"
+msgstr "Right flap"
+
+msgid "Hoja izquierda"
+msgstr "Left door leaf"
+
+msgid "Hoja derecha"
+msgstr "Right door leaf"
+
+msgid "Compartimento superior"
+msgstr "Upper compartment"
+
+msgid "Puerta inferior"
+msgstr "Lower door"
+
+msgid "Estante superior"
+msgstr "Upper shelf"
+
+msgid "Estante inferior"
+msgstr "Lower shelf"
+
+msgid "Cuerpo de libros"
+msgstr "Book section"
+
+msgid "Lateral izquierdo"
+msgstr "Left side"
+
+msgid "Lateral derecho"
+msgstr "Right side"
+
+msgid "Estante de libros"
+msgstr "Bookshelf"
+
+msgid "Expositor izquierdo"
+msgstr "Left display"
+
+msgid "Expositor central"
+msgstr "Center display"
+
+msgid "Expositor derecho"
+msgstr "Right display"
+
+msgid "Brocal izquierdo"
+msgstr "Left rim"
+
+msgid "Brocal derecho"
+msgstr "Right rim"
+
+msgid "Bordes del cuenco"
+msgstr "Bowl edges"
+
+msgid "Cuenco central"
+msgstr "Center basin"
 
 msgid "Sondeo de escondites"
 msgstr "Hideout probing"

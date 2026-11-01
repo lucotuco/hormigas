@@ -392,15 +392,20 @@ muestra objetos pendientes, premio y progreso; `G` lleva al próximo objetivo
 accesible sin mantener el llamado anterior. La niebla y las dietas siguen vigentes.
 
 **Un objeto de proyecto completamente devorado queda terminado** entre
-expediciones y fundaciones. El daño parcial no se guarda: no se reconstruye una
-máscara rota desde un porcentaje de vida. Cada proyecto paga una sola vez un
-alijo regional real; el de acceso habilita además una entrada local, dentro de
-los topes de entradas existentes. Tres proyectos abren nuevas evoluciones.
+expediciones y fundaciones. Doce muebles concretos tienen además 35 componentes
+reconocibles: puertas, estantes, expositores y partes de fuentes. Cada componente
+completamente devorado se conserva, incluido su hueco en cuerpo, sombra y
+navegación. El daño de un componente sin terminar se reinicia: no se reconstruye
+una máscara rota desde un porcentaje de vida. El cartón cercano y la primera
+alacena de Casa son descubrimientos opcionales, no proyectos obligatorios.
+Cada proyecto paga una sola vez un alijo regional real; el de logística habilita
+un acceso adelantado propio, sin consumir los seis accesos normales de mejoras.
+Tres proyectos abren nuevas evoluciones.
 Después de la conquista histórica, los muebles vuelven como recursos normales,
 sin resistencia de misión ni premios de proyecto repetidos.
 
-La partida sube a versión 8 y el mapa a 6. Los récords nuevos distinguen qué
-objetos estaban pendientes al iniciar. Las partidas anteriores conservan sus
+La partida usa versión 9 y el mapa 7. Los récords nuevos distinguen qué
+objetos, componentes y escondites estaban pendientes al iniciar. Las partidas anteriores conservan sus
 victorias: los proyectos de destinos ya conquistados se consideran cumplidos,
 sin premios retroactivos. Para jugar toda la campaña ampliada hace falta una
 partida nueva; no se borra ni se reinicia automáticamente la partida existente.
@@ -563,9 +568,9 @@ se equipan automáticamente si hay lugar. Las hormigas copian ese equipo al nace
 | Nube corrosiva | 3 rojas, Mandíbulas 4 | Contagia hasta dos objetivos próximos cada 1,5 s |
 | Barrido de restos | 3 cargadoras, Mandíbulas 4 | Recoge hasta dos montones adicionales a menos de 48 px |
 | Camada real | 1 reina, Mandíbulas 8 | Tres minis por tanda; mantiene los topes de 24 por reina y 500 en la colonia |
-| Sondeo de escondites | 1 voladora, Mandíbulas 4 y vitrinas de gala | Una extracción real abre antes el tesoro de muebles con escondite, sin borrar el mueble ni duplicar el tesoro |
-| Trabajo de cantera | 1 demoledora, Mandíbulas 8 y arcadas del este | Corta piedra/metal de forma continua y deja el material extraído para transportarlo |
-| Puente aéreo | 3 voladoras, Mandíbulas 8 y bouquinistes | Permite retirar montones pesados de material resistente; no montones de muro |
+| Sondeo de escondites | 1 voladora, Mandíbulas 4 y despensa de servicio | Una extracción real abre antes el tesoro de muebles con escondite, sin borrar el mueble ni duplicar el tesoro |
+| Trabajo de cantera | 1 demoledora, Mandíbulas 8 y galería de piedra | Corta piedra/metal de forma continua y deja el material extraído para transportarlo |
+| Puente aéreo | 3 voladoras, Mandíbulas 8 y parada porteña | Permite retirar montones pesados de material resistente; no montones de muro |
 
 Se conservan al fundar una colonia y al cargar partidas anteriores. La variante
 activa usa al menos la primera evolución visual del atlas existente; no carga
@@ -674,7 +679,7 @@ cantidad de cuadros procesados, no agrandando el delta. Con
 `BOT_ESTADO=archivo.json` se puede cortar y retomar por tandas; con `BOT_LOG`
 también escribe el registro en un archivo. No corre en CI.
 
-En la campaña por proyectos (mapa 6), el bot sigue el objeto sugerido y
+En la campaña por proyectos, el bot sigue el objeto sugerido y
 anota por separado objetos, proyectos y conquista real. Comer el monumento
 antes de los proyectos no equivale a terminar el destino. El piloto nuevo
 es parcial: llegó desde cero a casa y los dos primeros proyectos del
@@ -932,6 +937,13 @@ aire/frontera contra un flood independiente. La revisión visual es
 `revision_proyectos.tscn`; el estrés gráfico específico, `perfil_proyectos.tscn`.
 Todas desactivan el guardado personal. El perfil usa daño artificial declarado:
 no sirve para estimar duración de campaña ni rendimiento habitual.
+
+`prueba_componentes_proyecto.tscn` cubre las partes físicas, su guardado,
+escondites y migración. `prueba_acceso_proyecto.tscn` comprueba el acceso propio
+y el cap independiente. `prueba_huellas_nido.tscn` separa recuerdos y compras;
+`prueba_erosion_presupuestada.tscn` verifica turnos, masa, premios y cierre sin
+bloqueo ni tiempo gratuito. Para ver cuerpo/sombra y componentes restaurados,
+corran `revision_componentes.tscn` con el renderer real.
 
 ## Exportar
 

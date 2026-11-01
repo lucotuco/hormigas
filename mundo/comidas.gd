@@ -236,19 +236,27 @@ func soltar_fragmento(pos: Vector2, valor: float, material_tipo: int) -> void:
 	_pilas[clave] = fragmento
 	_indexar(fragmento)
 
-func revelar_tesoro(pos: Vector2, nivel: int) -> void:
+func revelar_tesoro(pos: Vector2, nivel: int, autorizar := Callable()) -> int:
 	if _tesoros >= 24:
-		return
+		return 0
 	var run: Run = get_parent()
-	run.reglas.tesoro_abierto()
 	var cantidad := run.reglas.cantidad_tesoro()
+	var creadas := 0
 	for i in mini(cantidad, 24 - _tesoros):
 		var lugar := run.cocina.ajustar_destino(pos + Vector2.from_angle(i * TAU / cantidad) * 65, run.radio_actual)
 		if lugar != Vector2.INF:
+			if creadas == 0:
+				# No reservar el premio si ninguna posición permite una comida.
+				# Una reserva válida ocurre antes del primer alimento, una vez.
+				if autorizar.is_valid() and not bool(autorizar.call()):
+					return 0
+				run.reglas.tesoro_abierto()
 			_crear(_tipo_comida("galletita" if nivel == 1 else "sandwich"), lugar, 405 + i)
 			_tesoros += 1
-	if Juego.obtener_hito("primer_tesoro"):
+			creadas += 1
+	if creadas > 0 and Juego.obtener_hito("primer_tesoro"):
 		run.hud.mostrar_aviso(tr("¡Hallazgo! Olfato +10 permanente"))
+	return creadas
 
 
 ## Deja caer una comida durante la run (la bandeja del mozo, por ejemplo).

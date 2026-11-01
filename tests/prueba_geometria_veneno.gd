@@ -115,14 +115,19 @@ func probar_comida(run: Run) -> void:
 	var factor := Juego.stat("multiplicador_migas")
 	comida.aplicar_veneno(10, 1.25, run)
 	comida._process(0.25)
+	drenar_erosion(run)
 	verificar(comida.vida == 1000 and Juego.migas_run == inicio and comida.is_processing(), "el veneno espera su primer medio segundo sin adelantar pagos")
 	comida._process(0.25)
+	drenar_erosion(run)
 	verificar(conserva_trabajo(comida, 1000, 5) and is_equal_approx(Juego.migas_run - inicio, (1000 - comida.vida) * factor), "el primer tick conserva su trabajo y sólo acredita píxeles físicamente retirados")
 	comida.aplicar_veneno(2, comida.veneno_restante, run)
 	comida._process(0.25)
 	comida._process(0.25)
+	drenar_erosion(run)
 	verificar(conserva_trabajo(comida, 1000, 10) and comida._veneno_dps == 10, "renovar con veneno débil conserva el DPS y el crédito fraccionario, sin sumarlos")
 	comida._process(0.25)
+	drenar_erosion(run)
+	comida._process(0.1) # Último destello/upload, sin segundos de veneno nuevos.
 	verificar(conserva_trabajo(comida, 1000, 12.5) and is_equal_approx(Juego.migas_run - inicio, (1000 - comida.vida) * factor), "el último cuarto de segundo conserva su fracción sin pagar material todavía pendiente")
 	verificar(comida.veneno_restante == 0 and comida._veneno_dps == 0 and comida._veneno_acumulado == 0 and not comida.is_processing(), "la comida deja de procesar al agotarse el veneno y su destello")
 	var cobrado := Juego.migas_run
@@ -134,6 +139,7 @@ func probar_comida(run: Run) -> void:
 	var cuanto := comida.mordiscos._hp_pixel[0]
 	comida.aplicar_veneno(cuanto * 2, 0.5, run)
 	comida._process(0.5)
+	drenar_erosion(run)
 	verificar(comida.vida < 1000 and conserva_trabajo(comida, 1000, 12.5 + cuanto) and is_equal_approx(Juego.migas_run - inicio, (1000 - comida.vida) * factor), "un siguiente tick suficiente desprende material sin perder ni cobrar dos veces el crédito anterior")
 	cobrado = Juego.migas_run
 	comida.aplicar_veneno(10, 2, run)
@@ -165,6 +171,7 @@ func probar_pieza(run: Run) -> void:
 		# eluden el reloj de la máscara. 1/64 representa exactamente 1,25 s.
 		pieza.aplicar_veneno(2, pieza.veneno_restante, run)
 		pieza._process(1.0 / 64)
+		drenar_erosion(run)
 	var retirado := vida - pieza.vida
 	verificar(conserva_trabajo(pieza, vida, dano) and is_equal_approx(pieza.dano_recibido, retirado), "la pieza conserva DPS y corrosión como material retirado más crédito menor a un píxel")
 	var valor_retirado := pieza.recompensa * retirado / pieza.vida_max * Juego.stat("multiplicador_migas")
@@ -187,9 +194,9 @@ func conserva_trabajo(fuente: Comida, vida_inicial: float, aportado: float) -> b
 	var pendiente := 0.0
 	var vida_material := 0.0
 	for i in m._credito.size():
-		if m._credito[i] < 0 or m._credito[i] >= m._hp_pixel[i] + 0.000001:
+		if m._credito[i] < 0 or m._credito[i] >= m._hp_pixel[i] + 0.000001 or m._credito_erosion[i] < 0 or m._credito_erosion[i] >= m._hp_pixel[i] + 0.000001:
 			return false
-		pendiente += m._credito[i]
+		pendiente += m._credito[i] + m._credito_erosion[i]
 		vida_material += m.vida_celda(i)
 	var retirado := vida_inicial - fuente.vida
 	return retirado >= 0 and is_equal_approx(retirado + pendiente, aportado) and is_equal_approx(vida_material, fuente.vida)
@@ -200,6 +207,14 @@ func valor_fragmentos(run: Run) -> float:
 		if is_instance_valid(f) and not f.muerta:
 			valor += f.recompensa
 	return valor
+
+
+func drenar_erosion(run: Run) -> void:
+	for paso in 10000:
+		if not run.cola_erosion.tiene_pendientes():
+			return
+		run.cola_erosion.procesar(100000000, 32)
+	verificar(false, "la cola de erosión termina sin espera infinita")
 
 
 func verificar(ok: bool, detalle: String) -> void:

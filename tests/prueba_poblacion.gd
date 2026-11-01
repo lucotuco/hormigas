@@ -19,7 +19,7 @@ func _ready() -> void:
 	Juego.guardado_habilitado = false
 	Juego.usar_idioma("es")
 	Sonido.silenciado = true
-	verificar(Mundos.VERSION_CONTENIDO == 6, "los récords separan los proyectos y recorridos nuevos como versión6")
+	verificar(Mundos.VERSION_CONTENIDO == 7, "los récords separan los componentes y recorridos nuevos como versión7")
 	var claves: Dictionary = {}
 	for m in Graficos.catalogo_muebles():
 		claves[Graficos.clave_mueble(m)] = true
