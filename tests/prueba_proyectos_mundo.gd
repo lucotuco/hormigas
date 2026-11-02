@@ -44,6 +44,7 @@ func preparar(destino: String) -> void:
 
 func crear_run() -> Run:
 	var run: Run = RUN.instantiate()
+	run.preparacion_sincrona = true # La persistencia se prueba con extracción directa.
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.radio_actual = 12000

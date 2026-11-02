@@ -39,6 +39,9 @@ var objetivo_mapa: PiezaCasa
 var objetivo_practica: PiezaCasa
 var recorrido: RecorridoDestino
 var cola_erosion: ColaErosion
+var preparador_mordiscos: PreparadorMordiscos
+## Sólo los fixtures que comparan operaciones directas usan la referencia.
+var preparacion_sincrona := false
 var cerrando_erosion := false
 var tiempo_espera_erosion := 0.0
 var _accion_cierre_erosion := ""
@@ -88,6 +91,9 @@ var _tiempo_fin_botin := 0.0
 func _ready() -> void:
 	Engine.time_scale = 1.0
 	Juego.iniciar_run()
+	preparador_mordiscos = PreparadorMordiscos.new()
+	add_child(preparador_mordiscos)
+	preparador_mordiscos.iniciar(self)
 	cola_erosion = ColaErosion.new()
 	add_child(cola_erosion)
 	cola_erosion.iniciar(self)
@@ -116,6 +122,7 @@ func _ready() -> void:
 			objetivo_practica = parte
 	for c in comidas.lista:
 		resistencia_total += c.vida_max
+	resistencia_total += comidas.resistencia_reservada()
 	recorrido = RecorridoDestino.new()
 	add_child(recorrido)
 	recorrido.iniciar(self)
@@ -150,6 +157,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	if is_instance_valid(preparador_mordiscos):
+		preparador_mordiscos.cancelar()
 	if is_instance_valid(cola_erosion):
 		cola_erosion.cancelar()
 	Engine.time_scale = 1.0
@@ -478,6 +487,7 @@ func _cerrar() -> void:
 	feromonas.soltar()
 	terminada = true
 	cola_erosion.cancelar()
+	preparador_mordiscos.cancelar()
 	recorrido.queue_redraw()
 	colonia.detener()
 	progreso_objetivo = 1.0 if objetivo_completado else recorrido.progreso()
@@ -528,7 +538,9 @@ func _esperar_erosion(accion: String) -> bool:
 	if not is_instance_valid(cola_erosion):
 		return false
 	cola_erosion.cerrar_emision()
+	preparador_mordiscos.conservar_propietarios(cola_erosion.propietarios_pendientes())
 	if not cola_erosion.tiene_pendientes():
+		preparador_mordiscos.cancelar()
 		return false
 	cerrando_erosion = true
 	_accion_cierre_erosion = accion
@@ -540,6 +552,7 @@ func _esperar_erosion(accion: String) -> bool:
 	colonia.process_mode = Node.PROCESS_MODE_DISABLED
 	eventos.process_mode = Node.PROCESS_MODE_DISABLED
 	reglas.process_mode = Node.PROCESS_MODE_DISABLED
+	preparador_mordiscos.iniciar_cierre()
 	cola_erosion.iniciar_cierre()
 	return true
 

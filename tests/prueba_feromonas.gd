@@ -65,6 +65,15 @@ func crear_run() -> Run:
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	return run
 
+## Agotar un recurso por llamada directa es un fixture, no un cambio de IA.
+func preparar_fixture_manual(run: Run, recurso: Comida) -> void:
+	recurso.preparar_material()
+	for paso in 10000:
+		if not recurso.material_preparandose():
+			break
+		run.preparador_mordiscos.procesar(1000000, 128)
+	verificar(recurso.mordiscos != null and not run.preparacion_sincrona, "el agotamiento manual conserva el preparador async real")
+
 func probar_clic_real() -> void:
 	Juego.reiniciar_estado()
 	Juego.niveles.mordida_madera = 1
@@ -164,6 +173,7 @@ func probar_agotamiento() -> void:
 	for h in grupo:
 		h._pensar()
 	verificar(primera.trabajadoras == 8, "la orden reúne a las cercanas sobre el objetivo indicado")
+	preparar_fixture_manual(run, primera)
 	primera.morder(primera.vida)
 	run.feromonas._actualizar_cercanas()
 	for h in grupo:
@@ -181,6 +191,7 @@ func probar_agotamiento() -> void:
 		libres = libres and h.estado != Hormiga.Estado.SIGUIENDO
 	verificar(libres and siguiente.trabajadoras > 0, "soltar mantiene el trabajo útil y libera al resto para explorar")
 	var agotadas := true
+	preparar_fixture_manual(run, siguiente)
 	siguiente.morder(siguiente.vida)
 	for h in grupo:
 		h._process(0.2)
@@ -210,6 +221,7 @@ func probar_presupuesto() -> void:
 		var punto := Vector2(-100 + sin(cuadro * 0.08) * 70, -150) if cuadro < 60 else Vector2(-100, -150)
 		run.feromonas.mantener_en(punto)
 		run.feromonas._process(1.0 / 60)
+		run.preparador_mordiscos.procesar() # La Run padre está detenida; mismo presupuesto real.
 		var antes := run.cocina.consultas_ruta
 		for h in run.colonia.hormigas:
 			h._process(1.0 / 60)

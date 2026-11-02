@@ -44,6 +44,7 @@ func _ready() -> void:
 	verificar(Juego.cantidad_casta("reina") == 3 and Juego.total_especialistas() == 3, "se validan límites y castas permitidas al cargar")
 	Juego.restaurar_partida(guardado)
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
+	run.preparacion_sincrona = true # Fixture de extracción directa, sin cuadros reales.
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.colonia._process(3.0)
@@ -124,6 +125,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	# Otra expedición recupera las compradas y no las minis de la anterior.
 	run = preload("res://mundo/run.tscn").instantiate()
+	run.preparacion_sincrona = true
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.colonia._process(3)

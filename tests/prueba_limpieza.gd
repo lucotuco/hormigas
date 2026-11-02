@@ -28,6 +28,7 @@ func verificar(ok: bool, detalle: String) -> void:
 func crear() -> Run:
 	Juego.reiniciar_estado()
 	var r: Run = RUN.instantiate()
+	r.preparacion_sincrona = true # Fixture de clasificación tras extracción directa.
 	add_child(r)
 	r.process_mode = Node.PROCESS_MODE_DISABLED
 	r.colonia._activa = false

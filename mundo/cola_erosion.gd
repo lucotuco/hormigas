@@ -91,6 +91,10 @@ func cantidad_pendientes() -> int:
 	return _trabajos.size()
 
 
+func propietarios_pendientes() -> Array:
+	return _trabajos.keys()
+
+
 func cerrar_emision() -> void:
 	if not _admite:
 		return
@@ -151,6 +155,11 @@ func procesar(presupuesto_usec := -1, max_pasos := -1) -> void:
 		var antes := Time.get_ticks_usec()
 		var migas: float = objetivo.erosion_paso(tramo.dano, tramo.origen)
 		max_operacion_usec = maxi(max_operacion_usec, Time.get_ticks_usec() - antes)
+		if objetivo.material_preparandose():
+			# La preparación no es un frente inaccesible ni admite daño/crédito.
+			# Conservar el tramo; la publicación atómica lo vuelve ejecutable.
+			_cola.append(id)
+			continue
 		var admitido := clampf(objetivo.trabajo_erosion_admitido, 0, tramo.dano)
 		tramo.dano = maxf(0, tramo.dano - admitido)
 		trabajo_admitido += admitido

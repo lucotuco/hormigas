@@ -1,5 +1,31 @@
 # Tareas
 
+## Alimentos sin trazos huérfanos — 2/11
+
+- [x] Reproducir márgenes/sombras persistentes y grietas sobre huecos; recortar el quad completo y reproyectar la sombra desde el cuerpo restante.
+- [x] Mantener intacto/preparado coherentes con 30 materiales R8 compartidos por tipo (34.229 bytes), sin máscara física por instancia intacta.
+- [x] Corregir semilla exterior de frutilla y agujeros exteriores de queso; reexportar sólo sus siluetas, sin cambiar vida total ni valor.
+- [x] Regresión GPU: 341 verificaciones, 30 tipos y dos rotaciones, vaciado con alfa estrictamente cero, conectividad e independencia de máscaras.
+- [x] Repetir material visible (68) y mordiscos (13, incluye 108 bocados/lados); medir estrés real de 500 hormigas sin prometer FPS constantes.
+- [x] Cerrar las 52 suites lógicas después de corregir las siluetas, sin errores ni advertencias.
+- [ ] Validar el acabado durante una sesión humana larga y en GPU integrada.
+
+## Primer contacto y hallazgos pequeños — 1/11
+
+- [x] Repartir preparación de máscaras entre cuadros con cola compartida, sin publicar geometría parcial ni cambiar la masa.
+- [x] Mantener objetivo, reserva y reloj de mordida durante la espera; cierre que prepara sólo trabajo ambiental ya emitido.
+- [x] Comparar referencia síncrona y async en 59 acabados, cavidades y componentes; 145 verificaciones.
+- [x] Separar preparación, tirón, levantado y entrega visual; hasta tres muestras reales, mismo atlas y sin nodos por astilla.
+- [x] Timbres de comida/papel/madera/piedra y recogida con puerta global, pool fijo y descarte por cámara/LOD.
+- [x] Tres hallazgos físicos tempranos: envoltorios con comida nativa reservada, misma masa/valor/bonus, sin cambiar 138 migas, precios ni arranque.
+- [x] Esquema 10 / mapa 8 y recuerdos de apertura conservados al fundar; archivos y récords distinguen el estado inicial.
+- [x] Medir primer contacto aislado y estrés Full HD de 500 hormigas con paso fijo; publicar latencia, CPU total, picos y trabajo pendiente en RENDIMIENTO.
+- [x] Revisar recorte/carga/entrega y envoltorios con renderer real; conservar pruebas de IA y economía sin cambiar umbrales para ocultar fallas.
+- [x] Cerrar 52 suites y revisión visual con renderer real; verificar que cada contenido cabe en el cuerpo de su envoltorio.
+- [x] Repetir seis expediciones desde cero con ingresos reales: 4,67 minutos activos, segunda obrera tras tres expediciones, sin premios de apertura en ese piloto corto.
+- [ ] Validar GPU integrada y juego prolongado: los presupuestos son suaves, no una garantía de 60 FPS.
+- [ ] Playtest humano del primer ingreso, apertura de papel y primera madera; medir campaña actual completa antes de dar nuevas horas de duración.
+
 ## Componentes y consecuencias — 1/11
 
 - [x] Adelantar Sondeo al restaurante, Cantera al museo y Puente aéreo a Buenos Aires, sin cambiar precios ni requisitos de unidades/Mandíbulas.
@@ -14,7 +40,7 @@
 - [x] Comparar erosión de 28 objetos × tres orígenes y corregir admisión de crédito y bloqueo de otros orígenes por un tramo aparcado; equivalencia sin diferencias.
 - [x] Repetir seis expediciones iniciales con daño/ingresos reales y guardado aislado: una obrera, segunda comprada tras dos expediciones, sin regalar recursos.
 - [x] Retomar una copia del piloto anterior por dos expediciones completas: despensa terminada y Sondeo desbloqueado con hojas conservadas; no presentarlo como campaña nueva completa.
-- [ ] Fraccionar preparación inicial de máscaras grandes: quedan picos de 61/91 ms y p95 de 19,81 ms en Coliseo; validar GPU integrada.
+- [x] Fraccionar preparación inicial de máscaras grandes; aislado y estrés con paso fijo registrados en la pasada siguiente. GPU integrada sigue pendiente.
 - [ ] Medir de nuevo campaña completa y hacer playtest humano; no extrapolar las horas de la campaña anterior.
 
 ## Campaña con proyectos propios — 1/11

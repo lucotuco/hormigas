@@ -206,7 +206,7 @@ func _aspiradora(delta: float) -> void:
 			if c is PiezaCasa or c is FragmentoCasa or c.radio > 20.0 or c.muerta:
 				continue
 			if c.position.distance_to(position) <= radio() + c.radio:
-				botin += c.morder(c.vida)
+				botin += c.retirar_por_amenaza()
 		var tragadas := run.colonia.hormigas_cerca(position, radio() * 0.8, 1)
 		_atrapar(tragadas)
 
@@ -222,9 +222,12 @@ func _paloma(delta: float) -> void:
 			return
 		estado = "entrando"
 	if estado == "entrando":
+		_comida.preparar_material()
 		if _mover_hacia(_comida.position + Vector2(-_comida.radio, 0), float(DATOS.paloma.velocidad), delta):
 			estado = "comiendo"
 	elif estado == "comiendo":
+		if not _comida.preparar_material():
+			return
 		_reloj_accion -= delta
 		if _reloj_accion <= 0.0:
 			_reloj_accion = 0.6
@@ -272,7 +275,7 @@ func _rata(delta: float) -> void:
 				return
 		if _mover_hacia(_comida.position, float(DATOS.rata.velocidad), delta):
 			# Se la lleva entera: lo que valía queda en el botín.
-			botin += _comida.morder(_comida.vida)
+			botin += _comida.retirar_por_amenaza()
 			_comida = null
 			estado = "huyendo"
 

@@ -21,6 +21,7 @@ func _ready() -> void:
 	Juego.niveles = {"mordida_madera": 1}
 	Juego._cache_stats.clear()
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
+	run.preparacion_sincrona = true # Fixture de GPU detenido, no benchmark de arranque.
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.hud.hide()

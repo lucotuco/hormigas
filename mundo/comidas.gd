@@ -26,6 +26,8 @@ const CELDA_BUSQUEDA := 192.0
 ## su comprobación central se reparta cada medio segundo.
 var ultimo_cambio := 0.0
 var _distancias_limpieza: Dictionary = {}
+## Hasta tres contenidos reservados. Todavía no son objetivos ni premios.
+var _hallazgos: Dictionary = {}
 
 
 func generar() -> void:
@@ -42,6 +44,7 @@ func generar() -> void:
 	_tesoros = 0
 	_indice.clear()
 	_distancias_limpieza.clear()
+	_hallazgos.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = SEMILLA_MAPA
 	var ocupados: Array[Vector3] = []  # x, y, radio
@@ -87,6 +90,7 @@ func generar() -> void:
 					_crear(tipo, pos, rng.randi())
 					break
 	_repartir_periferia()
+	_preparar_hallazgos()
 	# Meta fija sobre el plato: siempre existe y puede descubrirse desde la niebla.
 	for tipo in Juego.comidas:
 		if tipo.id == "banquete":
@@ -145,7 +149,7 @@ func _hay_lugar(pos: Vector2, radio: float, ocupados: Array[Vector3]) -> bool:
 	return true
 
 
-func _crear(tipo: Dictionary, pos: Vector2, semilla: int) -> void:
+func _crear(tipo: Dictionary, pos: Vector2, semilla: int) -> Comida:
 	var comida: Comida = ESCENA_COMIDA.instantiate()
 	comida.position = pos
 	add_child(comida)
@@ -155,6 +159,56 @@ func _crear(tipo: Dictionary, pos: Vector2, semilla: int) -> void:
 	comida.destruida.connect(_on_destruida)
 	lista.append(comida)
 	_indexar(comida)
+	return comida
+
+
+## Se reemplazan tres comidas existentes, sin moverlas ni consumir azar del
+## mapa. La envoltura y lo reservado suman la masa y el valor originales.
+func _preparar_hallazgos() -> void:
+	if Juego.lugar_actual != "casa":
+		return
+	for hallazgo: Dictionary in CatalogoHallazgos.todos():
+		if Juego.hallazgo_casa_abierto(hallazgo.id):
+			continue
+		var elegida: Comida
+		var distancia := INF
+		for comida in lista:
+			if comida.id != hallazgo.comida:
+				continue
+			var largo := comida.position.length()
+			if largo < hallazgo.distancia_min or largo > hallazgo.distancia_respaldo:
+				continue
+			# El anillo preferido tiene prioridad; a igual anillo, la más cercana.
+			var orden: float = largo + (0.0 if largo <= hallazgo.distancia_max else 10000.0)
+			if orden < distancia:
+				distancia = orden
+				elegida = comida
+		if not is_instance_valid(elegida):
+			continue
+		var original := _tipo_comida(elegida.id).duplicate()
+		var dividido := CatalogoHallazgos.dividir(hallazgo.id, original)
+		if dividido.is_empty():
+			continue
+		var pos := elegida.position
+		var semilla := elegida.semilla_dibujo
+		lista.erase(elegida)
+		_quitar_del_indice(elegida)
+		elegida.queue_free()
+		var envoltorio := _crear(dividido.envoltorio, pos, semilla)
+		_hallazgos[envoltorio.get_instance_id()] = {"id": hallazgo.id, "contenido": dividido.contenido, "semilla": semilla}
+
+
+func resistencia_reservada() -> float:
+	var total := 0.0
+	for hallazgo: Dictionary in _hallazgos.values():
+		total += float(hallazgo.contenido.vida)
+	return total
+
+
+func _quitar_del_indice(comida: Comida) -> void:
+	for celda in _celdas(_rect_objetivo(comida)):
+		if _indice.has(celda):
+			_indice[celda].erase(comida)
 
 func _rect_objetivo(c: Comida) -> Rect2:
 	if c is PiezaCasa:
@@ -192,9 +246,14 @@ func _on_destruida(comida: Comida) -> void:
 	_registrar_cambio(comida)
 	_distancias_limpieza.erase(comida.get_instance_id())
 	lista.erase(comida)
-	for celda in _celdas(_rect_objetivo(comida)):
-		if _indice.has(celda):
-			_indice[celda].erase(comida)
+	_quitar_del_indice(comida)
+	if _hallazgos.has(comida.get_instance_id()):
+		var hallazgo: Dictionary = _hallazgos[comida.get_instance_id()]
+		_hallazgos.erase(comida.get_instance_id())
+		# El recurso reservado se vuelve visible y buscable recién al abrir.
+		_crear(hallazgo.contenido, comida.position, hallazgo.semilla)
+		if Juego.registrar_hallazgo_casa(hallazgo.id):
+			get_parent().hud.mostrar_aviso(tr("Paquete abierto: %s") % tr(hallazgo.contenido.nombre))
 	if comida is PiezaCasa:
 		get_parent().cocina.quitar_pieza(comida.pieza.clave)
 		partes.erase(comida)

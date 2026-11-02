@@ -2769,3 +2769,15 @@ msgstr "Air bridge"
 
 msgid "Las voladoras llevan restos de material resistente por el aire. No levantan montones de muro."
 msgstr "Flying ants carry tough-material debris through the air. They cannot pick up piles of wall debris."
+
+msgid "Paquete abierto: %s"
+msgstr "Package opened: %s"
+
+msgid "Galletita envuelta"
+msgstr "Wrapped cookie"
+
+msgid "Sobre de azúcar"
+msgstr "Sugar sachet"
+
+msgid "Bolsita de cereal"
+msgstr "Cereal pouch"

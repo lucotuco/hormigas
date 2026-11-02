@@ -2,7 +2,7 @@ class_name Mundos
 extends RefCounted
 ## Planos acotados: viajar cambia el escenario, no multiplica el mundo en memoria.
 const ORDEN := ["casa", "restaurante", "museo", "obelisco", "coliseo", "eiffel"]
-const VERSION_CONTENIDO := 7
+const VERSION_CONTENIDO := 8
 const INFO := {
 	"casa": {"nombre": "La casa", "subtitulo": "De las migas a los muebles", "meta": "La gran mesa familiar", "factor": 1.0, "coronas": 1, "vida_meta": 600.0},
 	"restaurante": {"nombre": "El restaurante", "subtitulo": "Salón, barra y cocina industrial", "meta": "La barra del chef", "factor": 1.7, "coronas": 2, "vida_meta": 1500.0},

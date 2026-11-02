@@ -49,6 +49,7 @@ func probar_pisada_automatica_en_run() -> void:
 	var migas := Juego.migas_run
 	for i in 20:
 		run._pisotones_automaticos(0.1)
+		run.preparador_mordiscos.procesar()
 	verificar(Juego.estadistica("pisotones") - antes == 6, "a 3 por segundo, en 2 segundos pisa 6 veces (%d)" % (Juego.estadistica("pisotones") - antes))
 	verificar(Juego.migas_run > migas, "los pisotones automáticos dan migas")
 	antes = Juego.estadistica("pisotones")

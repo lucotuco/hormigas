@@ -32,8 +32,11 @@ func iniciar(r: Run) -> void:
 	for id: String in Juego.tesoros_proyecto_abiertos:
 		if ComponentesProyecto.objetivo(id).get("destino", "") == Juego.lugar_actual:
 			componentes_iniciales.append("t:" + id)
+	if Juego.lugar_actual == "casa":
+		for id: String in Juego.hallazgos_casa_abiertos:
+			componentes_iniciales.append("h:" + id)
 	componentes_iniciales.sort()
-	if not ProyectosCampana.del_destino(Juego.lugar_actual).is_empty() or not componentes_iniciales.is_empty():
+	if Juego.lugar_actual == "casa" or not ProyectosCampana.del_destino(Juego.lugar_actual).is_empty() or not componentes_iniciales.is_empty():
 		var contexto := PackedStringArray(_objetivos_inicio)
 		contexto.append("meta:%d" % int(_meta_pendiente_inicio))
 		contexto.append("historico:%d" % int(Juego.lugares_completados.has(Juego.lugar_actual)))

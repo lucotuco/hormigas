@@ -1146,3 +1146,146 @@ Revisión gráfica con renderer real: componentes 46 verificaciones y proyectos
 desde cuatro lados). Capturas de componentes intactos/restaurados, máscara sin
 R8 inicial y lectura inglesa también en ventana de 1000×620. Sin tocar el
 guardado personal.
+
+## Primer contacto presupuestado y lectura del bocado — 1/11, mapa 8
+
+La limitación indivisible de mapa 7 queda reemplazada por
+`PreparadorMordiscos`: una sola cola por Run, hasta 128 unidades / 1 ms suave por
+cuadro, con publicación atómica. Reserva nativa de imagen/arrays, raster en
+teselas 32×32, árbol y aire exterior se sirven por etapas. Los muebles intactos
+siguen sin reservar R8. No se publica material parcial ni se paga crédito
+antes de extraerlo. Los fixtures directos eligen explícitamente la referencia
+síncrona; gameplay, IA, bots y perfiles mantienen la cola asíncrona.
+
+`prueba_preparacion_mordiscos`: 145 verificaciones, incluyendo 59 acabados,
+cavidades, superposiciones, componentes restaurados, máscara 2048, pausa,
+weakrefs y cierre real de Run con veneno pendiente. Buffers, árboles, aire,
+frontera, masa y resultados de mordidas idénticos a la referencia síncrona.
+El cierre sólo termina máscaras de trabajo ya emitido, cancela precalentados
+sin trabajo y no congela cámara/UI ni regala tiempo de extracción.
+
+### Primer contacto aislado, sin hormigas
+
+Godot 4.7.2, GL Compatibility, RTX 3060, Full HD, VSync apagado. Perfil
+`perfil_preparacion_mordiscos.tscn`, log
+`.godot/qa/preparacion_perfil_grandes_final.log`:
+
+| Objeto real | Configuración síncrona | Solicitud async | Cuadros / latencia real | Peor cuadro async | CPU total de preparación |
+|---|---:|---:|---:|---:|---:|
+| Arco 1300×700 | 50,38 ms | 0,074 ms | 91 / 179,48 ms | 2,62 ms | 65,47 ms |
+| Torre 1550×2100 | 81,42 ms | 0,106 ms | 131 / 284,05 ms | 3,38 ms | 102,53 ms |
+
+El servicio compartido máximo fue 1,057/1,065 ms y la publicación 0,083/0,125 ms.
+Es una mejora del bloqueo, no menos trabajo total: la CPU de preparación subió
+aproximadamente 27–30% en este aislado. No confundir los 179/284 ms sin VSync con
+latencia a 60 Hz: 91/131 cuadros equivalen a 1,52/2,18 s a esa frecuencia si se sirve
+la misma cantidad por cuadro. Se solicita al elegir un frente para aprovechar
+el viaje; si todavía falta, la hormiga espera sin perder su reserva/reloj.
+Las asignaciones/subidas nativas son indivisibles: el presupuesto no es un
+techo absoluto ni esta escena demuestra FPS con 500 hormigas.
+
+### Estrés con 500 hormigas y paso fijo 1/60
+
+Misma GPU/Full HD, escenas en serie, daño artificial declarado. 360 cuadros
+medidos después de 90 de calentamiento. Ejecución explícita con
+`--fixed-fps 60`: simula la misma duración aunque el render sea más rápido.
+Log `.godot/qa/contacto_perfil_proyectos_paso_fijo.log`:
+
+| Destino / equipo | Media | p95 | Peor | Máscaras completas / pendientes |
+|---|---:|---:|---:|---:|
+| Museo / Sondeo+Barrido | 11,00 ms | 14,84 ms | 17,92 ms | 126 / 0 |
+| Coliseo / Cantera+Contagio | 9,52 ms | 13,13 ms | 21,15 ms | 131 / 11 |
+| Eiffel / Cantera+Puente | 10,27 ms | 14,25 ms | 17,42 ms | 137 / 0 |
+
+Se mantiene el máximo de 6 rutas/cuadro y 64 montones; hubo 5/5/8 montones activos.
+Servicio máximo de preparación 1,201/1,104/1,088 ms; publicación máxima
+0,476/0,103/0,078 ms. Erosión: 10/32/11 operaciones por cuadro y 0,92/0,78/0,51 ms
+de operación individual máxima. Al cortar quedaban 2/0/5 recursos de erosión
+activos; no se pagó su trabajo no admitido. El log registra emisión/admisión
+y máscaras pendientes para no presentar menos actividad como más eficiencia.
+
+No es un A/B exacto contra la tabla histórica sin paso fijo ni una garantía
+de 60 FPS: todavía hay cuadros de 17–21 ms y falta GPU integrada. La preparación
+aislada contrasta la misma geometría y la suite lógica prueba equivalencia;
+el estrés muestra el costo integrado de esta configuración concreta.
+
+Las poses reutilizan el tick visual a 12 Hz, hasta tres retazos del mismo atlas y
+cero nodos por astilla. Los dos retazos secundarios se redibujan sólo durante
+el levantado de 0,18 s y su asiento. Sonidos de material comparten una puerta
+global de 0,18 s, se descartan fuera de cámara y en colonias lejanas; UI/entrega
+conservan sus puertas. Los tres envoltorios suman sólo tres regiones pequeñas
+al atlas, sin lecturas GPU para decidir masa o dinero.
+
+Revisión con renderer real: secuencia de cartón/madera/los tres envoltorios,
+componentes 46 verificaciones, material visible 68 y mordiscos 13 (incluye 108
+bocados/lados del catálogo), sin fallas. Las capturas y seis WAV están en QA.
+
+Regresión final: 52 suites sin fallas ni errores de script. Arte de hallazgos
+118 verificaciones, integración/robo completo 35 y sensación 35. El retiro por
+aspiradora/rata no prepara una máscara para un objeto que levanta entero;
+conserva sólo el valor todavía presente y no duplica masa, bonus ni botín.
+
+## Residuos de alimentos y sombra desde el material — 2/11
+
+La revisión reprodujo líneas y sombras incluso con una máscara corporal vacía:
+el quad del alimento tiene cinco unidades de padding y el shader anterior
+dejaba pasar lo que caía fuera de ±radio. Además, las grietas independientes
+podían dibujarse sobre huecos transparentes. Ahora el quad completo recorta
+cuerpo/sombra; el cuerpo usa alfa material ≥0,55 y la sombra se proyecta desde
+ese mismo material restante. No se dibujan grietas artificiales cuando existe
+la máscara física. Barras e indicadores conservan su pasada sin recorte.
+
+Intacto y preparado usan la misma presentación para evitar saltos al primer
+contacto. Son 30 materiales/texturas R8 **compartidos por tipo**, no por objeto:
+34.229 bytes R8 en total, más los recursos del renderer. Construcción medida
+en 28,63–30,41 ms una sola vez durante el arranque del atlas. Los helpers CPU
+se descartan; las máscaras físicas mutables siguen preparándose bajo demanda
+y por la cola de la Run. No hay lecturas GPU, nodos nuevos por comida ni
+escaneos por hormiga agregados durante el juego. El recorte inicial también
+ajusta los pequeños salientes del arte que excedían su dominio físico; no
+es una conservación píxel a píxel del dibujo crudo anterior.
+
+Se corrigieron detalles de autoría: una semilla fuera de la frutilla y círculos
+fuera del triángulo del queso. Se reexportaron sólo esas dos siluetas; las otras
+25 quedan idénticas. No se cambian HP totales, recompensas, daño, IA ni precios.
+No se borra el último material ni se acredita trabajo para esconder residuos.
+
+`revision_residuos_comida.tscn`: 341 verificaciones con renderer real. Treinta
+tipos, rotaciones 0 y 0,37, intacto/preparado, desgaste parcial y vaciado de R8
+con el nodo todavía vivo. Los 60 vaciados dejan alfa **estrictamente cero** en
+todo el visor, incluidos márgenes. Se contrasta cada píxel parcial con atlas
+bilinear y material R8 nearest, con tolerancia de transformación de sólo
+0,002048 píxeles de imagen y un nivel RGBA8 de alfa; no hay cupo de píxeles
+huérfanos permitido. También cubre independencia de máscaras privadas,
+inmutabilidad del cache compartido, callback tardío, barras/veneno y un único
+cuerpo opaco conectado a ocho vecinos en los 27 alimentos intactos.
+Capturas y log: `.godot/qa/residuos_comida_despues.png`,
+`residuos_frutilla_intacto_preparado_despues.png`,
+`residuos_bombon_intacto_preparado_despues.png` y
+`residuos_gpu_fuentes_final.log`. La línea de base quedó en
+`residuos_comida_antes.png`: el mismo vaciado conservaba trazos en 47 de 60 casos.
+
+### Estrés integrado, no garantía de FPS
+
+Godot 4.7.2, GL Compatibility, RTX 3060, 1920×1080, 500 hormigas,
+`perfil_proyectos.tscn --fixed-fps 60`, 90 cuadros de calentamiento y 360 medidos.
+Log `.godot/qa/residuos_perfil_proyectos.log`:
+
+| Destino / equipo | Media | p95 | Peor | Dibujos medios | Máscaras completas / pendientes |
+|---|---:|---:|---:|---:|---:|
+| Museo / Sondeo+Barrido | 10,78 ms | 15,27 ms | 22,56 ms | 959 | 127 / 0 |
+| Coliseo / Cantera+Contagio | 8,97 ms | 12,60 ms | 22,24 ms | 834 | 132 / 9 |
+| Eiffel / Cantera+Puente | 10,65 ms | 14,80 ms | 16,97 ms | 909 | 134 / 3 |
+
+Mismos caps: seis rutas/cuadro y 64 montones (8/5/10 activos). Erosión: 12/32/12
+operaciones máximas, servicio individual máximo 0,80/0,70/0,56 ms. Preparación:
+servicio máximo 1,071/1,114/1,119 ms. Quedaban 2/0/4 recursos de erosión activos
+al cortar la muestra; el log incluye trabajo emitido/admitido para no presentar
+menos trabajo liquidado como una mejora. Es una repetición integrada, no A/B
+exacto ni demostración en GPU integrada. Hay cuadros de más de 16,67 ms.
+La pequeña corrección posterior de semillas/agujeros no cambia esos caps.
+
+Revisión gráfica de material visible (68) y mordiscos (13, incluidos 108
+primeros bocados/lados), sin fallas después de corregir las dos siluetas.
+Regresión completa posterior a la reexportación: 52 suites headless sin fallas,
+errores de script ni advertencias. Guardado y configuración personal intactos.

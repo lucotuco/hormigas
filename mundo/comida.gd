@@ -40,6 +40,7 @@ var _origen_veneno := Vector2.INF
 var _usar_cache := true
 ## Se crea recién al primer bocado, no para miles de alimentos intactos.
 var mordiscos: MordiscosMaterial
+var _preparacion_pendiente := false
 var _porcion_reciente := Rect2()
 var _mascara_comida: ShaderMaterial
 var _mascara_pendiente := false
@@ -49,9 +50,11 @@ var _cantidad_celdas_bocado := 1
 var trabajo_erosion_admitido := 0.0
 var erosion_continua := false
 var _celda_erosion := -1
+var semilla_dibujo := 0
 
 
 func configurar(tipo: Dictionary, semilla: int) -> void:
+	semilla_dibujo = semilla
 	id = tipo.id
 	nombre = tr(tipo.nombre)
 	forma = tipo.forma
@@ -98,8 +101,22 @@ func configurar(tipo: Dictionary, semilla: int) -> void:
 					_detalles.append(Vector3(x, -0.5 + fila * 0.36, rng.randf_range(0.2, 0.24)))
 	set_process(false)
 	queue_redraw()
-	if _usar_cache and not Graficos.listo:
-		Graficos.preparado.connect(queue_redraw, CONNECT_ONE_SHOT)
+	if _usar_cache:
+		if Graficos.listo:
+			_preparar_visual()
+		else:
+			Graficos.preparado.connect(_preparar_visual, CONNECT_ONE_SHOT)
+
+
+func _preparar_visual() -> void:
+	if not _usar_cache:
+		return
+	if _mascara_comida != null:
+		# Una señal tardía del atlas no puede restaurar material ya comido.
+		Graficos.configurar_recorte_alimento(_mascara_comida, id)
+	else:
+		material = Graficos.material_alimento(id, radio)
+	queue_redraw()
 
 func disponible() -> bool:
 	return not muerta
@@ -125,6 +142,13 @@ func punto_mordida(desde: Vector2, territorio: float, _volando := false) -> Vect
 		return global_position.limit_length(territorio - 6)
 	if mordiscos == null:
 		_preparar_mordiscos()
+	if mordiscos == null:
+		# Puesto provisional sobre el borde intacto, nunca una falsa falta de
+		# camino. El contacto exacto se consulta recién con la máscara lista.
+		var direccion := (desde - global_position).normalized()
+		if direccion == Vector2.ZERO:
+			direccion = Vector2.RIGHT
+		return (global_position + direccion * (radio + 1.5)).limit_length(maxf(0, territorio - 6))
 	var local := to_local(desde)
 	var limite := mordiscos.limites_celda(0)
 	if not limite.has_area():
@@ -155,6 +179,8 @@ func punto_mordida(desde: Vector2, territorio: float, _volando := false) -> Vect
 func punto_contacto(pos: Vector2) -> Vector2:
 	if mordiscos == null:
 		_preparar_mordiscos()
+	if mordiscos == null:
+		return Vector2.INF
 	var punto := mordiscos.punto_frontera(0, to_local(pos))
 	return to_global(punto) if punto != Vector2.INF else Vector2.INF
 
@@ -167,6 +193,25 @@ func morder(dano: float) -> float:
 ## El daño y la porción visible salen de la misma operación.
 func morder_en(dano: float, pos: Vector2) -> float:
 	return _extraer_alimento(dano, pos, 0.0)
+
+
+## Una rata/aspiradora retira el alimento entero, no produce una mordida ni
+## un retazo. No necesita rasterizar un objeto que deja de estar en el mapa.
+## El botín conserva sólo la masa aún presente; no vuelve a pagar lo llevado.
+func retirar_por_amenaza() -> float:
+	if muerta or self is PiezaCasa or self is FragmentoCasa:
+		return 0.0
+	var restante := vida
+	var botin := recompensa * restante / vida_max * Juego.stat("multiplicador_migas")
+	vida = 0.0
+	muerta = true
+	_preparacion_pendiente = false
+	_porcion_reciente = Rect2()
+	if get_parent() is Comidas and get_parent().get_parent() is Run:
+		get_parent().get_parent().registrar_extraccion(restante)
+	destruida.emit(self)
+	queue_free()
+	return botin
 
 
 func morder_local(dano: float, pos: Vector2, lado_max := 6.0) -> float:
@@ -183,6 +228,8 @@ func _extraer_alimento(dano: float, pos: Vector2, lado_max: float, por_pasos := 
 	var presupuesto := minf(dano, vida)
 	if mordiscos == null:
 		_preparar_mordiscos()
+	if mordiscos == null:
+		return 0.0
 	var local := to_local(pos)
 	var pendiente := presupuesto
 	var real := 0.0
@@ -247,18 +294,56 @@ func _extraer_alimento(dano: float, pos: Vector2, lado_max: float, por_pasos := 
 
 
 func _preparar_mordiscos() -> void:
-	mordiscos = MordiscosMaterial.new()
+	if mordiscos != null or _preparacion_pendiente or muerta:
+		return
 	var rect := Rect2(Vector2.ONE * -radio, Vector2.ONE * radio * 2.0)
 	var silueta := Graficos.formas_alimento(id)
 	if silueta.is_empty():
 		# Fallback para un alimento de prueba o contenido todavía sin silueta.
-		mordiscos.configurar(rect, Vector2i.ONE, [[rect]], PackedFloat64Array([vida_max]))
+		_solicitar_mordiscos(rect, Vector2i.ONE, [[rect]], PackedFloat64Array([vida_max]))
 	else:
 		# Los alimentos no bloquean A*: una única reserva de material evita
 		# que una miga de diez unidades se divida en 16 microbocados artificiales.
-		mordiscos.configurar(rect, Vector2i.ONE, [silueta], PackedFloat64Array([vida_max]))
+		_solicitar_mordiscos(rect, Vector2i.ONE, [silueta], PackedFloat64Array([vida_max]))
+
+
+## La IA espera sin perder la reserva ni adelantar un mordisco.
+func preparar_material() -> bool:
+	if self is FragmentoCasa:
+		return true
+	_preparar_mordiscos()
+	return mordiscos != null
+
+
+func material_preparandose() -> bool:
+	return _preparacion_pendiente
+
+
+func _cancelar_preparacion() -> void:
+	_preparacion_pendiente = false
+
+
+func _solicitar_mordiscos(rect: Rect2, grilla: Vector2i, formas: Array, vidas_material: PackedFloat64Array) -> void:
+	var run = get_parent().get_parent() if get_parent() is Comidas else null
+	if run is Run and not run.preparacion_sincrona:
+		if is_instance_valid(run.preparador_mordiscos):
+			_preparacion_pendiente = run.preparador_mordiscos.solicitar(self, rect, grilla, formas, vidas_material)
+		return
+	# Referencia síncrona sólo para una pieza aislada o un fixture explícito.
+	var preparada := MordiscosMaterial.new()
+	preparada.configurar(rect, grilla, formas, vidas_material)
+	_recibir_mordiscos(preparada)
+
+
+func _recibir_mordiscos(preparada: MordiscosMaterial) -> void:
+	_preparacion_pendiente = false
+	if muerta or is_queued_for_deletion():
+		return
+	mordiscos = preparada
+	_despertar_erosion()
 	if not _usar_cache or DisplayServer.get_name() == "headless":
 		return
+	var rect := Rect2(Vector2.ONE * -radio, Vector2.ONE * radio * 2.0)
 	_mascara_comida = ShaderMaterial.new()
 	_mascara_comida.shader = preload("res://mundo/recorte_bocados.gdshader")
 	_mascara_comida.set_shader_parameter("tamano", rect.size)
@@ -267,6 +352,17 @@ func _preparar_mordiscos() -> void:
 	_mascara_comida.set_shader_parameter("mascara_bocados", mordiscos.textura_mascara())
 	_mascara_comida.set_shader_parameter("usar_mascara", true)
 	material = _mascara_comida
+	if Graficos.listo:
+		_preparar_visual()
+	elif not Graficos.preparado.is_connected(_preparar_visual):
+		Graficos.preparado.connect(_preparar_visual, CONNECT_ONE_SHOT)
+
+
+func _despertar_erosion() -> void:
+	if get_parent() is Comidas:
+		var run = get_parent().get_parent()
+		if run is Run and is_instance_valid(run.cola_erosion):
+			run.cola_erosion.despertar(self)
 
 
 ## Coordenadas del atlas copiadas por valor: sobreviven al alimento destruido.
@@ -307,6 +403,8 @@ func _mostrar_veneno() -> void:
 func morder_veneno(dano: float, origen: Vector2) -> float:
 	if mordiscos == null:
 		_preparar_mordiscos()
+	if mordiscos == null:
+		return 0.0
 	var local := to_local(origen)
 	if not mordiscos.aire_exterior(local):
 		local = mordiscos.origen_exterior(0, local)
@@ -325,6 +423,8 @@ func erosion_paso(dano: float, origen: Vector2) -> float:
 		return 0
 	if mordiscos == null:
 		_preparar_mordiscos()
+	if mordiscos == null:
+		return 0.0
 	var local := to_local(origen)
 	if not mordiscos.aire_exterior(local):
 		local = mordiscos.origen_exterior(0, local)
@@ -406,6 +506,9 @@ func _draw() -> void:
 		Graficos.dibujar(self, "comida:" + id, Vector2.ZERO, Color(1.3, 1.3, 1.3) if _destello > 0 else Color.WHITE)
 		_dibujar_dano(desplazamiento)
 		return
+	if DibujoHallazgo.tiene_forma(forma):
+		DibujoHallazgo.dibujar(self, forma, r, c)
+		return
 	# Sombra consistente, también para las formas pequeñas; las alargadas la
 	# dibujan con su forma.
 	if forma in ["medialuna", "croissant"]:
@@ -431,6 +534,11 @@ func _draw() -> void:
 			draw_colored_polygon(PackedVector2Array([Vector2(-r, -r * 0.3), Vector2(-r * 0.6, -r * 0.8), Vector2(r * 0.65, -r * 0.8), Vector2(r, -r * 0.3), Vector2(0, r)]), c)
 			for i in 7:
 				var p := Vector2(sin(i * 2.4) * r * 0.48, -r * 0.4 + i * r * 0.17)
+				# La punta se angosta hasta x=0: la última semilla antes quedaba
+				# flotando afuera y se incorporaba a la silueta como una rayita.
+				# Incluir largo y medio grosor, no sólo el inicio de la línea.
+				var ancho_disponible := maxf(0, (r - p.y - 2.0) / 1.3 - 0.7)
+				p.x = clampf(p.x, -ancho_disponible, ancho_disponible)
 				draw_line(p, p + Vector2(0, 2), Color("f6dd9d"), 1.2, true)
 			for i in 3:
 				var p := Vector2((i - 1) * r * 0.45, -r * 0.9)
@@ -459,7 +567,14 @@ func _draw() -> void:
 			draw_colored_polygon(triangulo, c)
 			draw_colored_polygon(PackedVector2Array([Vector2(-r, -r * 0.75), Vector2(-r * 0.75, -r * 0.6), Vector2(-r * 0.75, r * 0.6), Vector2(-r, r * 0.75)]), oscuro)
 			for d in _detalles:
-				draw_circle(Vector2(d.x, d.y) * r, d.z * r, c.darkened(0.18))
+				# Distancia al borde inclinado del triángulo, incluyendo el
+				# radio entero del agujero. No dejar islas de tinta en el piso.
+				var rr := d.z * r
+				var y := d.y * r
+				var pendiente := 8.0 / 3.0
+				var borde := r - pendiente * absf(y) - sqrt(1.0 + pendiente * pendiente) * rr - 0.4
+				var x := clampf(d.x * r, -r + rr + 0.4, borde)
+				draw_circle(Vector2(x, y), rr, c.darkened(0.18))
 		"sandwich":
 			var rect := Rect2(-r, -r * 0.7, r * 2.0, r * 1.4)
 			draw_rect(rect, Color(0.45, 0.7, 0.3))  # lechuga que asoma
@@ -616,9 +731,10 @@ func _creciente(r: float, tinta: Color, oscuro: Color, gajos: int) -> void:
 
 func _dibujar_dano(desplazamiento: Vector2) -> void:
 	var r := radio
-	# Grietas: aparecen a medida que pierde vida.
+	# El desgaste físico ya muestra lo que falta. Las grietas independientes
+	# podían quedar dibujadas en huecos transparentes como rayitas flotantes.
 	var dano := 1.0 - vida / vida_max
-	if dano > 0.0:
+	if dano > 0.0 and mordiscos == null:
 		var cantidad := int(ceil(dano * _grietas.size()))
 		var ancho := maxf(0.6, r * 0.07)
 		for i in cantidad:

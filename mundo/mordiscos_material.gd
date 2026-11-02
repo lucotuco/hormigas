@@ -49,6 +49,24 @@ var _columnas_vivas := PackedInt32Array()
 var _limites_pixels: Array[Rect2i] = []
 var _limites_sucios := PackedByteArray()
 var tiempo_configuracion_usec := 0
+var configuracion_lista := false
+var max_unidad_configuracion_usec := 0
+enum Preparacion { INACTIVA, RESERVA, HOJAS, RASTER, ARBOL, DATOS, AIRE_RESERVA, AIRE_BORDE, AIRE_SEMILLAS, AIRE_FLOOD, FRONTERA, FINAL }
+var _prep_etapa := Preparacion.INACTIVA
+var _prep_rect := Rect2()
+var _prep_grilla := Vector2i.ONE
+var _prep_formas: Array = []
+var _prep_vidas := PackedFloat64Array()
+var _prep_cursor := 0
+var _prep_celda := 0
+var _prep_raster := 0
+var _prep_forma := 0
+var _prep_banda := 0
+var _prep_rectangulos: Array[Rect2i] = []
+var _prep_bordes: Array[int] = []
+var _prep_regiones: Array[Rect2i] = []
+var _prep_region := 0
+var _prep_tesela := Vector2i.ZERO
 
 ## Un árbol de bloques 8×8 acelera el contacto sin recorrer la superficie.
 ## A 2048² necesita como máximo 87381 contadores, no un nodo por píxel.
@@ -78,7 +96,34 @@ var _textura_sucia := false
 
 func configurar(rect_mundo: Rect2, grilla: Vector2i, formas_por_celda: Array, vidas_por_celda: PackedFloat64Array) -> void:
 	var inicio_configuracion := Time.get_ticks_usec()
+	cancelar_configuracion()
+	_reservar_configuracion(rect_mundo, grilla)
+	if _cantidad_celdas <= 0:
+		return
+	_preparar_arbol()
+	for celda in _cantidad_celdas:
+		if celda >= formas_por_celda.size() or celda >= vidas_por_celda.size() or vidas_por_celda[celda] <= 0:
+			continue
+		_rasterizar_celda(celda, formas_por_celda[celda])
+		_vivos[celda] = _iniciales[celda]
+		_cantidad_vivos += _vivos[celda]
+		if _vivos[celda] > 0:
+			_vidas_iniciales[celda] = vidas_por_celda[celda]
+			_hp_pixel[celda] = vidas_por_celda[celda] / _vivos[celda]
+	for nodo in range(_arbol.size() - 1, 0, -1):
+		_arbol[(nodo - 1) / 4 as int] += _arbol[nodo]
+	_pixeles = _imagen.get_data()
+	_preparar_aire_exterior()
+	_textura_sucia = true
+	_actualizar_diagnostico()
+	configuracion_lista = true
+	tiempo_configuracion_usec = Time.get_ticks_usec() - inicio_configuracion
+
+
+func _reservar_configuracion(rect_mundo: Rect2, grilla: Vector2i) -> void:
 	tiempo_configuracion_usec = 0
+	max_unidad_configuracion_usec = 0
+	configuracion_lista = false
 	ultima_porcion = Rect2()
 	_rect_mundo = rect_mundo
 	_grilla = grilla
@@ -130,24 +175,217 @@ func configurar(rect_mundo: Rect2, grilla: Vector2i, formas_por_celda: Array, vi
 	_limites_pixels.fill(Rect2i())
 	_limites_sucios.resize(_cantidad_celdas)
 	_limites_sucios.fill(0)
-	_preparar_arbol()
-	for celda in _cantidad_celdas:
-		if celda >= formas_por_celda.size() or celda >= vidas_por_celda.size() or vidas_por_celda[celda] <= 0:
-			continue
-		_rasterizar_celda(celda, formas_por_celda[celda])
-		_vivos[celda] = _iniciales[celda]
-		_cantidad_vivos += _vivos[celda]
-		if _vivos[celda] > 0:
-			_vidas_iniciales[celda] = vidas_por_celda[celda]
-			_hp_pixel[celda] = vidas_por_celda[celda] / _vivos[celda]
-	# La construcción es lineal; no subir por el árbol por cada píxel inicial.
-	for nodo in range(_arbol.size() - 1, 0, -1):
-		_arbol[(nodo - 1) / 4 as int] += _arbol[nodo]
-	_pixeles = _imagen.get_data()
-	_preparar_aire_exterior()
-	_textura_sucia = true
-	_actualizar_diagnostico()
-	tiempo_configuracion_usec = Time.get_ticks_usec() - inicio_configuracion
+
+
+## La cola retiene este objeto en privado; no publica estados intermedios.
+func iniciar_configuracion(rect_mundo: Rect2, grilla: Vector2i, formas_por_celda: Array, vidas_por_celda: PackedFloat64Array) -> void:
+	cancelar_configuracion()
+	configuracion_lista = false
+	_prep_rect = rect_mundo
+	_prep_grilla = grilla
+	_prep_formas = formas_por_celda.duplicate(true)
+	_prep_vidas = vidas_por_celda.duplicate()
+	_prep_cursor = 0
+	_prep_celda = 0
+	_prep_raster = 0
+	_prep_etapa = Preparacion.RESERVA
+
+
+func cancelar_configuracion() -> void:
+	_prep_etapa = Preparacion.INACTIVA
+	_prep_formas.clear()
+	_prep_vidas = PackedFloat64Array()
+	_prep_rectangulos.clear()
+	_prep_bordes.clear()
+	_prep_regiones.clear()
+
+
+func avanzar_configuracion(unidades := 1) -> bool:
+	for unidad in maxi(0, unidades):
+		if _prep_etapa == Preparacion.INACTIVA:
+			break
+		var inicio := Time.get_ticks_usec()
+		_avanzar_configuracion_unidad()
+		var tiempo := Time.get_ticks_usec() - inicio
+		tiempo_configuracion_usec += tiempo
+		max_unidad_configuracion_usec = maxi(max_unidad_configuracion_usec, tiempo)
+	return configuracion_lista
+
+
+func _avanzar_configuracion_unidad() -> void:
+	match _prep_etapa:
+		Preparacion.RESERVA:
+			_reservar_configuracion(_prep_rect, _prep_grilla)
+			if _cantidad_celdas <= 0:
+				_prep_etapa = Preparacion.FINAL
+				return
+			_reservar_arbol()
+			_prep_etapa = Preparacion.HOJAS
+		Preparacion.HOJAS:
+			var base := (_lado_arbol * _lado_arbol - 1) / 3 as int
+			var fin := mini(_prep_cursor + 256, _hojas.size())
+			while _prep_cursor < fin:
+				_hojas[_prep_cursor] = base + _morton_x[_prep_cursor % _columnas_bloques] + _morton_y[_prep_cursor / _columnas_bloques as int]
+				_prep_cursor += 1
+			if _prep_cursor == _hojas.size():
+				_prep_etapa = Preparacion.RASTER
+		Preparacion.RASTER:
+			_avanzar_raster()
+		Preparacion.ARBOL:
+			var fin := maxi(0, _prep_cursor - 256)
+			while _prep_cursor > fin:
+				_arbol[(_prep_cursor - 1) / 4 as int] += _arbol[_prep_cursor]
+				_prep_cursor -= 1
+			if _prep_cursor == 0:
+				_prep_etapa = Preparacion.DATOS
+		Preparacion.DATOS:
+			_pixeles = _imagen.get_data()
+			_prep_etapa = Preparacion.AIRE_RESERVA
+		Preparacion.AIRE_RESERVA:
+			_reservar_aire_exterior()
+			_prep_cursor = 0
+			_prep_etapa = Preparacion.AIRE_BORDE
+		Preparacion.AIRE_BORDE:
+			var fin := mini(_ancho + _alto, _prep_cursor + 64)
+			while _prep_cursor < fin:
+				if _prep_cursor < _ancho:
+					_marcar_frontera(_prep_cursor, 0)
+					_marcar_frontera(_prep_cursor, _alto - 1)
+				else:
+					_marcar_frontera(0, _prep_cursor - _ancho)
+					_marcar_frontera(_ancho - 1, _prep_cursor - _ancho)
+				_prep_cursor += 1
+			if _prep_cursor == _ancho + _alto:
+				_prep_cursor = 0
+				_prep_etapa = Preparacion.AIRE_SEMILLAS
+		Preparacion.AIRE_SEMILLAS:
+			var fin := mini(_columnas_bloques + _filas_bloques, _prep_cursor + 16)
+			while _prep_cursor < fin:
+				if _prep_cursor < _columnas_bloques:
+					_visitar_bloque_aire(_prep_cursor, 0, 2)
+					_visitar_bloque_aire(_prep_cursor, _filas_bloques - 1, 3)
+				else:
+					_visitar_bloque_aire(0, _prep_cursor - _columnas_bloques, 0)
+					_visitar_bloque_aire(_columnas_bloques - 1, _prep_cursor - _columnas_bloques, 1)
+				_prep_cursor += 1
+			if _prep_cursor == _columnas_bloques + _filas_bloques:
+				_prep_cursor = 0
+				_prep_etapa = Preparacion.AIRE_FLOOD
+		Preparacion.AIRE_FLOOD:
+			for entrada in 16:
+				if _prep_cursor >= _cola_aire.size():
+					_cola_aire.clear()
+					_prep_cursor = 0
+					_prep_etapa = Preparacion.FRONTERA
+					break
+				_propagar_entrada(_cola_aire[_prep_cursor])
+				_prep_cursor += 1
+		Preparacion.FRONTERA:
+			var fin := mini(_bloques_frontera.size(), _prep_cursor + 16)
+			while _prep_cursor < fin:
+				_aplicar_bloque_frontera(_bloques_frontera[_prep_cursor])
+				_prep_cursor += 1
+			if _prep_cursor == _bloques_frontera.size():
+				_bloques_frontera.clear()
+				_prep_etapa = Preparacion.FINAL
+		Preparacion.FINAL:
+			_textura_sucia = _cantidad_celdas > 0
+			_actualizar_diagnostico()
+			configuracion_lista = true
+			cancelar_configuracion()
+
+
+func _avanzar_raster() -> void:
+	if _prep_celda >= _cantidad_celdas:
+		_prep_cursor = _arbol.size() - 1
+		_prep_etapa = Preparacion.ARBOL
+		return
+	if _prep_celda >= _prep_formas.size() or _prep_celda >= _prep_vidas.size() or _prep_vidas[_prep_celda] <= 0:
+		_prep_celda += 1
+		return
+	if _prep_raster == 0:
+		_prep_rectangulos.clear()
+		_prep_bordes.clear()
+		_prep_forma = 0
+		_prep_raster = 1
+	if _prep_raster == 1:
+		var formas: Array = _prep_formas[_prep_celda]
+		var fin := mini(formas.size(), _prep_forma + 32)
+		var cx0 := (_prep_celda % _grilla.x) * _ancho_celda
+		var cy0 := (_prep_celda / _grilla.x as int) * _alto_celda
+		while _prep_forma < fin:
+			var forma: Rect2 = formas[_prep_forma]
+			_prep_forma += 1
+			var parte := forma.intersection(_rect_mundo)
+			if not parte.has_area():
+				continue
+			var x0 := clampi(floori((parte.position.x - _rect_mundo.position.x) / _paso.x + 0.000001), cx0, cx0 + _ancho_celda)
+			var y0 := clampi(floori((parte.position.y - _rect_mundo.position.y) / _paso.y + 0.000001), cy0, cy0 + _alto_celda)
+			var x1 := clampi(ceili((parte.end.x - _rect_mundo.position.x) / _paso.x - 0.000001), cx0, cx0 + _ancho_celda)
+			var y1 := clampi(ceili((parte.end.y - _rect_mundo.position.y) / _paso.y - 0.000001), cy0, cy0 + _alto_celda)
+			if x0 < x1 and y0 < y1:
+				_prep_rectangulos.append(Rect2i(x0, y0, x1 - x0, y1 - y0))
+				_prep_bordes.append(y0)
+				_prep_bordes.append(y1)
+		if _prep_forma == formas.size():
+			_prep_raster = 2
+		return
+	if _prep_raster == 2:
+		_ordenar_rectangulos(_prep_rectangulos)
+		_prep_bordes.sort()
+		_prep_banda = 0
+		_prep_raster = 3
+		return
+	if _prep_raster == 3:
+		_prep_regiones.clear()
+		if _prep_banda >= _prep_bordes.size() - 1:
+			_vivos[_prep_celda] = _iniciales[_prep_celda]
+			_cantidad_vivos += _vivos[_prep_celda]
+			if _vivos[_prep_celda] > 0:
+				_vidas_iniciales[_prep_celda] = _prep_vidas[_prep_celda]
+				_hp_pixel[_prep_celda] = _prep_vidas[_prep_celda] / _vivos[_prep_celda]
+			_prep_celda += 1
+			_prep_raster = 0
+			return
+		var y0 := _prep_bordes[_prep_banda]
+		_prep_banda += 1
+		var y1 := _prep_bordes[_prep_banda]
+		if y0 >= y1:
+			return
+		var inicio := -1
+		var fin := -1
+		for rect: Rect2i in _prep_rectangulos:
+			if rect.position.y > y0 or rect.end.y < y1:
+				continue
+			if inicio < 0:
+				inicio = rect.position.x
+				fin = rect.end.x
+			elif rect.position.x <= fin:
+				fin = maxi(fin, rect.end.x)
+			else:
+				_prep_regiones.append(Rect2i(inicio, y0, fin - inicio, y1 - y0))
+				inicio = rect.position.x
+				fin = rect.end.x
+		if inicio >= 0:
+			_prep_regiones.append(Rect2i(inicio, y0, fin - inicio, y1 - y0))
+		_prep_region = 0
+		_prep_tesela = _prep_regiones[0].position if not _prep_regiones.is_empty() else Vector2i.ZERO
+		_prep_raster = 4
+		return
+	if _prep_region >= _prep_regiones.size():
+		_prep_raster = 3
+		return
+	var region := _prep_regiones[_prep_region]
+	var tamano := Vector2i(mini(32, region.end.x - _prep_tesela.x), mini(32, region.end.y - _prep_tesela.y))
+	_rellenar_region(_prep_celda, Rect2i(_prep_tesela, tamano))
+	_prep_tesela.x += tamano.x
+	if _prep_tesela.x >= region.end.x:
+		_prep_tesela.x = region.position.x
+		_prep_tesela.y += tamano.y
+	if _prep_tesela.y >= region.end.y:
+		_prep_region += 1
+		if _prep_region < _prep_regiones.size():
+			_prep_tesela = _prep_regiones[_prep_region].position
 
 
 func recortar_local(celda: int, dano: float, pos: Vector2, lado_max: float) -> float:
@@ -241,7 +479,7 @@ func _descontar_credito(celda: int, cantidad: float, erosion: bool) -> void:
 func recortar_frente_paso(celda: int, dano: float, pos: Vector2, lado_max := 16.0) -> float:
 	ultima_porcion = Rect2()
 	ultimo_trabajo_erosion = 0
-	if celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0 or dano < 0 or not is_finite(dano) or not pos.is_finite() or lado_max <= 0 or not is_finite(lado_max):
+	if not configuracion_lista or celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0 or dano < 0 or not is_finite(dano) or not pos.is_finite() or lado_max <= 0 or not is_finite(lado_max):
 		return 0
 	var credito := minf(vida_celda(celda), _credito_erosion[celda] + dano)
 	ultimo_trabajo_erosion = maxf(0, credito - _credito_erosion[celda])
@@ -309,7 +547,7 @@ func _recortar_frente_acreditado(celda: int, pos: Vector2, lado_max: float) -> f
 
 func limpiar_celda(celda: int) -> void:
 	ultima_porcion = Rect2()
-	if celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0:
+	if not configuracion_lista or celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0:
 		return
 	var origen := Vector2i((celda % _grilla.x) * _ancho_celda, (celda / _grilla.x as int) * _alto_celda)
 	_borrar_rectangulo(celda, Rect2i(origen, Vector2i(_ancho_celda, _alto_celda)))
@@ -318,29 +556,29 @@ func limpiar_celda(celda: int) -> void:
 
 
 func vida_celda(celda: int) -> float:
-	if celda < 0 or celda >= _cantidad_celdas or _iniciales[celda] <= 0:
+	if not configuracion_lista or celda < 0 or celda >= _cantidad_celdas or _iniciales[celda] <= 0:
 		return 0.0
 	return _vidas_iniciales[celda] * (float(_vivos[celda]) / _iniciales[celda])
 
 
 func area_celda(celda: int) -> float:
-	return _vivos[celda] * _area_pixel if celda >= 0 and celda < _cantidad_celdas else 0.0
+	return _vivos[celda] * _area_pixel if configuracion_lista and celda >= 0 and celda < _cantidad_celdas else 0.0
 
 
 func area_total() -> float:
-	return _cantidad_vivos * _area_pixel
+	return _cantidad_vivos * _area_pixel if configuracion_lista else 0.0
 
 
 func limites_celda(celda: int) -> Rect2:
 	## Conservador: las cavidades siguen sólidas hasta vaciar una hilera.
 	## Consulta O(1); los contadores se mantienen solamente al retirar material.
-	if celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0:
+	if not configuracion_lista or celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0:
 		return Rect2()
 	return _rect_pixels(_limites_pixels[celda])
 
 
 func contiene(pos: Vector2) -> bool:
-	if _ancho <= 0 or not pos.is_finite() or not _rect_mundo.has_point(pos):
+	if not configuracion_lista or _ancho <= 0 or not pos.is_finite() or not _rect_mundo.has_point(pos):
 		return false
 	var p := (pos - _rect_mundo.position) / _paso
 	var x := clampi(floori(p.x), 0, _ancho - 1)
@@ -454,7 +692,7 @@ func material_cercano(pos: Vector2) -> Vector2:
 
 
 func textura_mascara() -> Texture2D:
-	if _ancho <= 0 or _alto <= 0:
+	if not configuracion_lista or _ancho <= 0 or _alto <= 0:
 		return null
 	if _textura == null:
 		_imagen.set_data(_ancho, _alto, false, Image.FORMAT_R8, _pixeles)
@@ -486,7 +724,7 @@ func tamano_mascara() -> Vector2i:
 
 
 func aire_exterior(pos: Vector2) -> bool:
-	if not pos.is_finite() or _ancho <= 0:
+	if not configuracion_lista or not pos.is_finite() or _ancho <= 0:
 		return false
 	if not _rect_mundo.has_point(pos):
 		return true
@@ -508,6 +746,23 @@ func _frontera_exterior(x: int, y: int) -> bool:
 
 
 func _preparar_aire_exterior() -> void:
+	_reservar_aire_exterior()
+	for x in _ancho:
+		_marcar_frontera(x, 0)
+		_marcar_frontera(x, _alto - 1)
+	for y in _alto:
+		_marcar_frontera(0, y)
+		_marcar_frontera(_ancho - 1, y)
+	for x in _columnas_bloques:
+		_visitar_bloque_aire(x, 0, 2)
+		_visitar_bloque_aire(x, _filas_bloques - 1, 3)
+	for y in _filas_bloques:
+		_visitar_bloque_aire(0, y, 0)
+		_visitar_bloque_aire(_columnas_bloques - 1, y, 1)
+	_propagar_aire()
+
+
+func _reservar_aire_exterior() -> void:
 	_aire_bloques.resize(_hojas.size())
 	_aire_bloques.fill(0)
 	_aire_bits.resize(_hojas.size())
@@ -524,19 +779,6 @@ func _preparar_aire_exterior() -> void:
 	_frontera_sucia.fill(0)
 	_bloques_frontera.clear()
 	_cola_aire.clear()
-	for x in _ancho:
-		_marcar_frontera(x, 0)
-		_marcar_frontera(x, _alto - 1)
-	for y in _alto:
-		_marcar_frontera(0, y)
-		_marcar_frontera(_ancho - 1, y)
-	for x in _columnas_bloques:
-		_visitar_bloque_aire(x, 0, 2)
-		_visitar_bloque_aire(x, _filas_bloques - 1, 3)
-	for y in _filas_bloques:
-		_visitar_bloque_aire(0, y, 0)
-		_visitar_bloque_aire(_columnas_bloques - 1, y, 1)
-	_propagar_aire()
 
 
 func _marcar_aire(x: int, y: int) -> void:
@@ -588,48 +830,50 @@ func _propagar_aire() -> void:
 	# del recurso. Un bocado sólo propaga aire recién abierto, nunca por frame.
 	var cursor := 0
 	while cursor < _cola_aire.size():
-		var entrada := _cola_aire[cursor]
+		_propagar_entrada(_cola_aire[cursor])
 		cursor += 1
-		if entrada < 0:
-			var bloque := -entrada - 1
-			var bx := bloque % _columnas_bloques
-			var by := bloque / _columnas_bloques as int
-			_visitar_bloque_aire(bx - 1, by, 1)
-			_visitar_bloque_aire(bx + 1, by, 0)
-			_visitar_bloque_aire(bx, by - 1, 3)
-			_visitar_bloque_aire(bx, by + 1, 2)
-			var x0 := bx * LADO_BLOQUE
-			var y0 := by * LADO_BLOQUE
-			var x1 := mini(x0 + LADO_BLOQUE, _ancho)
-			var y1 := mini(y0 + LADO_BLOQUE, _alto)
-			# Entre dos bloques vacíos no puede haber material de frontera.
-			# Sólo visitar los bordes con un vecino que todavía contiene cuerpo;
-			# el flood conserva las mismas cuatro conexiones y cavidades cerradas.
-			if bx > 0 and _arbol[_hojas[bloque - 1]] > 0:
-				for y in range(y0, y1):
-					_marcar_frontera(x0 - 1, y)
-			if bx + 1 < _columnas_bloques and _arbol[_hojas[bloque + 1]] > 0:
-				for y in range(y0, y1):
-					_marcar_frontera(x1, y)
-			if by > 0 and _arbol[_hojas[bloque - _columnas_bloques]] > 0:
-				for x in range(x0, x1):
-					_marcar_frontera(x, y0 - 1)
-			if by + 1 < _filas_bloques and _arbol[_hojas[bloque + _columnas_bloques]] > 0:
-				for x in range(x0, x1):
-					_marcar_frontera(x, y1)
-		else:
-			var x := entrada % _ancho
-			var y := entrada / _ancho as int
-			_marcar_aire(x - 1, y)
-			_marcar_aire(x + 1, y)
-			_marcar_aire(x, y - 1)
-			_marcar_aire(x, y + 1)
-			_marcar_frontera(x - 1, y)
-			_marcar_frontera(x + 1, y)
-			_marcar_frontera(x, y - 1)
-			_marcar_frontera(x, y + 1)
 	_cola_aire.clear()
 	_aplicar_frontera()
+
+
+func _propagar_entrada(entrada: int) -> void:
+	if entrada < 0:
+		var bloque := -entrada - 1
+		var bx := bloque % _columnas_bloques
+		var by := bloque / _columnas_bloques as int
+		_visitar_bloque_aire(bx - 1, by, 1)
+		_visitar_bloque_aire(bx + 1, by, 0)
+		_visitar_bloque_aire(bx, by - 1, 3)
+		_visitar_bloque_aire(bx, by + 1, 2)
+		var x0 := bx * LADO_BLOQUE
+		var y0 := by * LADO_BLOQUE
+		var x1 := mini(x0 + LADO_BLOQUE, _ancho)
+		var y1 := mini(y0 + LADO_BLOQUE, _alto)
+		# Entre bloques vacíos no puede haber material. Misma conectividad
+		# y orden que el flood síncrono, interrumpible después de cada entrada.
+		if bx > 0 and _arbol[_hojas[bloque - 1]] > 0:
+			for y in range(y0, y1):
+				_marcar_frontera(x0 - 1, y)
+		if bx + 1 < _columnas_bloques and _arbol[_hojas[bloque + 1]] > 0:
+			for y in range(y0, y1):
+				_marcar_frontera(x1, y)
+		if by > 0 and _arbol[_hojas[bloque - _columnas_bloques]] > 0:
+			for x in range(x0, x1):
+				_marcar_frontera(x, y0 - 1)
+		if by + 1 < _filas_bloques and _arbol[_hojas[bloque + _columnas_bloques]] > 0:
+			for x in range(x0, x1):
+				_marcar_frontera(x, y1)
+	else:
+		var x := entrada % _ancho
+		var y := entrada / _ancho as int
+		_marcar_aire(x - 1, y)
+		_marcar_aire(x + 1, y)
+		_marcar_aire(x, y - 1)
+		_marcar_aire(x, y + 1)
+		_marcar_frontera(x - 1, y)
+		_marcar_frontera(x + 1, y)
+		_marcar_frontera(x, y - 1)
+		_marcar_frontera(x, y + 1)
 
 
 func _marcar_frontera(x: int, y: int) -> void:
@@ -649,20 +893,24 @@ func _marcar_frontera(x: int, y: int) -> void:
 
 func _aplicar_frontera() -> void:
 	for bloque in _bloques_frontera:
-		var delta := _deltas_frontera[bloque]
-		_deltas_frontera[bloque] = 0
-		_frontera_sucia[bloque] = 0
-		var nodo := _hojas[bloque]
-		while true:
-			_frontera_arbol[nodo] += delta
-			if nodo == 0:
-				break
-			nodo = (nodo - 1) / 4 as int
+		_aplicar_bloque_frontera(bloque)
 	_bloques_frontera.clear()
 
 
+func _aplicar_bloque_frontera(bloque: int) -> void:
+	var delta := _deltas_frontera[bloque]
+	_deltas_frontera[bloque] = 0
+	_frontera_sucia[bloque] = 0
+	var nodo := _hojas[bloque]
+	while true:
+		_frontera_arbol[nodo] += delta
+		if nodo == 0:
+			break
+		nodo = (nodo - 1) / 4 as int
+
+
 func _entrada_valida(celda: int, dano: float, pos: Vector2) -> bool:
-	return celda >= 0 and celda < _cantidad_celdas and _vivos[celda] > 0 and dano > 0 and is_finite(dano) and pos.is_finite()
+	return configuracion_lista and celda >= 0 and celda < _cantidad_celdas and _vivos[celda] > 0 and dano > 0 and is_finite(dano) and pos.is_finite()
 
 
 func _pixeles_pagables(celda: int, erosion := false) -> int:
@@ -897,6 +1145,16 @@ func _aplicar_bloques() -> void:
 
 
 func _preparar_arbol() -> void:
+	_reservar_arbol()
+	var base_hojas := (_lado_arbol * _lado_arbol - 1) / 3 as int
+	for y in _filas_bloques:
+		var fila := y * _columnas_bloques
+		var base_fila := base_hojas + _morton_y[y]
+		for x in _columnas_bloques:
+			_hojas[fila + x] = base_fila + _morton_x[x]
+
+
+func _reservar_arbol() -> void:
 	_columnas_bloques = ceili(float(_ancho) / LADO_BLOQUE)
 	_filas_bloques = ceili(float(_alto) / LADO_BLOQUE)
 	_lado_arbol = 1
@@ -910,12 +1168,6 @@ func _preparar_arbol() -> void:
 	_bloques_tocados.clear()
 	if _morton_x.is_empty():
 		_preparar_codigos_morton()
-	var base_hojas := (_lado_arbol * _lado_arbol - 1) / 3 as int
-	for y in _filas_bloques:
-		var fila := y * _columnas_bloques
-		var base_fila := base_hojas + _morton_y[y]
-		for x in _columnas_bloques:
-			_hojas[fila + x] = base_fila + _morton_x[x]
 
 
 static func _preparar_codigos_morton() -> void:
@@ -937,7 +1189,7 @@ static func _preparar_codigos_morton() -> void:
 
 
 func _buscar_pixel(celda: int, pos: Vector2, zona := Rect2(), solo_frontera := false) -> int:
-	if celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0 or not pos.is_finite():
+	if not configuracion_lista or celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0 or not pos.is_finite():
 		return -1
 	if solo_frontera and _frontera_celdas[celda] <= 0:
 		return -1

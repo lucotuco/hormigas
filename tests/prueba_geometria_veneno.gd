@@ -70,6 +70,7 @@ func _ready() -> void:
 
 func crear_run() -> Run:
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
+	run.preparacion_sincrona = true # Referencia síncrona de máscara/HP, no rendimiento.
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	return run

@@ -97,8 +97,13 @@ var _carga_origen: Array[float] = [0.0, 0.0, 0.0]
 var _retazos: Array[Rect2] = []
 var _angulos_retazos: Array[float] = []
 var _tamanos_retazos: Array[Vector2] = []
+var _origenes_retazos: Array[Vector2] = []
+var _tiempos_retazos: Array[float] = []
+var _levantando_retazos := false
 var _origen_retazo := Vector2.ZERO
 var _tiempo_bocado := -10.0
+var _tiempo_descarga := -10.0
+var _detalle_bocado := false
 
 # Stats copiadas al nacer (no cambian durante la run).
 var _velocidad := 60.0
@@ -406,6 +411,11 @@ func _morder(delta: float) -> void:
 			estado = Estado.EXPLORANDO
 			_elegir_destino_al_azar()
 		return
+	# Preparación geométrica presupuestada: seguir trabajando en el mismo
+	# frente sin interpretar la espera como falta de contacto. No se consume
+	# ni se acumula reloj de daño, carga o varios mordiscos durante la espera.
+	if not comida.preparar_material():
+		return
 	var hacia := (comida.global_position - global_position).angle()
 	if comida is PiezaCasa:
 		# Mirar la piedra o la pata que se muerde, no el aire en el centro de
@@ -474,6 +484,9 @@ func _morder(delta: float) -> void:
 			_retazos.clear()
 			_angulos_retazos.clear()
 			_tamanos_retazos.clear()
+			_origenes_retazos.clear()
+			_tiempos_retazos.clear()
+			_levantando_retazos = false
 		_guardar_retazo(actual)
 	if casta == "roja" and not actual.muerta:
 		actual.aplicar_veneno(_dano * 0.8, 3.0, run, global_position)
@@ -492,7 +505,11 @@ func _morder(delta: float) -> void:
 	_tiempo_bocado = _reloj_vida
 	_reloj_visual = 0
 	run.efectos.chispas(global_position + Vector2.from_angle(rotation) * 4.0, actual.color, 1, _material_carga)
-	Sonido.tocar(["mordida", "mordida_madera", "mordida_metal", "mordida_piedra"][maxi(0, _material_carga)], randf_range(0.9, 1.1), 0.0)
+	# El timbre sólo confirma material retirado. Su puerta global es compartida
+	# con el levantado; no suena por crédito pendiente ni fuera de cámara.
+	var tono_bocado := randf_range(0.9, 1.1)
+	if not Sonido.silenciado and en_pantalla and visible and Sonido.detalle_material(run.camara.zoom.x, run.colonia.hormigas.size()):
+		Sonido.tocar(_sonido_bocado(actual), tono_bocado, 0.0)
 	if corte_continuo:
 		bocados = 0
 		if actual.muerta:
@@ -546,6 +563,8 @@ func _volver() -> void:
 
 
 func _descargar() -> void:
+	if carga > 0:
+		_tiempo_descarga = _reloj_vida
 	run.depositar(carga, objetivo, 0 if _material_carga <= 0 else (2 if _material_carga >= 3 else 1), _carga_origen)
 	_carga_origen.fill(0.0)
 	carga = 0.0
@@ -554,6 +573,11 @@ func _descargar() -> void:
 	_retazos.clear()
 	_angulos_retazos.clear()
 	_tamanos_retazos.clear()
+	_origenes_retazos.clear()
+	_tiempos_retazos.clear()
+	_levantando_retazos = false
+	if is_instance_valid(_carga_sprite):
+		_carga_sprite.hide()
 	_reloj_visual = 0
 	queue_redraw()
 	if run.retirando:
@@ -593,11 +617,12 @@ func _draw() -> void:
 		AspectoHormiga.dibujar(self, casta, _color, _fase, carga > 0.0, _color_carga)
 	elif carga > 0 and Graficos.listo:
 		# Los retazos adicionales comparten el CanvasItem de la hormiga.
-		# Se redibuja al cargar/descargar, no por cada paso de la animación.
+		# Su levantado usa el tick visual compartido de 12 Hz sólo 0,18 s;
+		# después quedan retenidos hasta otra carga o descarga, no por cuadro.
 		for i in range(1, _retazos.size()):
 			var region := _retazos[i]
 			var tamano := region.size * _escala_retazo(region, i)
-			var centro := Vector2(5.6 - i * 0.3, (1 if i % 2 else -1) * 1.8)
+			var centro := _posicion_retazo(i)
 			draw_set_transform(centro, _angulos_retazos[i])
 			draw_texture_rect_region(Graficos.textura, Rect2(-tamano * 0.5, tamano), region)
 		draw_set_transform(Vector2.ZERO)
@@ -612,9 +637,32 @@ func _guardar_retazo(fuente: Comida) -> void:
 		_retazos.append(region)
 		_angulos_retazos.append(fuente.global_rotation - global_rotation)
 		_tamanos_retazos.append(tamano)
+		_origenes_retazos.append(fuente.origen_bocado())
+		_tiempos_retazos.append(_reloj_vida)
+		_levantando_retazos = true
 	if _retazos.size() == 1:
-		_origen_retazo = fuente.origen_bocado()
+		_origen_retazo = _origenes_retazos[0]
 	queue_redraw()
+
+
+func _sonido_bocado(fuente: Comida) -> String:
+	if fuente is FragmentoCasa:
+		return "levantar"
+	if DibujoHallazgo.tiene_forma(fuente.forma):
+		return "mordida_carton"
+	if fuente is PiezaCasa and (fuente.pieza.get("practica", false) or fuente.pieza.get("dibujo", {}).get("acabado", "") == "carton"):
+		return "mordida_carton"
+	return ["mordida", "mordida_madera", "mordida_metal", "mordida_piedra"][clampi(_material_carga, 0, 3)]
+
+
+## Sólo cambia el dibujo. La carga real y la posición física ya fueron
+## resueltas por la mordida/ruta; nunca se interpolan ni se vuelven a cobrar.
+func _posicion_retazo(indice: int) -> Vector2:
+	var pinza := Vector2(5.8 - indice * 0.3, (1 if indice % 2 else -1) * 1.6 if indice > 0 else 0.0)
+	if not _detalle_bocado or indice >= _origenes_retazos.size() or indice >= _tiempos_retazos.size():
+		return pinza
+	var edad := _reloj_vida - _tiempos_retazos[indice]
+	return AspectoHormiga.levantar_retazo(to_local(_origenes_retazos[indice]), pinza, edad)
 
 
 func _escala_retazo(region: Rect2, indice := 0) -> Vector2:
@@ -655,10 +703,15 @@ func _actualizar_sprite() -> void:
 		_evolucion_animacion = _evolucion
 		_animacion = Graficos.animacion(casta, _evolucion)
 	_cuerpo.region_rect = _animacion[cuadro]
-	var preparacion := sin(clampf(1.0 - _reloj_mordida / _intervalo_mordida, 0, 1) * PI) if estado == Estado.MORDIENDO else 0.0
-	var tiron := maxf(0, 1.0 - (_reloj_vida - _tiempo_bocado) / 0.23)
-	_cuerpo.position = Vector2(preparacion * 0.9 - tiron * 0.6, 0)
-	_cuerpo.modulate = Color(1.06, 1.06, 1.0) if estado == Estado.MORDIENDO else Color.WHITE
+	_detalle_bocado = en_pantalla and run.camara.zoom.x >= 0.28
+	var progreso := clampf(1.0 - _reloj_mordida / maxf(_intervalo_mordida, 0.001), 0, 1) if estado == Estado.MORDIENDO else 0.0
+	var preparacion := AspectoHormiga.preparar_bocado(progreso) if _detalle_bocado else 0.0
+	var tiron := AspectoHormiga.pulso_bocado(_reloj_vida - _tiempo_bocado, 0.19) if _detalle_bocado else 0.0
+	var entrega := AspectoHormiga.pulso_bocado(_reloj_vida - _tiempo_descarga, 0.22) if _detalle_bocado else 0.0
+	_cuerpo.position = Vector2(-preparacion * 1.25 + tiron * 1.4 + entrega * 0.7, entrega * 0.35)
+	_cuerpo.rotation = preparacion * 0.035 - tiron * 0.055
+	_cuerpo.scale = Vector2(1.0 - preparacion * 0.055 + tiron * 0.035, 1.0 + preparacion * 0.035 - entrega * 0.04) / 3.0
+	_cuerpo.modulate = Color(1.025, 1.025, 1.0) if estado == Estado.MORDIENDO else Color.WHITE
 	_carga_sprite.visible = carga > 0
 	if not _retazos.is_empty():
 		var region := _retazos[0]
@@ -666,10 +719,16 @@ func _actualizar_sprite() -> void:
 		_carga_sprite.rotation = _angulos_retazos[0]
 		_carga_sprite.scale = _escala_retazo(region)
 		_carga_sprite.modulate = Color.WHITE
-		_carga_sprite.position = Vector2(5.8, 0).lerp(to_local(_origen_retazo), tiron * tiron) if _retazos.size() == 1 else Vector2(5.8, 0)
+		_carga_sprite.position = _posicion_retazo(0)
 	else:
 		_carga_sprite.rotation = 0
-		_carga_sprite.region_rect = Graficos.regiones["resto:%d" % _material_carga] if _material_carga >= 0 else Graficos.regiones.carga
+		_carga_sprite.region_rect = Graficos.regiones.get("resto:%d" % _material_carga, Rect2()) if _material_carga >= 0 else Graficos.regiones.get("carga", Rect2())
 		_carga_sprite.scale = Vector2.ONE * (0.12 if _material_carga >= 0 else 0.16) * (1.55 if casta == "cargadora" else 1.0)
 		_carga_sprite.modulate = Color.WHITE if _material_carga >= 0 else _color_carga
 		_carga_sprite.position = Vector2(5, 0)
+	if _levantando_retazos:
+		# Sólo los dos retazos secundarios necesitan redibujarse. Se reutiliza
+		# el tick visual de 12 Hz, durante como máximo 0,18 s por muestra.
+		if _retazos.size() > 1:
+			queue_redraw()
+		_levantando_retazos = _detalle_bocado and not _tiempos_retazos.is_empty() and _reloj_vida - _tiempos_retazos.back() < AspectoHormiga.DURACION_LEVANTADO

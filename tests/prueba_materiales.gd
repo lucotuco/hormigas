@@ -9,6 +9,7 @@ func _ready() -> void:
 	Juego.reiniciar_estado()
 	seed(445)
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
+	run.preparacion_sincrona = true # Lifecycle manual dentro de un solo cuadro real.
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.cocina.limite_rutas_por_cuadro = 0 # Esta prueba avanza muchos pasos en un solo cuadro real.
@@ -110,6 +111,7 @@ func _ready() -> void:
 	run.queue_free()
 	await get_tree().process_frame
 	var otra: Run = preload("res://mundo/run.tscn").instantiate()
+	otra.preparacion_sincrona = true
 	add_child(otra)
 	otra.process_mode = Node.PROCESS_MODE_DISABLED
 	var reconstruida := false
@@ -138,6 +140,7 @@ func probar_siluetas() -> void:
 	for destino in ["obelisco", "coliseo", "eiffel"]:
 		Juego.lugar_actual = destino
 		var run: Run = preload("res://mundo/run.tscn").instantiate()
+		run.preparacion_sincrona = true
 		add_child(run)
 		run.process_mode = Node.PROCESS_MODE_DISABLED
 		run.radio_actual = 12000

@@ -34,6 +34,7 @@ func crear_run() -> Run:
 	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
 	Juego._cache_stats.clear()
 	var r: Run = RUN.instantiate()
+	r.preparacion_sincrona = true # Aísla el presupuesto de erosión de la preparación.
 	add_child(r)
 	r.process_mode = Node.PROCESS_MODE_DISABLED
 	return r
@@ -221,6 +222,7 @@ func crear_run_destino(destino: String) -> Run:
 	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
 	Juego._cache_stats.clear()
 	var r: Run = RUN.instantiate()
+	r.preparacion_sincrona = true
 	add_child(r)
 	r.process_mode = Node.PROCESS_MODE_DISABLED
 	return r

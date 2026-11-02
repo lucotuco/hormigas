@@ -1,6 +1,31 @@
 class_name AspectoHormiga
 extends RefCounted
 ## El mismo dibujo se usa en el mundo y en las fichas de la tienda.
+const DURACION_LEVANTADO := 0.18
+
+
+## Curvas puramente visuales: no consultan recursos, rutas, reloj de daño ni
+## azar. La preparación no retrasa la mordida y el trozo conserva su tamaño.
+static func preparar_bocado(progreso: float) -> float:
+	var t := clampf((progreso - 0.22) / 0.78, 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)
+
+
+static func pulso_bocado(edad: float, duracion: float) -> float:
+	if edad < 0 or edad >= duracion:
+		return 0.0
+	var t := edad / duracion
+	return (1.0 - t) * (1.0 - t)
+
+
+static func levantar_retazo(origen: Vector2, pinza: Vector2, edad: float) -> Vector2:
+	if edad <= 0.0:
+		return origen
+	if edad >= DURACION_LEVANTADO:
+		return pinza
+	var t := clampf(edad / DURACION_LEVANTADO, 0.0, 1.0)
+	var suave := t * t * (3.0 - 2.0 * t)
+	return origen.lerp(pinza, suave) + Vector2(0, -0.9 * sin(t * PI))
 
 static func dibujar(lienzo: CanvasItem, tipo: String, color: Color, fase: float, carga := false, color_carga := Color.WHITE, evolucion := 0) -> void:
 	var patas := color.darkened(0.28)

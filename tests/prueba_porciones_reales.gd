@@ -129,6 +129,7 @@ func crear_run() -> Run:
 	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
 	Juego._cache_stats.clear()
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
+	run.preparacion_sincrona = true # Aísla tamaño/masa de cada mordida real.
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.colonia._activa = false

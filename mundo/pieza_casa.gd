@@ -339,9 +339,20 @@ func _area_formas(formas: Array) -> float:
 
 func _preparar_mordiscos() -> void:
 	# Los muebles intactos no reservan imágenes ni texturas de desgaste.
-	mordiscos = MordiscosMaterial.new()
+	if mordiscos != null or _preparacion_pendiente or muerta:
+		return
 	# Las celdas restauradas ya no existen: no rasterizarlas ni recrear su HP.
-	mordiscos.configurar(rect_mundo, grilla, _material_por_celda, vidas)
+	_solicitar_mordiscos(rect_mundo, grilla, _material_por_celda, vidas)
+
+
+func _recibir_mordiscos(preparada: MordiscosMaterial) -> void:
+	_preparacion_pendiente = false
+	if muerta or is_queued_for_deletion():
+		return
+	mordiscos = preparada
+	_version_contacto = -1
+	_accesos.clear()
+	_despertar_erosion()
 	if DisplayServer.get_name() != "headless":
 		_mascara.set_shader_parameter("mascara_bocados", mordiscos.textura_mascara())
 		_mascara.set_shader_parameter("usar_mascara", true)
@@ -385,6 +396,8 @@ func punto_contacto(pos: Vector2) -> Vector2:
 	# Sólo en mordidas/elección de puesto, nunca en el paso de cada hormiga.
 	if mordiscos == null:
 		_preparar_mordiscos()
+	if mordiscos == null:
+		return Vector2.INF
 	if _version_contacto == _version_material and _pos_contacto == pos:
 		return _punto_contacto
 	_pos_contacto = pos
@@ -526,6 +539,7 @@ func siguiente_seccion(pos: Vector2) -> Vector2:
 	return punto
 
 func punto_mordida(desde: Vector2, territorio: float, volando := false) -> Vector2:
+	_preparar_mordiscos()
 	if _version_accesos != casa.version:
 		_accesos.clear()
 		_version_accesos = casa.version
@@ -657,6 +671,8 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := fal
 		return 0
 	if mordiscos == null:
 		_preparar_mordiscos()
+	if mordiscos == null:
+		return 0.0
 	if lado_max > 0 and not alcanza_contacto(pos):
 		return 0
 	if lado_max < 0 and not mordiscos.aire_exterior(pos):

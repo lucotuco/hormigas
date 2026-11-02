@@ -79,6 +79,8 @@ func _ready() -> void:
 	f._actualizar_cercanas()
 	for i in 120:
 		h._process(1.0 / 60)
+		# El padre está DISABLED: representar también el servicio compartido.
+		run.preparador_mordiscos.procesar()
 		if comida.vida < 100:
 			break
 	verificar(comida.vida < 100 and h.carga > 0, "si el punto está sobre comida las cercanas llegan y recolectan")
