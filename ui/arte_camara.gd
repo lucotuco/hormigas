@@ -45,11 +45,19 @@ const ESTILOS := {
 	"patas": [null, Color("e7b3bf"), 1.0], "reina": [Color("c9a8de"), null, 0.0],
 	"patas_reina": [null, Color("b496c7"), 1.6], "bandera": [Color("ebc67d"), null, 0.0],
 	"palito": [null, Color("cdb08a"), 1.4], "hoja": [Color("8fae5e"), Color("5c7a36"), 0.8],
+	# La reina: brillo de jalea, alas de la reina joven, franjas del abdomen,
+	# corona y las ofrendas de cada destino conquistado.
+	"brillo": [Color(0.922, 0.776, 0.49, 0.16), null, 0.0], "ala": [Color(0.94, 0.94, 0.98, 0.42), Color(0.97, 0.97, 1.0, 0.8), 1.4],
+	"franja": [null, Color(0.18, 0.12, 0.1, 0.45), 1.6], "corona": [Color("f0cf7a"), Color("9a7a3a"), 0.8],
+	"jalea": [Color("f3d58c"), null, 0.0], "trofeo": [Color("d9c08a"), Color("7d6440"), 0.8],
 	"suelo": [Color(0.478, 0.353, 0.227, 0.42), null, 0.0], "aserrin": [Color("9c6e43"), null, 0.0],
 }
 const ORDEN_CAPAS := ["suelo", "halo", "aserrin", "tierra", "monton", "raiz", "hilo", "reserva", "piedra",
-	"astilla", "metal", "huevo", "larva", "miga", "gota", "patas", "obrera", "patas_reina", "reina",
-	"palito", "bandera", "hoja"]
+	"astilla", "metal", "huevo", "larva", "miga", "gota", "brillo", "jalea", "patas", "obrera", "patas_reina", "reina", "ala",
+	"franja", "corona", "palito", "bandera", "hoja", "trofeo"]
+## El color de la reina sigue el decreto con que se fundó la colonia.
+const COLOR_REINA := {"": Color("c9a8de"), "numerosa": Color("e3b28c"), "guerrera": Color("d98b7c"),
+	"recolectora": Color("e6c97f"), "exploradora": Color("a9cf9b")}
 const BORDE := Color("7d5c40")
 const CERRADO := Color("5a4230")
 const RELLENO := Color("2e2119")
@@ -251,11 +259,7 @@ static func piezas_de(kit: String, c: Vector2, tamano: Vector2, f: float, semill
 				var e: float = (0.95 + az.call() * 0.15) * k
 				out.append_array(_hormiga("obrera", "patas", Vector2(x, y), e, i == 0))
 		"reina":
-			out.append_array(_hormiga("reina", "patas_reina", c + Vector2(4, 4), 4.2, false))
-			var huevos := [Vector2(-0.3, 0.2), Vector2(-0.24, 0.28), Vector2(-0.33, 0.1), Vector2(0.3, 0.22), Vector2(0.23, 0.29), Vector2(0.34, 0.12), Vector2(-0.17, 0.3), Vector2(0.16, 0.31)]
-			for i in mini(huevos.size() + extra, 14):
-				var p: Vector2 = huevos[i] if i < huevos.size() else Vector2(-0.4 + (i - huevos.size()) * 0.13, 0.36)
-				out.append(_elipse("huevo", c + p * tamano, 3.6 * k, 4.6 * k))
+			out.append_array(_reina(c, tamano, k, extra, Juego.decreto, Juego.lugares_completados.keys()))
 		"viajes":
 			# Una bandera por destino conquistado (al menos la de casa en el lienzo).
 			var banderas := clampi(extra, 0, 6)
@@ -299,10 +303,10 @@ static func _pintar(ci: CanvasItem, p: Dictionary) -> void:
 	var puntos: PackedVector2Array = p.puntos
 	if p.tipo == "linea":
 		if estilo[1] != null:
-			ci.draw_polyline(puntos, estilo[1], estilo[2], true)
+			ci.draw_polyline(puntos, p.get("color", estilo[1]), estilo[2], true)
 		return
 	if estilo[0] != null and puntos.size() >= 3:
-		ci.draw_colored_polygon(puntos, estilo[0])
+		ci.draw_colored_polygon(puntos, p.get("color", estilo[0]))
 	if estilo[1] != null and estilo[2] > 0:
 		var cerrado := puntos.duplicate()
 		cerrado.append(puntos[0])
@@ -354,6 +358,105 @@ static func _hormiga(capa: String, capa_patas: String, p: Vector2, e: float, cab
 	for pata in [[Vector2(-2, 1.5), Vector2(-4, 5)], [Vector2(0, 2), Vector2(0, 5.5)], [Vector2(2, 1.5), Vector2(4, 5)]]:
 		partes.append(_linea(capa_patas, [p + pata[0] * e, p + pata[1] * e]))
 	return partes
+
+
+## La reina cambia con cada fundación (0 a 6):
+##   0   reina joven, delgada y con alas: todavía no hizo su vuelo.
+##   1   se arrancó las alas al fundar; el abdomen empieza a crecer.
+##   2-3 abdomen con franjas y obreras que la cuidan.
+##   4-5 brillo de jalea, corona y más cuidadoras.
+##   6   reina enorme con su cortejo completo.
+## El color sigue el decreto y cada destino conquistado deja una ofrenda
+## colgando del techo. Son piezas retenidas: no hay animación por cuadro.
+static func _reina(c: Vector2, tamano: Vector2, k: float, fundaciones: int, decreto: String, conquistas: Array) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var etapa := clampi(fundaciones, 0, 6)
+	var color: Color = COLOR_REINA.get(decreto, COLOR_REINA[""])
+	var e := 3.6 + 0.12 * etapa
+	var p := c + Vector2(6, 6)
+	if etapa >= 4:
+		out.append(_elipse("brillo", p + Vector2(-6, 0) * e, (16.0 + etapa) * e * 0.5, 9.0 * e * 0.5))
+	# Abdomen: crece con cada colonia, como el de una reina que pone sin parar.
+	var abdomen := Vector2(5.5 * (1.0 + 0.16 * etapa), 3.8 * (1.0 + 0.12 * etapa))
+	var centro_abdomen := p + Vector2(-4.2 - abdomen.x, 0) * e
+	var cuerpo: Array[Dictionary] = [
+		_elipse("reina", centro_abdomen, abdomen.x * e, abdomen.y * e),
+		_elipse("reina", p, 2.8 * e, 2.3 * e),
+		_elipse("reina", p + Vector2(5.4, -0.4) * e, 3.0 * e, 2.6 * e),
+	]
+	for pieza in cuerpo:
+		pieza.color = color
+	out.append_array(cuerpo)
+	var tono_patas := color.darkened(0.25)
+	for pata in [[Vector2(-2, 1.5), Vector2(-4.5, 5.5)], [Vector2(0, 2), Vector2(0, 6)], [Vector2(2, 1.5), Vector2(4.5, 5.5)]]:
+		var linea := _linea("patas_reina", [p + pata[0] * e, p + pata[1] * e])
+		linea.color = tono_patas
+		out.append(linea)
+	if etapa == 0:
+		# Alas de la reina joven, apoyadas sobre el abdomen.
+		out.append(_poligono("ala", p + Vector2(0, -1.2) * e, -0.32, e, [Vector2(0, 0), Vector2(-11, -4.2), Vector2(-15, -1.8), Vector2(-10, 0.6)]))
+		out.append(_poligono("ala", p + Vector2(0, -0.8) * e, -0.08, e, [Vector2(0, 0), Vector2(-12, -1.6), Vector2(-15.5, 0.8), Vector2(-9, 1.6)]))
+	else:
+		for i in mini(etapa + 1, 6):
+			var x := centro_abdomen.x + abdomen.x * e * (0.55 - i * 0.22)
+			out.append(_arco("franja", Vector2(x, centro_abdomen.y), abdomen.y * e * 0.98, -PI * 0.5 + 0.35, PI * 0.5 - 0.35))
+	if etapa >= 4:
+		var cabeza := p + Vector2(5.6, -3.0) * e
+		out.append(_poligono("corona", cabeza, 0.0, e, [Vector2(-2.2, 0), Vector2(-2.2, -2.2), Vector2(-1.1, -1.1), Vector2(0, -2.6), Vector2(1.1, -1.1), Vector2(2.2, -2.2), Vector2(2.2, 0)]))
+	# Cuidadoras: obreras que la miran desde los costados.
+	var lugares := [Vector2(0.36, 0.14), Vector2(-0.4, 0.2), Vector2(0.4, -0.12), Vector2(-0.43, -0.08)]
+	for i in clampi(etapa - 1, 0, 4):
+		var lugar: Vector2 = lugares[i]
+		var obrera := _hormiga("obrera", "patas", c + lugar * tamano, 0.95 * k, false)
+		if lugar.x > 0:
+			for pieza in obrera:
+				pieza.puntos = _espejar(pieza.puntos, (c + lugar * tamano).x)
+		out.append_array(obrera)
+	# Huevos y, desde la cuarta colonia, gotas de jalea real.
+	var huevos := [Vector2(-0.3, 0.3), Vector2(-0.24, 0.34), Vector2(-0.18, 0.31), Vector2(0.17, 0.32), Vector2(0.23, 0.34), Vector2(0.29, 0.3), Vector2(-0.12, 0.35), Vector2(0.11, 0.35)]
+	for i in mini(4 + etapa, huevos.size()):
+		out.append(_elipse("huevo", c + huevos[i] * tamano, 3.2 * k, 4.0 * k))
+	if etapa >= 4:
+		for i in etapa - 3:
+			out.append(_elipse("jalea", c + Vector2(-0.06 + i * 0.05, 0.36) * tamano, 2.6 * k, 2.2 * k))
+	# Una ofrenda por destino conquistado, colgando del techo.
+	var techo := c.y - tamano.y * 0.5 + 9.0 * k
+	var ofrendas := ["casa", "restaurante", "museo", "obelisco", "coliseo", "eiffel"]
+	for i in ofrendas.size():
+		if not conquistas.has(ofrendas[i]):
+			continue
+		var x := c.x + (-0.3 + i * 0.12) * tamano.x
+		var largo := (5.0 + (i % 2) * 4.0) * k
+		out.append(_linea("hilo", [Vector2(x, techo - 6.0 * k), Vector2(x, techo + largo)]))
+		out.append_array(_ofrenda(ofrendas[i], Vector2(x, techo + largo + 4.0 * k), k))
+	return out
+
+
+## Siluetas chicas de cada destino: una miga, un ravioles, una columna, el
+## Obelisco, un arco y la Torre. Mismo estilo dorado para todas.
+static func _ofrenda(destino: String, p: Vector2, k: float) -> Array[Dictionary]:
+	match destino:
+		"casa":
+			return [_elipse("trofeo", p, 3.4 * k, 2.8 * k)]
+		"restaurante":
+			return [_poligono("trofeo", p, PI * 0.25, k, [Vector2(-3.2, -3.2), Vector2(3.2, -3.2), Vector2(3.2, 3.2), Vector2(-3.2, 3.2)])]
+		"museo":
+			return [_poligono("trofeo", p, 0.0, k, [Vector2(-2, -4), Vector2(2, -4), Vector2(2, 4), Vector2(-2, 4)]),
+				_poligono("trofeo", p + Vector2(0, -4.5) * k, 0.0, k, [Vector2(-3.2, -1), Vector2(3.2, -1), Vector2(3.2, 0.6), Vector2(-3.2, 0.6)])]
+		"obelisco":
+			return [_poligono("trofeo", p, 0.0, k, [Vector2(-1.8, 5), Vector2(-1.2, -4), Vector2(0, -6), Vector2(1.2, -4), Vector2(1.8, 5)])]
+		"coliseo":
+			return [_poligono("trofeo", p, 0.0, k, [Vector2(-4, 4), Vector2(-4, -1), Vector2(-2.4, -3.6), Vector2(2.4, -3.6), Vector2(4, -1), Vector2(4, 4), Vector2(2, 4), Vector2(2, 0), Vector2(-2, 0), Vector2(-2, 4)])]
+		"eiffel":
+			return [_poligono("trofeo", p, 0.0, k, [Vector2(-4, 5), Vector2(-0.6, -6), Vector2(0.6, -6), Vector2(4, 5), Vector2(1.6, 5), Vector2(0, 1.5), Vector2(-1.6, 5)])]
+	return []
+
+
+static func _espejar(puntos: PackedVector2Array, eje: float) -> PackedVector2Array:
+	var salida := PackedVector2Array()
+	for p in puntos:
+		salida.append(Vector2(2.0 * eje - p.x, p.y))
+	return salida
 
 
 static func _mover(puntos: PackedVector2Array, desplazamiento: Vector2) -> PackedVector2Array:

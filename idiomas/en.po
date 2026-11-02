@@ -2804,3 +2804,18 @@ msgstr "Pick free floor for the entrance · click an entrance to pick it up · E
 
 msgid "Entrada levantada · elegí su lugar nuevo"
 msgstr "Entrance picked up · choose its new spot"
+
+msgid "Reina joven: todavía tiene alas."
+msgstr "Young queen: she still has her wings."
+
+msgid "Primera colonia fundada: se arrancó las alas."
+msgstr "First colony founded: she shed her wings."
+
+msgid "Reina madura: la cuidan sus obreras."
+msgstr "Mature queen: her workers tend to her."
+
+msgid "Reina coronada: brilla de jalea real."
+msgstr "Crowned queen: she glows with royal jelly."
+
+msgid "Reina de reinas: un cortejo completo la rodea."
+msgstr "Queen of queens: a full court surrounds her."
