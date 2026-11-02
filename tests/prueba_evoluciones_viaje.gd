@@ -74,6 +74,7 @@ func crear_run(evoluciones: Array) -> Run:
 		terminar_proyecto(EvolucionesHormiga.DATOS[id].proyecto)
 	equipar(evoluciones)
 	var run: Run = RUN.instantiate()
+	run.preparacion_sincrona = true # Las conductas se prueban por mordidas directas.
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.radio_actual = 12000

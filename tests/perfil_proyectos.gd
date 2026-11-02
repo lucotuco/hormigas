@@ -88,7 +88,7 @@ func medir(configuracion: Dictionary) -> void:
 				preparacion += parte.mordiscos.tiempo_configuracion_usec / 1000.0
 				nombres.append("%s %s" % [parte.pieza.get("tipo", ""), parte.mordiscos.tamano_mascara()])
 		if ms > 40.0 or preparacion > 10.0:
-			print("PICO %s cuadro%d: %.2f ms | proceso %.2f ms | física %.2f ms | preparar %.2f ms | %s" % [configuracion.destino, i, ms, Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, preparacion, "; ".join(nombres)])
+			print("PICO %s cuadro%d: %.2f ms | proceso %.2f ms | física %.2f ms | CPUprep acumulada de máscaras publicadas %.2f ms (no costo de este cuadro) | %s" % [configuracion.destino, i, ms, Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, preparacion, "; ".join(nombres)])
 		max_pedidos = maxi(max_pedidos, run.cocina._pedidos_cuadro)
 		dibujos += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 	tiempos.sort()
@@ -98,5 +98,6 @@ func medir(configuracion: Dictionary) -> void:
 		suma += ms
 	print("PROYECTOS %s %s: %.2f ms media | %.2f p95 | %.2f peor | dibujos %.0f | rutas/cuadro %d | restos %d/%d" % [configuracion.destino, "+".join(configuracion.equipo), suma / tiempos.size(), tiempos[341], tiempos.back(), dibujos / tiempos.size(), max_pedidos, run.comidas.fragmentos.size(), Comidas.MAX_FRAGMENTOS])
 	print("EROSIÓN %s: %d operaciones/cuadro máx | operación %.2f ms máx | %d recursos pendientes | trabajo emitido %.2f / admitido %.2f | ingresos reales %.2f" % [configuracion.destino, run.cola_erosion.max_operaciones_cuadro, run.cola_erosion.max_operacion_usec / 1000.0, run.cola_erosion.cantidad_pendientes(), run.cola_erosion.trabajo_emitido, run.cola_erosion.trabajo_admitido, run.cola_erosion.ingresos_reales])
+	print("PREPARADOR %s: %d unidades/cuadro máx | unidad %.3f ms | servicio %.3f ms | publicación %.3f ms | %d máscaras terminadas / %d pendientes" % [configuracion.destino, run.preparador_mordiscos.max_unidades_cuadro, run.preparador_mordiscos.max_unidad_usec / 1000.0, run.preparador_mordiscos.max_servicio_usec / 1000.0, run.preparador_mordiscos.max_publicacion_usec / 1000.0, run.preparador_mordiscos.terminadas, run.preparador_mordiscos.cantidad_pendientes()])
 	run.queue_free()
 	await get_tree().process_frame

@@ -198,6 +198,7 @@ func _ready() -> void:
 
 func crear_run() -> Run:
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
+	run.preparacion_sincrona = true # Fixture de conquista por llamadas directas.
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.radio_actual = 9500

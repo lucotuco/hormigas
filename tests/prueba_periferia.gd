@@ -6,6 +6,9 @@ class MesaPrueba extends Node2D:
 class ComidasObservadas extends Comidas:
 	var anteriores: Dictionary = {}
 
+	func _preparar_hallazgos() -> void:
+		pass # Aislar reparto exterior; los paquetes y su RNG se cubren aparte.
+
 	func _registrar_cambio(_comida: Comida) -> void:
 		pass # El reloj de Run no participa de esta prueba de plano y reparto.
 
@@ -30,7 +33,7 @@ func _ready() -> void:
 	for id in Mundos.ORDEN:
 		for m in Mundos.plano(id).muebles_interiores:
 			claves_anteriores[Graficos.clave_mueble(m)] = true
-	verificar(Mundos.VERSION_CONTENIDO == 7, "los componentes físicos separan los récords anteriores por versión")
+	verificar(Mundos.VERSION_CONTENIDO == 8, "los hallazgos físicos separan los récords anteriores por versión")
 	for id in Mundos.ORDEN:
 		Juego.reiniciar_estado()
 		Juego.lugar_actual = id

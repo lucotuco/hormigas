@@ -38,6 +38,16 @@ func agregar_comida(run: Run, pos: Vector2, vida := 100.0) -> Comida:
 	run.comidas._crear(datos, pos, 407)
 	return run.comidas.lista.back()
 
+## Preparación real para las llamadas manuales sin cuadros de esta suite.
+## No cambia el modo de la IA ni usa el fallback síncrono del fixture.
+func preparar_fixture_manual(run: Run, recurso: Comida) -> void:
+	recurso.preparar_material()
+	for paso in 10000:
+		if not recurso.material_preparandose():
+			break
+		run.preparador_mordiscos.procesar(1000000, 128)
+	verificar(recurso.mordiscos != null and not run.preparacion_sincrona, "el fixture directo usa la preparación incremental sin cambiar la IA a síncrona")
+
 func probar_alcance_inmediato() -> void:
 	var run := crear()
 	run.comidas._indice.clear()
@@ -67,6 +77,7 @@ func probar_alcance_retenido() -> void:
 	var pieza := PiezaContada.new()
 	run.comidas.add_child(pieza)
 	pieza.iniciar(fuente.pieza.duplicate(true), run.cocina)
+	preparar_fixture_manual(run, pieza)
 	var h := run.colonia._nacer()
 	h.position = pieza.punto_mordida(Vector2.ZERO, run.radio_actual)
 	h.comida = pieza
@@ -90,6 +101,7 @@ func probar_alcance_retenido() -> void:
 	var otra := PiezaContada.new()
 	run.comidas.add_child(otra)
 	otra.iniciar(fuente.pieza.duplicate(true), run.cocina)
+	preparar_fixture_manual(run, otra)
 	h.position = otra.punto_mordida(Vector2.ZERO, run.radio_actual)
 	h.comida = otra
 	h.estado = Hormiga.Estado.MORDIENDO
@@ -111,6 +123,7 @@ func probar_recuperacion_sin_orden() -> void:
 	var segunda := agregar_comida(run, punto + Vector2(30, 0))
 	var h := run.colonia._nacer("obrera", punto)
 	h._pensar()
+	preparar_fixture_manual(run, primera)
 	primera.morder(primera.vida)
 	h._morder(0.1)
 	h._pensar()
@@ -119,6 +132,7 @@ func probar_recuperacion_sin_orden() -> void:
 	for i in 20:
 		h._pensar()
 	verificar(h.comida == segunda and h.objetivo == estable and segunda.trabajadoras == 1, "la reelección conserva un puesto estable en vez de cambiarlo en cada decisión")
+	preparar_fixture_manual(run, segunda)
 	segunda.morder(segunda.vida)
 	h._morder(0.1)
 	h._pensar()

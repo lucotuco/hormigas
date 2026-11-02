@@ -945,6 +945,19 @@ y el cap independiente. `prueba_huellas_nido.tscn` separa recuerdos y compras;
 bloqueo ni tiempo gratuito. Para ver cuerpo/sombra y componentes restaurados,
 corran `revision_componentes.tscn` con el renderer real.
 
+La preparación de máscaras de desgaste también comparte presupuesto por
+expedición: `prueba_preparacion_mordiscos.tscn` compara el material exacto y el
+cierre; `perfil_preparacion_mordiscos.tscn` mide primer contacto con gráficos.
+No confundir CPU total repartida con el costo de un solo cuadro.
+
+La casa tiene tres envoltorios pequeños que reservan comida nativa, sin sumar
+valor al mapa. Se definen en `datos/hallazgos.csv`; al abrirlos se recuerda el
+encuentro y próximas expediciones reponen la comida normal. Se cubren con
+`prueba_hallazgos_casa.tscn` y `prueba_arte_hallazgos.tscn`. La presentación de
+mordida, levantado y entrega usa el mismo atlas y hasta tres retazos;
+`prueba_sensacion_bocado.tscn` verifica que no cambie posición física ni valor,
+y `revision_sensacion.tscn` guarda la secuencia y muestras de sonido en QA.
+
 ## Exportar
 
 *Proyecto → Exportar → Agregar → Windows Desktop* (la primera vez Godot pide descargar las plantillas de exportación). Si al exportar faltan los CSV, agreguen `datos/*.csv` en *Recursos → Filtros para exportar archivos que no son recursos*.

@@ -25,7 +25,7 @@ const HITOS := {
 var cantidad_compra := 1 # 0 = máximo que alcanza
 
 const RUTA_PARTIDA := "user://partida.json"
-const VERSION_PARTIDA := 9
+const VERSION_PARTIDA := 10
 const MAX_ARCHIVO_EXPEDICIONES := 128
 const MAX_RECORDS_LIMPIEZA := 1024
 const RUTA_STATS := "res://datos/stats_base.csv"
@@ -84,6 +84,8 @@ var metas_devoradas: Dictionary = {}
 ## Sólo componentes físicos enteros. Nunca porcentajes de HP ni imágenes.
 var componentes_proyecto_devorados: Dictionary = {}
 var tesoros_proyecto_abiertos: Dictionary = {}
+## Recuerdos de envoltorios abiertos: sin HP parcial, premio ni mejora extra.
+var hallazgos_casa_abiertos: Dictionary = {}
 var _guardado_proyectos_pendiente := false
 var hitos: Dictionary = {}
 ## Jalea real ganada en toda la historia: da el bonus pasivo (no baja al gastar).
@@ -758,6 +760,19 @@ func tesoro_proyecto_abierto(objetivo: String) -> bool:
 	return tesoros_proyecto_abiertos.get(objetivo, false) == true
 
 
+func hallazgo_casa_abierto(id: String) -> bool:
+	return hallazgos_casa_abiertos.get(id, false) == true
+
+
+func registrar_hallazgo_casa(id: String) -> bool:
+	if hallazgo_casa_abierto(id) or CatalogoHallazgos.por_id(id).is_empty():
+		return false
+	hallazgos_casa_abiertos[id] = true
+	_programar_guardado_proyectos()
+	progreso_cambio.emit()
+	return true
+
+
 func registrar_tesoro_proyecto(objetivo: String) -> bool:
 	if tesoro_proyecto_abierto(objetivo) or not ComponentesProyecto.objetivo_tiene_tesoro(objetivo):
 		return false
@@ -1142,6 +1157,7 @@ func datos_partida() -> Dictionary:
 		"lugar": lugar_actual, "destinos": lugares_completados, "coronas_cobradas": coronas_cobradas, "hitos": hitos,
 		"objetivos_proyecto_devorados": objetivos_proyecto_devorados.duplicate(), "metas_devoradas": metas_devoradas.duplicate(),
 		"componentes_proyecto_devorados": componentes_proyecto_devorados.duplicate(), "tesoros_proyecto_abiertos": tesoros_proyecto_abiertos.duplicate(),
+		"hallazgos_casa_abiertos": hallazgos_casa_abiertos.duplicate(),
 		"legado": legado, "coronas": coronas, "fundaciones": fundaciones, "prioridad": prioridad,
 		"descubiertos": descubiertos,
 		"jalea": jalea, "niveles_jalea": niveles_jalea, "migas_colonia": migas_colonia,
@@ -1196,6 +1212,12 @@ func restaurar_partida(datos: Dictionary) -> void:
 				coronas_cobradas[id] = true
 	_restaurar_proyectos(datos)
 	_restaurar_componentes(datos)
+	hallazgos_casa_abiertos = {}
+	var hallazgos_guardados = datos.get("hallazgos_casa_abiertos", {})
+	if hallazgos_guardados is Dictionary:
+		for id in hallazgos_guardados:
+			if id is String and hallazgos_guardados[id] is bool and hallazgos_guardados[id] and not CatalogoHallazgos.por_id(id).is_empty():
+				hallazgos_casa_abiertos[id] = true
 	var hitos_guardados = datos.get("hitos", {})
 	if hitos_guardados is Dictionary:
 		for id in hitos_guardados:
@@ -1360,6 +1382,7 @@ func reiniciar_estado() -> void:
 	metas_devoradas.clear()
 	componentes_proyecto_devorados.clear()
 	tesoros_proyecto_abiertos.clear()
+	hallazgos_casa_abiertos.clear()
 	hitos.clear()
 	legado = 0
 	jalea = 0

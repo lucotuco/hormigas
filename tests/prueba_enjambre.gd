@@ -13,6 +13,7 @@ func _ready() -> void:
 	await probar_habilidades()
 	await probar_destinos()
 	await probar_tutorial()
+	await probar_lifecycle_carton()
 	Juego.reiniciar_estado()
 	print("Enjambre: %d verificaciones; %d fallas." % [total, fallas])
 	get_tree().quit(0 if fallas == 0 else 1)
@@ -30,6 +31,16 @@ func verificar(ok: bool, texto: String) -> void:
 	if not ok:
 		fallas += 1
 	print("  OK   " if ok else "  FALLA ", texto)
+
+## Sólo para los intentos manuales de esta suite. Se bombea el preparador
+## real; las simulaciones autónomas siguen usando la ruta async normal.
+func preparar_fixture_manual(r: Run, recurso: Comida) -> void:
+	recurso.preparar_material()
+	for paso in 10000:
+		if not recurso.material_preparandose():
+			break
+		r.preparador_mordiscos.procesar(1000000, 128)
+	verificar(recurso.mordiscos != null and not r.preparacion_sincrona, "el fixture manual prepara su material mediante la cola async real")
 
 func probar_guardado() -> void:
 	Juego.reiniciar_estado()
@@ -146,6 +157,7 @@ func probar_habilidades() -> void:
 		r.comidas._crear(datos, Vector2(-70 + i * 15, 0), i)
 		cercanas.append(r.comidas.lista.back())
 	# El contagio parte de una mordida legítima en el borde del primer recurso.
+	preparar_fixture_manual(r, cercanas[0])
 	roja.position = cercanas[0].punto_mordida(Vector2.ZERO, r.radio_actual)
 	roja.comida = cercanas[0]
 	roja._reloj_mordida = 0
@@ -161,12 +173,11 @@ func probar_habilidades() -> void:
 		if p.pieza.tipo == "silla" and not p.pieza.get("practica", false):
 			silla = p
 			break
+	preparar_fixture_manual(r, silla)
 	carpintera.position = silla.punto_mordida(Vector2.ZERO, r.radio_actual)
 	carpintera.comida = silla
 	carpintera._dano = 2
 	carpintera._reloj_mordida = 0
-	if silla.mordiscos == null:
-		silla._preparar_mordiscos()
 	var area_antes := silla.mordiscos.area_total()
 	var vida_antes := silla.vida
 	var saldo_antes := Juego.migas_run
@@ -203,12 +214,14 @@ func probar_destinos() -> void:
 		if p.pieza.tipo == "vitrina" and not p.pieza.get("meta", false) and not p.pieza.has("componentes_id"):
 			vitrina = p
 			break
+	preparar_fixture_manual(r, vitrina)
 	vitrina.morder_en(vitrina.vida_max * 0.21, vitrina.rect_mundo.position)
 	verificar(vitrina._tesoro_abierto and r.comidas._tesoros == 5, "la vitrina nativa abre su contenido al perder un 20% y revela cinco alimentos")
 	for p in r.comidas.partes:
 		if p.pieza.get("componentes_id", "") == "museo_vitrinas/vitrina_oeste":
 			vitrina = p
 			break
+	preparar_fixture_manual(r, vitrina)
 	vitrina.morder_en(vitrina.vida_max * 0.21, vitrina.rect_mundo.position)
 	verificar(not vitrina._tesoro_abierto, "el porcentaje global no reemplaza el expositor del proyecto")
 	var expositor := ComponentesProyecto.componente("museo_vitrinas/vitrina_oeste#expositor_central")
@@ -232,6 +245,7 @@ func probar_destinos() -> void:
 	r.reglas.parte_devorada(arco)
 	verificar(r.reglas._pendientes.size() > 0 and r.reglas._pendientes.size() <= 2, "el dominó encola hasta dos vecinos, sin cascada recursiva")
 	var objetivo: PiezaCasa = r.reglas._pendientes[0].parte
+	preparar_fixture_manual(r, objetivo)
 	var vida := objetivo.vida
 	r.reglas._process(0.2)
 	verificar(objetivo.vida < vida and r.reglas.eventos > 0, "el dominó daña al vecino en un turno acotado")
@@ -239,6 +253,7 @@ func probar_destinos() -> void:
 	await get_tree().process_frame
 	r = crear("eiffel")
 	var torre := r.objetivo_mapa
+	preparar_fixture_manual(r, torre)
 	var punto := torre.punto_mordida(torre.rect_mundo.position - Vector2(50, 0), r.radio_actual)
 	verificar(punto != Vector2.INF and torre.alcanza_desde(punto) and punto.y >= torre.celdas[12].position.y - 13, "la ruta llega realmente al piso inferior de la torre")
 	torre.morder_en(torre.vida_max * 0.25, punto)
@@ -278,7 +293,7 @@ func probar_tutorial() -> void:
 	r.comidas._indice.clear()
 	r.comidas._indexar(banquito)
 	r.colonia._hallazgos.clear()
-	banquito._preparar_mordiscos()
+	preparar_fixture_manual(r, banquito)
 	var area_inicial := banquito.mordiscos.area_total()
 	var obrera: Hormiga = r.colonia.hormigas[0]
 	# Una mordida controlada verifica tamaño/masa; después el viaje y las
@@ -320,21 +335,52 @@ func probar_tutorial() -> void:
 	var vida_antes := alimento.vida
 	r.pisar(alimento.position)
 	verificar(alimento.vida == vida_antes, "el clic manual no daña comida; sólo interactúa con eventos")
-	# Lifecycle separado, NO una medición de la IA: el bulk ambiental prepara
-	# sólo el último 4%; la caída debe retirar los restos y emitir destruida.
-	r.process_mode = Node.PROCESS_MODE_DISABLED
+	r.queue_free()
+	await get_tree().process_frame
+
+
+func probar_lifecycle_carton() -> void:
+	# Caso unitario fresco, NO continuación artificial del ensayo de IA.
+	# El ensayo anterior ya conservó entregas/cargas/suelo. Sus créditos de
+	# trabajo son legítimos y sumarles vida-4% puede terminar el cartón entero;
+	# no borrarlos ni reducir daño para fabricar un derrumbe tras40segundos.
+	Juego.reiniciar_estado()
+	var r := crear()
+	var banquito := r.objetivo_practica
+	preparar_fixture_manual(r, banquito)
+	var inicio := banquito.vida
+	var recompensa := banquito.recompensa * Juego.stat("multiplicador_migas")
+	var cierre := {"veces": 0, "vida": -1.0, "celdas": -1, "area": -1.0}
+	banquito.destruida.connect(func(p: PiezaCasa) -> void:
+		cierre.veces += 1
+		cierre.vida = p.vida
+		cierre.celdas = p.vivas.size()
+		cierre.area = p.mordiscos.area_total()
+	)
 	var saldo_antes := Juego.migas_run
+	var vida_pre_bulk := banquito.vida
+	var vivas_pre_bulk := banquito.vivas.duplicate()
+	var creditos_pre_bulk := banquito.mordiscos._credito.duplicate()
+	var sin_credito_previo := true
+	for credito in creditos_pre_bulk:
+		sin_credito_previo = sin_credito_previo and credito == 0
 	var valor_bulk := banquito.morder_en(banquito.vida - inicio * 0.04, banquito.position)
-	verificar(banquito.derrumbando and not banquito.muerta and banquito.vida > 0 and banquito.vida <= inicio * 0.08, "el fixture bulk sólo habilita el derrumbe cuando quedan restos finales, sin completar todavía el objeto")
+	var listo_para_derrumbar := banquito.derrumbando and not banquito.muerta and banquito.vida > 0 and banquito.vida <= inicio * 0.08
+	var credito_restante := 0.0
+	for credito in banquito.mordiscos._credito:
+		credito_restante += credito
+	if not listo_para_derrumbar:
+		print("  DIAG bulk cartón: vida %s→%s / max%s; solicitado%s; valor%s; vivas%s→%s; créditos%s→%s; vidas%s; área%s; derrumbando%s muerta%s; run activa%s cerrando%s; pendientePrep%s erosión%s" % [vida_pre_bulk, banquito.vida, inicio, vida_pre_bulk - inicio * 0.04, valor_bulk, vivas_pre_bulk, banquito.vivas, creditos_pre_bulk, banquito.mordiscos._credito, banquito.vidas, banquito.mordiscos.area_total(), banquito.derrumbando, banquito.muerta, r.activa, r.cerrando_erosion, banquito.material_preparandose(), r.cola_erosion.cantidad_pendientes()])
+	verificar(sin_credito_previo and listo_para_derrumbar and is_equal_approx(banquito.vida - credito_restante, inicio * 0.04), "el fixture fresco deja un4%por trabajar más el crédito subpíxel no cobrado y sólo entonces habilita el derrumbe")
 	for i in 16:
 		if not is_instance_valid(banquito) or banquito.muerta:
 			break
 		banquito._process(0.36)
 	verificar(cierre.veces == 1 and cierre.vida == 0 and cierre.celdas == 0 and cierre.area == 0 and Juego.partes_destruidas_run == 1 and Juego.hitos.has("primer_derrumbe"), "el lifecycle completo del cartón emite una sola destrucción y conserva el premio permanente de un derrumbe real")
-	suelo = 0.0
+	var suelo := 0.0
 	for f in r.comidas.fragmentos:
 		suelo += f.recompensa
 	var bonus := recompensa * Juego.stat("bonus_destruir")
-	verificar(is_equal_approx(Juego.migas_run - saldo_antes, bonus) and is_equal_approx(saldo_antes + cargas + suelo + valor_bulk, recompensa), "el cierre bulk conserva todo el material entre entregas, cargas, retorno y escombros, con un único bonus separado")
+	verificar(is_equal_approx(Juego.migas_run - saldo_antes, bonus) and is_equal_approx(suelo + valor_bulk, recompensa), "el lifecycle fresco conserva todo el material entre retorno y escombros, con un único bonus separado")
 	r.queue_free()
 	await get_tree().process_frame

@@ -63,6 +63,7 @@ func preparar(destino: String) -> void:
 
 func crear_run() -> Run:
 	var run: Run = RUN.instantiate()
+	run.preparacion_sincrona = true # Restauración/comida unitaria, sin reloj de frames.
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.radio_actual = 12000
@@ -357,7 +358,7 @@ func probar_migracion_y_fundacion() -> void:
 	datos.erase("componentes_proyecto_devorados")
 	datos.erase("tesoros_proyecto_abiertos")
 	Juego.restaurar_partida(datos)
-	verificar(Juego.VERSION_PARTIDA == 9 and ComponentesProyecto.objetivo_terminado(id, Juego.componentes_proyecto_devorados)
+	verificar(Juego.VERSION_PARTIDA == 10 and ComponentesProyecto.objetivo_terminado(id, Juego.componentes_proyecto_devorados)
 		and Juego.tesoro_proyecto_abierto(id), "v8 con objeto entero hereda componentes y escondite sin exigir repetirlo")
 	verificar(not ComponentesProyecto.objetivo_terminado(otro, Juego.componentes_proyecto_devorados)
 		and Juego.migas == 4321.0, "migrar no regala objetivos pendientes ni premios retroactivos")

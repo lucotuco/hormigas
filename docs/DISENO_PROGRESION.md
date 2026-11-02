@@ -993,3 +993,55 @@ la muestra. Registros `componentes_piloto6_20261101.txt` y
 `componentes_piloto_restaurante_20261101.txt` dentro de `.godot/qa/`.
 No es una campaña nueva completa ni una comparación A/B: el segundo tramo
 hereda el estado del mapa anterior y no mide cuánto tardaría una persona.
+
+## Primer contacto, transporte y hallazgos pequeños — 1/11, mapa 8
+
+Esta pasada mantiene una sola obrera, precios, daño, olfato, velocidad,
+intervalos y requisitos. No alarga el juego inflando resistencias o costos.
+
+Los tres encuentros nuevos reparten alimentos que YA estaban generados:
+galletita envuelta, sobre de azúcar y bolsita de cereal. El generador termina
+su azar normal y elige una fuente existente por encuentro, sin moverla ni
+tocar las 138 migas. Prefiere 250–620 unidades y admite respaldo hasta 900; radios,
+fracciones y distancias están en `datos/hallazgos.csv`. El contenido reservado
+no existe como objetivo ni paga hasta que se devora el papel. Envoltorio y
+contenido suman exactamente HP, valor y bonus originales, usando float64 y
+sin redondear. No se concede el hito de tesoro ni olfato adicional.
+
+La apertura es un recuerdo permanente, no daño parcial guardado: sobrevive a
+fundar y futuras expediciones generan sólo el alimento nativo normal. Una
+partida nueva borra esos recuerdos. Esquema 10 tolera partidas anteriores y
+filtra IDs/booleanos inválidos; mapa 8 y contexto inicial separan los récords
+de una casa con papel intacto y otra ya abierta. Estos encuentros son
+opcionales, no nuevas cerraduras para madera o para conquistar la casa.
+
+Una pieza grande ya no prepara su máscara completa en el primer intento:
+`PreparadorMordiscos` comparte hasta 128 unidades / 1 ms suave por cuadro, desde
+la reserva hasta raster, árbol y aire exterior. Publica sólo el resultado
+completo. La hormiga conserva objetivo/reserva/reloj durante la espera; no
+admite daño, cobra material ni interpreta la espera como falta de camino.
+Al cerrar se descartan precalentados sin trabajo emitido y sólo se completa
+lo necesario para drenar erosión. Las asignaciones/subidas nativas siguen
+siendo indivisibles: no existe garantía absoluta de 1 ms o de 60 FPS.
+
+La preparación visual y el tirón usan el reloj ya existente. El retazo real
+sale de su origen, se levanta en 0,18 s y mantiene su tamaño en el mundo hasta la
+entrega física; máximo tres muestras, mismo atlas, sin nodos de escombros.
+Sólo se anima el sprite a 12 Hz cuando corresponde por cámara. Papel, comida,
+madera y piedra tienen timbres breves distintos con una puerta de material
+global de 0,18 s; la entrega conserva su confirmación independiente.
+
+Las mediciones de primer contacto y estrés están en `tests/RENDIMIENTO.md`.
+Los hallazgos tienen varias porciones físicas, no una apertura garantizada
+con una obrera en una expedición. Falta observación humana de su legibilidad
+y del recorrido completo antes de asignarle una duración comercial nueva.
+
+Chequeo final de arranque: seis expediciones nuevas, semilla 417, paso 1/60 y
+tiempo ×1 suman 4,67 minutos activos con retirada. El bot compró la segunda
+obrera después de la tercera expedición y terminó la sexta con tres. No abrió
+los envoltorios en esta muestra corta; su apertura física se valida aparte y
+no se presenta como una recompensa garantizada en las primeras expediciones.
+Dos ejecuciones dieron los mismos ingresos. Registro y snapshot aislados:
+`.godot/qa/contacto_piloto6_final_v10/`. La prueba guiada y la autónoma de
+`prueba_arranque_solitario` siguen verdes; estos recorridos no describen una
+persona ni reemplazan la campaña completa.

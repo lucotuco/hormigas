@@ -38,6 +38,7 @@ func mostrar(id: String, restaurar: bool, idioma: String, hud_visible: bool) -> 
 	if restaurar:
 		Juego.registrar_componente_proyecto(datos.componentes[0].id)
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
+	run.preparacion_sincrona = true # Fixture visual detenido, sin medir preparación.
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.radio_actual = 12000

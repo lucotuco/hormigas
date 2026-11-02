@@ -12,6 +12,10 @@ static func crear(nombre: String) -> AudioStreamWAV:
 			notas = [300.0]
 			duracion = 0.055
 			ruido = 0.24
+		"mordida_carton":
+			notas = [180.0, 275.0]
+			duracion = 0.07
+			ruido = 0.55
 		"mordida_madera":
 			notas = [220.0, 340.0]
 			duracion = 0.075
@@ -24,6 +28,10 @@ static func crear(nombre: String) -> AudioStreamWAV:
 			notas = [135.0, 205.0]
 			duracion = 0.085
 			ruido = 0.28
+		"levantar":
+			notas = [280.0, 420.0]
+			duracion = 0.04
+			ruido = 0.10
 		"clic":
 			notas = [520.0, 780.0]
 			duracion = 0.09
@@ -57,7 +65,7 @@ static func crear(nombre: String) -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = nombre.hash()
 	var filtro := 0.0
-	var material := nombre.begins_with("mordida")
+	var material := nombre.begins_with("mordida") or nombre == "levantar"
 	for i in muestras:
 		var t := float(i) / frecuencia
 		var muestra := 0.0

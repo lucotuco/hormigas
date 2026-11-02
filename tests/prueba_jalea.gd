@@ -177,6 +177,7 @@ func probar_guardia() -> void:
 	var pisotones := Juego.estadistica("pisotones")
 	for i in 30:
 		run._pisotones_automaticos(0.1)
+		run.preparador_mordiscos.procesar()
 	verificar(Juego.migas_run > antes, "la guardia pisa comida sola y da migas")
 	verificar(Juego.estadistica("pisotones") - pisotones == 6, "a 2 por segundo, en 3 segundos pisa 6 veces (%d)" % (Juego.estadistica("pisotones") - pisotones))
 	for i in Colonia.MAX_HORMIGAS + 50:

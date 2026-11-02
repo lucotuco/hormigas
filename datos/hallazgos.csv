@@ -1,0 +1,4 @@
+id,nombre,comida,forma,color,radio,vida_relativa,valor_relativo,distancia_min,distancia_max,distancia_respaldo
+papel_galletita,Galletita envuelta,galletita,papel_galletita,#c5a879,18,0.08,0.08,250,620,900
+sobre_azucar,Sobre de azúcar,azucar,sobre_azucar,#e5decb,11,0.15,0.15,250,620,900
+bolsa_cereal,Bolsita de cereal,cereal,bolsa_cereal,#bb9362,10,0.20,0.20,250,620,900

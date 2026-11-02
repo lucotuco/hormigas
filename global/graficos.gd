@@ -51,6 +51,8 @@ class Pintura extends Node2D:
 			DibujoCasa.pared(self, Rect2(0, 0, 96, 64))
 		elif tipo == "reposteria":
 			_dulce()
+		elif tipo == "hallazgo":
+			DibujoHallazgo.dibujar(self, datos.forma, datos.radio, datos.color)
 		elif tipo == "resto":
 			var c: Color = datos.color
 			for i in 3:
@@ -123,6 +125,14 @@ func _ready() -> void:
 			comida.free()
 		else:
 			_agregar("comida:" + tipo.id, comida, Rect2(-r, -r, r * 2, r * 2), 2)
+	# Tres envoltorios pequeños en el MISMO atlas. La misma autoría geométrica
+	# se carga en headless; no se lee la GPU ni se agrega otra comida aleatoria.
+	for hallazgo in CatalogoHallazgos.todos():
+		var papel := Pintura.new()
+		papel.tipo = "hallazgo"
+		papel.datos = hallazgo
+		var r: float = hallazgo.radio + 5.0
+		_agregar("comida:" + hallazgo.id_envoltorio, papel, Rect2(-r, -r, r * 2, r * 2), 2)
 	var catalogo := catalogo_muebles()
 	for i in catalogo.size():
 		var id := clave_mueble(catalogo[i])
@@ -347,6 +357,12 @@ func _cargar_siluetas_alimentos() -> void:
 		for r: Array in datos[id]:
 			zonas.append(Rect2(r[0], r[1], r[2], r[3]))
 		_formas_alimentos[id] = zonas
+	_cargar_siluetas_hallazgos()
+
+
+func _cargar_siluetas_hallazgos() -> void:
+	for datos in CatalogoHallazgos.todos():
+		_formas_alimentos[datos.id_envoltorio] = DibujoHallazgo.silueta(datos.forma, datos.radio)
 
 
 func _preparar_siluetas_alimentos() -> void:
@@ -366,6 +382,9 @@ func _preparar_siluetas_alimentos() -> void:
 		var radio: float = tipo.radio
 		var cuerpo := Rect2(Vector2.ONE * -radio, Vector2.ONE * radio * 2.0)
 		_formas_alimentos[tipo.id] = _formas_desde_alpha(imagen, regiones[clave], tamanos[clave], cuerpo)
+	# La exportación del arte nativo tampoco debe borrar los tres cuerpos
+	# autorados por código: dibujo y física comparten estos rectángulos exactos.
+	_cargar_siluetas_hallazgos()
 	tiempo_cpu_siluetas_usec = Time.get_ticks_usec() - inicio_cpu
 	# La única copia CPU del atlas sale de alcance aquí; las cajas no la referencian.
 	imagen = null

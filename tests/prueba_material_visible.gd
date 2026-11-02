@@ -99,6 +99,7 @@ func probar_catalogo() -> void:
 	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
 	Juego._cache_stats.clear()
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
+	run.preparacion_sincrona = true # Comparación unitaria del cuerpo, sin sombra.
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.colonia._activa = false
@@ -162,6 +163,7 @@ func probar_voladora_y_veneno() -> void:
 	Juego.niveles = {"mordida_madera": 1, "mordida_resistente": 1, "mordida_muros": 1}
 	Juego._cache_stats.clear()
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
+	run.preparacion_sincrona = true
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED
 	run.colonia._activa = false
