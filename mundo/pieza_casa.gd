@@ -479,6 +479,24 @@ func alcanza_desde(pos: Vector2) -> bool:
 		return false
 	return distancia_a(pos) <= alcance
 
+## Lado del bocado contra un gran objetivo. Con poco daño es el de siempre (6×6);
+## cuando las mandíbulas superan lo que cabe en ese trozo, el bocado crece
+## hasta usar todo el daño, con tope de LADO_MAXIMO_POR_DANO veces el lado.
+## Sin esto, mejorar el daño casi no servía contra el gran objetivo: un daño
+## 14 veces mayor sólo duplicaba lo que la colonia le sacaba en una run.
+const LADO_MAXIMO_POR_DANO := 4.0
+
+func lado_para_dano(dano: float, base: float) -> float:
+	# Sólo los grandes objetivos (del destino y de los proyectos): el resto de
+	# los muebles conserva el bocado fijo de 6×6.
+	if not pieza.get("meta", false) and String(pieza.get("objetivo_proyecto", "")).is_empty():
+		return base
+	var densidad := vida_max / maxf(rect_mundo.get_area(), 1.0)
+	if densidad <= 0.0 or not is_finite(dano):
+		return base
+	return clampf(sqrt(maxf(dano, 0.0) / densidad), base, base * LADO_MAXIMO_POR_DANO)
+
+
 func cupos_trabajo() -> int:
 	return clampi(vivas.size() * 2, 4, 32)
 

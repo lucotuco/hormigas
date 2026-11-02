@@ -95,9 +95,10 @@ func probar_rechazo_atomico() -> void:
 func probar_herencias_no_retroactivas() -> void:
 	preparar()
 	var compras: Array[String] = ["herencia_madera", "despensa"]
+	var heredadas := Juego.migas * Juego.MIGAS_HEREDADAS
 	var previa := Juego.vista_previa_fundar("numerosa", compras)
 	Juego.fundar_colonia("numerosa", compras)
-	verificar(previa.migas == 0 and Juego.migas == 0 and Juego.nivel_jalea("despensa") == 1, "comprar reservas en este reinicio no conserva retroactivamente las migas anteriores")
+	verificar(is_equal_approx(previa.migas, heredadas) and is_equal_approx(Juego.migas, heredadas) and Juego.nivel_jalea("despensa") == 1, "comprar reservas en este reinicio no conserva retroactivamente las migas anteriores")
 	preparar()
 	compras = ["obreras_reales", "obreras_reales", "linaje"]
 	previa = Juego.vista_previa_fundar("numerosa", compras)

@@ -20,6 +20,12 @@ extends Node
 ##                nuevo cuando la colonia lleva esa cantidad de runs ahí, con el
 ##                máximo daño que le hizo por BOT_FACTOR (menos de 1 deja
 ##                margen para el ruido entre pasadas).
+##   BOT_DECRETO  decreto que elige al fundar (por defecto DECRETO)
+##   BOT_PACIENTE si existe, funda sólo trabado: sin la regla de duplicar jalea,
+##                y "trabado" cuenta runs sin conquistar nada aunque gane más
+##                (desde que puede atacar grandes objetivos)
+##   BOT_CLICS    órdenes por segundo (por defecto CLICS_POR_SEGUNDO); 1 se
+##                parece más a una persona que mira la pantalla
 ##   BOT_TRABADO  runs sin progreso antes de pensar en fundar (por defecto RUNS_TRABADO)
 ##   BOT_ORDEN    "materiales" dirige primero al material recién aprendido;
 ##                "cercania" prioriza alimento cercano (por defecto). Ambos
@@ -74,6 +80,9 @@ const GANANCIA_MINIMA_DOBLE := 20
 
 var trabado := 0
 var runs_trabado := RUNS_TRABADO
+var decreto := DECRETO
+var paciente := false
+var clics_por_segundo := CLICS_POR_SEGUNDO
 ## Cuánto más fuerte tiene que ser la colonia siguiente que la que se trabó.
 ## Con 3 la campaña duraba ~11 h de bot; con 1,3, cada destino pide una
 ## fundación y no dos o cuatro (~3 h 53 min, ver README).
@@ -137,6 +146,12 @@ func _ready() -> void:
 			Mundos.vida_meta_forzada = valores
 			anotar("(vida_meta forzada: %s)" % str(valores))
 	calibrar = OS.has_environment("BOT_CALIBRAR")
+	if OS.has_environment("BOT_DECRETO"):
+		decreto = OS.get_environment("BOT_DECRETO")
+	paciente = OS.has_environment("BOT_PACIENTE")
+	if OS.has_environment("BOT_CLICS"):
+		clics_por_segundo = maxf(0.2, float(OS.get_environment("BOT_CLICS")))
+	anotar("(política: decreto %s, %s, %.1f órdenes/s)" % [decreto, "funda sólo trabado" if paciente else "funda al duplicar jalea", clics_por_segundo])
 	if OS.has_environment("BOT_TRABADO"):
 		runs_trabado = int(OS.get_environment("BOT_TRABADO"))
 	if OS.has_environment("BOT_FACTOR"):
@@ -179,7 +194,7 @@ func _ready() -> void:
 				anotar("== calibrado %s tras %d runs: vida_meta %s (máximo daño %s)" % [donde, runs_en_destino, str(calibrado[donde]), Juego.formatear(max_dano_destino)])
 				max_dano_destino = 0.0
 				runs_en_destino = 0
-		if Juego.coronas_cobradas.size() > cobradas or Juego.objetivos_proyecto_devorados.size() > proyectos_previos or Juego.componentes_proyecto_devorados.size() > componentes_previos or Juego.metas_devoradas.size() > metas_previas or ganado > mejor_run_colonia * MEJORA_MINIMA:
+		if Juego.coronas_cobradas.size() > cobradas or Juego.objetivos_proyecto_devorados.size() > proyectos_previos or Juego.componentes_proyecto_devorados.size() > componentes_previos or Juego.metas_devoradas.size() > metas_previas or (not paciente and ganado > mejor_run_colonia * MEJORA_MINIMA) or (paciente and Juego.stat("materiales") < PiezaCasa.NIVEL_META):
 			trabado = 0
 		else:
 			trabado += 1
@@ -235,7 +250,7 @@ func jugar_run() -> float:
 	while not run.terminada:
 		await get_tree().process_frame
 		reloj += get_process_delta_time()
-		if reloj >= 1.0 / CLICS_POR_SEGUNDO and run.activa:
+		if reloj >= 1.0 / clics_por_segundo and run.activa:
 			reloj = 0.0
 			_observar_materiales(run)
 			if run.activar_rafaga():
@@ -428,7 +443,7 @@ func conviene_fundar() -> bool:
 	if calibrar and runs_por_destino > 0 and Juego.lugar_actual != "casa" and not calibrado.has(Juego.lugar_actual) and trabado < RUNS_TRABADO_MAXIMO:
 		return false
 	var ganada := Juego.jalea_por_fundar()
-	if runs_colonia >= RUNS_COLONIA_MADURA and ganada >= maxi(GANANCIA_MINIMA_DOBLE, 2 * Juego.legado):
+	if not paciente and runs_colonia >= RUNS_COLONIA_MADURA and ganada >= maxi(GANANCIA_MINIMA_DOBLE, 2 * Juego.legado):
 		return true
 	if trabado < runs_trabado:
 		return false
@@ -482,7 +497,7 @@ func fundar() -> void:
 	if not cotizacion.valido:
 		preparacion.clear()
 		cotizacion = Juego.cotizar_preparacion_fundar(preparacion)
-	Juego.fundar_colonia(DECRETO, preparacion)
+	Juego.fundar_colonia(decreto, preparacion)
 	trabado = 0
 	mejor_run_colonia = 0.0
 	runs_colonia = 0

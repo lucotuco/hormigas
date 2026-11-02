@@ -42,6 +42,14 @@ const DIVISOR_JALEA_MIGAS := 100000.0
 ## Raíz cuarta: con la cúbica el prestigio se desbocaba (el bonus pasivo da
 ## más migas, las migas dan más jalea): la 4.ª fundación daba 5.000 de jalea.
 const EXPONENTE_JALEA_MIGAS := 0.25
+## Pasado este punto, la jalea por migas crece con la raíz cuadrada del resto:
+## al final de la campaña el ingreso se dispara (Sx por run) y la raíz cuarta
+## sola daba decenas de miles de jalea en la cuarta fundación.
+const TOPE_SUAVE_JALEA_MIGAS := 100
+## Parte de las migas que toda colonia nueva hereda, sin comprar nada. Le da
+## el despegue a la vuelta a la casa: antes tardaba ~11 expediciones (20 min).
+## Reservas de la reina suma 10% por nivel encima de esto.
+const MIGAS_HEREDADAS := 0.01
 ## Bonus pasivo de daño y migas por cada punto de jalea ganado en la historia.
 const BONUS_LEGADO := 0.03
 ## Niveles extra de tope por cada nivel de "Cámaras más hondas".
@@ -928,6 +936,8 @@ func completar_destino() -> int:
 func detalle_fundar() -> Dictionary:
 	var por_coronas := coronas * JALEA_POR_CORONA
 	var por_migas := floori(pow(maxf(0.0, migas_colonia) / DIVISOR_JALEA_MIGAS, EXPONENTE_JALEA_MIGAS) + 0.000001)
+	if por_migas > TOPE_SUAVE_JALEA_MIGAS:
+		por_migas = TOPE_SUAVE_JALEA_MIGAS + floori(sqrt(float(por_migas - TOPE_SUAVE_JALEA_MIGAS)))
 	return {"coronas": por_coronas, "migas": por_migas, "total": por_coronas + por_migas}
 
 
@@ -953,7 +963,7 @@ func vista_previa_fundar(decreto_nuevo := "", compras_jalea: Array[String] = [])
 		var quedan := floori(int(reclutadas[id]) * 0.25 * nivel_jalea("linaje"))
 		if quedan > 0:
 			castas[id] = quedan
-	return {"stats": stats, "castas": castas, "migas": migas * 0.1 * nivel_jalea("despensa"), "destino": "casa",
+	return {"stats": stats, "castas": castas, "migas": migas * fraccion_migas_heredadas(), "destino": "casa",
 		"jalea": plan.saldo, "compras": plan.compras, "costo_jalea": plan.costo, "plan_valido": plan.valido}
 
 
@@ -988,6 +998,10 @@ func cotizar_preparacion_fundar(compras: Array[String]) -> Dictionary:
 	return {"valido": true, "saldo": saldo, "costo": total, "niveles": simulados, "compras": cotizadas}
 
 
+func fraccion_migas_heredadas() -> float:
+	return MIGAS_HEREDADAS + 0.1 * nivel_jalea("despensa")
+
+
 ## Reinicia la economía de la colonia y la convierte en jalea real.
 ## Se conservan destinos, hitos, jalea, el árbol de la reina y lo revelado.
 ## `decreto_nuevo` rige la colonia que nace ("" = sin decreto).
@@ -999,7 +1013,7 @@ func fundar_colonia(decreto_nuevo := "", compras_jalea: Array[String] = []) -> b
 	if not plan.valido:
 		return false
 	decreto = decreto_nuevo if decretos_por_id.has(decreto_nuevo) else ""
-	var conservar_migas := migas * 0.1 * nivel_jalea("despensa")
+	var conservar_migas := migas * fraccion_migas_heredadas()
 	var porcion_castas := 0.25 * nivel_jalea("linaje")
 	legado += ganada
 	jalea = plan.saldo

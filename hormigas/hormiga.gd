@@ -458,6 +458,8 @@ func _morder(delta: float) -> void:
 	# no se reescribe y los ticks de veneno no reciben el multiplicador otra vez.
 	var dano_activo := _dano * run.multiplicador_dano_activo()
 	var lado_bocado := Juego.stat("tamano_bocado")
+	if actual is PiezaCasa:
+		lado_bocado = actual.lado_para_dano(dano_activo * RolesHormiga.dano(casta, actual.nivel_requerido) * run.reglas.factor_dano(actual), lado_bocado)
 	for porcion in _porciones_ciclo:
 		if not is_instance_valid(actual) or actual.muerta or estado != Estado.MORDIENDO:
 			break

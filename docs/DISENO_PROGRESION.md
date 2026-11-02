@@ -1167,3 +1167,90 @@ de reglas anteriores. `prueba_area_feromonas`, `prueba_microbocados` y
 y perfiles gráficos se registran en `tests/RENDIMIENTO.md`. No garantizan
 60 FPS en equipos no probados ni duración de campaña: faltan recorridos nuevos
 y observación humana para atribuir tiempos o satisfacción a estos cambios.
+
+### Balance a ~4 horas con varios bots (2/11)
+
+Pedido: hacer todos los arreglos propuestos y dejar la campaña en unas 4 horas
+de juego humano, probando con bots distintos. Base: `main` con #21 (objetivo
+señalado sin cupo, entradas guardadas) y #22 (reina por fundación).
+
+**Lo que se encontró.**
+
+- **Los bocados fijos de 6×6 ponían un techo al daño contra el gran
+  objetivo.** Con una colonia de 184 hormigas, un daño 14 veces mayor sólo
+  duplicaba lo que le sacaba en una run (399K → 793K). El daño que no entra en
+  el trozo se perdía. Por eso la casa quedaba trabada cerca de 1M aunque el
+  ingreso creciera ×100.
+- **La regla de duplicar jalea depende del ingreso.** Con la jalea sin tope,
+  la cuarta fundación llegaba a 37K y la última colonia arrasaba todo. Con
+  tope, la regla tarda más en dispararse.
+- **La primera vuelta a la casa tardaba 11 expediciones (~20 min).** El
+  bot compra lo más barato del árbol y casi nunca llegaba a las memorias.
+
+**Cambios.**
+
+- **Gran objetivo:** contra el del destino y los de los proyectos, el
+  bocado crece con el daño que sobra, hasta 24×24
+  (`PiezaCasa.lado_para_dano`). Los demás muebles siguen con 6×6.
+- **Herencia de migas:** toda colonia nueva hereda el 1% de las migas
+  (`MIGAS_HEREDADAS`). Reservas de la reina suma 10% por nivel. La vuelta a
+  la casa pasa de 11 expediciones a 2.
+- **Tope de jalea:** pasados 100, la parte por migas crece con la raíz
+  cuadrada (`TOPE_SUAVE_JALEA_MIGAS`). La cuarta fundación queda en ~310.
+- **Memorias más baratas:** metal 5 → 3 y piedra 12 → 6.
+- **`vida_meta`:**
+
+  | Destino | Antes | Ahora |
+  |---|---:|---:|
+  | Casa | 600 | 220 |
+  | Restaurante | 1500 | 800 |
+  | Museo | 28.500 | 1.900 |
+  | Obelisco | 6e5 | 3,5e5 |
+  | Coliseo | 1,5e8 | 3,5e7 |
+  | Torre Eiffel | 1,2e10 | 4e9 |
+
+- **Bot:**
+  - `BOT_DECRETO` elige el decreto al fundar.
+  - `BOT_PACIENTE` funda sólo trabado: sin la regla de duplicar jalea y
+    contando runs sin conquistas.
+  - `BOT_CLICS` fija las órdenes por segundo.
+
+**Medición final** (minutos de bot, sin tienda). Estimación humana =
+(minutos + 0,5 × expediciones por la tienda) × 1,1.
+
+| Hito | Numerosa, 2 órdenes/s | Exploradora, 1,5 órdenes/s |
+|---|---:|---:|
+| Madera | 13,9 | 13,9 |
+| Muros | 53,0 | 55,2 |
+| Casa | 62,4 | 64,4 |
+| Restaurante (fundación 1 al llegar) | 84,9 | 83,1 |
+| Museo | 95,4 | 93,5 |
+| Obelisco (fundación 2 al llegar) | 123,7 | 128,5 |
+| Coliseo | 145,1 | 141,3 |
+| Torre Eiffel (fundación 3 al llegar) | 181,2 | 176,1 |
+| Expediciones | 71 | 73 |
+| **Estimación humana** | **~4,0 h** | **~3,9 h** |
+
+Expediciones en cada destino nuevo, contando todas las colonias:
+
+- restaurante 4–5;
+- museo 3–4;
+- Obelisco 4–5;
+- Coliseo 3–5;
+- Torre Eiffel 4.
+
+La primera vuelta a la casa ahora dura 2 expediciones.
+
+Con valores intermedios se midieron además una pasada guerrera a 1,5
+órdenes/s (204,7 min) y un bot paciente recolectora a 1 orden/s. El
+paciente pasó los 200 minutos: estuvo 16 expediciones trabado en el
+Obelisco antes de fundar. Los cuatro decretos llegan al final, ninguno
+rompe el ritmo.
+
+**Pendiente.**
+
+- **Un jugador que no funda se traba en el Obelisco y en la Torre Eiffel.**
+  Falta que el juego le sugiera fundar cuando el gran objetivo no baja (por
+  ejemplo, tres intentos por debajo del 60%).
+- **El techo del Coliseo varía mucho entre pasadas:** la tercera colonia le
+  saca de 25T a 58T por run. Con 3,5e7 (23T) cae en 3–5 expediciones.
