@@ -193,22 +193,18 @@ func probar_cierre_run_real() -> void:
 	r.cola_erosion.encolar(p, pendiente, p.rect_mundo.position + Vector2(-4, 50))
 	verificar(not r.preparacion_sincrona and p.mordiscos == null and p.material_preparandose() and consultada.material_preparandose() and p.vida == p.vida_max and Juego.migas_run == 0, "Run real conserva HP y saldo mientras la primera máscara y el veneno están pendientes")
 	r._iniciar_retirada()
-	verificar(r.cerrando_erosion and not r.retirando and r.preparador_mordiscos.cantidad_pendientes() == 1 and p.material_preparandose() and not consultada.material_preparandose() and consultada.mordiscos == null, "cerrar conserva sólo la máscara necesaria y cancela el precalentado sin trabajo")
+	# Cambio pedido: terminar el reloj no debe seguir preparando ni extrayendo
+	# material, aunque ya existiera daño ambiental emitido pero no realizado.
+	verificar(not r.cerrando_erosion and r.retirando and r.preparador_mordiscos.cantidad_pendientes() == 0 and not p.material_preparandose() and not consultada.material_preparandose() and consultada.mordiscos == null, "cerrar cancela todas las máscaras pendientes sin una fase extra de daño")
 	var pasos := 0
-	while r.cerrando_erosion and pasos < 2000:
+	while pasos < 4:
 		r.preparador_mordiscos.procesar(1000000, 16)
 		r.cola_erosion.procesar(1000000, 4)
 		r._process(0.01)
 		pasos += 1
 		await get_tree().process_frame
-	var conservado := p.mordiscos != null
-	if conservado:
-		var credito := 0.0
-		for valor in p.mordiscos._credito_erosion:
-			credito += valor
-		conservado = is_equal_approx(p.vida_max - p.vida + credito, pendiente)
-	verificar(pasos < 2000 and pasos > 1 and not r.cerrando_erosion and r.retirando and conservado and Juego.migas_run > 0, "la barrera publica, liquida sólo el material real y continúa la retirada sin perder trabajo emitido")
-	verificar(consultada.mordiscos == null and consultada.vida == consultada.vida_max and r.tiempo_espera_erosion > 0 and not r.preparador_mordiscos.tiene_pendientes(), "la espera se contabiliza y no prepara ni cobra el alimento solamente consultado")
+	verificar(p.mordiscos == null and p.vida == p.vida_max and Juego.migas_run == 0, "el trabajo no extraído antes del silbato no se publica ni se paga después")
+	verificar(consultada.mordiscos == null and consultada.vida == consultada.vida_max and r.tiempo_espera_erosion == 0 and not r.preparador_mordiscos.tiene_pendientes(), "el alimento solamente consultado tampoco consume preparación ni tiempo extra")
 	r.queue_free()
 	await get_tree().process_frame
 

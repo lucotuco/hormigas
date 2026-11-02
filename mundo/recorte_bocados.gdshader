@@ -5,13 +5,9 @@ varying float es_cuerpo;
 uniform vec2 tamano = vec2(140.0, 190.0);
 uniform sampler2D mascara_bocados : filter_nearest, repeat_disable;
 uniform bool usar_mascara = false;
-// Compatibilidad de llamadas antiguas. El dibujo ya no depende de 64 frentes.
 uniform ivec2 grilla = ivec2(3, 4);
 // Componentes terminados: como máximo dieciséis bits, sin reservar otra R8.
 uniform int celdas_omitidas = 0;
-uniform vec4 frentes[64];
-uniform vec4 cortes[16];
-uniform int material_id = 1;
 uniform float corrosion = 0.0;
 uniform bool alimento_mordido = false;
 uniform bool sombra_activa = false;

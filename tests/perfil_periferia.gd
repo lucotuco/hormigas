@@ -120,7 +120,7 @@ func _preparar(destino: String) -> bool:
 		h._barrido = h.casta == "cargadora"
 		h._elegir_destino_al_azar()
 		exteriores += int(exterior)
-	run.colonia._actualizar_escala()
+	run.colonia._actualizar_visibilidad()
 	print("  DISTRIBUCIÓN %s: %d interiores + %d periferia, IA y cocina activas, H = zoom %.4f" % [destino, CANTIDAD - exteriores, exteriores, run.camara.zoom.x])
 	return true
 

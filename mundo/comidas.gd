@@ -252,7 +252,7 @@ func _on_destruida(comida: Comida) -> void:
 		_hallazgos.erase(comida.get_instance_id())
 		# El recurso reservado se vuelve visible y buscable recién al abrir.
 		_crear(hallazgo.contenido, comida.position, hallazgo.semilla)
-		if Juego.registrar_hallazgo_casa(hallazgo.id):
+		if not comida.retiro_amenaza and Juego.registrar_hallazgo_casa(hallazgo.id):
 			get_parent().hud.mostrar_aviso(tr("Paquete abierto: %s") % tr(hallazgo.contenido.nombre))
 	if comida is PiezaCasa:
 		get_parent().cocina.quitar_pieza(comida.pieza.clave)

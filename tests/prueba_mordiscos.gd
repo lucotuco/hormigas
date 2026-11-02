@@ -200,6 +200,7 @@ func probar_carga_sin_fuente() -> void:
 	var fuente := agregar_doble(run, 1, 21)
 	var h := run.colonia._nacer("obrera", fuente.punto_mordida(Vector2.ZERO, run.radio_actual))
 	h.comida = fuente
+	h.estado = Hormiga.Estado.MORDIENDO
 	h._reloj_mordida = 0
 	h._velocidad = 400
 	h._morder(0.1)
@@ -221,6 +222,7 @@ func probar_buche_acotado() -> void:
 	var fuente := agregar_doble(run, 100, 100)
 	var h := run.colonia._nacer("obrera", fuente.punto_mordida(Vector2.ZERO, run.radio_actual))
 	h.comida = fuente
+	h.estado = Hormiga.Estado.MORDIENDO
 	h._capacidad = 20
 	var hijos := h.get_child_count()
 	for i in 7:
@@ -269,6 +271,7 @@ func probar_corte_y_barrido() -> void:
 	var silla := primera_silla(run)
 	var h := run.colonia._nacer("carpintera", silla.punto_mordida(Vector2.ZERO, run.radio_actual))
 	h.comida = silla
+	h.estado = Hormiga.Estado.MORDIENDO
 	h._corte = true
 	h._dano = 2
 	h._reloj_mordida = 0
@@ -288,6 +291,7 @@ func probar_corte_y_barrido() -> void:
 	h._reloj_mordida = 0
 	h._velocidad = 400
 	h.comida = primera
+	h.estado = Hormiga.Estado.MORDIENDO
 	h._morder(0.1)
 	verificar(h.carga == 90 and h._carga_origen == [40.0, 20.0, 30.0] and run.comidas.fragmentos.is_empty(), "Barrido conserva los tres orígenes y no vuelve a multiplicar el valor de los montones")
 	for i in 240:

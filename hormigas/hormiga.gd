@@ -111,6 +111,7 @@ var _olfato := 45.0
 var _dano := 1.0
 var _intervalo_mordida := 0.6
 var _capacidad := 1
+var _porciones_ciclo := 1
 
 
 func iniciar(r: Run, tipo := "obrera") -> void:
@@ -125,6 +126,10 @@ func iniciar(r: Run, tipo := "obrera") -> void:
 	_dano = stats.dano
 	_intervalo_mordida = stats.intervalo_mordida
 	_capacidad = stats.capacidad
+	# Aprender materiales habilita tandas pequeñas, no un trozo más grande.
+	# El tope técnico coincide con las tres muestras ya retenidas por hormiga.
+	var max_porciones := clampi(int(Juego.stat("porciones_por_ciclo_max")), 1, 3)
+	_porciones_ciclo = clampi(1 + int(Juego.stat("materiales")), 1, max_porciones)
 	_puesto = get_instance_id() % 12
 	_corte = tipo == "carpintera" and Juego.evolucion_activa("corte")
 	_contagio = tipo == "roja" and Juego.evolucion_activa("contagio")
@@ -228,25 +233,25 @@ func _pensar() -> void:
 	if run.feromonas.llama_a(self):
 		run.colonia.exploracion.liberar(get_instance_id())
 		_siguiendo_llamado = true
-		# Puede haberse liberado desde el último muestreo compartido del cursor.
-		var elegida = run.feromonas.objetivo_comida
-		if not _comida_valida(elegida):
-			elegida = null
-		if elegida != null and _comidas_sin_ruta.has(elegida.get_instance_id()):
-			elegida = null
-		if elegida is FragmentoCasa and not RolesHormiga.puede_cargar(casta, elegida):
-			elegida = null
-		# Una orden sobre suelo o sobre comida ya agotada sigue reuniendo a la
-		# colonia, pero al llegar no la deja inmóvil entre migas libres. La
-		# búsqueda es local, respeta cupos y se espacia: no suma trabajo por cuadro.
-		if elegida == null:
-			if _comida_valida(comida) and comida.distancia_a(run.feromonas.posicion) < _olfato:
-				elegida = comida
-			elif global_position.distance_squared_to(run.feromonas.posicion) < 24 * 24 and _reloj_vida >= _proxima_busqueda_llamado:
-				_proxima_busqueda_llamado = _reloj_vida + 0.6
-				elegida = run.comidas.buscar_cercana(global_position, _olfato, run.radio_actual, _comidas_sin_ruta, casta)
-				if elegida != null:
-					run.colonia.avistar(elegida)
+		var elegida: Comida
+		if comida != null and not _comida_valida(comida):
+			# Otra obrera pudo agotarla entre dos muestreos. No esperar el
+			# enfriamiento de una búsqueda sin trabajo para tomar su reemplazo.
+			_proxima_busqueda_llamado = 0.0
+		# Apuntar expresamente a otro objeto reemplaza el trabajo automático
+		# retenido, sin esperar un enfriamiento de búsqueda ni ignorar sus cupos.
+		if run.feromonas._trabajo_elegible(run.feromonas.objetivo_comida, self):
+			elegida = run.feromonas.objetivo_comida
+		elif run.feromonas._trabajo_elegible(comida, self):
+			elegida = comida
+		# La consulta usa candidatas compartidas y sólo corre al necesitar
+		# otro recurso. No obliga a llegar a 24 unidades del cursor ni recorre
+		# todo el mapa en cada decisión de las 64 hormigas seleccionadas.
+		if elegida == null and _reloj_vida >= _proxima_busqueda_llamado:
+			_proxima_busqueda_llamado = _reloj_vida + 0.6
+			elegida = run.feromonas.trabajo_para(self)
+			if elegida != null:
+				run.colonia.avistar(elegida)
 		if _comida_valida(elegida) and elegida.alcanza_desde(global_position) and (not _reubicando_frente or global_position.distance_squared_to(objetivo) < 16):
 			comida = elegida
 			if estado != Estado.MORDIENDO:
@@ -256,9 +261,10 @@ func _pensar() -> void:
 		comida = elegida if _comida_valida(elegida) else null
 		if comida != null:
 			_actualizar_puesto()
+			estado = Estado.YENDO_A_COMIDA
 		else:
 			objetivo = run.feromonas.destino_para(casta == "voladora")
-		estado = Estado.SIGUIENDO
+			estado = Estado.SIGUIENDO
 		return
 	if _siguiendo_llamado:
 		_siguiendo_llamado = false
@@ -432,7 +438,7 @@ func _morder(delta: float) -> void:
 			_posicion_mirada = global_position
 		hacia = _angulo_mordida
 	rotation = rotate_toward(rotation, hacia, VELOCIDAD_GIRO * delta)
-	_reloj_mordida -= delta * run.factor_ritmo()
+	_reloj_mordida -= delta * run.factor_ritmo() * run.multiplicador_ritmo_activo()
 	if _reloj_mordida > 0.0:
 		return
 	if not comida is FragmentoCasa:
@@ -448,17 +454,40 @@ func _morder(delta: float) -> void:
 		rotation = rotate_toward(rotation, _angulo_mordida, VELOCIDAD_GIRO * delta)
 	_reloj_mordida += _intervalo_mordida
 	var actual := comida
-	var carga_previa := carga
+	# Ráfaga modifica sólo el trabajo emitido ahora. El daño base de la casta
+	# no se reescribe y los ticks de veneno no reciben el multiplicador otra vez.
+	var dano_activo := _dano * run.multiplicador_dano_activo()
 	var lado_bocado := Juego.stat("tamano_bocado")
+	for porcion in _porciones_ciclo:
+		if not is_instance_valid(actual) or actual.muerta or estado != Estado.MORDIENDO:
+			break
+		if porcion > 0:
+			if actual is FragmentoCasa:
+				break
+			# Cada retirada puede alejar la frontera o terminar la pieza. No
+			# morder a distancia ni cambiar de objetivo para completar la tanda.
+			var contacto := actual.punto_contacto(global_position)
+			var alcance := Cocina.MARGEN + 5 if actual is PiezaCasa else 3.0
+			if contacto == Vector2.INF or global_position.distance_squared_to(contacto) > alcance * alcance:
+				break
+		if not _desprender_porcion(actual, dano_activo, lado_bocado, porcion > 0):
+			break
+
+
+## Cada llamada devuelve una sola porción real, captura su región ANTES de
+## que la siguiente la reemplace y consume un lugar del buche. Las otras dos
+## operaciones de la tanda sólo pueden gastar crédito previo del mismo frente.
+func _desprender_porcion(actual: Comida, dano_activo: float, lado_bocado: float, continuar: bool) -> bool:
+	var carga_previa := carga
 	var corte_continuo: bool = actual is PiezaCasa and ((_corte and actual.nivel_requerido == 1) or (_cantera and actual.nivel_requerido in [2, 3]))
 	if actual is PiezaCasa:
-		var dano := _dano * RolesHormiga.dano(casta, actual.nivel_requerido) * run.reglas.factor_dano(actual)
-		carga += actual.morder_local(dano, global_position, lado_bocado)
+		var dano := dano_activo * RolesHormiga.dano(casta, actual.nivel_requerido) * run.reglas.factor_dano(actual)
+		carga += actual.continuar_bocado(global_position, lado_bocado) if continuar else actual.morder_local(dano, global_position, lado_bocado)
 		_material_carga = actual.nivel_requerido
 	elif actual is FragmentoCasa:
 		for i in 3:
 			_carga_origen[i] += actual.origen[i]
-		carga += actual.morder(_dano)
+		carga += actual.morder(dano_activo)
 		_material_carga = actual.material_id
 		if _barrido:
 			var barrido := run.comidas.recoger_vecinos(global_position, RolesHormiga.peso_maximo(casta))
@@ -469,7 +498,7 @@ func _morder(delta: float) -> void:
 				run.efectos.habilidad(global_position - Vector2(48, 0), global_position + Vector2(48, 0), Color("dfcd91"))
 			_material_carga = maxi(_material_carga, barrido.material)
 	else:
-		carga += actual.morder_local(_dano, global_position, lado_bocado)
+		carga += actual.continuar_bocado(global_position, lado_bocado) if continuar else actual.morder_local(dano_activo, global_position, lado_bocado)
 		_material_carga = -1
 	var extraido := carga - carga_previa
 	if corte_continuo:
@@ -488,16 +517,16 @@ func _morder(delta: float) -> void:
 			_tiempos_retazos.clear()
 			_levantando_retazos = false
 		_guardar_retazo(actual)
-	if casta == "roja" and not actual.muerta:
-		actual.aplicar_veneno(_dano * 0.8, 3.0, run, global_position)
+	if not continuar and casta == "roja" and not actual.muerta:
+		actual.aplicar_veneno(dano_activo * 0.8, 3.0, run, global_position)
 		if _contagio and _reloj_habilidad <= 0:
 			_reloj_habilidad = 1.5
-			run.comidas.contagiar(global_position, actual, _dano * 0.4, run)
+			run.comidas.contagiar(global_position, actual, dano_activo * 0.4, run)
 			run.efectos.habilidad(global_position, global_position + Vector2.from_angle(rotation) * 55, Color("acd870"))
 	if extraido <= 0:
 		# Trabajar una superficie dura no es haber desprendido un trozo. El
 		# trabajo queda en el recurso; no se inventa carga ni se llena el buche.
-		return
+		return false
 	if _sondeo and actual is PiezaCasa:
 		actual.abrir_escondite()
 	bocados += 1
@@ -507,18 +536,18 @@ func _morder(delta: float) -> void:
 	run.efectos.chispas(global_position + Vector2.from_angle(rotation) * 4.0, actual.color, 1, _material_carga)
 	# El timbre sólo confirma material retirado. Su puerta global es compartida
 	# con el levantado; no suena por crédito pendiente ni fuera de cámara.
-	var tono_bocado := randf_range(0.9, 1.1)
 	if not Sonido.silenciado and en_pantalla and visible and Sonido.detalle_material(run.camara.zoom.x, run.colonia.hormigas.size()):
-		Sonido.tocar(_sonido_bocado(actual), tono_bocado, 0.0)
+		Sonido.tocar(_sonido_bocado(actual), 1.0, 0.08)
 	if corte_continuo:
 		bocados = 0
 		if actual.muerta:
 			comida = null
 			estado = Estado.EXPLORANDO
 			_elegir_destino_al_azar()
-		return
+		return true
 	if bocados >= _capacidad or actual.muerta:
 		_volver()
+	return true
 
 
 func _reubicar_frente() -> void:

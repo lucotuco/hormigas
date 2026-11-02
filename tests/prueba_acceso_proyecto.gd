@@ -81,9 +81,11 @@ func entradas_controladas(run: Run, candidatas: Array) -> EntradasHormiguero:
 	var entradas := EntradasHormiguero.new()
 	run.add_child(entradas)
 	entradas.run = run
-	for pos: Vector2 in candidatas:
-		entradas._candidatas.append({"pos": pos, "nombre": "Cocina"})
 	entradas._preparar_proyecto()
+	# Cambio pedido: estas posiciones explícitas representan clics del jugador,
+	# ya no una lista que se autocoloca al ampliar el territorio.
+	for pos: Vector2 in candidatas:
+		entradas.colocar(pos)
 	return entradas
 
 
@@ -135,7 +137,7 @@ func probar_cap_y_retorno() -> void:
 	for i in 100:
 		entradas.actualizar()
 	verificar(cocina.consultas_libre == consultas and cocina.busquedas_astar == consultas_astar and entradas.puntos.size() == 8, "el punto válido queda cacheado sin consultas geométricas ni A* repetidos ni duplicados")
-	# El proyecto aparece primero, pero debe dejar libre un futuro acceso normal.
+	# El proyecto aparece primero y no consume los cupos manuales restantes.
 	Juego.niveles.entradas = 0
 	Juego._cache_stats.clear()
 	cocina.bloqueada = Rect2()
@@ -144,12 +146,14 @@ func probar_cap_y_retorno() -> void:
 	futuras[1] = ancla
 	var temprana := entradas_controladas(run, futuras)
 	temprana.actualizar()
-	verificar(temprana._normales == 1 and temprana.puntos.size() == 3 and temprana.punto_proyecto != ancla, "el acceso del proyecto no ocupa una candidata normal que todavía no se compró")
+	verificar(temprana._normales == 1 and temprana.puntos.size() == 3 and temprana.punto_proyecto == ancla, "el proyecto conserva su ancla automática sin consumir un cupo manual")
 	var punto_temprano := temprana.punto_proyecto
 	Juego.niveles.entradas = 5
 	Juego._cache_stats.clear()
+	for pos: Vector2 in CANDIDATAS:
+		temprana.colocar(pos)
 	temprana.actualizar()
-	verificar(temprana._normales == 6 and temprana.puntos.size() == 8 and temprana.puntos.has(ancla) and temprana.punto_proyecto == punto_temprano, "comprar después los seis accesos conserva el premio y todos los espacios normales")
+	verificar(temprana._normales == 6 and temprana.puntos.size() == 8 and temprana.puntos.has(ancla) and temprana.punto_proyecto == punto_temprano, "colocar después los seis accesos conserva el premio y todos los espacios normales")
 	# Si no existe lugar, no repetir las veintiuna pruebas en cada actualización.
 	cocina.bloqueada = Rect2(ancla - Vector2.ONE * 500, Vector2.ONE * 1000)
 	cocina.version += 1

@@ -1,5 +1,22 @@
 # Tareas
 
+## Trabajo activo y satisfacción — 2/11
+
+- [x] Quitar dioramas de canastos/muebles/turismo del hormiguero y encabezados de relleno; conservar cámaras, conexiones e historial.
+- [x] Mantener tamaño nativo de hormigas/amenazas durante el zoom, conservando culling y detalle espaciado.
+- [x] Feromonas: trabajo en todo el círculo visible, prioridad explícita, reservas útiles y reemplazo al agotarse un objetivo sin soltar clic.
+- [x] Permitir hasta 1/2/3 microbocados según dieta, con un solo daño admitido y continuaciones limitadas por crédito/contacto/buche; cada retazo sigue limitado a 6×6.
+- [x] Retirar barras de vida físicas y mostrar porcentaje gris de inspección; preservar indicadores económicos y de tiempo.
+- [x] N coloca entradas compradas en piso elegido; E activa Ráfaga por 20 entregas. Sin puntos automáticos normales ni cobros/guardados de posición.
+- [x] Corte inmediato de extracción/veneno/colas/poderes/amenazas al vencer el reloj; sólo retorna carga ya retirada y se cancelan callbacks de conquista.
+- [x] Audio propio investigado/documentado, voces acotadas y azar independiente de IA; partículas/ondas reutilizadas y vuelo de migas desde un Control de 40 registros.
+- [x] Eliminar shader de franjas, uniforms/buffers y métodos de drenaje sin consumidores. Archivos recuperables en Git; partidas y ajustes personales intactos.
+- [x] Más participación de amenazas con avisos, cucaracha/escarabajo y tope de tres individuos; su mayor frecuencia sí puede cambiar el ingreso activo.
+- [x] Validar teclado/mouse real en 1920×1080 y 1000×620 (26 comprobaciones), 341 comprobaciones GPU de residuos y estrés de 500 hormigas con cinco accesos manuales.
+- [x] Pilotos aislados: seis expediciones desde cero y una avanzada desde copia QA, sin usar esos minutos como duración humana ni FPS headless.
+- [x] Cerrar 57 suites completas sin fallas, errores de script ni advertencias después de corregir el robo real de alimento.
+- [ ] Playtest humano de audio, presión de amenazas, primera madera y colonia madura; medir campaña nueva completa y GPU integrada.
+
 ## Alimentos sin trazos huérfanos — 2/11
 
 - [x] Reproducir márgenes/sombras persistentes y grietas sobre huecos; recortar el quad completo y reproyectar la sombra desde el cuerpo restante.

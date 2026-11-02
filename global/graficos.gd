@@ -308,7 +308,6 @@ func _preparar_material_alimento(id: String, radio: float) -> void:
 	compartido.shader = preload("res://mundo/recorte_bocados.gdshader")
 	compartido.set_shader_parameter("tamano", tam)
 	compartido.set_shader_parameter("grilla", Vector2i.ONE)
-	compartido.set_shader_parameter("material_id", 0)
 	compartido.set_shader_parameter("mascara_bocados", mascara)
 	compartido.set_shader_parameter("usar_mascara", true)
 	configurar_recorte_alimento(compartido, id)

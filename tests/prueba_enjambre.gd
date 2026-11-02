@@ -89,7 +89,7 @@ func probar_trabajo() -> void:
 	a.carga = 0
 	r.feromonas._actualizar_cercanas()
 	a._pensar()
-	verificar(a.comida == c and a.estado in [Hormiga.Estado.SIGUIENDO, Hormiga.Estado.MORDIENDO], "el llamado toma prioridad sobre el trabajo automático")
+	verificar(a.comida == c and a.estado in [Hormiga.Estado.YENDO_A_COMIDA, Hormiga.Estado.MORDIENDO], "el llamado toma prioridad sobre el trabajo automático")
 	r.feromonas.soltar()
 	verificar(not r.feromonas.llama_a(a) and r.feromonas.seleccionadas.is_empty(), "soltar borra la orden y su selección")
 	Juego.niveles.mordida_madera = 1
@@ -137,6 +137,7 @@ func probar_habilidades() -> void:
 	var primero := r.comidas.fragmentos[0]
 	cargadora.position = primero.position
 	cargadora.comida = primero
+	cargadora.estado = Hormiga.Estado.MORDIENDO
 	cargadora._reloj_mordida = 0
 	cargadora._morder(0.1)
 	verificar(is_equal_approx(cargadora.carga, 48.0) and r.comidas.fragmentos.is_empty(), "Barrido recoge tres montones conservando todo su valor")
@@ -160,6 +161,7 @@ func probar_habilidades() -> void:
 	preparar_fixture_manual(r, cercanas[0])
 	roja.position = cercanas[0].punto_mordida(Vector2.ZERO, r.radio_actual)
 	roja.comida = cercanas[0]
+	roja.estado = Hormiga.Estado.MORDIENDO
 	roja._reloj_mordida = 0
 	roja._morder(0.1)
 	var infectadas := 0
@@ -176,6 +178,10 @@ func probar_habilidades() -> void:
 	preparar_fixture_manual(r, silla)
 	carpintera.position = silla.punto_mordida(Vector2.ZERO, r.radio_actual)
 	carpintera.comida = silla
+	carpintera.estado = Hormiga.Estado.MORDIENDO
+	# Este ensayo compara una porción con su hueco. Las tandas completas se
+	# conservan aparte en prueba_microbocados y Cantera en evoluciones_viaje.
+	carpintera._porciones_ciclo = 1
 	carpintera._dano = 2
 	carpintera._reloj_mordida = 0
 	var area_antes := silla.mordiscos.area_total()
@@ -300,6 +306,7 @@ func probar_tutorial() -> void:
 	# siguientes mordidas los ejecuta la IA, sin teletransportar ni descargar.
 	obrera.position = banquito.punto_mordida(Vector2.ZERO, r.radio_actual)
 	obrera.comida = banquito
+	obrera.estado = Hormiga.Estado.MORDIENDO
 	obrera._reloj_mordida = 0
 	obrera._morder(0.1)
 	var primera_porcion := banquito._porcion_reciente

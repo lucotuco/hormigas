@@ -54,19 +54,6 @@ const BORDE := Color("7d5c40")
 const CERRADO := Color("5a4230")
 const RELLENO := Color("2e2119")
 const SOMBRA := Color("241a14")
-## Cuatro piezas por destino, en el mismo orden del catálogo de proyectos.
-## Son material reutilizado dentro del nido, no iconos ni casilleros vacíos.
-const RECUERDOS := {
-	"restaurante": ["carrito", "canasto", "cocina", "mesa"],
-	"museo": ["archivo", "biblioteca", "vitrina", "anfora"],
-	"obelisco": ["paseo", "kiosco", "transporte", "fuente"],
-	"coliseo": ["columnas", "anfora", "fuente", "arco"],
-	"eiffel": ["jardin", "picnic", "libros", "fuente_eiffel"],
-}
-
-
-## Rama del kit para una rama del CSV: "Mandíbulas" → mandibulas;
-## "Colonia|Tiempo" → comun (mitad y mitad).
 static func kit_de(rama: String) -> String:
 	if "|" in rama or rama == "Fondo":
 		return "comun"
@@ -307,159 +294,12 @@ static func rastro(ci: CanvasItem, kit: String, puntos: PackedVector2Array) -> v
 		resto = t - tramo
 
 
-## Una habitación sólo aparece cuando ya hay algo que guardar. Cada proyecto
-## aporta su pieza reconocible, sin contadores ni animaciones adicionales.
-static func recuerdo(ci: CanvasItem, destino: String, r: Rect2, partes: Array) -> void:
-	if not RECUERDOS.has(destino):
-		return
-	var k := minf(r.size.x / 200.0, r.size.y / 98.0)
-	var piso := r.end.y - 20.0 * k
-	ci.draw_line(Vector2(r.position.x + 19 * k, piso + 5 * k), Vector2(r.end.x - 19 * k, piso + 5 * k), Color("65492f"), 2.0 * k, true)
-	for indice in partes:
-		if indice < 0 or indice >= 4:
-			continue
-		var p := Vector2(r.position.x + r.size.x * (0.16 + indice * 0.225), piso)
-		_objeto_recuerdo(ci, RECUERDOS[destino][indice], p, k)
-
-
-## Primer retorno con ingresos: un acabado físico pequeño en la despensa,
-## independiente de su nivel. No equivale a una mejora gratuita ni produce más.
-static func primeras_provisiones(ci: CanvasItem, r: Rect2) -> void:
-	var base := r.get_center() + Vector2(-r.size.x * 0.19, r.size.y * 0.23)
-	ci.draw_line(r.get_center() + Vector2(-r.size.x * 0.32, r.size.y * 0.3), r.get_center() + Vector2(r.size.x * 0.32, r.size.y * 0.3), Color("956e45"), 3.0, true)
-	_objeto_recuerdo(ci, "canasto", base, 0.55)
-
-
-static func descubrimiento(ci: CanvasItem, id: String, r: Rect2) -> void:
-	var p := r.get_center() + Vector2(0, r.size.y * 0.2)
-	match id:
-		"madera":
-			# La pata de la primera silla sostiene ahora una mesa del taller.
-			_mueble_linea(ci, [p + Vector2(-12, 5), p + Vector2(-12, -18), p + Vector2(-5, -18)], Color("af8152"), 4.0)
-			ci.draw_line(p + Vector2(-13, -8), p + Vector2(13, -8), Color("c09660"), 5.0, true)
-			ci.draw_line(p + Vector2(10, -7), p + Vector2(10, 6), Color("936a42"), 3.0, true)
-			for i in 4:
-				ci.draw_line(p + Vector2(-3 + i * 4, 5), p + Vector2(i * 4, 3), Color("bb8d55"), 1.6, true)
-		"despensa":
-			_objeto_recuerdo(ci, "canasto", p, 0.7)
-			for i in 2:
-				ci.draw_arc(p + Vector2(3, -15), 7 + i * 4, PI * 1.05, PI * 1.8, 9, Color("8dc3bc", 0.65), 1.1, true)
-		"soportes":
-			_objeto_recuerdo(ci, "arco", p + Vector2(0, 4), 0.8)
-
-
-## Dibujos de pocos trazos: el CanvasItem retiene todo hasta que cambia la
-## historia. No hay sprites, texturas, actores ni efectos por recuerdo.
-static func _objeto_recuerdo(ci: CanvasItem, tipo: String, p: Vector2, k: float) -> void:
-	_pintar(ci, _elipse("suelo", p + Vector2(0, 2) * k, 20 * k, 3.5 * k))
-	var madera := Color("a97d4f")
-	var clara := Color("c6a274")
-	var piedra := Color("a8a28b")
-	var metal := Color("8c9b97")
-	match tipo:
-		"carrito", "archivo":
-			_caja_recuerdo(ci, Rect2(p + Vector2(-17, -27) * k, Vector2(34, 19) * k), madera)
-			for x in [-12, 12]:
-				ci.draw_circle(p + Vector2(x, -2) * k, 3.4 * k, Color("554738"))
-				ci.draw_line(p + Vector2(x, -9) * k, p + Vector2(x, -2) * k, clara, 2 * k, true)
-			if tipo == "archivo":
-				for i in 3:
-					_caja_recuerdo(ci, Rect2(p + Vector2(-13 + i * 9, -35 - i % 2 * 3) * k, Vector2(7, 9 + i % 2 * 3) * k), [Color("b4a184"), Color("8b9d8b"), Color("a59aad")][i])
-			else:
-				ci.draw_arc(p + Vector2(0, -26) * k, 11 * k, PI, TAU, 10, Color("cfc4a5"), 3 * k, true)
-		"canasto":
-			ci.draw_colored_polygon(_transformar_recuerdo(PackedVector2Array([Vector2(-18, -18), Vector2(18, -18), Vector2(13, 0), Vector2(-13, 0)]), p, k), madera)
-			for i in 5:
-				ci.draw_line(p + Vector2(-12 + i * 6, -17) * k, p + Vector2(-9 + i * 4.5, -2) * k, clara, 1.2 * k, true)
-			for i in 3:
-				_pintar(ci, _elipse("miga", p + Vector2(-9 + i * 9, -19 - i % 2 * 3) * k, 6 * k, 4 * k))
-		"cocina":
-			_caja_recuerdo(ci, Rect2(p + Vector2(-17, -31) * k, Vector2(34, 30) * k), metal)
-			ci.draw_rect(Rect2(p + Vector2(-12, -19) * k, Vector2(24, 14) * k), Color("414b43"))
-			for x in [-10, 0, 10]:
-				ci.draw_circle(p + Vector2(x, -25) * k, 1.8 * k, Color("ded3ad"))
-		"mesa", "picnic", "paseo", "jardin":
-			for x in [-13, 13]:
-				var pie: float = -float(x) if tipo == "picnic" else float(x)
-				ci.draw_line(p + Vector2(x, -12) * k, p + Vector2(pie, 1) * k, madera.darkened(0.12), 3 * k, true)
-			ci.draw_line(p + Vector2(-20, -13) * k, p + Vector2(20, -13) * k, clara, 4 * k, true)
-			if tipo in ["paseo", "jardin"]:
-				for y in [-24, -19]:
-					ci.draw_line(p + Vector2(-17, y) * k, p + Vector2(17, y) * k, madera, 3 * k, true)
-			else:
-				ci.draw_circle(p + Vector2(0, -17) * k, 5 * k, Color("dfd9bb"))
-			if tipo == "paseo":
-				ci.draw_line(p + Vector2(20, -2) * k, p + Vector2(20, -36) * k, metal, 2 * k, true)
-				ci.draw_circle(p + Vector2(20, -37) * k, 3.4 * k, Color("d9c58a"))
-			elif tipo == "jardin":
-				_pintar(ci, _elipse("hoja", p + Vector2(18, -29) * k, 5 * k, 9 * k))
-		"biblioteca", "libros", "vitrina":
-			_caja_recuerdo(ci, Rect2(p + Vector2(-18, -37) * k, Vector2(36, 36) * k), madera if tipo != "vitrina" else metal)
-			ci.draw_rect(Rect2(p + Vector2(-14, -33) * k, Vector2(28, 28) * k), Color("46584e") if tipo != "vitrina" else Color("8ba99b"))
-			if tipo == "vitrina":
-				ci.draw_line(p + Vector2(-11, -30) * k, p + Vector2(4, -10) * k, Color("c4d7bc"), 1.8 * k, true)
-				ci.draw_circle(p + Vector2(4, -15) * k, 5 * k, Color("ccb18b"))
-			else:
-				for i in 4:
-					var color: Color = [Color("a19c7e"), Color("8c9f90"), Color("bc956e"), Color("a998a7")][i]
-					ci.draw_rect(Rect2(p + Vector2(-12 + i * 6, -29 + i % 2 * 4) * k, Vector2(4, 20 - i % 2 * 4) * k), color)
-				ci.draw_line(p + Vector2(-14, -6) * k, p + Vector2(14, -6) * k, clara, 2 * k, true)
-			if tipo == "libros":
-				ci.draw_line(p + Vector2(-19, -39) * k, p + Vector2(19, -39) * k, Color("7e9b75"), 5 * k, true)
-		"anfora":
-			var perfil := PackedVector2Array([Vector2(-5, -36), Vector2(5, -36), Vector2(4, -26), Vector2(12, -20), Vector2(13, -12), Vector2(7, -2), Vector2(-7, -2), Vector2(-13, -12), Vector2(-12, -20), Vector2(-4, -26)])
-			ci.draw_colored_polygon(_transformar_recuerdo(perfil, p, k), Color("be936a"))
-			for x in [-8, 8]:
-				ci.draw_arc(p + Vector2(x, -24) * k, 6 * k, -PI * 0.7, PI * 0.7, 9, Color("98734f"), 2 * k, true)
-			ci.draw_line(p + Vector2(-5, -35) * k, p + Vector2(5, -35) * k, clara, 2 * k, true)
-		"kiosco":
-			_caja_recuerdo(ci, Rect2(p + Vector2(-17, -26) * k, Vector2(34, 25) * k), madera)
-			ci.draw_rect(Rect2(p + Vector2(-12, -21) * k, Vector2(24, 10) * k), Color("4a5140"))
-			ci.draw_colored_polygon(_transformar_recuerdo(PackedVector2Array([Vector2(-22, -28), Vector2(-14, -37), Vector2(14, -37), Vector2(22, -28)]), p, k), Color("829275"))
-		"transporte":
-			_caja_recuerdo(ci, Rect2(p + Vector2(-19, -25) * k, Vector2(38, 18) * k), Color("bdab72"))
-			for x in [-11, 0, 11]:
-				ci.draw_rect(Rect2(p + Vector2(x - 3.5, -22) * k, Vector2(7, 7) * k), Color("7b9591"))
-			for x in [-12, 12]:
-				ci.draw_circle(p + Vector2(x, -5) * k, 4.5 * k, Color("514c42"))
-				ci.draw_circle(p + Vector2(x, -5) * k, 2 * k, metal)
-		"fuente", "fuente_eiffel":
-			if tipo == "fuente_eiffel":
-				_mueble_linea(ci, [p + Vector2(-14, -1) * k, p + Vector2(0, -40) * k, p + Vector2(14, -1) * k], metal, 2.3 * k)
-				ci.draw_line(p + Vector2(-9, -15) * k, p + Vector2(9, -15) * k, metal, 2 * k, true)
-			ci.draw_line(p + Vector2(0, -4) * k, p + Vector2(0, -28) * k, piedra, 5 * k, true)
-			_pintar(ci, _elipse("piedra", p + Vector2(0, -4) * k, 18 * k, 4 * k))
-			ci.draw_arc(p + Vector2(0, -23) * k, 11 * k, 0, PI, 10, piedra, 5 * k, true)
-			ci.draw_line(p + Vector2(-9, -23) * k, p + Vector2(9, -23) * k, Color("88aaa3"), 2 * k, true)
-		"columnas", "arco":
-			for x in [-13, 13]:
-				_caja_recuerdo(ci, Rect2(p + Vector2(x - 3, -26) * k, Vector2(6, 25) * k), piedra)
-				ci.draw_line(p + Vector2(x - 6, -2) * k, p + Vector2(x + 6, -2) * k, piedra, 3 * k, true)
-			if tipo == "arco":
-				ci.draw_arc(p + Vector2(0, -24) * k, 13 * k, PI, TAU, 12, piedra, 7 * k, true)
-				for i in 5:
-					var a := PI + i * PI / 4
-					ci.draw_line(p + (Vector2(0, -24) + Vector2.from_angle(a) * 10) * k, p + (Vector2(0, -24) + Vector2.from_angle(a) * 16) * k, Color("786f5c"), k, true)
-			else:
-				for x in [-13, 13]:
-					ci.draw_line(p + Vector2(x - 7, -28) * k, p + Vector2(x + 7, -28) * k, piedra, 4 * k, true)
-
-
-static func _caja_recuerdo(ci: CanvasItem, r: Rect2, color: Color) -> void:
-	ci.draw_rect(r, color.darkened(0.1))
-	ci.draw_line(r.position, r.position + Vector2(r.size.x, 0), color.lightened(0.2), 1.6, true)
-	ci.draw_line(r.position + Vector2(0, r.size.y), r.end, color.darkened(0.28), 1.5, true)
-
-
-static func _transformar_recuerdo(puntos: PackedVector2Array, centro: Vector2, escala: float) -> PackedVector2Array:
-	var salida := PackedVector2Array()
-	for p in puntos:
-		salida.append(centro + p * escala)
-	return salida
-
-
-static func _mueble_linea(ci: CanvasItem, puntos: Array, color: Color, ancho: float) -> void:
-	ci.draw_polyline(PackedVector2Array(puntos), color, ancho, true)
+## Reservas propias del nido, no miniaturas de muebles ni destinos. Se
+## dibujan sólo al cambiar la historia y comparten el CanvasItem de la cámara.
+static func reserva(ci: CanvasItem, r: Rect2, cantidad: int, color := Color("d6ba82")) -> void:
+	for i in mini(cantidad, 8):
+		var p := r.get_center() + Vector2((i % 4 - 1.5) * r.size.x * 0.13, r.size.y * (0.12 + (i / 4 as int) * 0.15))
+		ci.draw_circle(p, minf(4.0, r.size.y * 0.075), color)
 
 
 static func _pintar(ci: CanvasItem, p: Dictionary) -> void:

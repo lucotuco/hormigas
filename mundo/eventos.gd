@@ -11,10 +11,12 @@ signal botin_terminado
 
 ## La amenaza propia de cada destino.
 const AMENAZAS := {"casa": "arana", "restaurante": "mozo", "museo": "aspiradora", "obelisco": "paloma", "coliseo": "gato", "eiffel": "rata"}
+const VARIANTES := {"casa": "cucaracha", "restaurante": "cucaracha", "museo": "cucaracha", "obelisco": "escarabajo", "coliseo": "escarabajo", "eiffel": "escarabajo"}
+const CADENCIA_DESTINO := {"casa": 1.0, "restaurante": 0.96, "museo": 0.93, "obelisco": 0.9, "coliseo": 0.86, "eiffel": 0.83}
 const PALOMAS_POR_BANDADA := 3
 ## Segundos hasta la primera aparición y entre apariciones (mínimo, máximo).
 const PRIMERA_AMENAZA := Vector2(12.0, 18.0)
-const ENTRE_AMENAZAS := Vector2(35.0, 50.0)
+const ENTRE_AMENAZAS := Vector2(20.0, 22.0)
 const PRIMERA_DORADA := Vector2(18.0, 28.0)
 const ENTRE_DORADAS := Vector2(45.0, 70.0)
 ## Presión: cuánto avanzó la colonia. Cada destino suma 1 y cada
@@ -23,7 +25,7 @@ const ENTRE_DORADAS := Vector2(45.0, 70.0)
 ## seguido y pueden juntarse varias a la vez. Son las mismas amenazas, más.
 const NIVELES_POR_PRESION := 40
 const MAX_PRESION_MEJORAS := 4
-const MAX_AMENAZAS := 4
+const MAX_AMENAZAS := 3 # Individuos reales: una bandada usa los tres lugares.
 ## Cada punto de presión acorta la espera entre amenazas un 12%.
 const ACORTA_POR_PRESION := 0.12
 ## Botín: la stat botin_eventos (parte de lo juntado en la expedición) con
@@ -34,6 +36,10 @@ var run: Run
 var activos: Array[Evento] = []
 var _reloj_amenaza := 0.0
 var _reloj_dorada := 0.0
+var _cerrado := false
+var _turno_amenaza := 0
+var _grupo := 0
+var _limite_grupos := 1
 
 
 ## 0 en la casa al empezar; hasta 9 en la Torre Eiffel con la colonia crecida.
@@ -50,23 +56,29 @@ static func amenazas_simultaneas() -> int:
 
 
 static func espera_entre_amenazas() -> float:
-	return randf_range(ENTRE_AMENAZAS.x, ENTRE_AMENAZAS.y) / (1.0 + ACORTA_POR_PRESION * presion())
+	var factor := float(CADENCIA_DESTINO.get(Juego.lugar_actual, 1.0))
+	return clampf(randf_range(ENTRE_AMENAZAS.x, ENTRE_AMENAZAS.y) * factor / (1.0 + ACORTA_POR_PRESION * presion()), 12.0, 22.0)
 
 
 func iniciar(r: Run) -> void:
 	run = r
-	_reloj_amenaza = randf_range(PRIMERA_AMENAZA.x, PRIMERA_AMENAZA.y) / (1.0 + ACORTA_POR_PRESION * presion())
+	_cerrado = false
+	_limite_grupos = amenazas_simultaneas() # Las compras no cambian dentro de la expedición.
+	_reloj_amenaza = maxf(8.0, randf_range(PRIMERA_AMENAZA.x, PRIMERA_AMENAZA.y) / (1.0 + ACORTA_POR_PRESION * presion()))
 	_reloj_dorada = randf_range(PRIMERA_DORADA.x, PRIMERA_DORADA.y) * Juego.stat("intervalo_doradas")
 
 
 func _process(delta: float) -> void:
-	if not is_instance_valid(run) or not run.activa:
+	if _cerrado:
 		return
-	if Juego.revelado("amenazas") and grupos_de_amenaza() < amenazas_simultaneas():
+	if not is_instance_valid(run) or not run.activa:
+		cerrar()
+		return
+	if Juego.revelado("amenazas") and amenazas_activas() < MAX_AMENAZAS and grupos_de_amenaza() < _limite_grupos:
 		_reloj_amenaza -= delta
 		if _reloj_amenaza <= 0.0:
 			_reloj_amenaza = espera_entre_amenazas()
-			aparecer(AMENAZAS.get(Juego.lugar_actual, "arana"))
+			aparecer(_proxima_amenaza())
 	if Juego.revelado("doradas"):
 		_reloj_dorada -= delta
 		if _reloj_dorada <= 0.0:
@@ -76,16 +88,44 @@ func _process(delta: float) -> void:
 
 ## Amenazas activas; una bandada de palomas cuenta como un grupo.
 func grupos_de_amenaza() -> int:
+	var grupos: Dictionary = {}
+	for e in activos:
+		if is_instance_valid(e) and e.es_amenaza() and not e.resuelto:
+			grupos[e.grupo] = true
+	return grupos.size()
+
+
+func amenazas_activas() -> int:
 	var cuenta := 0
 	for e in activos:
 		if is_instance_valid(e) and e.es_amenaza() and not e.resuelto:
 			cuenta += 1
-	return ceili(float(cuenta) / PALOMAS_POR_BANDADA) if Juego.lugar_actual == "obelisco" else cuenta
+	return cuenta
+
+
+func _proxima_amenaza() -> String:
+	var tipo: String = AMENAZAS.get(Juego.lugar_actual, "arana")
+	if _turno_amenaza % 2 == 1:
+		tipo = VARIANTES.get(Juego.lugar_actual, "cucaracha")
+	_turno_amenaza += 1
+	return tipo
+
+
+## Terminal: ni botín, ni enemigos ni clics sobreviven a la retirada/salida.
+func cerrar() -> void:
+	if _cerrado:
+		return
+	_cerrado = true
+	for e in activos.duplicate():
+		if is_instance_valid(e):
+			e._terminar()
+	activos.clear()
+	set_process(false)
 
 
 func hay_amenaza() -> bool:
 	for e in activos:
-		if is_instance_valid(e) and e.es_amenaza():
+		if is_instance_valid(e) and e.es_amenaza() and not e.resuelto:
 			return true
 	return false
 
@@ -93,19 +133,31 @@ func hay_amenaza() -> bool:
 ## Hace aparecer un evento ya (lo usan las pruebas y el bot de balance).
 func aparecer(tipo: String) -> Array[Evento]:
 	var nuevos: Array[Evento] = []
+	if _cerrado or not is_instance_valid(run) or not run.activa or not Evento.DATOS.has(tipo):
+		return nuevos
 	var cantidad := PALOMAS_POR_BANDADA if tipo == "paloma" else 1
+	if tipo != "dorada":
+		cantidad = mini(cantidad, MAX_AMENAZAS - amenazas_activas())
+	else:
+		for activo in activos:
+			if is_instance_valid(activo) and activo.tipo == "dorada" and not activo.resuelto:
+				return nuevos
+	_grupo += 1
 	for i in cantidad:
 		var e := Evento.new()
+		e.grupo = _grupo
 		add_child(e)
 		e.iniciar(run, tipo, _lugar_de_entrada(tipo))
 		e.terminado.connect(_terminado)
 		activos.append(e)
 		nuevos.append(e)
+	if nuevos.is_empty():
+		return nuevos
 	if tipo == "dorada":
 		run.hud.mostrar_aviso(tr("¡Una miga dorada! Pisala antes de que desaparezca"))
 	else:
 		run.hud.mostrar_aviso(_aviso(tipo))
-		Sonido.tocar("no", 0.7, 0.0)
+		Sonido.tocar("aviso", 0.95, 0.0)
 	return nuevos
 
 
@@ -117,6 +169,8 @@ func _aviso(tipo: String) -> String:
 		"paloma": return tr("¡Palomas! Espantalas antes de que se coman lo mejor")
 		"gato": return tr("Un gato duerme sobre la comida… no lo despiertes")
 		"rata": return tr("¡Una rata! Quiere robarse lo más rico")
+		"cucaracha": return tr("¡Una cucaracha! Espantala mientras abre la comida")
+		"escarabajo": return tr("¡Un escarabajo! Espantalo antes de que cargue los restos")
 	return ""
 
 
@@ -135,6 +189,8 @@ func _lugar_de_entrada(tipo: String) -> Vector2:
 ## Recibe un clic del jugador. Devuelve true si le pegó a algo (la comida de
 ## abajo no se pisa). Los pisotones automáticos no pasan por acá.
 func pisar(pos: Vector2) -> bool:
+	if _cerrado or not is_instance_valid(run) or not run.activa:
+		return false
 	for i in range(activos.size() - 1, -1, -1):
 		var e := activos[i]
 		if is_instance_valid(e) and e.contiene(pos):
@@ -145,6 +201,8 @@ func pisar(pos: Vector2) -> bool:
 
 ## El primer evento que conviene clickear y dónde (para el bot), o null.
 func mas_urgente() -> Evento:
+	if _cerrado or not is_instance_valid(run) or not run.activa:
+		return null
 	var mejor: Evento = null
 	for e in activos:
 		if not is_instance_valid(e) or e.resuelto:
@@ -162,6 +220,9 @@ func punto_de_clic(e: Evento) -> Vector2:
 
 ## Premio por vencer un evento. Devuelve las migas entregadas.
 func premiar(e: Evento) -> float:
+	if _cerrado or not is_instance_valid(run) or not run.activa or not is_instance_valid(e) or e.premio_cobrado:
+		return 0.0
+	e.premio_cobrado = true
 	var base := maxf(Juego.migas_run * Juego.stat("botin_eventos"), BOTIN_BASE * float(Mundos.INFO[Juego.lugar_actual].factor))
 	var premio := 0.0
 	if e.tipo == "dorada":
@@ -199,5 +260,5 @@ func premiar(e: Evento) -> float:
 
 func _terminado(e: Evento) -> void:
 	activos.erase(e)
-	if e.botin > 0:
+	if not _cerrado and e.botin > 0:
 		botin_terminado.emit()

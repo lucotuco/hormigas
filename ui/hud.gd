@@ -3,7 +3,6 @@ extends CanvasLayer
 ## Interfaz durante la run: migas, tiempo, hormigas, combo, avisos y el panel
 ## de fin de run. Se arma por código para no tener que tocar la escena.
 
-const MAX_MIGAS_VOLANDO := 40
 const DURACION_COMBO_VISIBLE := 1.2
 const RUNS_CON_AYUDA := 3
 
@@ -67,7 +66,9 @@ var _lbl_cartel_titulo: Label
 var _lbl_cartel_detalle: Label
 var _tween_cartel: Tween
 var _migas_mostradas := 0.0
-var _volando := 0
+var _vuelo_migas: VueloMigas
+var _boton_entrada: Button
+var _boton_rafaga: Button
 var _tiempo_combo := -100.0
 var _reloj := 0.0
 var _tween_pulso: Tween
@@ -114,6 +115,8 @@ class IndicadorEventos extends Control:
 			"paloma": return tr("Palomas · Ver")
 			"gato": return tr("Gato · Ver")
 			"rata": return tr("Rata · Ver")
+			"cucaracha": return tr("Cucaracha · Ver")
+			"escarabajo": return tr("Escarabajo · Ver")
 			"dorada": return tr("Miga dorada · Ver")
 		return ""
 
@@ -125,6 +128,8 @@ class IndicadorEventos extends Control:
 			"paloma": return tr("Espantalas para proteger la comida")
 			"gato": return tr("Está sobre tu comida")
 			"rata": return tr("Está robando comida")
+			"cucaracha": return tr("Espantala mientras abre la comida")
+			"escarabajo": return tr("Espantalo antes de que cargue los restos")
 			"dorada": return tr("Recogela antes de que desaparezca")
 		return ""
 
@@ -222,6 +227,10 @@ func _ready() -> void:
 	_crear_progresion(raiz)
 	_crear_proxima_meta(raiz)
 	_crear_prioridades(raiz)
+	_vuelo_migas = VueloMigas.new()
+	_vuelo_migas.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_vuelo_migas)
+	_vuelo_migas.llegaron.connect(_miga_llego)
 	_lbl_llamado = Estilo.etiqueta("", 13, Color("c2ecd2"), 4)
 	_lbl_llamado.add_theme_stylebox_override("normal", Estilo.caja(Color("20302a"), 8, Color(0.55, 0.75, 0.65, 0.25), 1, 10))
 	_lbl_llamado.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -250,8 +259,6 @@ func _process(delta: float) -> void:
 	_lbl_tiempo.text = "%d s" % int(ceil(restante))
 	if run.retirando:
 		_lbl_tiempo.text = tr("Regreso · %d s") % ceili(run.retiro_restante)
-	if run.cerrando_erosion:
-		_lbl_tiempo.text = tr("Terminando corrosión…")
 	_barra_tiempo.value = restante / maxf(run.duracion_total, 0.01) * 100.0
 	if restante <= 5.0 and run.activa:
 		var parpadeo := 0.5 + 0.5 * sin(_reloj * 14.0)
@@ -271,6 +278,7 @@ func _process(delta: float) -> void:
 		_lbl_frenesi.text = tr("¡FRENESÍ! %.1f s") % run.frenesi_restante if run.frenesi_restante > 0 else tr("Frenesí · depósitos consecutivos")
 		_barra_frenesi.value = run.frenesi_restante / Juego.stat("frenesi_duracion") * 100 if run.frenesi_restante > 0 else run.frenesi
 		_actualizar_inspeccion_actual()
+		_actualizar_poderes()
 		_lbl_llamado.visible = run.feromonas.activa
 		if _lbl_llamado.visible:
 			var datos := run.feromonas.resumen()
@@ -313,27 +321,8 @@ func _process(delta: float) -> void:
 ## Migas que salen volando desde un punto de la pantalla hasta el contador.
 func migas_voladoras(desde: Vector2, cantidad: int) -> void:
 	var destino := _caja_migas.global_position + Vector2(36, _caja_migas.size.y * 0.62)
-	for i in cantidad:
-		if _volando >= MAX_MIGAS_VOLANDO:
-			return
-		_volando += 1
-		var miga := Panel.new()
-		miga.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var lado := randf_range(5.0, 9.0)
-		miga.size = Vector2(lado, lado)
-		miga.add_theme_stylebox_override("panel", Estilo.caja(Color(0.92, 0.74, 0.45).lightened(randf() * 0.2), int(lado / 2), Color(0.3, 0.18, 0.08), 1, 0))
-		miga.position = desde + Vector2(randf_range(-10, 10), randf_range(-10, 10))
-		add_child(miga)
-		var origen := miga.position
-		var control := origen.lerp(destino, 0.3) + Vector2(randf_range(-120, 120), randf_range(-160, -40))
-		var duracion := randf_range(0.45, 0.75)
-		# Curva de Bézier: sale hacia un costado y cae en el contador.
-		var mover := func(t: float) -> void:
-			miga.position = origen.lerp(control, t).lerp(control.lerp(destino, t), t)
-		var tween := miga.create_tween()
-		tween.tween_interval(randf() * 0.12)
-		tween.tween_method(mover, 0.0, 1.0, duracion).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tween.tween_callback(_miga_llego.bind(miga))
+	_vuelo_migas.emitir(desde, destino, cantidad)
+
 
 
 func mostrar_combo(combo: int) -> void:
@@ -518,10 +507,13 @@ func _crear_avisos(raiz: Control) -> void:
 	_lbl_ayuda = Estilo.etiqueta(
 		tr("Mantené clic: llamar hormigas · Clic en amenazas y premios: interactuar\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: mapa · Esc: pausa"),
 		13, Estilo.TEXTO, 4)
-	_lbl_ayuda.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_lbl_ayuda.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	_lbl_ayuda.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_lbl_ayuda.custom_minimum_size = Vector2(1100, 0)
-	_lbl_ayuda.position = Vector2(-550, -106)
+	_lbl_ayuda.offset_left = 28
+	_lbl_ayuda.offset_right = -28
+	_lbl_ayuda.offset_top = -145
+	_lbl_ayuda.offset_bottom = -105
+	_lbl_ayuda.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_lbl_ayuda.visible = Juego.runs_jugadas < RUNS_CON_AYUDA
 	raiz.add_child(_lbl_ayuda)
 	if _lbl_ayuda.visible:
@@ -673,7 +665,7 @@ func _crear_progresion(raiz: Control) -> void:
 	_lbl_meta = Estilo.etiqueta("", 12, Color("c4cfa0"), 3)
 	_lbl_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_columna_progresion.add_child(_lbl_meta)
-	_lbl_objetivo = Estilo.etiqueta("", 13, Estilo.TEXTO, 3)
+	_lbl_objetivo = Estilo.etiqueta("", 12, Color("a1a79e"), 2)
 	_lbl_objetivo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_columna_progresion.add_child(_lbl_objetivo)
 
@@ -684,11 +676,13 @@ func _crear_prioridades(raiz: Control) -> void:
 	panel.offset_right = -16
 	panel.offset_top = -64
 	panel.offset_bottom = -12
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	panel.add_theme_stylebox_override("panel", Estilo.caja(Color("1f2921"), 12, Color("58664b"), 1, 9))
 	raiz.add_child(panel)
 	_panel_inferior = panel
-	var fila := HBoxContainer.new()
-	fila.add_theme_constant_override("separation", 8)
+	var fila := HFlowContainer.new()
+	fila.add_theme_constant_override("h_separation", 8)
+	fila.add_theme_constant_override("v_separation", 6)
 	panel.add_child(fila)
 	var titulo := Estilo.etiqueta(tr("PRIORIDAD"), 11, Estilo.TEXTO_SUAVE)
 	fila.add_child(titulo)
@@ -706,12 +700,26 @@ func _crear_prioridades(raiz: Control) -> void:
 	var espacio := Control.new()
 	espacio.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fila.add_child(espacio)
+	_boton_entrada = Estilo.boton("", 13, Color("303d2b"), Color("78936a"))
+	_boton_entrada.hide()
+	_boton_entrada.tooltip_text = tr("Colocá una entrada en piso libre dentro del territorio. Esc cancela.")
+	_boton_entrada.pressed.connect(func() -> void:
+		if run.poderes.colocando_entrada:
+			run.cancelar_colocacion_entrada()
+		else:
+			run.iniciar_colocacion_entrada())
+	fila.add_child(_boton_entrada)
+	_boton_rafaga = Estilo.boton("", 13, Color("394330"), Color("c6b377"))
+	_boton_rafaga.hide()
+	_boton_rafaga.tooltip_text = tr("Las entregas cargan Ráfaga: más fuerza durante unos segundos.")
+	_boton_rafaga.pressed.connect(func() -> void: run.activar_rafaga())
+	fila.add_child(_boton_rafaga)
 	var objetivo := Estilo.boton(tr("Gran objetivo") + " [G]", 13, Color("303d2b"), Color("78936a"))
 	objetivo.pressed.connect(func() -> void: run.camara.ver_objetivo())
 	fila.add_child(objetivo)
 	_boton_objetivo = objetivo
 	var columna := VBoxContainer.new()
-	columna.custom_minimum_size.x = 210
+	columna.custom_minimum_size.x = 170
 	fila.add_child(columna)
 	_columna_frenesi = columna
 	_lbl_frenesi = Estilo.etiqueta("", 11, Estilo.TEXTO)
@@ -836,6 +844,8 @@ func _actualizar_meta() -> void:
 	_lbl_meta_nombre.text = meta.nombre
 	_boton_paso.visible = is_instance_valid(_objetivo_paso) and run.activa and _objetivo_paso.disponible()
 	_barra_meta.value = clampf(actual / objetivo, 0.0, 1.0) * 100.0
+	# Sólo compras/niveles usan barra; la salud se lee en el material ausente.
+	_barra_meta.visible = meta.tipo in ["migas", "nivel"]
 	var lista: bool = meta.tipo == "migas" and actual >= objetivo
 	if lista:
 		texto = tr("¡Ya te alcanza! Compralo en el taller al terminar")
@@ -871,10 +881,28 @@ func _actualizar_revelados() -> void:
 	_boton_objetivo.visible = Juego.revelado("gran_objetivo")
 	_lbl_meta.visible = _boton_objetivo.visible
 	_columna_frenesi.visible = Juego.revelado("frenesi")
-	_panel_inferior.visible = prioridades or _boton_objetivo.visible or _columna_frenesi.visible
+	_boton_rafaga.visible = Juego.runs_jugadas >= 3 or (is_instance_valid(run.poderes) and run.poderes.carga_entregas > 0)
+	_panel_inferior.visible = prioridades or _boton_objetivo.visible or _columna_frenesi.visible or _boton_rafaga.visible or _boton_entrada.visible
 	# Sin prioridades, la barra se achica a la derecha en vez de quedar vacía.
-	_panel_inferior.anchor_left = 0.0 if prioridades else 1.0
-	_panel_inferior.offset_left = 16 if prioridades else -490
+	_panel_inferior.anchor_left = 0.0
+	_panel_inferior.offset_left = 16
+
+
+func _actualizar_poderes() -> void:
+	if not is_instance_valid(run.poderes):
+		return
+	var libres := run.entradas_disponibles()
+	_boton_entrada.visible = libres > 0 or run.poderes.colocando_entrada
+	_boton_entrada.disabled = not run.activa
+	_boton_entrada.text = tr("Cancelar [N]") if run.poderes.colocando_entrada else tr("Entrada [N] · %d") % libres
+	_boton_rafaga.disabled = not run.poderes.lista()
+	if run.poderes.activa_restante > 0:
+		_boton_rafaga.text = tr("Ráfaga · %d s") % ceili(run.poderes.activa_restante)
+	elif run.poderes.descanso_restante > 0:
+		_boton_rafaga.text = tr("Ráfaga · recarga %d s") % ceili(run.poderes.descanso_restante)
+	else:
+		_boton_rafaga.text = tr("Ráfaga [E] · %d/%d") % [run.poderes.carga_entregas, run.poderes.entregas_necesarias()]
+	_actualizar_revelados()
 
 
 ## Al empezar la run, avisa qué mecánicas aparecieron desde la última vez.
@@ -914,7 +942,10 @@ func _notificar_hito() -> void:
 func mostrar_inspeccion(c: Comida) -> void:
 	_lbl_objetivo.text = "" # las reglas están en Viajes; no tapar el mapa vacío
 	if c is PiezaCasa:
-		_lbl_objetivo.text = tr("%s · %s\n%s / %s de resistencia · %d trabajadoras\n%s") % [c.nombre, c.nombre_etapa(), Juego.formatear(c.vida), Juego.formatear(c.vida_max), c.trabajadoras, tr("Mantené clic para llamar hormigas") if c.disponible() else tr("Requiere: %s") % tr(MaterialesCasa.NIVELES[c.nivel_requerido])]
+		var progreso := clampi(roundi((1.0 - c.vida / maxf(1.0, c.vida_max)) * 100), 0, 100)
+		_lbl_objetivo.text = tr("%s · %d%% consumido · %d trabajando") % [c.nombre, progreso, c.trabajadoras]
+		if not c.disponible():
+			_lbl_objetivo.text += "\n" + tr("Requiere: %s") % tr(MaterialesCasa.NIVELES[c.nivel_requerido])
 		var componentes: Dictionary = c.resumen_componentes()
 		if not componentes.is_empty():
 			_lbl_objetivo.text += "\n" + tr("Partes conservadas: %d/%d · %s") % [componentes.completados, componentes.total, tr(componentes.nombre)]
@@ -949,6 +980,7 @@ func pausar() -> void:
 	if not is_inside_tree() or not is_node_ready() or (not run.activa and not run.cerrando_erosion) or pausado():
 		return
 	run.feromonas.soltar()
+	run.cancelar_colocacion_entrada()
 	run.camara.arrastrando = false
 	get_tree().paused = true
 	Sonido.tocar("clic", 0.7)
@@ -1017,9 +1049,7 @@ func _notification(what: int) -> void:
 		pausar.call_deferred()
 
 
-func _miga_llego(miga: Control) -> void:
-	_volando -= 1
-	miga.queue_free()
+func _miga_llego() -> void:
 	if _tween_pulso and _tween_pulso.is_running():
 		return
 	_caja_migas.pivot_offset = _caja_migas.size / 2.0

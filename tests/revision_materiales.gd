@@ -33,7 +33,7 @@ func _ready() -> void:
 		for parte in run.comidas.partes.duplicate():
 			parte._process(0.1)
 		run.cocina.procesar_cambios()
-	run.colonia._actualizar_escala()
+	run.colonia._actualizar_visibilidad()
 	run.hud._process(0.5)
 	run.hud.mostrar_inspeccion(silla)
 	await captura("silla_devorandose")

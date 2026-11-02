@@ -35,7 +35,9 @@ func _ready() -> void:
 	f.objetivo_comida = temporal
 	temporal.free()
 	referencia[0]._pensar()
-	verificar(referencia[0].estado == Hormiga.Estado.SIGUIENDO, "un objetivo liberado entre muestreos no rompe el llamado")
+	var respondio := referencia[0].estado == Hormiga.Estado.SIGUIENDO and referencia[0].comida == null
+	respondio = respondio or (referencia[0]._comida_valida(referencia[0].comida) and referencia[0].estado in [Hormiga.Estado.YENDO_A_COMIDA, Hormiga.Estado.MORDIENDO])
+	verificar(respondio, "un objetivo liberado entre muestreos no rompe el llamado ni impide retomar trabajo del área")
 	Juego.niveles = {"pisoton": 25, "rastro_persistente": 10}
 	Juego._cache_stats.clear()
 	f._actualizar_cercanas()
@@ -172,7 +174,8 @@ func probar_agotamiento() -> void:
 	run.feromonas.mantener_en(punto)
 	for h in grupo:
 		h._pensar()
-	verificar(primera.trabajadoras == 8, "la orden reúne a las cercanas sobre el objetivo indicado")
+	# La orden prioriza el área, no apila ocho reservas sobre una sola miga.
+	verificar(primera.trabajadoras == primera.cupos_trabajo() and siguiente.trabajadoras == siguiente.cupos_trabajo(), "el llamado reparte las reservas del área sin superar los cupos del objetivo indicado ni sus vecinos")
 	preparar_fixture_manual(run, primera)
 	primera.morder(primera.vida)
 	run.feromonas._actualizar_cercanas()

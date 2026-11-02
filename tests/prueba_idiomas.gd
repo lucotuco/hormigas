@@ -114,7 +114,7 @@ func claves_del_juego() -> Dictionary:
 	_sumar(claves, MaterialesCasa.NOMBRES.values())
 	var tienda := load("res://ui/tienda.gd")
 	for sala in tienda.SALAS.values():
-		_sumar(claves, [sala.titulo, sala.detalle])
+		_sumar(claves, [sala.titulo]) # Las ramas ya no muestran eslóganes.
 	_sumar(claves, tienda.SALAS.keys())
 	_sumar(claves, tienda.NOMBRES_PESTANAS.values())
 	for preparacion in VentanaFundar.PREPARACIONES.values():

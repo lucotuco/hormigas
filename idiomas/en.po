@@ -432,15 +432,6 @@ msgstr "%s ×%d! They join every future expedition."
 msgid "%s migas"
 msgstr "%s crumbs"
 
-msgid "ENTRE RAÍCES Y MIGAS"
-msgstr "AMONG ROOTS AND CRUMBS"
-
-msgid "Un hogar que crece"
-msgstr "A growing home"
-
-msgid "EN LA DESPENSA"
-msgstr "IN THE PANTRY"
-
 msgid "Explorar"
 msgstr "Explore"
 
@@ -1118,38 +1109,20 @@ msgstr "Tower"
 msgid "El criadero"
 msgstr "The nursery"
 
-msgid "Una familia cada vez más grande."
-msgstr "An ever-growing family."
-
 msgid "El taller"
 msgstr "The workshop"
-
-msgid "Comida → madera y telas → materiales resistentes → paredes."
-msgstr "Food → wood and fabric → tough materials → walls."
 
 msgid "La despensa"
 msgstr "The pantry"
 
-msgid "Pequeños viajes, grandes tesoros."
-msgstr "Small trips, great treasures."
-
 msgid "El observatorio"
 msgstr "The observatory"
-
-msgid "Todos los caminos llevan a casa."
-msgstr "All roads lead home."
 
 msgid "El refugio"
 msgstr "The shelter"
 
-msgid "Siempre hay tiempo para otro bocado."
-msgstr "There's always time for one more bite."
-
 msgid "La excavación"
 msgstr "The dig"
-
-msgid "La cocina es solo el comienzo."
-msgstr "The kitchen is only the beginning."
 
 msgid "Castas"
 msgstr "Castes"
@@ -1573,12 +1546,6 @@ msgstr "Start with nearby crumbs"
 
 msgid "Juntá migas para comprar más obreras al volver. El cartón puede esperar a una colonia más grande."
 msgstr "Collect crumbs to buy more workers when you return. The cardboard can wait for a larger colony."
-
-msgid "%s · %s\n%s / %s de resistencia · %d trabajadoras\n%s"
-msgstr "%s · %s\n%s / %s durability · %d workers\n%s"
-
-msgid "Mantené clic para llamar hormigas"
-msgstr "Hold click to call ants"
 
 msgid "Al conquistar: "
 msgstr "On conquest: "
@@ -2168,9 +2135,6 @@ msgstr "%.0f s of feast"
 msgid "Las especialistas"
 msgstr "The specialists"
 
-msgid "Cada casta trabaja a su manera."
-msgstr "Each caste works its own way."
-
 msgid "Colonia"
 msgstr "Colony"
 
@@ -2686,9 +2650,6 @@ msgstr "Kept when founding: %s"
 msgid "Los recuerdos del recorrido se conservan al fundar."
 msgstr "Memories from your journey are kept when founding a colony."
 
-msgid "Terminando corrosión…"
-msgstr "Finishing corrosion…"
-
 msgid "Partes conservadas: %d/%d · %s"
 msgstr "Parts kept: %d/%d · %s"
 
@@ -2781,3 +2742,57 @@ msgstr "Sugar sachet"
 
 msgid "Bolsita de cereal"
 msgstr "Cereal pouch"
+
+msgid "¡Una cucaracha! Espantala mientras abre la comida"
+msgstr "A cockroach! Shoo it away while it opens the food"
+
+msgid "¡Un escarabajo! Espantalo antes de que cargue los restos"
+msgstr "A beetle! Shoo it away before it picks up the scraps"
+
+msgid "¡Ráfaga! Mordidas más fuertes por unos segundos"
+msgstr "Burst! Stronger bites for a few seconds"
+
+msgid "Elegí piso libre para la entrada · clic confirma · Esc cancela"
+msgstr "Choose clear floor for the entrance · click to place · Esc to cancel"
+
+msgid "Entrada colocada"
+msgstr "Entrance placed"
+
+msgid "Cucaracha · Ver"
+msgstr "Cockroach · View"
+
+msgid "Escarabajo · Ver"
+msgstr "Beetle · View"
+
+msgid "Espantala mientras abre la comida"
+msgstr "Shoo it away while it opens the food"
+
+msgid "Espantalo antes de que cargue los restos"
+msgstr "Shoo it away before it picks up the scraps"
+
+msgid "Colocá una entrada en piso libre dentro del territorio. Esc cancela."
+msgstr "Place an entrance on clear floor within your territory. Esc cancels."
+
+msgid "Las entregas cargan Ráfaga: más fuerza durante unos segundos."
+msgstr "Deliveries charge Burst: more power for a few seconds."
+
+msgid "Cancelar [N]"
+msgstr "Cancel [N]"
+
+msgid "Entrada [N] · %d"
+msgstr "Entrance [N] · %d"
+
+msgid "Ráfaga · %d s"
+msgstr "Burst · %d s"
+
+msgid "Ráfaga · recarga %d s"
+msgstr "Burst · cooldown %d s"
+
+msgid "Ráfaga [E] · %d/%d"
+msgstr "Burst [E] · %d/%d"
+
+msgid "%s · %d%% consumido · %d trabajando"
+msgstr "%s · %d%% consumed · %d working"
+
+msgid "Hormiguero"
+msgstr "Anthill"

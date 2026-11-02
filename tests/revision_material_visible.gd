@@ -151,6 +151,7 @@ func capturar_carton(run: Run) -> void:
 	h.scale = Vector2.ONE * 1.5
 	h._dano = 1.0e6
 	h._capacidad = 20
+	h._porciones_ciclo = 1 # Esta captura compara un único retazo con su fuente inmediata.
 	h.estado = Hormiga.Estado.MORDIENDO
 	h.comida = caja
 	h.rotation = PI

@@ -4,7 +4,6 @@ extends RefCounted
 ## La máscara R8 sólo pierde píxeles. La navegación conserva sus 16 celdas.
 ## Una mordida local retira un único rectángulo sólido, nunca una franja global.
 const MAX_CELDAS := 16
-const MAX_FRENTES := 64 # Compatibilidad: ya no representa la máscara.
 const MAX_LADO_MASCARA := 2048
 const PASO_MAXIMO := 2.0
 const LADO_BLOQUE := 8
@@ -43,7 +42,6 @@ var _deltas_frontera := PackedInt32Array()
 var _frontera_sucia := PackedByteArray()
 var _bloques_frontera: Array[int] = []
 var _cantidad_vivos := 0
-var _uniformes: Array[Vector4] = []
 var _filas_vivas := PackedInt32Array()
 var _columnas_vivas := PackedInt32Array()
 var _limites_pixels: Array[Rect2i] = []
@@ -115,7 +113,7 @@ func configurar(rect_mundo: Rect2, grilla: Vector2i, formas_por_celda: Array, vi
 	_pixeles = _imagen.get_data()
 	_preparar_aire_exterior()
 	_textura_sucia = true
-	_actualizar_diagnostico()
+
 	configuracion_lista = true
 	tiempo_configuracion_usec = Time.get_ticks_usec() - inicio_configuracion
 
@@ -135,8 +133,6 @@ func _reservar_configuracion(rect_mundo: Rect2, grilla: Vector2i) -> void:
 	_imagen = null
 	_textura = null
 	_textura_sucia = false
-	_uniformes.resize(MAX_FRENTES)
-	_uniformes.fill(Vector4.ZERO)
 	if not rect_mundo.has_area() or not rect_mundo.position.is_finite() or not rect_mundo.size.is_finite() or grilla.x <= 0 or grilla.y <= 0 or grilla.x * grilla.y > MAX_CELDAS:
 		return
 	_cantidad_celdas = grilla.x * grilla.y
@@ -290,7 +286,7 @@ func _avanzar_configuracion_unidad() -> void:
 				_prep_etapa = Preparacion.FINAL
 		Preparacion.FINAL:
 			_textura_sucia = _cantidad_celdas > 0
-			_actualizar_diagnostico()
+
 			configuracion_lista = true
 			cancelar_configuracion()
 
@@ -396,6 +392,15 @@ func recortar_local(celda: int, dano: float, pos: Vector2, lado_max: float) -> f
 		return 0.0
 	# No desaparece HP subpíxel: se trabaja hasta desprender material entero.
 	_credito[celda] = minf(vida_celda(celda), _credito[celda] + dano)
+	return _extraer_frente(celda, pos, lado_max)
+
+
+## Continuación explícita: retira otra porción del trabajo YA admitido. No
+## acepta daño ni toca el crédito de corrosión; una llamada vacía no paga.
+func recortar_local_acreditado(celda: int, pos: Vector2, lado_max: float) -> float:
+	ultima_porcion = Rect2()
+	if not _posicion_valida(celda, pos) or lado_max <= 0 or not is_finite(lado_max) or not aire_exterior(pos):
+		return 0.0
 	return _extraer_frente(celda, pos, lado_max)
 
 
@@ -710,11 +715,6 @@ func actualizar_textura() -> void:
 	_textura_sucia = false
 
 
-func rectangulos_shader() -> Array[Vector4]:
-	## Sólo compatibilidad diagnóstica; los agujeros están en la máscara R8.
-	return _uniformes
-
-
 func bytes_mascara_cpu() -> int:
 	return _pixeles.size()
 
@@ -910,7 +910,11 @@ func _aplicar_bloque_frontera(bloque: int) -> void:
 
 
 func _entrada_valida(celda: int, dano: float, pos: Vector2) -> bool:
-	return configuracion_lista and celda >= 0 and celda < _cantidad_celdas and _vivos[celda] > 0 and dano > 0 and is_finite(dano) and pos.is_finite()
+	return _posicion_valida(celda, pos) and dano > 0 and is_finite(dano)
+
+
+func _posicion_valida(celda: int, pos: Vector2) -> bool:
+	return configuracion_lista and celda >= 0 and celda < _cantidad_celdas and _vivos[celda] > 0 and pos.is_finite()
 
 
 func _pixeles_pagables(celda: int, erosion := false) -> int:
@@ -1256,15 +1260,3 @@ func _buscar_nodo(nodo: int, bx: int, by: int, lado: int) -> void:
 	for orden in 4:
 		var cuadrante := preferido ^ orden
 		_buscar_nodo(nodo * 4 + 1 + cuadrante, bx + (cuadrante % 2) * mitad, by + (cuadrante / 2 as int) * mitad, mitad)
-
-
-func _actualizar_diagnostico() -> void:
-	# Deliberadamente no se escanea la máscara para producir rectángulos.
-	# Los llamadores antiguos pueden seguir pasando este uniform ignorado.
-	for celda in _cantidad_celdas:
-		var x := celda % _grilla.x
-		var y := celda / _grilla.x as int
-		for sub in 4:
-			var inicio := (Vector2(x, y) + Vector2(sub % 2, sub / 2 as int) * 0.5) / Vector2(_grilla)
-			var fin := inicio + Vector2.ONE * 0.5 / Vector2(_grilla)
-			_uniformes[celda * 4 + sub] = Vector4(inicio.x, inicio.y, fin.x, fin.y) if _vivos[celda] > 0 else Vector4.ZERO

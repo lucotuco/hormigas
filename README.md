@@ -13,12 +13,14 @@ Incremental para PC hecho en **Godot 4.7.2**. Empezás con una sola hormiga y gu
 
 | Acción | Cómo |
 |---|---|
-| Atraer las hormigas más cercanas | Mantener clic izquierdo en el destino; moverlo cambia el punto, soltar termina la orden |
+| Dirigir el trabajo de las hormigas más cercanas | Mantener clic izquierdo: recolectan dentro del círculo; sobre un objeto, lo priorizan; soltar termina la orden |
 | Acercar o alejar el mapa | Rueda del mouse; el zoom apunta al cursor |
 | Moverse por el mapa | Arrastrar con botón derecho o central; también WASD o flechas |
 | Volver al hormiguero y al encuadre automático | R |
 | Ver el plano de la casa completa | H |
 | Enfocar el proyecto pendiente o el gran objetivo del destino | G o botón del objetivo |
+| Colocar una entrada secundaria disponible | N o botón Entrada; clic izquierdo en piso libre confirma; Esc, clic derecho o N cancela |
+| Activar Ráfaga cuando esté cargada | E o botón Ráfaga |
 | Priorizar alimentos, muebles o estructuras | Botones de la barra inferior; el llamado manual siempre manda |
 | Pausa (seguir, configuración, estadísticas, terminar o salir al menú) | Esc |
 | Silenciar sonido | M |
@@ -52,13 +54,15 @@ res://
     ajustes.gd     "Ajustes": configuración del jugador (user://ajustes.cfg)
   hormigas/
     hormiga.gd     Máquina de estados de una hormiga (explorar, responder al llamado, morder, volver)
-    colonia.gd     Hace nacer hormigas y ajusta su tamaño al zoom
+    colonia.gd     Hace nacer hormigas a escala nativa y oculta las que quedan fuera de cámara
   mundo/
     run.tscn       Una run completa
     run.gd         Coordina la run: inicio, fin, combos y comida destruida
     comidas.gd     Genera el mapa (siempre igual, semilla fija) y busca comida cercana
-    comida.gd      Una comida: vida, grietas, sacudida, dibujo por forma
-    feromonas.gd   Punto de atracción activo mientras se mantiene el clic
+    comida.gd      Una comida: material comestible, desgaste, sacudida y dibujo por forma
+    feromonas.gd   Selección cercana y trabajo compartido en el área del llamado sostenido
+    entradas.gd    Accesos secundarios manuales y acceso adelantado de proyecto
+    poderes_colonia.gd Ráfaga por entregas y colocación de entradas
     plano_casa.gd  Siete ambientes, paredes, puertas, muebles y límites compartidos
     dibujo_casa.gd Ilustración de muebles y detalles de la casa
     cocina.gd     Navegación compartida por grilla, con rutas para caminantes y voladoras
@@ -180,20 +184,26 @@ pero no atraviesan paredes. La comida se distribuye por ambientes, fuera de obst
 El gran banquete está en el comedor. El territorio inicial es de 620 unidades;
 Excavar permite abrir progresivamente el resto de la casa.
 
-Las feromonas son un **llamado al punto actual del cursor**, no un camino.
-Al mantener el clic, las 8 hormigas disponibles más cercanas se aproximan;
+Las feromonas son una **orden de trabajo dentro del círculo del cursor**, no
+un camino ni un punto donde estacionar hormigas. Al mantener el clic, las
+8 hormigas disponibles más cercanas responden;
 la mejora Llamado potente aumenta esa cantidad de a tres y Coordinación de a una
 (63 con las dos al máximo; el tope técnico es 64). **El clic no hace daño**: sólo da una orden a las hormigas.
 Las amenazas y premios sí responden al clic. Se conserva la mejora automática
 de `main`, pero no vuelve el daño manual sobre alimentos o muebles.
 La compra antigua `pisoton` conserva sus niveles como Coordinación; `pisada`
 se convierte en Mandíbulas cooperativas (+0,5 de daño por nivel a las hormigas).
-Si movés el cursor,
-se actualizan el destino y la selección. Al soltar, termina la atracción sin
-dejar rastros anteriores. Sobre comida, las hormigas que llegan recolectan.
+Si movés el cursor, se actualizan el área y la selección. Sobre un objeto
+comestible, la orden explícita tiene prioridad sobre el trabajo automático;
+sobre suelo, reparte las obreras entre recursos del círculo. Conserva las
+reservas útiles y reemplaza un objetivo agotado sin exigir soltar el clic.
+Respeta cupos, dietas, peso de la casta y exclusiones de navegación: señalar un
+recurso lleno no roba un puesto. El área coincide con el círculo visible,
+también al cambiar el zoom; se muestrea una vez cada 0,2 s y se comparte entre
+las seleccionadas. Al soltar, termina la orden sin dejar rastros anteriores.
 Las que ya transportan una carga terminan su regreso antes de responder.
-No se puede dar órdenes fuera del territorio descubierto. Al abrir un hueco
-bajo el cursor, el llamado conserva el mueble hasta terminar de devorarlo.
+No se puede dar órdenes fuera del territorio descubierto. Abrir un hueco bajo
+el cursor no abandona un frente todavía útil dentro del área.
 El contador del llamado diferencia atraídas, trabajando, cargando y buscando ruta.
 
 La cámara empieza encuadrando el territorio. Cuando usás la rueda o movés el
@@ -225,17 +235,19 @@ reveladas quedan visibles para siempre, y lo nuevo se marca con "¡Nuevo!":
 | Pestaña Viajes | Al conquistar el primer destino |
 | Pestaña Jalea real (árbol de la reina e hitos) | Con el primer hito o la primera corona |
 
-El HUD muestra siempre la **próxima meta** con una barra (`Juego.proxima_meta()`):
-primero desarmar un banquito de cartón accesible sin mejoras; luego subir
-Mandíbulas fuertes a nivel 4, juntar las migas de cada
-dieta, después el gran objetivo y por último el próximo viaje. Las migas de la
+El HUD muestra la **próxima meta** (`Juego.proxima_meta()`): primero juntar
+migas cercanas para más obreras; subir Mandíbulas fuertes a nivel 3, aprender
+Mordida rápida y juntar las migas de cada dieta; después el gran objetivo y
+por último el próximo viaje. El cartón queda como proyecto opcional, no obliga
+a concentrar la primera obrera allí. Las migas de la
 run en curso ya cuentan, y avisa cuando alcanza para comprar.
 
 La colonia nueva arranca con **una obrera**; Más obreras suma **una por nivel**.
 La primera cuesta 12 migas y la mordida base deja 0,95 s entre ataques, sin
-reducir velocidad, olfato ni calidad de navegación. Con la cámara alejada,
-las hormigas se dibujan más grandes (`Colonia.ESCALA_EN_PANTALLA`) para que
-se lea qué hacen. Las colonias con jalea/decreto conservan sus bonus de arranque.
+reducir velocidad, olfato ni calidad de navegación. Cada casta conserva su
+**tamaño nativo** al nacer y durante todo el zoom: alejar la cámara no agranda
+hormigas, enemigos ni sus hitboxes. El culling y el detalle por distancia se
+mantienen. Las colonias con jalea/decreto conservan sus bonus de arranque.
 
 ### De comer migas a devorar la casa
 
@@ -246,18 +258,19 @@ correspondientes:
 | Dieta | Qué incorpora | Requisito / costo |
 |---|---|---|
 | Comida del piso | Los alimentos habituales | Desde el inicio |
-| Madera y telas | Sillas, mesas, muebles, sillones, cama y macetas | Mandíbulas fuertes 4 + Mordida rápida 1; 1.800 migas |
+| Madera y telas | Sillas, mesas, muebles, sillones, cama y macetas | Mandíbulas fuertes 3 + Mordida rápida 1; 700 migas |
 | Materiales resistentes | Electrodomésticos, mesadas y sanitarios | Madera y telas; 550.000 migas |
 | Paredes | Muros divididos en tramos de hasta 420 unidades | Materiales resistentes; 15.000.000 migas |
 
-El balance individual del 29/10 aumenta aproximadamente 20–25% los demás
-precios, la resistencia común de muebles/muros ×1,6 y la vida de los alimentos
+**Referencia histórica del 29/10, anterior a los bocados actuales:** aquel
+balance aumentó aproximadamente 20–25% los demás precios, la resistencia común
+de muebles/muros ×1,6 y la vida de los alimentos
 medianos/grandes sin aumentar sus recompensas. Las migas iniciales conservan
 3 de vida y 2 de valor; el cartón, 20/180. El primer precio de obrera no sube.
 La prueba corta pagó la segunda hormiga tras una expedición guiada o dos
 autónomas. El piloto materiales → primera fundación terminó en 35,11 minutos
 activos y 27 expediciones, sin contar decisiones de tienda. No es una duración
-humana garantizada ni valida la campaña tardía.
+humana garantizada ni valida el ritmo actual o la campaña tardía.
 
 **Comparación histórica del 28/10, con ocho obreras iniciales:** precios
 anteriores/nuevos sobre el mismo mapa dieron 15,83→23,87 minutos hasta fundar
@@ -270,11 +283,20 @@ la población se recalcula con la nueva base y una obrera por nivel. Ver
 Mantené el clic sobre la pieza: las hormigas se acercan a su **borde accesible**,
 la muerden, transportan las migas y vuelven. Los materiales bloqueados no
 reciben daño. Sólo las hormigas y su corrosión extraen material de muebles y
-muros. Al señalar una pieza, el HUD muestra su fase, las trabajadoras,
-su resistencia y la dieta requerida. El daño recorta la silueta junto a la
-mordida: **una porción sólida de hasta 6×6 unidades del mundo**, no una franja
-proporcional a todo el daño. Una máscara fina irreversible conserva cada
-recorte, incluso al cambiar de lado. La fuerza paga el trabajo de corte;
+muros. Al señalar una pieza, el HUD muestra el porcentaje consumido, las
+trabajadoras, la dieta requerida y sus componentes conservados, cuando los hay.
+**No hay barras de vida sobre comida, muebles ni enemigos**: el desgaste se
+lee en el material ausente; tiempo, compras y frenesí conservan sus indicadores
+de interfaz. Cada operación recorta junto a la mordida **una porción sólida de
+hasta 6×6 unidades del mundo**, no una franja proporcional a todo el daño.
+Cada ciclo admite hasta **1 porción al inicio, 2 al aprender madera y 3 al
+aprender resistentes o paredes**. Es un máximo, no una extracción garantizada:
+se corta antes si falta crédito, contacto, material o espacio en el buche.
+Las continuaciones gastan trabajo ya emitido, sin volver a sumar daño ni
+veneno. Cada porción llena un lugar del buche y copia su propio tamaño/origen
+antes de retirar la siguiente. Así el progreso mejora el flujo sin agrandar
+el retazo ni borrar un cuarto de mueble con una astilla. Una máscara fina
+irreversible conserva cada recorte, incluso al cambiar de lado. La fuerza paga el trabajo de corte;
 únicamente el área desprendida descuenta resistencia y produce valor. El
 trabajo menor a un píxel se acumula sin fabricar una carga. La caja grande
 requiere muchos viajes, no desaparece un cuarto por una sola astilla.
@@ -316,21 +338,28 @@ y mejoras sí se guardan**. No se borra el progreso de partidas anteriores.
 
 ### Un comportamiento propio por destino
 
-La rama Territorio permite comprar **cinco entradas secundarias**, desde 800
-migas y después de madera. Se abren automáticamente al descubrir sus puntos
-fijos: primero un acceso por ambiente y luego puntos separados en plazas o
-salones grandes. Conquistar la casa agrega un sexto acceso permanente. No se
-simulan túneles: las hormigas eligen el punto de entrega más cercano en línea
-recta, comprueban su ruta con la cola normal y prueban otro si está aislado.
-La selección sólo sucede al iniciar el regreso o fallar una ruta.
+La rama Territorio permite comprar **cinco cupos de entradas secundarias**,
+desde 1.000 migas y con Explorar la casa 6. Conquistar la casa agrega un sexto
+cupo permanente. **Se colocan manualmente en cada expedición** con `N` o el
+botón Entrada: la vista previa indica si el piso elegido está libre, dentro
+del territorio y separado de los accesos existentes. Un intento inválido no
+consume el cupo; los accesos ya colocados no se mueven. El acceso adelantado de
+proyecto sigue siendo independiente y automático. Máximo: nido, seis manuales
+y uno de proyecto. No se simulan túneles: las hormigas eligen el punto de
+entrega más cercano en línea recta, comprueban su ruta con la cola normal y
+prueban otro si está aislado. La selección sólo sucede al iniciar el regreso
+o fallar una ruta; colocar otro acceso no cambia un retorno en curso.
 
 Al terminar hay **hasta 6 segundos de retirada**: sólo las hormigas cargadas
-regresan; no hay nuevas mordidas, veneno, nacimientos ni cadenas de derrumbes.
+regresan. **El silbato corta la extracción inmediatamente**: cancela crédito
+sin retirar, corrosión/erosión en cola, preparaciones, amenazas, poderes y
+cadenas de derrumbes; no hay una fase oculta para terminar daño pendiente.
+No hay nuevas mordidas ni nacimientos. Sólo se entrega carga ya extraída.
 El cierre se adelanta si ya entregaron todas. Lo que no llega a tiempo se
 informa como carga pendiente y no se cobra. Eiffel extiende el plazo a 10 s.
 El resumen muestra ingresos por alimentos/muebles/estructuras, migas por
 segundo (incluye la retirada) y porcentaje del gran objetivo. Los mejores
-intentos por destino persisten al fundar y se guardan en partidas versión 7.
+intentos por destino persisten al fundar y se guardan desde partidas versión 7.
 
 Si se devora **todo lo disponible para la dieta y el territorio actuales**, la
 expedición termina anticipadamente y pasa a la misma retirada. El resumen
@@ -344,8 +373,8 @@ El **Archivo de expediciones**, accesible desde Estadísticas y el resultado,
 conserva las últimas 128 limpiezas y hasta 1024 marcas por categoría. Sólo compara
 la misma dieta, alcance y versión del mapa; las mejoras pueden ser distintas.
 Se conserva al fundar y permite exportar un JSON independiente de la partida.
-Las partidas viejas cargan sin inventar récords. El contenido ampliado se identifica
-como versión de mapa 3, para no comparar el nuevo terreno con planos anteriores.
+Las partidas viejas cargan sin inventar récords. El contenido actual se identifica
+como versión de mapa 9, para no comparar estas reglas con planos anteriores.
 
 Los depósitos próximos se agrupan en ventanas de 0,35 s; el total económico
 no se limita. El piso tiene menos contraste, parte de la comida forma grupos
@@ -404,7 +433,7 @@ Tres proyectos abren nuevas evoluciones.
 Después de la conquista histórica, los muebles vuelven como recursos normales,
 sin resistencia de misión ni premios de proyecto repetidos.
 
-La partida usa versión 9 y el mapa 7. Los récords nuevos distinguen qué
+La partida usa versión 10 y el mapa 9. Los récords nuevos distinguen qué
 objetos, componentes y escondites estaban pendientes al iniciar. Las partidas anteriores conservan sus
 victorias: los proyectos de destinos ya conquistados se consideran cumplidos,
 sin premios retroactivos. Para jugar toda la campaña ampliada hace falta una
@@ -465,6 +494,14 @@ mandíbulas crecen visualmente con sus mejoras; buche y legado cambian el abdome
 y las marcas del cuerpo. La reina adquiere una corona especial al conquistar
 un monumento.
 
+**Ráfaga es otro poder, manual y separado del frenesí.** Veinte entregas reales
+cargan el botón; `E` activa 8 segundos de daño ×1,75 y ritmo de mordida ×1,25,
+sin acelerar el movimiento. El descanso de 30 segundos comienza al activarlo,
+no al terminar los ocho segundos. No se acumula ni se extiende; bonos,
+destrucciones y corrosión no cuentan como entregas. Se consulta el poder al
+emitir la mordida, sin reescribir daño o intervalo base; el veneno emitido
+captura el factor una sola vez. Valores en `datos/stats_base.csv`.
+
 ### Rendimiento
 
 - Arte compartido en un atlas: se genera una vez al abrir el juego y se reutiliza.
@@ -472,7 +509,9 @@ un monumento.
 - Búsquedas espaciales por sectores para alimento y obstáculos, en vez de recorrer
   todos los objetos por cada decisión de cada hormiga.
 - Selección de feromonas con un heap acotado, cada 0,2 segundos, sin ordenar
-  toda la colonia. Cursor compartido por suelo/vuelo; anillos a 30 Hz.
+  toda la colonia. La consulta espacial del área también es compartida;
+  reasignar un trabajo no recorre el mapa por hormiga y por cuadro. Cursor
+  compartido por suelo/vuelo; anillos a 30 Hz.
 - Rutas con una cola justa: hasta seis pedidos por cuadro y un presupuesto
   blando de 1,2 ms. Hasta dos turnos priorizan llamados y retornos; las demás
   conservan su lugar. Mientras esperan pueden continuar su ruta segura anterior.
@@ -505,7 +544,9 @@ Informa tiempo real por cuadro, percentil 95, peor cuadro y llamadas de dibujo.
 Comparar en la misma PC, sin ejecutar dos pruebas gráficas a la vez. No usar
 `--headless` para medir el renderizado: sólo sirve para pruebas lógicas.
 El segundo benchmark reparte 500 hormigas por toda la casa y mueve el cursor
-continuamente entre habitaciones y sobre muebles, con 24 y hasta 64 llamadas.
+continuamente entre habitaciones y sobre muebles, con 24 y 63 seleccionadas
+(máximo comprable). Sus dos últimas fases fuerzan explícitamente el tope
+técnico de 64 en el fixture: son estrés sintético, no un nivel comprable.
 Ver resultados y límites de la medición en `tests/RENDIMIENTO.md`.
 
 Los efectos actuales se sintetizan en `global/audio_suave.gd`, con ataques y
@@ -564,7 +605,7 @@ se equipan automáticamente si hay lugar. Las hormigas copian ese equipo al nace
 
 | Evolución | Requisitos | Cambia el trabajo |
 |---|---|---|
-| Corte aserrado | 1 carpintera, Mandíbulas 4 | Divide el daño 75/25 entre dos secciones de madera; deja la extracción en montones y sigue cortando sin volver al nido |
+| Corte aserrado | 1 carpintera, Mandíbulas 4 | Deja el material realmente cortado en montones y sigue trabajando sin volver al nido; cada microbocado conserva su frente local |
 | Nube corrosiva | 3 rojas, Mandíbulas 4 | Contagia hasta dos objetivos próximos cada 1,5 s |
 | Barrido de restos | 3 cargadoras, Mandíbulas 4 | Recoge hasta dos montones adicionales a menos de 48 px |
 | Camada real | 1 reina, Mandíbulas 8 | Tres minis por tanda; mantiene los topes de 24 por reina y 500 en la colonia |
@@ -770,6 +811,15 @@ las que quedan fuera de la vista. Los pisotones automáticos no las resuelven:
 son el momento de clickear. Código en `mundo/eventos.gd` y `mundo/evento.gd`;
 revisión visual en `tests/revision_eventos.tscn` y `tests/revision_comidas.tscn`.
 
+La amenaza del lugar alterna con cucarachas (casa, restaurante y museo) o
+escarabajos (Obelisco, Coliseo y Eiffel). La cadencia aumenta con el destino y
+las mejoras de la colonia, con un máximo de **tres individuos** activos; una
+bandada de tres palomas ocupa los tres lugares. Los avisos de entrada/robo
+permiten reaccionar antes de la acción. Vencer más amenazas también aporta
+botín: estas reglas y los nuevos poderes **sí pueden cambiar los ingresos**,
+aunque no se suban precios. Los pilotos viejos no validan la duración actual;
+falta medir de nuevo la campaña y observar jugadores.
+
 ## Idiomas
 
 Español e inglés. El juego arranca en el idioma del sistema (español si el
@@ -924,7 +974,8 @@ recursos pendientes y circulación por los mapas ampliados. `revision_nido.tscn`
 y los seis destinos con el renderer real, sin tocar la partida del jugador.
 
 `tests/prueba_arranque_solitario.tscn` comprueba una sola obrera real y la
-segunda comprada con ingresos de una o dos expediciones. `prueba_mordiscos.tscn`
+segunda pagada con ingresos de hasta tres expediciones guiadas o cinco
+autónomas en su escenario controlado, no como promesa humana. `prueba_mordiscos.tscn`
 verifica recortes acumulativos, límites y conservación del valor;
 `revision_mordiscos.tscn` permite revisar material retirado y carga con el
 renderer. Los resultados gráficos y sus límites están en `tests/RENDIMIENTO.md`.
@@ -957,6 +1008,13 @@ encuentro y próximas expediciones reponen la comida normal. Se cubren con
 mordida, levantado y entrega usa el mismo atlas y hasta tres retazos;
 `prueba_sensacion_bocado.tscn` verifica que no cambie posición física ni valor,
 y `revision_sensacion.tscn` guarda la secuencia y muestras de sonido en QA.
+
+`prueba_area_feromonas.tscn` verifica trabajo en el círculo, prioridad explícita,
+reservas, agotamiento, retornos y escala nativa. `prueba_microbocados.tscn`
+comprueba tandas de 1/2/3, área/HP/valor conservados, retazos de tamaños distintos,
+buche y corte de expedición. `prueba_corte_y_poderes.tscn` cubre entradas
+manuales, Ráfaga y cierre sin daño posterior; el perfil gráfico no reemplaza
+estas comprobaciones de reglas ni permite prometer duración humana.
 
 `revision_residuos_comida.tscn` revisa los 27 alimentos y tres envoltorios con
 renderer real: cuerpo/sombra parciales, ausencia de trazos con la máscara vacía,

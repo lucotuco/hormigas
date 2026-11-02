@@ -33,7 +33,7 @@ func _ready() -> void:
 	for id in Mundos.ORDEN:
 		for m in Mundos.plano(id).muebles_interiores:
 			claves_anteriores[Graficos.clave_mueble(m)] = true
-	verificar(Mundos.VERSION_CONTENIDO == 8, "los hallazgos físicos separan los récords anteriores por versión")
+	verificar(Mundos.VERSION_CONTENIDO == 9, "las tandas y los poderes separan sus récords de los recorridos anteriores")
 	for id in Mundos.ORDEN:
 		Juego.reiniciar_estado()
 		Juego.lugar_actual = id

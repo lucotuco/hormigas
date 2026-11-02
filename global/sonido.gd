@@ -14,6 +14,9 @@ const SONIDOS := {
 	"levantar": {"volumen": -29.0, "intervalo": 0.18},
 	"clic":      {"volumen": -8.0,  "intervalo": 0.02},
 	"deposito":  {"volumen": -17.0, "intervalo": 0.11},
+	"epico": {"volumen": -10.0, "intervalo": 0.9},
+	"aviso": {"volumen": -16.0, "intervalo": 0.7},
+	"espantar": {"volumen": -19.0, "intervalo": 0.10},
 	"romper":    {"volumen": -13.0, "intervalo": 0.12},
 	"comprar":   {"volumen": -6.0,  "intervalo": 0.04},
 	"no":        {"volumen": -9.0,  "intervalo": 0.15},
@@ -22,6 +25,8 @@ const SONIDOS := {
 	"fin":       {"volumen": -4.0,  "intervalo": 0.5},
 }
 const TAMANO_POOL := 16
+const VOCES_MUNDO := 10
+const ESCALA_ENTREGA := [0.8, 0.9, 1.0, 1.2, 4.0 / 3.0]
 
 var silenciado := false:
 	set(valor):
@@ -36,6 +41,7 @@ var _streams: Dictionary = {}
 var _ultimo: Dictionary = {}
 var _siguiente := 0
 var _azar_audio := RandomNumberGenerator.new()
+var _voces: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -47,6 +53,7 @@ func _ready() -> void:
 		var reproductor := AudioStreamPlayer.new()
 		add_child(reproductor)
 		_reproductores.append(reproductor)
+		_voces.append({"prioridad": -1, "inicio": -10.0, "mundo": false})
 
 
 func _exit_tree() -> void:
@@ -63,19 +70,75 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## tono: 1.0 es normal, 2.0 una octava arriba. variacion: aleatoriedad del tono.
 func tocar(nombre: String, tono: float = 1.0, variacion: float = 0.05) -> void:
-	if silenciado or volumen <= 0.001 or not _streams.has(nombre):
+	if silenciado or volumen <= 0.001 or not _streams.has(nombre) or not is_finite(tono) or not is_finite(variacion):
 		return
 	var ahora := Time.get_ticks_msec() / 1000.0
 	var configuracion: Dictionary = SONIDOS[nombre]
 	if not _admitir(nombre, ahora):
 		return
-	var reproductor := _reproductores[_siguiente]
-	_siguiente = (_siguiente + 1) % TAMANO_POOL
+	var prioridad := _prioridad(nombre)
+	var indice := _elegir_voz(nombre, prioridad)
+	if indice < 0:
+		return
+	var reproductor := _reproductores[indice]
+	_siguiente = (indice + 1) % TAMANO_POOL
+	_voces[indice] = {"prioridad": prioridad, "inicio": ahora, "mundo": _es_mundo(nombre)}
 	reproductor.stream = _streams[nombre]
-	reproductor.volume_db = configuracion.volumen + linear_to_db(volumen)
-	var factor := _azar_audio.randf_range(1.0 - variacion, 1.0 + variacion) if variacion > 0 else 1.0
+	reproductor.volume_db = configuracion.volumen + linear_to_db(clampf(volumen, 0.0, 1.0))
+	var amplitud := clampf(variacion, 0.0, 0.08)
+	var factor := _azar_audio.randf_range(1.0 - amplitud, 1.0 + amplitud) if amplitud > 0 else 1.0
 	reproductor.pitch_scale = clampf(tono * factor, 0.65, 1.6)
 	reproductor.play()
+
+
+## Cinco peldaños cálidos, sin subir indefinidamente con un combo enorme.
+## La extracción tiene su gesto propio; acá se confirma la entrega REAL.
+func entrega(combo := 0, especial := false) -> void:
+	if especial:
+		tocar("epico", 1.0, 0.012)
+	else:
+		tocar("deposito", ESCALA_ENTREGA[maxi(0, combo - 1) % ESCALA_ENTREGA.size()], 0.012)
+
+
+func _es_mundo(nombre: String) -> bool:
+	return nombre.begins_with("mordida") or nombre in ["levantar", "deposito", "romper", "aviso", "espantar"]
+
+
+func _prioridad(nombre: String) -> int:
+	if nombre in ["epico", "crecer", "fin"]:
+		return 3
+	if nombre in ["comprar", "no", "clic"]:
+		return 2
+	return 0 if nombre.begins_with("mordida") or nombre == "levantar" else 1
+
+
+## UI y celebraciones tienen seis voces reservadas. Una mordida nunca corta
+## la compra que confirma el jugador; tampoco se crea un reproductor nuevo.
+func _elegir_voz(nombre: String, prioridad: int) -> int:
+	var reservada := prioridad >= 2
+	var inicio := VOCES_MUNDO if reservada else 0
+	var fin := TAMANO_POOL if reservada else VOCES_MUNDO
+	var candidata := -1
+	var mas_vieja := INF
+	for i in range(inicio, fin):
+		if not _reproductores[i].playing:
+			return i
+		if int(_voces[i].prioridad) <= prioridad and float(_voces[i].inicio) < mas_vieja:
+			mas_vieja = float(_voces[i].inicio)
+			candidata = i
+	return candidata
+
+
+## Cerrar/cambiar de escena no deja mordidas ni avisos de la run anterior.
+## El acorde de cierre y la interfaz pueden terminar de sonar normalmente.
+func detener_mundo() -> void:
+	for i in _reproductores.size():
+		if _voces[i].mundo:
+			_reproductores[i].stop()
+			_reproductores[i].stream = null
+			_voces[i].mundo = false
+	for canal in ["mordida", "deposito", "romper", "aviso", "espantar"]:
+		_ultimo.erase(canal)
 
 
 ## Todos los crujidos y levantados comparten como máximo seis inicios por

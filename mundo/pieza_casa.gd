@@ -36,7 +36,6 @@ var _soportes: Array[int] = []
 var _rectangular := true
 var _celdas_ocupadas := 0
 var version_forma := 0
-var _cortes: Array[Vector4] = []
 var _accesos: Dictionary = {}
 var _version_accesos := -1
 var etapa := 0
@@ -151,7 +150,6 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 			_limites_fisicos.append(ocupado)
 			vidas.append(0)
 			_vidas_iniciales.append(0)
-			_cortes.append(Vector4(0, 0.5, 0.5, 0))
 	# Resistencia proporcional al material, no a cuántas celdas toca una tira.
 	# La torre conserva el mismo cuarto por piso, repartido por área de apoyos.
 	var areas := PackedFloat64Array()
@@ -186,12 +184,9 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 			vida_asignada += vidas[i]
 			ultima_celda = i
 			vivas.append(i)
-			_cortes[i].x = 1
 	if ultima_celda >= 0:
 		vidas[ultima_celda] += vida_max - vida_asignada
 		_vidas_iniciales[ultima_celda] = vidas[ultima_celda]
-	while _cortes.size() < 16:
-		_cortes.append(Vector4(0, 0, 0, 0))
 	_celdas_ocupadas = vivas.size()
 	_restaurar_componentes()
 	_reconstruir_formas()
@@ -214,8 +209,6 @@ func iniciar(datos: Dictionary, cocina: Cocina) -> void:
 	_mascara.shader = preload("res://mundo/recorte_bocados.gdshader")
 	_mascara.set_shader_parameter("tamano", rect_mundo.size)
 	_mascara.set_shader_parameter("grilla", grilla)
-	_mascara.set_shader_parameter("material_id", nivel_requerido)
-	_mascara.set_shader_parameter("cortes", _cortes)
 	_mascara.set_shader_parameter("celdas_omitidas", _componentes_mask)
 	material = _mascara
 	if not pieza.pared:
@@ -237,7 +230,6 @@ func _restaurar_componentes() -> void:
 		for i: int in componente.celdas:
 			_componentes_mask |= 1 << i
 			vidas[i] = 0.0
-			_cortes[i].x = 0.0
 			vivas.erase(i)
 			_formas_activas_por_celda[i] = []
 			_limites_fisicos[i] = Rect2()
@@ -464,13 +456,6 @@ func _reconstruir_formas() -> void:
 	_fila_activa = 0
 	for i in vivas:
 		_fila_activa = maxi(_fila_activa, int(i / grilla.x))
-		var bordes := 0
-		var vecinos := [i - 1 if i % grilla.x > 0 else -1, i + 1 if i % grilla.x < grilla.x - 1 else -1, i - grilla.x, i + grilla.x]
-		for lado in 4:
-			var vecino: int = vecinos[lado]
-			if vecino >= 0 and vecino < vidas.size() and _vidas_iniciales[vecino] > 0 and vidas[vecino] <= 0:
-				bordes |= 1 << lado
-		_cortes[i].w = bordes
 	if vivas.size() == _celdas_ocupadas and not _tiene_retroceso:
 		_formas.assign(_formas_originales)
 	else:
@@ -651,6 +636,13 @@ func morder_local(dano: float, pos: Vector2, lado_max := 6.0) -> float:
 	return _extraer_pieza(dano, pos, lado_max)
 
 
+func continuar_bocado(pos: Vector2, lado_max := 6.0) -> float:
+	_porcion_reciente = Rect2()
+	if not is_finite(lado_max) or lado_max <= 0:
+		return 0.0
+	return _extraer_pieza(0.0, pos, lado_max, false, true)
+
+
 func morder_veneno(dano: float, origen: Vector2) -> float:
 	return _extraer_pieza(dano, origen, -1.0)
 
@@ -665,9 +657,12 @@ func erosion_paso(dano: float, origen: Vector2) -> float:
 	return _extraer_pieza(dano, origen, -1.0, true)
 
 
-func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := false) -> float:
+func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := false, solo_credito := false) -> float:
 	_porcion_reciente = Rect2()
-	if not disponible() or not is_finite(dano) or dano < 0 or (dano == 0 and not por_pasos) or not pos.is_finite():
+	var expedicion = get_parent().get_parent() if get_parent() is Comidas else null
+	if expedicion is Run and expedicion._extraccion_cerrada:
+		return 0.0
+	if not disponible() or not is_finite(dano) or dano < 0 or (dano == 0 and not por_pasos and not solo_credito) or not pos.is_finite():
 		return 0
 	if mordiscos == null:
 		_preparar_mordiscos()
@@ -685,7 +680,7 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := fal
 	var presupuesto := minf(dano * (1.0 if por_pasos else factor_erosion()), vida)
 	var agujero := false
 	var zona_rotura := Rect2()
-	while (presupuesto > 0 or por_pasos) and not vivas.is_empty():
+	while (presupuesto > 0 or por_pasos or solo_credito) and not vivas.is_empty():
 		var elegida := -1
 		var distancia := INF
 		var fila := 0
@@ -727,7 +722,7 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := fal
 			# visibilidad se elige de nuevo el frente global, igual que en bulk.
 			_celda_erosion = elegida if erosion_continua else -1
 		elif lado_max > 0:
-			real = mordiscos.recortar_local(elegida, presupuesto, pos, lado_max)
+			real = mordiscos.recortar_local_acreditado(elegida, pos, lado_max) if solo_credito else mordiscos.recortar_local(elegida, presupuesto, pos, lado_max)
 		elif lado_max < 0:
 			real = mordiscos.recortar_frente(elegida, trabajo, pos)
 			trabajo = mordiscos.ultimo_trabajo_frente
@@ -745,9 +740,6 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := fal
 		if lado_max != 0:
 			_registrar_retroceso(elegida)
 		var r := celdas[elegida]
-		var ocupado := _limites_celda[elegida]
-		var mordida := ((pos - ocupado.position) / ocupado.size).clamp(Vector2.ZERO, Vector2.ONE)
-		_cortes[elegida] = Vector4(vidas[elegida] / _vidas_iniciales[elegida], mordida.x, mordida.y, _cortes[elegida].w)
 		if vidas[elegida] == 0.0:
 			mordiscos.limpiar_celda(elegida)
 			vivas.erase(elegida)
@@ -884,7 +876,6 @@ func _mostrar_veneno() -> void:
 
 
 func _actualizar_mascara() -> void:
-	_mascara.set_shader_parameter("cortes", _cortes)
 	if mordiscos != null:
 		mordiscos.actualizar_textura()
 	_mascara.set_shader_parameter("corrosion", minf(1, corrosion))
@@ -893,6 +884,15 @@ func _actualizar_mascara() -> void:
 
 func _process(delta: float) -> void:
 	if muerta:
+		return
+	if get_parent().get_parent()._extraccion_cerrada:
+		# Publicar sólo el material YA retirado. Actualizar la navegación deja
+		# volver las cargas sin ejecutar otro escalón de derrumbe ni veneno.
+		if _geometria_pendiente:
+			_actualizar_colision(_zona_geometria)
+		if _sucio:
+			_actualizar_mascara()
+		set_process(false)
 		return
 	if not get_parent().get_parent().activa and not get_parent().get_parent().cerrando_erosion:
 		return
@@ -922,7 +922,6 @@ func _process(delta: float) -> void:
 				var extraido := vidas[i]
 				vida = maxf(0, vida - extraido)
 				vidas[i] = 0
-				_cortes[i].x = 0
 				mordiscos.limpiar_celda(i)
 				vivas.pop_back()
 				_registrar_componentes_terminados()
@@ -979,13 +978,6 @@ func _draw() -> void:
 		var punto := Vector2(local.end.x - 16, local.position.y + 22)
 		draw_circle(punto, 11, Color("edcf80"))
 		draw_line(punto - Vector2(5, 0), punto + Vector2(5, 0), Color("7a633a"), 3)
-	if vida < vida_max:
-		var ancho := minf(local.size.x, 240)
-		# Las barras quedan fuera de la máscara del cuerpo.
-		draw_rect(Rect2(-ancho * 0.5, local.position.y - 22, ancho, 10), Color("373d31"))
-		draw_rect(Rect2(-ancho * 0.5, local.position.y - 22, ancho * vida / vida_max, 10), Color("c5d98b"))
-		for i in range(1, 4):
-			draw_line(Vector2(-ancho * 0.5 + ancho * i / 4, local.position.y - 22), Vector2(-ancho * 0.5 + ancho * i / 4, local.position.y - 12), Color("444b39"), 2)
 
 
 ## Sondeo adelanta el mismo escondite; no extrae cuerpo ni acredita ingresos.
