@@ -101,8 +101,22 @@ func configurar(tipo: Dictionary, semilla: int) -> void:
 					_detalles.append(Vector3(x, -0.5 + fila * 0.36, rng.randf_range(0.2, 0.24)))
 	set_process(false)
 	queue_redraw()
-	if _usar_cache and not Graficos.listo:
-		Graficos.preparado.connect(queue_redraw, CONNECT_ONE_SHOT)
+	if _usar_cache:
+		if Graficos.listo:
+			_preparar_visual()
+		else:
+			Graficos.preparado.connect(_preparar_visual, CONNECT_ONE_SHOT)
+
+
+func _preparar_visual() -> void:
+	if not _usar_cache:
+		return
+	if _mascara_comida != null:
+		# Una señal tardía del atlas no puede restaurar material ya comido.
+		Graficos.configurar_recorte_alimento(_mascara_comida, id)
+	else:
+		material = Graficos.material_alimento(id, radio)
+	queue_redraw()
 
 func disponible() -> bool:
 	return not muerta
@@ -338,6 +352,10 @@ func _recibir_mordiscos(preparada: MordiscosMaterial) -> void:
 	_mascara_comida.set_shader_parameter("mascara_bocados", mordiscos.textura_mascara())
 	_mascara_comida.set_shader_parameter("usar_mascara", true)
 	material = _mascara_comida
+	if Graficos.listo:
+		_preparar_visual()
+	elif not Graficos.preparado.is_connected(_preparar_visual):
+		Graficos.preparado.connect(_preparar_visual, CONNECT_ONE_SHOT)
 
 
 func _despertar_erosion() -> void:
@@ -516,6 +534,11 @@ func _draw() -> void:
 			draw_colored_polygon(PackedVector2Array([Vector2(-r, -r * 0.3), Vector2(-r * 0.6, -r * 0.8), Vector2(r * 0.65, -r * 0.8), Vector2(r, -r * 0.3), Vector2(0, r)]), c)
 			for i in 7:
 				var p := Vector2(sin(i * 2.4) * r * 0.48, -r * 0.4 + i * r * 0.17)
+				# La punta se angosta hasta x=0: la última semilla antes quedaba
+				# flotando afuera y se incorporaba a la silueta como una rayita.
+				# Incluir largo y medio grosor, no sólo el inicio de la línea.
+				var ancho_disponible := maxf(0, (r - p.y - 2.0) / 1.3 - 0.7)
+				p.x = clampf(p.x, -ancho_disponible, ancho_disponible)
 				draw_line(p, p + Vector2(0, 2), Color("f6dd9d"), 1.2, true)
 			for i in 3:
 				var p := Vector2((i - 1) * r * 0.45, -r * 0.9)
@@ -544,7 +567,14 @@ func _draw() -> void:
 			draw_colored_polygon(triangulo, c)
 			draw_colored_polygon(PackedVector2Array([Vector2(-r, -r * 0.75), Vector2(-r * 0.75, -r * 0.6), Vector2(-r * 0.75, r * 0.6), Vector2(-r, r * 0.75)]), oscuro)
 			for d in _detalles:
-				draw_circle(Vector2(d.x, d.y) * r, d.z * r, c.darkened(0.18))
+				# Distancia al borde inclinado del triángulo, incluyendo el
+				# radio entero del agujero. No dejar islas de tinta en el piso.
+				var rr := d.z * r
+				var y := d.y * r
+				var pendiente := 8.0 / 3.0
+				var borde := r - pendiente * absf(y) - sqrt(1.0 + pendiente * pendiente) * rr - 0.4
+				var x := clampf(d.x * r, -r + rr + 0.4, borde)
+				draw_circle(Vector2(x, y), rr, c.darkened(0.18))
 		"sandwich":
 			var rect := Rect2(-r, -r * 0.7, r * 2.0, r * 1.4)
 			draw_rect(rect, Color(0.45, 0.7, 0.3))  # lechuga que asoma
@@ -701,9 +731,10 @@ func _creciente(r: float, tinta: Color, oscuro: Color, gajos: int) -> void:
 
 func _dibujar_dano(desplazamiento: Vector2) -> void:
 	var r := radio
-	# Grietas: aparecen a medida que pierde vida.
+	# El desgaste físico ya muestra lo que falta. Las grietas independientes
+	# podían quedar dibujadas en huecos transparentes como rayitas flotantes.
 	var dano := 1.0 - vida / vida_max
-	if dano > 0.0:
+	if dano > 0.0 and mordiscos == null:
 		var cantidad := int(ceil(dano * _grietas.size()))
 		var ancho := maxf(0.6, r * 0.07)
 		for i in cantidad:

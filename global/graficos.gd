@@ -21,6 +21,11 @@ var _animaciones: Dictionary = {}
 ## Geometría del arte prehorneada: idéntica en juego y simulación headless.
 ## Nunca se lee la GPU para decidir cuánto material o dinero se extrae.
 var _formas_alimentos: Dictionary = {}
+## Sólo un material intacto por tipo. Las comidas comparten estas R8 hasta
+## recibir su máscara propia; nunca se modifica la textura compartida.
+var _materiales_alimentos: Dictionary = {}
+var tiempo_materiales_alimentos_usec := 0
+var bytes_mascaras_alimentos := 0
 var tiempo_lectura_siluetas_usec := 0
 var tiempo_cpu_siluetas_usec := 0
 var pixeles_siluetas_revisados := 0
@@ -175,6 +180,7 @@ func _ready() -> void:
 	_ajustar_cuerpos()
 	# Congelar el atlas; no agrega un segundo render por cuadro.
 	listo = true
+	_preparar_materiales_alimentos()
 	preparado.emit()
 
 
@@ -248,6 +254,66 @@ func configurar_sombra(material_cuerpo: ShaderMaterial, datos: Dictionary) -> vo
 	material_cuerpo.set_shader_parameter("sombra_activa", true)
 	material_cuerpo.set_shader_parameter("region_cuerpo", Vector4(region.position.x * inv_atlas.x, region.position.y * inv_atlas.y, region.end.x * inv_atlas.x, region.end.y * inv_atlas.y))
 	material_cuerpo.set_shader_parameter("uv_por_unidad", region.size * inv_atlas / rect.size)
+
+
+## Se configura una vez al publicar la máscara, no por hormiga ni por cuadro.
+## La región física compensa el padding del atlas para distinguir su quad de
+## las barras/primitivas dibujadas sobre el mismo CanvasItem.
+func configurar_recorte_alimento(material_cuerpo: ShaderMaterial, id: String) -> void:
+	var clave := "comida:" + id
+	if not listo or not regiones.has(clave):
+		return
+	var tam: Vector2 = material_cuerpo.get_shader_parameter("tamano")
+	var fisico := Rect2(-tam * 0.5, tam)
+	var dibujo: Rect2 = tamanos[clave]
+	var region := region_porcion(clave, fisico, dibujo)
+	var inv_atlas := Vector2.ONE / Vector2(textura.get_width(), textura.get_height())
+	material_cuerpo.set_shader_parameter("region_cuerpo", Vector4(region.position.x * inv_atlas.x, region.position.y * inv_atlas.y, region.end.x * inv_atlas.x, region.end.y * inv_atlas.y))
+	material_cuerpo.set_shader_parameter("uv_por_unidad", regiones[clave].size * inv_atlas / dibujo.size)
+	material_cuerpo.set_shader_parameter("desplazamiento_sombra", Vector2(1.5, 2.5))
+	material_cuerpo.set_shader_parameter("alimento_mordido", true)
+
+
+func material_alimento(id: String, radio: float) -> ShaderMaterial:
+	var compartido: ShaderMaterial = _materiales_alimentos.get(id)
+	# Un fixture o contenido sin catalogar puede usar otro tamaño con el mismo
+	# ID. No aplicarle una máscara ajena a sus medidas físicas.
+	if compartido != null and compartido.get_shader_parameter("tamano") == Vector2.ONE * radio * 2.0:
+		return compartido
+	return null
+
+
+func _preparar_materiales_alimentos() -> void:
+	var inicio := Time.get_ticks_usec()
+	for tipo: Dictionary in Juego.comidas:
+		_preparar_material_alimento(tipo.id, tipo.radio)
+	for hallazgo: Dictionary in CatalogoHallazgos.todos():
+		_preparar_material_alimento(hallazgo.id_envoltorio, hallazgo.radio)
+	tiempo_materiales_alimentos_usec = Time.get_ticks_usec() - inicio
+	print("Materiales intactos: %d tipos, %d bytes R8, %.2f ms de arranque." % [
+		_materiales_alimentos.size(), bytes_mascaras_alimentos, tiempo_materiales_alimentos_usec / 1000.0])
+
+
+func _preparar_material_alimento(id: String, radio: float) -> void:
+	var formas := formas_alimento(id)
+	if formas.is_empty():
+		return
+	var tam := Vector2.ONE * radio * 2.0
+	var referencia := MordiscosMaterial.new()
+	# La vida no cambia el raster: sólo convierte sus píxeles a HP. El helper
+	# CPU se descarta al salir; se retienen únicamente textura y material.
+	referencia.configurar(Rect2(-tam * 0.5, tam), Vector2i.ONE, [formas], PackedFloat64Array([1.0]))
+	var mascara := referencia.textura_mascara()
+	var compartido := ShaderMaterial.new()
+	compartido.shader = preload("res://mundo/recorte_bocados.gdshader")
+	compartido.set_shader_parameter("tamano", tam)
+	compartido.set_shader_parameter("grilla", Vector2i.ONE)
+	compartido.set_shader_parameter("material_id", 0)
+	compartido.set_shader_parameter("mascara_bocados", mascara)
+	compartido.set_shader_parameter("usar_mascara", true)
+	configurar_recorte_alimento(compartido, id)
+	_materiales_alimentos[id] = compartido
+	bytes_mascaras_alimentos += mascara.get_width() * mascara.get_height()
 
 func _agregar(clave: String, dibujo: Node2D, rect: Rect2, escala: float) -> void:
 	_pendientes.append({"clave": clave, "dibujo": dibujo, "rect": rect, "escala": escala})

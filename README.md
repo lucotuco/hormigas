@@ -958,6 +958,11 @@ mordida, levantado y entrega usa el mismo atlas y hasta tres retazos;
 `prueba_sensacion_bocado.tscn` verifica que no cambie posición física ni valor,
 y `revision_sensacion.tscn` guarda la secuencia y muestras de sonido en QA.
 
+`revision_residuos_comida.tscn` revisa los 27 alimentos y tres envoltorios con
+renderer real: cuerpo/sombra parciales, ausencia de trazos con la máscara vacía,
+detalles conectados, máscaras compartidas/privadas e indicadores sin recortar.
+Guarda las comparativas en `.godot/qa/residuos_*.png`, sin tocar la partida.
+
 ## Exportar
 
 *Proyecto → Exportar → Agregar → Windows Desktop* (la primera vez Godot pide descargar las plantillas de exportación). Si al exportar faltan los CSV, agreguen `datos/*.csv` en *Recursos → Filtros para exportar archivos que no son recursos*.

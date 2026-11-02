@@ -1,5 +1,15 @@
 # Tareas
 
+## Alimentos sin trazos huérfanos — 2/11
+
+- [x] Reproducir márgenes/sombras persistentes y grietas sobre huecos; recortar el quad completo y reproyectar la sombra desde el cuerpo restante.
+- [x] Mantener intacto/preparado coherentes con 30 materiales R8 compartidos por tipo (34.229 bytes), sin máscara física por instancia intacta.
+- [x] Corregir semilla exterior de frutilla y agujeros exteriores de queso; reexportar sólo sus siluetas, sin cambiar vida total ni valor.
+- [x] Regresión GPU: 341 verificaciones, 30 tipos y dos rotaciones, vaciado con alfa estrictamente cero, conectividad e independencia de máscaras.
+- [x] Repetir material visible (68) y mordiscos (13, incluye 108 bocados/lados); medir estrés real de 500 hormigas sin prometer FPS constantes.
+- [x] Cerrar las 52 suites lógicas después de corregir las siluetas, sin errores ni advertencias.
+- [ ] Validar el acabado durante una sesión humana larga y en GPU integrada.
+
 ## Primer contacto y hallazgos pequeños — 1/11
 
 - [x] Repartir preparación de máscaras entre cuadros con cola compartida, sin publicar geometría parcial ni cambiar la masa.

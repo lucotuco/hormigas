@@ -1224,3 +1224,68 @@ Regresión final: 52 suites sin fallas ni errores de script. Arte de hallazgos
 118 verificaciones, integración/robo completo 35 y sensación 35. El retiro por
 aspiradora/rata no prepara una máscara para un objeto que levanta entero;
 conserva sólo el valor todavía presente y no duplica masa, bonus ni botín.
+
+## Residuos de alimentos y sombra desde el material — 2/11
+
+La revisión reprodujo líneas y sombras incluso con una máscara corporal vacía:
+el quad del alimento tiene cinco unidades de padding y el shader anterior
+dejaba pasar lo que caía fuera de ±radio. Además, las grietas independientes
+podían dibujarse sobre huecos transparentes. Ahora el quad completo recorta
+cuerpo/sombra; el cuerpo usa alfa material ≥0,55 y la sombra se proyecta desde
+ese mismo material restante. No se dibujan grietas artificiales cuando existe
+la máscara física. Barras e indicadores conservan su pasada sin recorte.
+
+Intacto y preparado usan la misma presentación para evitar saltos al primer
+contacto. Son 30 materiales/texturas R8 **compartidos por tipo**, no por objeto:
+34.229 bytes R8 en total, más los recursos del renderer. Construcción medida
+en 28,63–30,41 ms una sola vez durante el arranque del atlas. Los helpers CPU
+se descartan; las máscaras físicas mutables siguen preparándose bajo demanda
+y por la cola de la Run. No hay lecturas GPU, nodos nuevos por comida ni
+escaneos por hormiga agregados durante el juego. El recorte inicial también
+ajusta los pequeños salientes del arte que excedían su dominio físico; no
+es una conservación píxel a píxel del dibujo crudo anterior.
+
+Se corrigieron detalles de autoría: una semilla fuera de la frutilla y círculos
+fuera del triángulo del queso. Se reexportaron sólo esas dos siluetas; las otras
+25 quedan idénticas. No se cambian HP totales, recompensas, daño, IA ni precios.
+No se borra el último material ni se acredita trabajo para esconder residuos.
+
+`revision_residuos_comida.tscn`: 341 verificaciones con renderer real. Treinta
+tipos, rotaciones 0 y 0,37, intacto/preparado, desgaste parcial y vaciado de R8
+con el nodo todavía vivo. Los 60 vaciados dejan alfa **estrictamente cero** en
+todo el visor, incluidos márgenes. Se contrasta cada píxel parcial con atlas
+bilinear y material R8 nearest, con tolerancia de transformación de sólo
+0,002048 píxeles de imagen y un nivel RGBA8 de alfa; no hay cupo de píxeles
+huérfanos permitido. También cubre independencia de máscaras privadas,
+inmutabilidad del cache compartido, callback tardío, barras/veneno y un único
+cuerpo opaco conectado a ocho vecinos en los 27 alimentos intactos.
+Capturas y log: `.godot/qa/residuos_comida_despues.png`,
+`residuos_frutilla_intacto_preparado_despues.png`,
+`residuos_bombon_intacto_preparado_despues.png` y
+`residuos_gpu_fuentes_final.log`. La línea de base quedó en
+`residuos_comida_antes.png`: el mismo vaciado conservaba trazos en 47 de 60 casos.
+
+### Estrés integrado, no garantía de FPS
+
+Godot 4.7.2, GL Compatibility, RTX 3060, 1920×1080, 500 hormigas,
+`perfil_proyectos.tscn --fixed-fps 60`, 90 cuadros de calentamiento y 360 medidos.
+Log `.godot/qa/residuos_perfil_proyectos.log`:
+
+| Destino / equipo | Media | p95 | Peor | Dibujos medios | Máscaras completas / pendientes |
+|---|---:|---:|---:|---:|---:|
+| Museo / Sondeo+Barrido | 10,78 ms | 15,27 ms | 22,56 ms | 959 | 127 / 0 |
+| Coliseo / Cantera+Contagio | 8,97 ms | 12,60 ms | 22,24 ms | 834 | 132 / 9 |
+| Eiffel / Cantera+Puente | 10,65 ms | 14,80 ms | 16,97 ms | 909 | 134 / 3 |
+
+Mismos caps: seis rutas/cuadro y 64 montones (8/5/10 activos). Erosión: 12/32/12
+operaciones máximas, servicio individual máximo 0,80/0,70/0,56 ms. Preparación:
+servicio máximo 1,071/1,114/1,119 ms. Quedaban 2/0/4 recursos de erosión activos
+al cortar la muestra; el log incluye trabajo emitido/admitido para no presentar
+menos trabajo liquidado como una mejora. Es una repetición integrada, no A/B
+exacto ni demostración en GPU integrada. Hay cuadros de más de 16,67 ms.
+La pequeña corrección posterior de semillas/agujeros no cambia esos caps.
+
+Revisión gráfica de material visible (68) y mordiscos (13, incluidos 108
+primeros bocados/lados), sin fallas después de corregir las dos siluetas.
+Regresión completa posterior a la reexportación: 52 suites headless sin fallas,
+errores de script ni advertencias. Guardado y configuración personal intactos.

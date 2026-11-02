@@ -13,6 +13,7 @@ uniform vec4 frentes[64];
 uniform vec4 cortes[16];
 uniform int material_id = 1;
 uniform float corrosion = 0.0;
+uniform bool alimento_mordido = false;
 uniform bool sombra_activa = false;
 uniform vec4 region_cuerpo = vec4(0.0, 0.0, 1.0, 1.0);
 uniform vec2 uv_por_unidad = vec2(0.0);
@@ -50,7 +51,19 @@ void vertex() {
 
 void fragment() {
 	vec4 color = COLOR;
-	if (sombra_activa && es_cuerpo > 0.5) {
+	if (alimento_mordido && es_cuerpo > 0.5) {
+		// El atlas del alimento incluye una sombra horneada y cinco unidades
+		// de margen. No son comida: el cuerpo usa sólo su alfa material y la
+		// sombra se vuelve a proyectar DESDE los píxeles que todavía existen.
+		// material_en devuelve cero fuera del cuerpo; no dejar pasar márgenes.
+		float alpha_cuerpo = texture(TEXTURE, UV).a;
+		float cuerpo = alpha_cuerpo * step(0.55, alpha_cuerpo) * dentro_region(UV) * material_en(local);
+		vec2 uv_sombra = UV - desplazamiento_sombra * uv_por_unidad;
+		float sombra = step(0.55, texture(TEXTURE, uv_sombra).a) * dentro_region(uv_sombra) * material_en(local - desplazamiento_sombra) * 0.14;
+		float alpha = cuerpo + sombra * (1.0 - cuerpo);
+		vec3 rgb = alpha > 0.0 ? (color.rgb * cuerpo + vec3(0.19, 0.16, 0.11) * sombra * (1.0 - cuerpo)) / alpha : vec3(0.0);
+		COLOR = vec4(rgb, alpha);
+	} else if (sombra_activa && es_cuerpo > 0.5) {
 		vec2 uv_sombra = UV - desplazamiento_sombra * uv_por_unidad;
 		float cuerpo = texture(TEXTURE, UV).a * dentro_region(UV) * material_en(local);
 		float sombra = texture(TEXTURE, uv_sombra).a * dentro_region(uv_sombra) * material_en(local - desplazamiento_sombra) * 0.14;
