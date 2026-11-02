@@ -72,7 +72,7 @@ func _ready() -> void:
 	Juego.reclutadas.carpintera = 3
 	var esperada := Juego.jalea_por_fundar()
 	verificar(esperada == Juego.coronas * Juego.JALEA_POR_CORONA + Juego.detalle_fundar().migas, "la jalea por fundar suma coronas y migas de la colonia")
-	verificar(Juego.fundar_colonia() and Juego.legado == esperada and Juego.jalea == esperada and Juego.coronas == 0 and Juego.migas == 0 and Juego.niveles.is_empty() and Juego.reclutadas.is_empty(), "fundar reinicia economía y reclutas a cambio de jalea real")
+	verificar(Juego.fundar_colonia() and Juego.legado == esperada and Juego.jalea == esperada and Juego.coronas == 0 and is_equal_approx(Juego.migas, 9999 * Juego.MIGAS_HEREDADAS) and Juego.niveles.is_empty() and Juego.reclutadas.is_empty(), "fundar reinicia economía y reclutas a cambio de jalea real")
 	verificar(Juego.lugares_completados.size() == 6 and Juego.hitos.has("primer_monumento") and Juego.lugar_actual == "casa" and not Juego.destino_desbloqueado("eiffel"), "fundar conserva historial e hitos, pero la nueva colonia vuelve a conquistar su recorrido")
 	verificar(is_equal_approx(Juego.stat("dano"), 1.0 + Juego.legado * Juego.BONUS_LEGADO) and not Juego.fundar_colonia(), "la jalea ganada mejora el daño y no se puede cobrar dos veces")
 	Juego.migas = 1000

@@ -77,7 +77,7 @@ func probar_fundar() -> void:
 	var esperada := Juego.jalea_por_fundar()
 	verificar(Juego.fundar_colonia(), "se puede fundar con coronas")
 	verificar(Juego.jalea == esperada and Juego.legado == esperada and Juego.fundaciones == 1, "fundar da la jalea prometida")
-	verificar(Juego.migas == 0 and Juego.niveles.is_empty() and Juego.reclutadas.is_empty() and Juego.migas_colonia == 0, "fundar reinicia migas, mejoras y castas")
+	verificar(is_equal_approx(Juego.migas, 1e6 * Juego.MIGAS_HEREDADAS) and Juego.niveles.is_empty() and Juego.reclutadas.is_empty() and Juego.migas_colonia == 0, "fundar reinicia mejoras y castas y hereda sólo el 1% de las migas")
 	verificar(Juego.lugares_completados.has("casa") and Juego.hitos.has("primera_silla"), "fundar conserva destinos e hitos")
 	verificar(is_equal_approx(Juego.stat("multiplicador_migas"), 1.0 + Juego.legado * Juego.BONUS_LEGADO), "la jalea ganada da bonus pasivo de migas")
 	Juego.jalea = 0
@@ -108,7 +108,7 @@ func probar_arbol() -> void:
 	Juego.reclutadas = {"reina": 3, "roja": 8}
 	Juego.fundar_colonia()
 	verificar(Juego.nivel_de("mordida_madera") == 1, "la colonia nueva nace sabiendo devorar madera")
-	verificar(is_equal_approx(Juego.migas, 1e5), "Reservas de la reina conserva el 10% de las migas")
+	verificar(is_equal_approx(Juego.migas, 1e6 * (Juego.MIGAS_HEREDADAS + 0.1)), "Reservas de la reina conserva un 10% más de las migas")
 	verificar(Juego.cantidad_casta("roja") == 2 and Juego.cantidad_casta("reina") == 0, "Linaje conserva el 25% de cada casta")
 	verificar(Juego.nivel_jalea("obreras_reales") == 2 and Juego.stat("hormigas_iniciales") == Juego.stats_base.hormigas_iniciales + 8, "el árbol de la reina es permanente")
 	Juego.reiniciar_estado()
