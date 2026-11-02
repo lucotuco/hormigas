@@ -1,5 +1,24 @@
 extends Node
 ## Evoluciones por contenido: misma extracción, tesoros y transporte existentes.
+class PiezaConPorciones extends PiezaCasa:
+	var porciones: Array[Rect2] = []
+	var emisiones := 0
+	var continuaciones := 0
+	var trabajo_emitido := 0.0
+	func morder_local(dano: float, pos: Vector2, lado_max := 6.0) -> float:
+		emisiones += 1
+		trabajo_emitido += dano
+		var valor := super.morder_local(dano, pos, lado_max)
+		if valor > 0:
+			porciones.append(_porcion_reciente)
+		return valor
+	func continuar_bocado(pos: Vector2, lado_max := 6.0) -> float:
+		continuaciones += 1
+		var valor := super.continuar_bocado(pos, lado_max)
+		if valor > 0:
+			porciones.append(_porcion_reciente)
+		return valor
+
 var total := 0
 var fallas := 0
 const NUEVAS := ["sondeo", "cantera", "puente"]
@@ -83,12 +102,12 @@ func crear_run(evoluciones: Array) -> Run:
 	return run
 
 
-func crear_pieza(run: Run, tipo: String, pos := Vector2(-230, -240)) -> PiezaCasa:
+func crear_pieza(run: Run, tipo: String, pos := Vector2(-230, -240)) -> PiezaConPorciones:
 	var rect := Rect2(pos, Vector2(110, 130))
 	var datos := {"clave": "evolucion:" + tipo + str(run.comidas.partes.size()), "tipo": tipo,
 		"rect": rect, "color": Color.WHITE, "pared": tipo == "pared",
 		"dibujo": {"tipo": tipo, "rect": rect, "color": Color.WHITE}}
-	var parte := PiezaCasa.new()
+	var parte := PiezaConPorciones.new()
 	run.comidas.add_child(parte)
 	parte.iniciar(datos, run.cocina)
 	parte.destruida.connect(run.comidas._on_destruida)
@@ -158,8 +177,22 @@ func probar_cantera() -> void:
 		var extraido := parte.recompensa * (vida - parte.vida) / parte.vida_max * Juego.stat("multiplicador_migas")
 		verificar(h._cantera and extraido > 0 and h.carga == 0 and h.bocados == 0 and h.estado == Hormiga.Estado.MORDIENDO, "Cantera mantiene a la demoledora trabajando sin viajar con %s" % tipo)
 		verificar(is_equal_approx(valor_restos(run) - anteriores, extraido) and Juego.migas_run == saldo, "Cantera deja exactamente el valor real extraído de %s, sin otro 35%% ni cobro directo" % tipo)
-		var porcion := parte._porcion_reciente
-		verificar(porcion.has_area() and porcion.size.x <= 6.0001 and porcion.size.y <= 6.0001 and is_equal_approx(area - parte.mordiscos.area_total(), porcion.get_area()), "Cantera conserva una porción local sólida y el área retirada de %s" % tipo)
+		var area_porciones := 0.0
+		var porciones_validas := not parte.porciones.is_empty()
+		for porcion in parte.porciones:
+			area_porciones += porcion.get_area()
+			porciones_validas = porciones_validas and porcion.has_area() and porcion.size.x <= 6.0001 and porcion.size.y <= 6.0001
+		verificar(porciones_validas and is_equal_approx(area - parte.mordiscos.area_total(), area_porciones), "Cantera conserva cada porción local sólida y la suma exacta del área retirada de %s" % tipo)
+		# El puesto nativo está a11 unidades del borde. Dos porciones dejan
+		# su nuevo contacto a15,89: una tercera violaría el alcance real de13.
+		verificar(h._porciones_ciclo == 3 and parte.porciones.size() == 2 and parte.emisiones == 1 and parte.continuaciones == 1,
+			"Cantera corta la tanda de %s tras dos porciones reales, sin emitir daño ni intentar una tercera a distancia" % tipo)
+		var credito := 0.0
+		for pendiente in parte.mordiscos._credito:
+			credito += pendiente
+		verificar(not parte.alcanza_contacto(h.global_position) and credito > 0
+			and is_equal_approx(credito + vida - parte.vida, parte.trabajo_emitido * parte.factor_erosion()),
+			"el contacto perdido de %s conserva todo el trabajo pendiente sin gastarlo en una mordida fuera de alcance" % tipo)
 		var resto: FragmentoCasa = run.comidas.fragmentos.back()
 		verificar(resto.material_id == parte.nivel_requerido and is_equal_approx(resto.recompensa, extraido), "el fragmento de %s conserva su material y recompensa" % tipo)
 		var cargadora := run.colonia._nacer("cargadora", resto.position)

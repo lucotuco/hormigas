@@ -5,7 +5,6 @@ extends Node2D
 
 signal destruida(comida: Comida)
 
-const COLOR_GRIETA := Color(0.18, 0.11, 0.06, 0.75)
 const COLOR_CONTORNO := Color(0.15, 0.09, 0.05, 0.55)
 const FORMAS_ALARGADAS := ["choripan", "baguette", "medialuna", "croissant", "racimo", "aceituna"]
 
@@ -29,7 +28,6 @@ func punto_trabajo(desde: Vector2, territorio: float, volando: bool, puesto: int
 
 var _sacudida := 0.0
 var _destello := 0.0
-var _grietas: Array[Vector3] = []          # ángulo, largo (0-1), quiebre
 var _detalles: Array[Vector3] = []         # x, y, tamaño (en unidades de radio)
 var _contorno := PackedVector2Array()      # para formas irregulares
 var veneno_restante := 0.0
@@ -51,6 +49,9 @@ var trabajo_erosion_admitido := 0.0
 var erosion_continua := false
 var _celda_erosion := -1
 var semilla_dibujo := 0
+## Origen transitorio durante la señal síncrona de extracción/destrucción.
+## No es progreso ni se guarda: robar no equivale a una entrega de la colonia.
+var retiro_amenaza := false
 
 
 func configurar(tipo: Dictionary, semilla: int) -> void:
@@ -67,8 +68,12 @@ func configurar(tipo: Dictionary, semilla: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = semilla
 	rotation = rng.randf() * TAU
+	# Conservar la secuencia de autoría del atlas/siluetas antiguas, sin guardar
+	# ni dibujar las grietas superpuestas que ya reemplazó el desgaste físico.
 	for i in 7:
-		_grietas.append(Vector3(rng.randf() * TAU, rng.randf_range(0.55, 1.0), rng.randf_range(-0.6, 0.6)))
+		rng.randf()
+		rng.randf_range(0.55, 1.0)
+		rng.randf_range(-0.6, 0.6)
 	match forma:
 		"miga":
 			var puntos := 7
@@ -201,6 +206,11 @@ func morder_en(dano: float, pos: Vector2) -> float:
 func retirar_por_amenaza() -> float:
 	if muerta or self is PiezaCasa or self is FragmentoCasa:
 		return 0.0
+	if get_parent() is Comidas:
+		var expedicion = get_parent().get_parent()
+		if expedicion is Run and expedicion._extraccion_cerrada:
+			return 0.0
+	retiro_amenaza = true
 	var restante := vida
 	var botin := recompensa * restante / vida_max * Juego.stat("multiplicador_migas")
 	vida = 0.0
@@ -214,6 +224,19 @@ func retirar_por_amenaza() -> float:
 	return botin
 
 
+## Misma extracción física y valor, con origen explícito para no disparar
+## premios de la colonia si el enemigo se lleva la última porción.
+## lado_max=0 conserva el picotazo ambiental existente de las palomas.
+func morder_por_amenaza(dano: float, pos: Vector2, lado_max := 6.0) -> float:
+	if not is_finite(lado_max) or lado_max < 0 or muerta:
+		return 0.0
+	var origen_anterior := retiro_amenaza
+	retiro_amenaza = true
+	var tomado := _extraer_alimento(dano, pos, lado_max)
+	retiro_amenaza = origen_anterior
+	return tomado
+
+
 func morder_local(dano: float, pos: Vector2, lado_max := 6.0) -> float:
 	_porcion_reciente = Rect2()
 	if not is_finite(lado_max) or lado_max <= 0:
@@ -221,9 +244,20 @@ func morder_local(dano: float, pos: Vector2, lado_max := 6.0) -> float:
 	return _extraer_alimento(dano, pos, lado_max)
 
 
-func _extraer_alimento(dano: float, pos: Vector2, lado_max: float, por_pasos := false) -> float:
+func continuar_bocado(pos: Vector2, lado_max := 6.0) -> float:
 	_porcion_reciente = Rect2()
-	if muerta or not is_finite(dano) or dano < 0.0 or (dano == 0 and not por_pasos) or not pos.is_finite():
+	if not is_finite(lado_max) or lado_max <= 0:
+		return 0.0
+	return _extraer_alimento(0.0, pos, lado_max, false, true)
+
+
+func _extraer_alimento(dano: float, pos: Vector2, lado_max: float, por_pasos := false, solo_credito := false) -> float:
+	_porcion_reciente = Rect2()
+	if get_parent() is Comidas:
+		var expedicion = get_parent().get_parent()
+		if expedicion is Run and expedicion._extraccion_cerrada:
+			return 0.0
+	if muerta or not is_finite(dano) or dano < 0.0 or (dano == 0 and not por_pasos and not solo_credito) or not pos.is_finite():
 		return 0.0
 	var presupuesto := minf(dano, vida)
 	if mordiscos == null:
@@ -234,7 +268,7 @@ func _extraer_alimento(dano: float, pos: Vector2, lado_max: float, por_pasos := 
 	var pendiente := presupuesto
 	var real := 0.0
 	for paso in _cantidad_celdas_bocado:
-		if pendiente <= 0 and not por_pasos:
+		if pendiente <= 0 and not por_pasos and not solo_credito:
 			break
 		var elegida := -1
 		var menor := INF
@@ -261,7 +295,7 @@ func _extraer_alimento(dano: float, pos: Vector2, lado_max: float, por_pasos := 
 			_celda_erosion = elegida if erosion_continua else -1
 		elif lado_max > 0:
 			var escala_mundo := maxf(0.0001, maxf(absf(global_scale.x), absf(global_scale.y)))
-			retirado = mordiscos.recortar_local(elegida, pendiente, local, lado_max / escala_mundo)
+			retirado = mordiscos.recortar_local_acreditado(elegida, local, lado_max / escala_mundo) if solo_credito else mordiscos.recortar_local(elegida, pendiente, local, lado_max / escala_mundo)
 		elif lado_max < 0:
 			retirado = mordiscos.recortar_frente(elegida, trabajo, local)
 			trabajo = mordiscos.ultimo_trabajo_frente
@@ -348,7 +382,6 @@ func _recibir_mordiscos(preparada: MordiscosMaterial) -> void:
 	_mascara_comida.shader = preload("res://mundo/recorte_bocados.gdshader")
 	_mascara_comida.set_shader_parameter("tamano", rect.size)
 	_mascara_comida.set_shader_parameter("grilla", _grilla_bocado)
-	_mascara_comida.set_shader_parameter("material_id", 0)
 	_mascara_comida.set_shader_parameter("mascara_bocados", mordiscos.textura_mascara())
 	_mascara_comida.set_shader_parameter("usar_mascara", true)
 	material = _mascara_comida
@@ -440,13 +473,6 @@ func _emitir_trabajo_veneno() -> void:
 	if _veneno_acumulado > 0 and is_instance_valid(_run_veneno) and is_instance_valid(_run_veneno.cola_erosion):
 		_run_veneno.cola_erosion.encolar(self, _veneno_dps * _veneno_acumulado, _origen_veneno)
 	_veneno_acumulado = 0
-
-
-## Cierra sólo tiempo ya transcurrido, no los segundos futuros del efecto.
-func cerrar_emision_veneno() -> void:
-	_emitir_trabajo_veneno()
-	veneno_restante = 0
-	_veneno_dps = 0
 
 
 func _process(delta: float) -> void:
@@ -731,26 +757,8 @@ func _creciente(r: float, tinta: Color, oscuro: Color, gajos: int) -> void:
 
 func _dibujar_dano(desplazamiento: Vector2) -> void:
 	var r := radio
-	# El desgaste físico ya muestra lo que falta. Las grietas independientes
-	# podían quedar dibujadas en huecos transparentes como rayitas flotantes.
-	var dano := 1.0 - vida / vida_max
-	if dano > 0.0 and mordiscos == null:
-		var cantidad := int(ceil(dano * _grietas.size()))
-		var ancho := maxf(0.6, r * 0.07)
-		for i in cantidad:
-			var g := _grietas[i]
-			var dir := Vector2.from_angle(g.x)
-			var medio := dir * r * g.y * 0.5 + dir.orthogonal() * g.z * r * 0.2
-			draw_polyline(PackedVector2Array([Vector2.ZERO, medio, dir * r * g.y]), COLOR_GRIETA, ancho)
-
-	# Barra de vida (sin rotar) para las comidas grandes.
+	# Sólo indicadores de estado: el material ausente ya muestra el progreso.
 	draw_set_transform(desplazamiento.rotated(-rotation), -rotation)
-	if dano > 0.0 and vida_max >= 15.0:
-		var ancho_barra := maxf(r * 1.6, 14.0)
-		var alto := maxf(2.0, r * 0.12)
-		var origen := Vector2(-ancho_barra / 2, -r - alto - 4.0)
-		draw_rect(Rect2(origen, Vector2(ancho_barra, alto)), Color(0, 0, 0, 0.55))
-		draw_rect(Rect2(origen, Vector2(ancho_barra * (1.0 - dano), alto)), Color(0.55, 0.95, 0.4))
 	if veneno_restante > 0:
 		for i in 3:
 			var p := Vector2((i - 1) * r * 0.5, -r - 5 - sin(veneno_restante * 4 + i) * 3)

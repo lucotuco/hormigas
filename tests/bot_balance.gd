@@ -32,7 +32,9 @@ extends Node
 ##                jalea), o sólo Memoria si no alcanza; "memoria" elige sólo
 ##                ese atajo. Ambos conservan el resto de la jalea.
 ##
-## Cómo juega: dos órdenes por segundo, sin daño manual a la comida.
+## Cómo juega: dos órdenes por segundo, sin daño manual a la comida. Coloca
+## entradas compradas usando la misma API manual que el jugador y activa
+## Ráfaga al cargarla; ninguna de estas políticas existe en el gameplay.
 ## Atiende eventos y dirige al gran objetivo cuando puede comerlo. Antes de
 ## aprender materiales prefiere migas pequeñas existentes; el cartón grande
 ## sólo se trabaja si no quedan alimentos accesibles, no es ingreso regalado.
@@ -229,12 +231,17 @@ func jugar_run() -> float:
 	Engine.max_fps = 0
 	Engine.time_scale = VELOCIDAD
 	var reloj := 0.0
+	var ubicaciones_entrada := _ubicaciones_logistica()
 	while not run.terminada:
 		await get_tree().process_frame
 		reloj += get_process_delta_time()
 		if reloj >= 1.0 / CLICS_POR_SEGUNDO and run.activa:
 			reloj = 0.0
 			_observar_materiales(run)
+			if run.activar_rafaga():
+				continue # Una acción real, no activación gratis entre cuadros.
+			if _colocar_entrada_manual(run, ubicaciones_entrada):
+				continue
 			# Un jugador activo atiende primero las amenazas y las migas doradas.
 			var evento := run.eventos.mas_urgente()
 			if evento != null:
@@ -298,6 +305,38 @@ func jugar_run() -> float:
 		partes, Juego.total_especialistas(), Juego.legado,
 		"conquistado" if dano_meta == INF else Juego.formatear(dano_meta), Juego.formatear(vida_meta)])
 	return ganado
+
+
+## Puntos de referencia del piloto, no posiciones autogeneradas por Run.
+## Se intenta un acceso por acción y se valida contra el piso/territorio real.
+func _ubicaciones_logistica() -> Array[Vector2]:
+	var resultado: Array[Vector2] = []
+	for ambiente in PlanoCasa.ambientes():
+		var rect: Rect2 = ambiente.rect
+		for x in [0.15, 0.5, 0.85]:
+			for y in [0.15, 0.5, 0.85]:
+				var pos := rect.position + rect.size * Vector2(x, y)
+				if pos.length_squared() > 900.0 * 900.0:
+					resultado.append(pos)
+	resultado.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.length_squared() < b.length_squared())
+	return resultado
+
+
+func _colocar_entrada_manual(run: Run, ubicaciones: Array[Vector2]) -> bool:
+	if run.entradas_disponibles() <= 0:
+		return false
+	for pos: Vector2 in ubicaciones:
+		var separada := true
+		for punto in run.entradas.puntos:
+			if pos.distance_squared_to(punto) < 1100.0 * 1100.0:
+				separada = false
+				break
+		if not separada or not run.entradas.puede_colocar(pos):
+			continue
+		if run.iniciar_colocacion_entrada() and run.colocar_entrada(pos):
+			return true
+		run.cancelar_colocacion_entrada()
+	return false
 
 
 ## Diagnóstico del bot, no trabajo de la simulación: recorre piezas sólo dos

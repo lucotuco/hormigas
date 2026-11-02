@@ -61,7 +61,15 @@ func probar_entradas() -> void:
 	verificar(r.entradas.puntos == [Vector2.ZERO], "no aparecen accesos fuera del territorio inicial")
 	r.radio_actual = 12000
 	r.entradas.actualizar()
-	verificar(r.entradas.puntos.size() > 2 and r.entradas.puntos.size() <= 7, "la mejora abre puntos de entrega acotados en ambientes distintos")
+	verificar(r.entradas.puntos == [Vector2.ZERO] and r.entradas.disponibles() == 5,
+		"la mejora habilita cupos pero no coloca entradas automáticamente")
+	# Cambio pedido: las posiciones las elige el jugador, no el generador.
+	for ambiente in PlanoCasa.ambientes():
+		var rect: Rect2 = ambiente.rect
+		for x in [0.15, 0.5, 0.85]:
+			for y in [0.15, 0.5, 0.85]:
+				r.entradas.colocar(rect.position + rect.size * Vector2(x, y))
+	verificar(r.entradas.puntos.size() > 2 and r.entradas.puntos.size() <= 6, "el jugador puede colocar sus accesos comprados en piso libre sin superar el cupo")
 	var libres := true
 	for p in r.entradas.puntos:
 		libres = libres and r.cocina.libre(p, Cocina.MARGEN)
@@ -213,6 +221,7 @@ func probar_desglose() -> void:
 	pila.sumar(30, 3)
 	var h := r.colonia._nacer("cargadora", pila.position)
 	h.comida = pila
+	h.estado = Hormiga.Estado.MORDIENDO
 	h._reloj_mordida = 0
 	h._morder(0.1)
 	h._descargar()

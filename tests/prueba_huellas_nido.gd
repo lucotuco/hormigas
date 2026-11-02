@@ -26,7 +26,7 @@ func probar_catalogo() -> void:
 	var ids := HuellasNido.CONJUNTOS.keys()
 	for destino: String in ids:
 		var proyectos := ProyectosCampana.del_destino(destino)
-		verificar(proyectos.size() == 4 and ArteCamara.RECUERDOS[destino].size() == 4, "cada uno de los cuatro proyectos tiene una parte nativa en " + destino)
+		verificar(proyectos.size() == 4, "se conserva el recuerdo de los cuatro proyectos sin miniaturas decorativas en " + destino)
 		var individuales := true
 		for i in proyectos.size():
 			var uno: Array[String] = [str(proyectos[i].id)]

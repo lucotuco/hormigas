@@ -1,6 +1,6 @@
 class_name EntradasHormiguero
 extends Node2D
-## El nido, hasta seis accesos normales y uno adelantado por proyecto: ocho
+## El nido, hasta seis accesos manuales y uno adelantado por proyecto: ocho
 ## puntos como máximo. Elegir sigue siendo O(8), sólo al iniciar un regreso.
 ## Las rutas usan la cola de la colonia, nunca otro A* en paralelo.
 const MAX_NORMALES := 6
@@ -15,7 +15,6 @@ const DESVIOS_PROYECTO := [Vector2.ZERO,
 var run: Run
 var puntos: Array[Vector2] = [Vector2.ZERO]
 var punto_proyecto := Vector2.INF
-var _candidatas: Array[Dictionary] = []
 var _normales := 0
 var _id_proyecto := ""
 var _nombre_proyecto := ""
@@ -29,50 +28,36 @@ var _escala_visual := 1.0
 func iniciar(r: Run) -> void:
 	run = r
 	z_index = -2
-	var alternativas: Array[Dictionary] = []
-	for ambiente in PlanoCasa.ambientes():
-		var rect: Rect2 = ambiente.rect
-		var mejor := Vector2.INF
-		for x in [0.15, 0.5, 0.85]:
-			for y in [0.15, 0.5, 0.85]:
-				var pos := rect.position + rect.size * Vector2(x, y)
-				if r.cocina.libre(pos, 40):
-					if pos.length_squared() < mejor.length_squared():
-						mejor = pos
-					if pos.length() > 900:
-						alternativas.append({"pos": pos, "nombre": ambiente.nombre})
-		if mejor != Vector2.INF and not rect.has_point(Vector2.ZERO):
-			_candidatas.append({"pos": mejor, "nombre": ambiente.nombre})
-	# Las plazas y salones enormes también necesitan logística. Primero un
-	# acceso por ambiente; después puntos separados en los espacios abiertos.
-	alternativas.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.pos.length_squared() < b.pos.length_squared())
-	for alternativa in alternativas:
-		if _candidatas.size() >= 6:
-			break
-		var separada := true
-		for candidata in _candidatas:
-			if candidata.pos.distance_squared_to(alternativa.pos) < 1100 * 1100:
-				separada = false
-				break
-		if separada:
-			_candidatas.append(alternativa)
-	_candidatas.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.pos.length_squared() < b.pos.length_squared())
 	_preparar_proyecto()
 	actualizar()
 
 func actualizar() -> void:
-	var limite := clampi(int(Juego.stat("entradas")), 0, MAX_NORMALES)
-	for candidata in _candidatas:
-		if _normales >= limite:
-			break
-		var pos: Vector2 = candidata.pos
-		if pos.length() + MARGEN_ACCESO > run.radio_actual or puntos.has(pos):
-			continue
-		puntos.append(pos)
-		_normales += 1
-		queue_redraw()
-		run.hud.mostrar_aviso(tr("Nueva entrada · %s") % tr(candidata.nombre).to_lower())
 	_actualizar_proyecto()
+
+
+func disponibles() -> int:
+	return maxi(0, clampi(int(Juego.stat("entradas")), 0, MAX_NORMALES) - _normales)
+
+
+func puede_colocar(pos: Vector2) -> bool:
+	if not is_instance_valid(run) or not run.activa or run.terminada or disponibles() <= 0 or not pos.is_finite():
+		return false
+	if pos.length() + MARGEN_ACCESO > run.radio_actual or not run.cocina.libre(pos, MARGEN_ACCESO):
+		return false
+	for punto in puntos:
+		if punto.distance_squared_to(pos) < 96.0 * 96.0:
+			return false
+	return true
+
+
+## Usa exactamente el piso elegido: nunca cambia una ruta de regreso previa.
+func colocar(pos: Vector2) -> bool:
+	if not puede_colocar(pos):
+		return false
+	puntos.append(pos)
+	_normales += 1
+	queue_redraw()
+	return true
 
 
 ## Ancla estable del último objeto declarado, no del orden en que se comió.
@@ -111,14 +96,6 @@ func _actualizar_proyecto() -> void:
 		if pos.length() + MARGEN_ACCESO > run.radio_actual or not run.cocina.libre(pos, MARGEN_ACCESO):
 			continue
 		var separada := true
-		# Reservar también candidatas normales futuras: el proyecto no consume
-		# uno de los seis espacios comprados si se revela antes que ellos.
-		for candidata in _candidatas:
-			if pos.distance_squared_to(candidata.pos) < 96.0 * 96.0:
-				separada = false
-				break
-		if not separada:
-			continue
 		for punto in puntos:
 			if pos.distance_squared_to(punto) < 96.0 * 96.0:
 				separada = false

@@ -229,31 +229,30 @@ func crear_run_destino(destino: String) -> Run:
 
 
 func probar_barrera() -> void:
+	# Cambio pedido: el silbato cancela trabajo no extraído; ya no existe una
+	# fase posterior que destruya objetos o acredite veneno pendiente.
 	var r := crear_run()
 	var c := comida(r, 1000000, 1000, 100)
 	c.aplicar_veneno(1000000, 10, r, c.position + Vector2(-102, 0))
 	c._procesar_veneno(0.2)
+	r.cola_erosion.encolar(c, 200000, c.position + Vector2(-102, 0))
 	var restante := r.tiempo_restante
 	var jugado := r.tiempo_jugado
+	var cargando := r.colonia._nacer("obrera", Vector2(200, 0))
+	cargando.carga = 1 # Carga previa al silbato, sin mover el fixture detenido.
 	r._iniciar_retirada()
-	verificar(r.cerrando_erosion and not r.activa and not r.retirando and not r.terminada and c.veneno_restante == 0 and r.cola_erosion.trabajo_emitido == 200000, "cerrar captura sólo0,2s ya ganados, no los segundos futuros del veneno")
-	verificar(r.colonia.process_mode == Node.PROCESS_MODE_DISABLED and r.eventos.process_mode == Node.PROCESS_MODE_DISABLED and not get_tree().paused, "la barrera congela colonia y amenazas sin pausar UI ni árbol")
-	r.hud._process(0)
-	verificar(r.hud._lbl_tiempo.text == "Terminando corrosión…", "el HUD distingue la barrera del reloj de recolección")
-	r.hud.pausar()
-	verificar(get_tree().paused and r.hud.pausado() and r.cola_erosion.tiene_pendientes(), "pausar durante la barrera conserva todo el trabajo pendiente")
-	r.hud.reanudar()
-	verificar(not get_tree().paused and not r.hud.pausado() and r.cerrando_erosion and r.cola_erosion.tiene_pendientes(), "reanudar mantiene la barrera y su cola, sin cerrarla ni reiniciarla")
+	verificar(not r.cerrando_erosion and not r.activa and r.retirando and not r.terminada and c.veneno_restante == 0, "cerrar pasa inmediatamente a últimas entregas y corta el veneno")
+	verificar(not r.cola_erosion.tiene_pendientes() and not get_tree().paused, "el trabajo ambiental pendiente se descarta sin pausar el árbol")
 	r._process(0.25)
-	verificar(r.tiempo_restante == restante and is_equal_approx(r.tiempo_jugado - jugado, 0.25) and is_equal_approx(r.tiempo_espera_erosion, 0.25), "la espera se contabiliza sin regalar segundos activos de recolección")
+	verificar(r.tiempo_restante == restante and r.tiempo_jugado == jugado and r.tiempo_espera_erosion == 0, "no hay tiempo extra de extracción ni espera de corrosión")
 	r.cola_erosion.procesar(100000000, 1)
-	verificar(r.cerrando_erosion and c.vida > 800000 and Juego.migas_run > 0, "el cierre sigue no bloqueante y cobra sólo la primera porción")
+	verificar(c.vida == c.vida_max and Juego.migas_run == 0, "la cola no retira ni paga una primera porción después del silbato")
 	drenar(r)
 	await get_tree().process_frame
-	verificar(not r.cerrando_erosion and r.retirando and not r.terminada and is_equal_approx(c.vida_max - c.vida + credito(c.mordiscos), 200000), "drenar el trabajo completo continúa exactamente una retirada normal")
+	verificar(not r.cerrando_erosion and c.vida == c.vida_max and Juego.migas_run == 0, "volver a procesar no resucita trabajo descartado")
 	var pagado := Juego.migas_run
-	r._on_erosion_drenada()
-	verificar(Juego.migas_run == pagado and r.retirando, "notificar otra vez la barrera drenada no duplica pagos ni cierres")
+	r._iniciar_retirada()
+	verificar(Juego.migas_run == pagado and r.retirando, "repetir la retirada no duplica pagos ni cierres")
 	r.queue_free()
 	await get_tree().process_frame
 	r = crear_run()
@@ -266,7 +265,7 @@ func probar_barrera() -> void:
 	verificar(r.terminada and not r.cerrando_erosion and Juego.migas_run == 0 and c.vida == c.vida_max, "un residuo subpíxel cierra sin espera infinita ni recursos inventados")
 	var runs := Juego.runs_jugadas
 	r._cerrar()
-	verificar(Juego.runs_jugadas == runs, "el cierre posterior al drenaje cobra la expedición una sola vez")
+	verificar(Juego.runs_jugadas == runs, "el cierre sin drenaje cobra la expedición una sola vez")
 	r.queue_free()
 	await get_tree().process_frame
 
@@ -335,10 +334,8 @@ func probar_limpieza_al_drenar() -> void:
 		drenar(r)
 		await get_tree().process_frame
 		await get_tree().process_frame
-		if bloqueo == "ninguno":
-			verificar(r.limpieza_lograda and r.limpieza_completa and r.retirando and is_equal_approx(r.tiempo_limpieza, instante) and instante >= 0.3, "la última comida erosionada al vencer el reloj clasifica limpieza real e incluye la espera")
-		else:
-			verificar(not r.limpieza_lograda and not r.limpieza_registrada, bloqueo + ": drenar no inventa limpieza ni un récord")
+		verificar(not r.limpieza_lograda and not r.limpieza_registrada and c.vida == c.vida_max and instante == 0,
+			bloqueo + ": la última comida no extraída queda intacta y no inventa limpieza al cerrar")
 		r.queue_free()
 		await get_tree().process_frame
 

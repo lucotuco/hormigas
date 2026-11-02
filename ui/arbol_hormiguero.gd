@@ -465,7 +465,7 @@ class CapaCamaras extends Control:
 			if not e.misterio:
 				ArteCamara.contenido(self, kit, centro, r.size, e.lleno, orden, e.mezcla, e.extra)
 			if id == "buche" and "provisiones" in arbol.huellas.get("descubrimientos", []):
-				ArteCamara.primeras_provisiones(self, r)
+				ArteCamara.reserva(self, r, 3)
 
 	func _mover(puntos: PackedVector2Array, d: Vector2) -> PackedVector2Array:
 		var salida := PackedVector2Array()

@@ -4,15 +4,15 @@ extends Control
 ## La reina, en el centro, abre la jalea real; la boca, los viajes; la sala
 ## de castas, las fichas completas y las evoluciones. Ver ui/arbol_hormiguero.gd.
 const ESCENA_RUN := "res://mundo/run.tscn"
-## Ramas del hormiguero: nombre, frase, color y la cámara por la que empiezan.
+## Ramas del hormiguero: nombre, color y la cámara por la que empiezan.
 const SALAS := {
-	"Castas": {"titulo": "Las especialistas", "detalle": "Cada casta trabaja a su manera.", "color": Color("e5879a"), "raiz": "veloz"},
-	"Colonia": {"titulo": "El criadero", "detalle": "Una familia cada vez más grande.", "color": Color("b8cd91"), "raiz": "mas_obreras"},
-	"Recolección": {"titulo": "La despensa", "detalle": "Pequeños viajes, grandes tesoros.", "color": Color("e8cc86"), "raiz": "buche"},
-	"Mandíbulas": {"titulo": "El taller", "detalle": "Comida → madera y telas → materiales resistentes → paredes.", "color": Color("e7ac7d"), "raiz": "mandibulas"},
-	"Feromonas": {"titulo": "El observatorio", "detalle": "Todos los caminos llevan a casa.", "color": Color("8dc3bc"), "raiz": "rastro_persistente"},
-	"Tiempo": {"titulo": "El refugio", "detalle": "Siempre hay tiempo para otro bocado.", "color": Color("c3add4"), "raiz": "reservas"},
-	"Territorio": {"titulo": "La excavación", "detalle": "La cocina es solo el comienzo.", "color": Color("c9b48c"), "raiz": "excavar"},
+	"Castas": {"titulo": "Las especialistas", "color": Color("e5879a"), "raiz": "veloz"},
+	"Colonia": {"titulo": "El criadero", "color": Color("b8cd91"), "raiz": "mas_obreras"},
+	"Recolección": {"titulo": "La despensa", "color": Color("e8cc86"), "raiz": "buche"},
+	"Mandíbulas": {"titulo": "El taller", "color": Color("e7ac7d"), "raiz": "mandibulas"},
+	"Feromonas": {"titulo": "El observatorio", "color": Color("8dc3bc"), "raiz": "rastro_persistente"},
+	"Tiempo": {"titulo": "El refugio", "color": Color("c3add4"), "raiz": "reservas"},
+	"Territorio": {"titulo": "La excavación", "color": Color("c9b48c"), "raiz": "excavar"},
 }
 const NOMBRES_PESTANAS := {"hogar": "Mejoras", "castas": "Castas", "viajes": "Viajes", "legado": "Jalea real"}
 const COLORES_SECCIONES := {"castas": Color("e5879a"), "viajes": Color("d8c49a"), "legado": Color("ebc67d")}
@@ -186,14 +186,12 @@ func _encabezado() -> Control:
 	fila.add_theme_constant_override("separation", 24)
 	var titulos := VBoxContainer.new()
 	titulos.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	titulos.add_child(Estilo.etiqueta(tr("ENTRE RAÍCES Y MIGAS"), 11, Color("9db196")))
-	titulos.add_child(Estilo.etiqueta(tr("Un hogar que crece"), 28, Estilo.TEXTO))
+	titulos.add_child(Estilo.etiqueta(tr("Hormiguero"), 24, Estilo.TEXTO))
 	_lbl_proxima = Estilo.etiqueta("", 13, Estilo.TEXTO_SUAVE)
 	titulos.add_child(_lbl_proxima)
 	fila.add_child(titulos)
 	var caja := VBoxContainer.new()
 	caja.alignment = BoxContainer.ALIGNMENT_CENTER
-	caja.add_child(Estilo.etiqueta(tr("EN LA DESPENSA"), 11, Estilo.TEXTO_SUAVE))
 	_lbl_migas = Estilo.etiqueta("", 26, Estilo.ACENTO)
 	caja.add_child(_lbl_migas)
 	fila.add_child(caja)
@@ -298,7 +296,7 @@ func _crear_leyenda() -> Control:
 		boton.add_theme_color_override("font_hover_color", datos.color.lightened(0.25))
 		for estado in ["normal", "hover", "pressed", "focus"]:
 			boton.add_theme_stylebox_override(estado, Estilo.caja(Color(0.09, 0.07, 0.05, 0.78 if estado == "normal" else 0.95), 8, Color(datos.color, 0.25 if estado == "normal" else 0.7), 1, 7))
-		boton.tooltip_text = tr(datos.titulo) + ": " + tr(datos.detalle)
+		boton.tooltip_text = tr(datos.titulo)
 		boton.pressed.connect(_encuadrar_rama.bind(rama))
 		caja.add_child(boton)
 		_leyenda[rama] = boton

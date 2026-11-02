@@ -75,7 +75,7 @@ func probar_exploracion_sin_trabajo() -> void:
 				borde = maxf(borde, h.position.length())
 			print("EXPLORACIÓN SIN TRABAJO %d s: estados %s | centro %d | radio %.0f | visitaron >1000: %d | rutas %d" % [(paso + 1) / 60, estados, centro, borde, llegaron_lejos.size(), r.cocina.consultas_ruta])
 			if DisplayServer.get_name() != "headless" and paso in [599, 2399]:
-				r.colonia._actualizar_escala()
+				r.colonia._actualizar_visibilidad()
 				await RenderingServer.frame_post_draw
 				DirAccess.make_dir_recursive_absolute("res://.godot/qa")
 				get_viewport().get_texture().get_image().save_png("res://.godot/qa/dispersion_%d.png" % [(paso + 1) / 60])

@@ -166,8 +166,10 @@ func probar_objetos_y_carga() -> void:
 	verificar(Juego.migas_run == 0, "extraer material no acredita ninguna miga hasta transportarlo")
 	var h := run.colonia._nacer("obrera", caja.punto_mordida(p, run.radio_actual))
 	h.comida = caja
+	h.estado = Hormiga.Estado.MORDIENDO
 	h._dano = 1.0e6
 	h._capacidad = 20
+	h._porciones_ciclo = 1 # Este fixture aísla una muestra; microbocados cubre las tandas de dieta.
 	h.scale = Vector2(3, 2)
 	h._reloj_mordida = 0
 	h._morder(0.1)

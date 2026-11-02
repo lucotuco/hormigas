@@ -2,12 +2,8 @@ class_name ColaErosion
 extends Node
 ## Trabajo ambiental compartido: una porción física por turno, nunca un pago
 ## por crédito. Sólo recorre recursos activos; no añade trabajo por hormiga.
-signal drenada
-
 const PRESUPUESTO_USEC := 1000
 const PASOS_POR_CUADRO := 32
-const PRESUPUESTO_CIERRE_USEC := 4000
-const PASOS_CIERRE := 128
 var run: Run
 var _fuentes: Dictionary = {}
 var _trabajos: Dictionary = {}
@@ -15,8 +11,6 @@ var _latentes: Dictionary = {}
 var _cola: Array[int] = []
 var _cursor := 0
 var _admite := true
-var _cerrando := false
-var _aviso_pendiente := false
 var _reloj := 0.0
 var operaciones_ultimo_cuadro := 0
 var max_operaciones_cuadro := 0
@@ -42,7 +36,7 @@ func olvidar_fuente(objetivo: Comida) -> void:
 
 
 func encolar(objetivo: Comida, dano: float, origen: Vector2) -> bool:
-	if not _admite or not is_instance_valid(run) or run.terminada or not is_instance_valid(objetivo) or objetivo.muerta or dano <= 0 or not is_finite(dano) or not origen.is_finite():
+	if not _admite or not is_instance_valid(run) or not run.activa or run.terminada or not is_instance_valid(objetivo) or objetivo.muerta or dano <= 0 or not is_finite(dano) or not origen.is_finite():
 		return false
 	var trabajo := minf(dano * objetivo.factor_erosion(), objetivo.vida)
 	if trabajo <= 0 or not is_finite(trabajo):
@@ -66,7 +60,7 @@ func encolar(objetivo: Comida, dano: float, origen: Vector2) -> bool:
 ## Sólo una mutación real de geometría o un tick nuevo despiertan un frente
 ## antes inaccesible. Nunca insistir cada cuadro sobre crédito subpíxel/aire.
 func despertar(objetivo: Comida) -> void:
-	if not is_instance_valid(objetivo):
+	if not _admite or not is_instance_valid(objetivo):
 		return
 	var id := objetivo.get_instance_id()
 	if _latentes.has(id) and not _trabajos.has(id):
@@ -91,30 +85,16 @@ func cantidad_pendientes() -> int:
 	return _trabajos.size()
 
 
-func propietarios_pendientes() -> Array:
-	return _trabajos.keys()
-
-
-func cerrar_emision() -> void:
-	if not _admite:
-		return
-	# La admisión sigue abierta sólo para la fracción de segundo ya ganada.
-	for referencia: WeakRef in _fuentes.values():
-		var objetivo = referencia.get_ref()
-		if is_instance_valid(objetivo) and not objetivo.muerta:
-			objetivo.cerrar_emision_veneno()
-	_fuentes.clear()
-	_admite = false
-
-
-func iniciar_cierre() -> void:
-	_cerrando = true
-	set_process(true)
-
-
 func cancelar() -> void:
 	# Destruir una run nunca convierte crédito pendiente en recursos.
 	_admite = false
+	for referencia: WeakRef in _fuentes.values():
+		var objetivo = referencia.get_ref()
+		if is_instance_valid(objetivo):
+			objetivo.veneno_restante = 0
+			objetivo._veneno_acumulado = 0
+			objetivo._veneno_dps = 0
+			objetivo._run_veneno = null
 	_fuentes.clear()
 	_trabajos.clear()
 	_latentes.clear()
@@ -130,11 +110,11 @@ func _process(delta: float) -> void:
 
 func procesar(presupuesto_usec := -1, max_pasos := -1) -> void:
 	operaciones_ultimo_cuadro = 0
-	if not is_instance_valid(run) or run.terminada or (not run.activa and not run.cerrando_erosion):
+	if not _admite or not is_instance_valid(run) or run.terminada or not run.activa:
 		cancelar()
 		return
-	var presupuesto := presupuesto_usec if presupuesto_usec >= 0 else (PRESUPUESTO_CIERRE_USEC if _cerrando else PRESUPUESTO_USEC)
-	var limite := max_pasos if max_pasos >= 0 else (PASOS_CIERRE if _cerrando else PASOS_POR_CUADRO)
+	var presupuesto := presupuesto_usec if presupuesto_usec >= 0 else PRESUPUESTO_USEC
+	var limite := max_pasos if max_pasos >= 0 else PASOS_POR_CUADRO
 	var inicio := Time.get_ticks_usec()
 	while _cursor < _cola.size() and operaciones_ultimo_cuadro < limite:
 		if operaciones_ultimo_cuadro > 0 and Time.get_ticks_usec() - inicio >= presupuesto:
@@ -208,9 +188,6 @@ func procesar(presupuesto_usec := -1, max_pasos := -1) -> void:
 		_cursor = 0
 	if _trabajos.is_empty():
 		set_process(false)
-		if _cerrando and not _aviso_pendiente:
-			_aviso_pendiente = true
-			_avisar_drenada.call_deferred()
 
 
 func _finalizar_tarea(id: int, tarea: Dictionary) -> void:
@@ -224,9 +201,3 @@ func _mostrar_ingreso(tarea: Dictionary) -> void:
 		run.efectos.numero(tarea.pos, tarea.visual, Color("b7d68b"), 0.7)
 	tarea.visual = 0.0
 	tarea.ultimo_visual = _reloj
-
-
-func _avisar_drenada() -> void:
-	_aviso_pendiente = false
-	if _cerrando and _trabajos.is_empty() and is_instance_valid(run) and not run.terminada:
-		drenada.emit()

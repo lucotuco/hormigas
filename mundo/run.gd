@@ -42,12 +42,12 @@ var cola_erosion: ColaErosion
 var preparador_mordiscos: PreparadorMordiscos
 ## Sólo los fixtures que comparan operaciones directas usan la referencia.
 var preparacion_sincrona := false
+## Compatibilidad de fixtures/perfiles anteriores al corte estricto. No hay
+## fase de liquidación: se mantienen false/0 y nunca habilitan extracción.
 var cerrando_erosion := false
 var tiempo_espera_erosion := 0.0
-var _accion_cierre_erosion := ""
-var _modo_colonia_erosion := Node.PROCESS_MODE_INHERIT
-var _modo_eventos_erosion := Node.PROCESS_MODE_INHERIT
-var _modo_reglas_erosion := Node.PROCESS_MODE_INHERIT
+var _extraccion_cerrada := false
+var poderes: PoderesColonia
 var reglas: ReglasDestino
 var entradas: EntradasHormiguero
 var retirando := false
@@ -97,7 +97,6 @@ func _ready() -> void:
 	cola_erosion = ColaErosion.new()
 	add_child(cola_erosion)
 	cola_erosion.iniciar(self)
-	cola_erosion.drenada.connect(_on_erosion_drenada)
 	duracion_total = Juego.stat("duracion_run")
 	tiempo_restante = duracion_total
 	camara.vista_cambiada.connect(feromonas.queue_redraw)
@@ -147,6 +146,9 @@ func _ready() -> void:
 	add_child(eventos)
 	eventos.iniciar(self)
 	eventos.botin_terminado.connect(_registrar_fin_botin)
+	poderes = PoderesColonia.new()
+	add_child(poderes)
+	poderes.iniciar(self)
 	activa = true
 	recorrido.queue_redraw()
 	# Un checkpoint entre el último objeto y su celebración puede contener
@@ -157,10 +159,13 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	if is_instance_valid(poderes):
+		poderes.cerrar()
 	if is_instance_valid(preparador_mordiscos):
 		preparador_mordiscos.cancelar()
 	if is_instance_valid(cola_erosion):
 		cola_erosion.cancelar()
+	Sonido.detener_mundo()
 	Engine.time_scale = 1.0
 
 
@@ -168,11 +173,6 @@ func _process(delta: float) -> void:
 	_reloj += delta
 	niebla.radio = radio_actual
 	camara.ajustar_a_radio(radio_actual)
-	if cerrando_erosion:
-		# La espera es tiempo de expedición, no segundos gratis de recolección.
-		tiempo_espera_erosion += delta
-		tiempo_jugado += delta
-		return
 	if retirando:
 		tiempo_retirada += delta
 		retiro_restante = maxf(0, retiro_restante - delta)
@@ -188,11 +188,19 @@ func _process(delta: float) -> void:
 		return
 	if not activa:
 		return
-	tiempo_jugado += delta
+	# El padre corre antes que sus hijos: vencer el reloj cancela las fuentes
+	# antes de que hormigas, veneno o colas reciban otro cuadro de trabajo.
+	var paso := minf(maxf(0, delta), maxf(0, tiempo_restante))
+	tiempo_jugado += paso
+	tiempo_restante = maxf(0, tiempo_restante - maxf(0, delta))
+	if tiempo_restante <= 0:
+		_comprobar_limpieza()
+		_iniciar_retirada()
+		return
+	poderes.procesar(paso)
 	frenesi_restante = maxf(0, frenesi_restante - delta)
 	_descanso_frenesi = maxf(0, _descanso_frenesi - delta)
 	_pisotones_automaticos(delta)
-	tiempo_restante -= delta
 	_reloj_limpieza -= delta
 	if _reloj_limpieza <= 0 or tiempo_restante <= 0:
 		_reloj_limpieza = INTERVALO_LIMPIEZA
@@ -207,9 +215,6 @@ func _process(delta: float) -> void:
 		_iniciar_retirada()
 		hud.mostrar_aviso(tr("¡Se comieron a toda la colonia! Termina la expedición"))
 		return
-	if tiempo_restante <= 0.0:
-		tiempo_restante = 0.0
-		_iniciar_retirada()
 
 
 ## Sin hormigas en el mapa, ninguna por salir y sin una cría que llegue antes
@@ -230,8 +235,8 @@ func _comprobar_limpieza() -> bool:
 	return true
 
 
-## Clasifica sin iniciar otra transición: también se usa al liquidar erosión
-## ganada antes de vencer el reloj, cuando las hormigas ya están detenidas.
+## Sólo material ya retirado puede contar como limpieza. La erosión pendiente
+## al vencer el reloj no se liquida ni completa objetos durante la retirada.
 func _clasificar_limpieza() -> bool:
 	# No confundir la salida inicial o la expansión animada con un escenario
 	# sin trabajo. Tampoco retirar mientras una cadena puede producir restos.
@@ -277,15 +282,16 @@ func _unhandled_input(event: InputEvent) -> void:
 func depositar(cantidad: float, origen := Vector2.ZERO, categoria := 0, desglose: Array[float] = []) -> void:
 	if cantidad <= 0.0 or terminada:
 		return
+	if activa and is_instance_valid(poderes):
+		poderes.registrar_entrega()
 	if desglose.size() == 3 and desglose[0] + desglose[1] + desglose[2] > 0:
 		for i in 3:
 			ingresos[i] += desglose[i]
 		Juego.sumar_migas_run(cantidad)
 	else:
 		registrar_ingreso(cantidad, categoria)
-	efectos.numero(origen + Vector2(0, -24), cantidad, Color(1.0, 0.93, 0.6))
 	# El frenesí aparece desde la segunda run (ver Juego.REVELABLES).
-	if frenesi_restante <= 0 and _descanso_frenesi <= 0 and Juego.revelado("frenesi"):
+	if activa and frenesi_restante <= 0 and _descanso_frenesi <= 0 and Juego.revelado("frenesi"):
 		frenesi = minf(100, frenesi + reglas.carga_frenesi())
 		if frenesi >= 100:
 			frenesi = 0
@@ -298,6 +304,8 @@ func depositar(cantidad: float, origen := Vector2.ZERO, categoria := 0, desglose
 		combo = 1
 	_ultimo_deposito = _reloj
 	Juego.mejor_combo_run = maxi(Juego.mejor_combo_run, combo)
+	efectos.entrega(origen, cantidad, combo)
+	Sonido.entrega(combo)
 	var ahora := Time.get_ticks_msec()
 	if ahora - _ultimo_efecto_deposito < 45:
 		return
@@ -306,9 +314,6 @@ func depositar(cantidad: float, origen := Vector2.ZERO, categoria := 0, desglose
 	hormiguero.latir()
 	hud.migas_voladoras(a_pantalla(origen), 1)
 	hud.mostrar_combo(combo)
-	# Pentatónica: los depósitos progresan musicalmente sin volverse agudos.
-	var notas := [1.0, 1.125, 1.25, 1.5, 1.3333]
-	Sonido.tocar("deposito", notas[(combo - 1) % notas.size()], 0.0)
 
 
 ## Objetivo sugerido del recorrido; no cambia la libertad de las hormigas.
@@ -317,7 +322,7 @@ func objetivo_actual() -> PiezaCasa:
 
 
 func _on_comida_destruida(comida: Comida) -> void:
-	if comida is FragmentoCasa:
+	if not activa or comida is FragmentoCasa or comida.retiro_amenaza:
 		return
 	if comida is PiezaCasa:
 		reglas.parte_devorada(comida)
@@ -344,6 +349,8 @@ func _on_comida_destruida(comida: Comida) -> void:
 	registrar_ingreso(bonus, 2 if comida is PiezaCasa and comida.nivel_requerido >= 3 else (1 if comida is PiezaCasa else 0))
 
 	var pos := comida.global_position
+	if comida is PiezaCasa:
+		efectos.epico(pos, comida.color, comida.radio)
 	efectos.explosion(pos, comida.color, comida.radio)
 	efectos.numero(pos, bonus, Color(1.0, 0.82, 0.3), clampf(0.9 + comida.radio / 30.0, 1.0, 2.4))
 	if comida.radio >= 12.0:
@@ -434,6 +441,39 @@ func registrar_derrumbe() -> void:
 func factor_ritmo() -> float:
 	return Juego.stat("frenesi_ritmo") if frenesi_restante > 0 else 1.0
 
+
+func multiplicador_dano_activo() -> float:
+	return poderes.multiplicador_dano() if is_instance_valid(poderes) else 1.0
+
+
+func multiplicador_ritmo_activo() -> float:
+	return poderes.multiplicador_ritmo() if is_instance_valid(poderes) else 1.0
+
+
+func activar_rafaga() -> bool:
+	if not is_instance_valid(poderes) or not poderes.activar():
+		return false
+	efectos.epico(camara.position, Color("e0bd75"), 90)
+	Sonido.tocar("epico", 1.08)
+	return true
+
+
+func entradas_disponibles() -> int:
+	return entradas.disponibles() if is_instance_valid(entradas) else 0
+
+
+func iniciar_colocacion_entrada() -> bool:
+	return is_instance_valid(poderes) and poderes.iniciar_colocacion()
+
+
+func cancelar_colocacion_entrada() -> void:
+	if is_instance_valid(poderes):
+		poderes.cancelar_colocacion()
+
+
+func colocar_entrada(pos: Vector2) -> bool:
+	return is_instance_valid(poderes) and poderes.colocar(pos)
+
 func registrar_ingreso(cantidad: float, categoria := 0) -> void:
 	if terminada or cantidad <= 0:
 		return
@@ -443,9 +483,7 @@ func registrar_ingreso(cantidad: float, categoria := 0) -> void:
 func _iniciar_retirada() -> void:
 	if retirando or terminada:
 		return
-	if _esperar_erosion("retirada"):
-		return
-	activa = false
+	_detener_extraccion()
 	retirando = true
 	recorrido.queue_redraw()
 	feromonas.soltar()
@@ -465,8 +503,6 @@ func _iniciar_retirada() -> void:
 func _terminar() -> void:
 	if terminada:
 		return
-	if _esperar_erosion("terminar"):
-		return
 	_cerrar()
 	Sonido.tocar("fin", 1.0, 0.0)
 	# Cámara lenta un instante antes de mostrar el resultado.
@@ -480,14 +516,14 @@ func _terminar() -> void:
 func _cerrar() -> void:
 	if terminada:
 		return
-	if _esperar_erosion("cerrar"):
-		return
-	activa = false
+	_detener_extraccion()
 	retirando = false
 	feromonas.soltar()
 	terminada = true
 	cola_erosion.cancelar()
 	preparador_mordiscos.cancelar()
+	Sonido.detener_mundo()
+	efectos.limpiar()
 	recorrido.queue_redraw()
 	colonia.detener()
 	progreso_objetivo = 1.0 if objetivo_completado else recorrido.progreso()
@@ -512,8 +548,6 @@ func _cerrar() -> void:
 
 func salir_al_menu() -> void:
 	get_tree().paused = false
-	if not terminada and _esperar_erosion("menu"):
-		return
 	if not terminada:
 		_cerrar()
 	get_tree().change_scene_to_file(ESCENA_MENU)
@@ -528,53 +562,29 @@ func ir_a_tienda() -> void:
 	get_tree().change_scene_to_file(ESCENA_TIENDA)
 
 
-## La barrera conserva las transacciones ya emitidas sin congelar el árbol:
-## cámara, UI y cola siguen atendiendo cuadros; no nacen ni trabajan hormigas.
-func _esperar_erosion(accion: String) -> bool:
-	if cerrando_erosion:
-		if accion == "menu" or (accion == "terminar" and _accion_cierre_erosion != "menu"):
-			_accion_cierre_erosion = accion
-		return true
-	if not is_instance_valid(cola_erosion):
-		return false
-	cola_erosion.cerrar_emision()
-	preparador_mordiscos.conservar_propietarios(cola_erosion.propietarios_pendientes())
-	if not cola_erosion.tiene_pendientes():
-		preparador_mordiscos.cancelar()
-		return false
-	cerrando_erosion = true
-	_accion_cierre_erosion = accion
-	activa = false
-	feromonas.soltar()
-	_modo_colonia_erosion = colonia.process_mode
-	_modo_eventos_erosion = eventos.process_mode
-	_modo_reglas_erosion = reglas.process_mode
-	colonia.process_mode = Node.PROCESS_MODE_DISABLED
-	eventos.process_mode = Node.PROCESS_MODE_DISABLED
-	reglas.process_mode = Node.PROCESS_MODE_DISABLED
-	preparador_mordiscos.iniciar_cierre()
-	cola_erosion.iniciar_cierre()
-	return true
-
-
-func _on_erosion_drenada() -> void:
-	if not cerrando_erosion or terminada:
+## El silbato es un corte real, no una fase de daño posterior. Crédito,
+## preparaciones, veneno y dominó que todavía no retiraron material se pierden.
+## Sólo la carga que una hormiga ya llevaba puede producir una última entrega.
+func _detener_extraccion() -> void:
+	if _extraccion_cerrada:
 		return
-	var accion := _accion_cierre_erosion
-	_accion_cierre_erosion = ""
-	if accion == "retirada" and tiempo_restante <= 0 and not colonia_perdida and not limpieza_lograda:
-		if _clasificar_limpieza():
-			# La máscara terminó ahora: incluir toda la espera de liquidación.
-			tiempo_limpieza = maxf(0.001, tiempo_jugado)
+	_extraccion_cerrada = true
+	activa = false
 	cerrando_erosion = false
-	colonia.process_mode = _modo_colonia_erosion
-	eventos.process_mode = _modo_eventos_erosion
-	reglas.process_mode = _modo_reglas_erosion
-	match accion:
-		"menu": salir_al_menu()
-		"retirada": _iniciar_retirada()
-		"terminar": _terminar()
-		_: _cerrar()
+	feromonas.soltar()
+	cola_erosion.cancelar()
+	preparador_mordiscos.conservar_propietarios([])
+	preparador_mordiscos.cancelar()
+	reglas._pendientes.clear()
+	reglas.festin = 0
+	reglas.set_process(false)
+	if is_instance_valid(eventos):
+		eventos.cerrar()
+	for hijo in get_children():
+		if hijo is Conquista:
+			hijo.cancelar()
+	poderes.cerrar()
+	Sonido.detener_mundo()
 
 
 ## Convierte una posición del mundo a coordenadas de pantalla (para el HUD).

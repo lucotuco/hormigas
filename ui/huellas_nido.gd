@@ -74,7 +74,7 @@ static func dibujar(ci: CanvasItem, estado: Dictionary) -> void:
 		var borde := Vector2(r.end.x if r.get_center().x < desde.x else r.position.x, r.get_center().y)
 		_conectar(ci, PackedVector2Array([desde, Vector2(desde.x, borde.y), borde]), 12.0)
 		ArteCamara.caparazon(ci, datos.kit, r.get_center(), r.size, ArteCamara.BORDE, 5.0, 0.1)
-		ArteCamara.recuerdo(ci, destino, r, estado.conjuntos[destino])
+		ArteCamara.reserva(ci, r, estado.conjuntos[destino].size())
 	for id in estado.get("descubrimientos", []):
 		if id == "salida":
 			_conectar(ci, PackedVector2Array(SALIDA), 14.0)
@@ -87,7 +87,7 @@ static func dibujar(ci: CanvasItem, estado: Dictionary) -> void:
 			var r: Rect2 = datos.rect
 			_conectar(ci, PackedVector2Array([r.get_center(), PlanoHormiguero.rect(datos.camara).get_center()]), 7.0)
 			ArteCamara.caparazon(ci, "comun", r.get_center(), r.size, ArteCamara.BORDE, 3.0, 0.0)
-			ArteCamara.descubrimiento(ci, id, r)
+			ArteCamara.reserva(ci, r, 3, Color("b5ba91"))
 
 
 static func _conectar(ci: CanvasItem, puntos: PackedVector2Array, ancho: float) -> void:

@@ -22,6 +22,10 @@ var _pos_destinos := Vector2.INF
 var _version_destinos := -1
 var _radio_destinos := -1.0
 var _limites_jugables := Rect2()
+## Un único muestreo espacial para el área completa, no una búsqueda por
+## hormiga y por cuadro. Cupos y exclusiones se comprueban al reservar.
+var _comidas_area: Array[Comida] = []
+var _ids_area: Dictionary = {}
 @onready var run: Run = get_parent()
 
 func _ready() -> void:
@@ -57,6 +61,8 @@ func soltar() -> void:
 	_desde_mouse = false
 	seleccionadas.clear()
 	objetivo_comida = null
+	_comidas_area.clear()
+	_ids_area.clear()
 	_destinos.clear()
 	_pos_destinos = Vector2.INF
 	queue_redraw()
@@ -82,9 +88,16 @@ func _punto_permitido() -> bool:
 func _actualizar_cercanas() -> void:
 	seleccionadas.clear()
 	objetivo_comida = null
+	_comidas_area.clear()
+	_ids_area.clear()
 	if not activa or not run.activa or not _punto_permitido():
 		return
 	objetivo_comida = run.comidas.comida_en(posicion, run.radio_actual)
+	var alcance := radio_visual()
+	for c in run.comidas._candidatas(posicion, alcance):
+		if c.disponible() and c.en_territorio(run.radio_actual) and c.distancia_a(posicion) <= alcance:
+			_comidas_area.append(c)
+			_ids_area[c.get_instance_id()] = true
 	# Heap máximo de K elementos: no crear un Dictionary por hormiga ni ordenar
 	# toda la colonia diez veces por segundo. Memoria acotada a las elegidas.
 	_candidatas.clear()
@@ -122,6 +135,47 @@ func _actualizar_cercanas() -> void:
 		h._reloj_pensar = minf(h._reloj_pensar, (seleccionadas.size() % 4) / 60.0)
 	if is_instance_valid(objetivo_comida):
 		run.colonia.avistar(objetivo_comida)
+
+
+## La orden asigna trabajo EN el círculo, no solamente sobre el píxel del
+## cursor ni dentro del olfato individual al llegar a su centro. Conserva una
+## reserva útil entre muestreos y reemplaza un recurso agotado sin soltar clic.
+func trabajo_para(h: Hormiga) -> Comida:
+	if not llama_a(h) or h.carga > 0 or h.estado in [Hormiga.Estado.VOLVIENDO, Hormiga.Estado.QUIETA]:
+		return null
+	if _trabajo_elegible(objetivo_comida, h):
+		return objetivo_comida
+	if _trabajo_elegible(h.comida, h):
+		return h.comida
+	var mejor: Comida
+	var puntaje_mejor := INF
+	for c in _comidas_area:
+		if not _trabajo_elegible(c, h):
+			continue
+		# Para repartir reservas alcanza con un punto de referencia barato.
+		# La geometría exacta y A* siguen resolviéndose una sola vez al tomar
+		# el puesto; no recorrer las bandas de cada mueble por cada hormiga.
+		var centro: Vector2 = c.rect_mundo.get_center() if c is PiezaCasa else c.global_position
+		var ocupacion := 1.0 + float(c.trabajadoras) / c.cupos_trabajo() * 2.0
+		var afinidad := RolesHormiga.afinidad(h.casta, c)
+		if Juego.prioridad != "automatico":
+			var categoria := "alimentos" if not c is PiezaCasa else ("estructuras" if c.nivel_requerido >= 3 else "muebles")
+			afinidad *= 3.0 if categoria == Juego.prioridad else 0.35
+		var puntaje := (h.global_position.distance_squared_to(centro) + 64.0) * ocupacion / afinidad
+		if puntaje < puntaje_mejor:
+			mejor = c
+			puntaje_mejor = puntaje
+	return mejor
+
+
+func _trabajo_elegible(c, h: Hormiga) -> bool:
+	if not is_instance_valid(c) or not c.disponible() or not _ids_area.has(c.get_instance_id()):
+		return false
+	if h._comidas_sin_ruta.has(c.get_instance_id()) or RolesHormiga.afinidad(h.casta, c) <= 0:
+		return false
+	# Su propia reserva ya está incluida en trabajadoras: no expulsarla por
+	# llenar el último cupo, pero tampoco asignar otras sobre el mismo puesto.
+	return h.comida == c or c.trabajadoras < c.cupos_trabajo()
 
 func resumen() -> Dictionary:
 	var datos := {"atraidas": 0, "trabajando": 0, "cargando": 0, "esperando": 0}

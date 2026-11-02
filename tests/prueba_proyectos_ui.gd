@@ -107,7 +107,7 @@ func probar_hud() -> void:
 	var vida := actual.vida
 	actual.vida = actual.vida_max * 0.5 # Sólo lectura de UI: no se simula una extracción ni se cobra valor.
 	hud._actualizar_meta()
-	verificar(is_equal_approx(hud._barra_meta.value, 50.0) and "50% devorado" in hud._lbl_meta_progreso.text and "objetos devorados" in hud._lbl_meta_progreso.text, "se distinguen salud del objeto actual y cantidad de objetos completos")
+	verificar(not hud._barra_meta.visible and "50% devorado" in hud._lbl_meta_progreso.text and "objetos devorados" in hud._lbl_meta_progreso.text, "el porcentaje discreto reemplaza la barra de salud sin perder el progreso del proyecto")
 	actual.vida = vida
 	run.feromonas.mantener_en(Vector2.ZERO)
 	hud._ver_paso()

@@ -130,12 +130,11 @@ func probar_retiro_entero() -> void:
 	alimento.preparar_material()
 	var saldo := Juego.migas_run
 	var extraida := run.resistencia_extraida
-	var bonus := valor * Juego.stat("bonus_destruir")
 	var retiros := {"cantidad": 0}
 	alimento.destruida.connect(func(_c): retiros.cantidad += 1)
 	var botin := alimento.retirar_por_amenaza()
 	verificar(is_equal_approx(botin, valor) and alimento.muerta and alimento.vida == 0 and alimento.mordiscos == null and retiros.cantidad == 1, "recoger el alimento completo conserva botín sin preparar una máscara inútil")
-	verificar(alimento.retirar_por_amenaza() == 0 and retiros.cantidad == 1 and is_equal_approx(Juego.migas_run - saldo, bonus) and is_equal_approx(run.resistencia_extraida - extraida, vida), "el retiro completo no duplica señal, masa, bonus ni recompensa por crédito")
+	verificar(alimento.retirar_por_amenaza() == 0 and retiros.cantidad == 1 and Juego.migas_run == saldo and is_equal_approx(run.resistencia_extraida - extraida, vida), "el retiro completo conserva señal y masa sin acreditar bonus ni botín antes de vencer al enemigo")
 	run.preparador_mordiscos.procesar()
 	verificar(not run.preparador_mordiscos.pendiente(alimento), "el recurso retirado no deja una preparación huérfana")
 	var parcial := run.comidas._crear(Juego.comidas[0], Vector2(-180, 80), 17)

@@ -1,9 +1,10 @@
 # Diseño de la progresión: de la casa a la Torre Eiffel
 
-> Extracción vigente: la revisión «Bocado local y carga de la porción real»
-> del 30/10 reemplaza los recortes por frentes del 29/10. Se conserva el
-> arranque individual, pero los pilotos anteriores —incluido el de 35,11
-> minutos— son históricos: no predicen ni validan el ritmo de esta revisión.
+> Reglas vigentes: «Trabajo por área, logística manual y tandas físicas»
+> del 2/11 (mapa 9), al final de este documento. Conservan el bocado local
+> del 30/10, ahora con hasta 1/2/3 porciones pequeñas por ciclo. Las secciones
+> anteriores registran decisiones y mediciones históricas; ninguno de sus
+> pilotos —incluido el de 35,11 minutos— valida la duración de esta revisión.
 
 ## El problema
 
@@ -973,8 +974,9 @@ El contexto del récord incluye las partes y escondites iniciales del destino.
 La corrosión ambiental procesa porciones pequeñas en una cola compartida,
 no un vaciado entero dentro del tick de un mueble. Se admite el trabajo una
 sola vez y se acredita sólo material extraído; el crédito pendiente no se lleva
-en el buche. Al cerrar se drena el trabajo ya ganado, sin seguir emitiendo veneno
-futuro ni hacer trabajar hormigas. La espera cuenta como tiempo de expedición y
+en el buche. En esta revisión se drenaba al cerrar el trabajo ya ganado, sin
+seguir emitiendo veneno futuro ni hacer trabajar hormigas. **El corte inmediato
+del 2/11 reemplaza ese drenaje**, según la sección vigente al final. La espera contaba como tiempo de expedición y
 permite cámara/pausa. El presupuesto de tiempo es suave: la preparación inicial
 de una máscara todavía es indivisible; medirla por separado y no prometer 1 ms
 como techo absoluto ni 60 FPS constantes en equipos no probados.
@@ -1020,8 +1022,9 @@ Una pieza grande ya no prepara su máscara completa en el primer intento:
 la reserva hasta raster, árbol y aire exterior. Publica sólo el resultado
 completo. La hormiga conserva objetivo/reserva/reloj durante la espera; no
 admite daño, cobra material ni interpreta la espera como falta de camino.
-Al cerrar se descartan precalentados sin trabajo emitido y sólo se completa
-lo necesario para drenar erosión. Las asignaciones/subidas nativas siguen
+En esta revisión, al cerrar se descartaban precalentados sin trabajo emitido
+y sólo se completaba lo necesario para drenar erosión. **Desde el 2/11 se
+cancela también ese trabajo pendiente**. Las asignaciones/subidas nativas siguen
 siendo indivisibles: no existe garantía absoluta de 1 ms o de 60 FPS.
 
 La preparación visual y el tirón usan el reloj ya existente. El retazo real
@@ -1045,3 +1048,122 @@ Dos ejecuciones dieron los mismos ingresos. Registro y snapshot aislados:
 `.godot/qa/contacto_piloto6_final_v10/`. La prueba guiada y la autónoma de
 `prueba_arranque_solitario` siguen verdes; estos recorridos no describen una
 persona ni reemplazan la campaña completa.
+
+## Trabajo por área, logística manual y tandas físicas — 2/11, mapa 9
+
+Esta pasada prioriza que la colonia trabaje de forma legible y que su progreso
+no quede limitado a una única astilla por ciclo, sin volver a recortes gigantes.
+Conserva la base de una obrera y la geometría física del bocado. No es neutral
+para la economía: las tandas, los poderes, las entradas elegidas por el jugador
+y más oportunidades de vencer amenazas pueden aumentar la extracción o los
+ingresos. No se deduce una duración humana de las mediciones anteriores.
+
+### Feromonas y escala
+
+Mantener el clic asigna trabajo **dentro del círculo visible**, aunque debajo
+del cursor haya suelo. Las seleccionadas toman recursos elegibles del área;
+conservan una reserva útil y reemplazan un objetivo agotado sin soltar la orden.
+Apuntar expresamente a otro objeto reemplaza el trabajo automático retenido,
+incluso durante el enfriamiento de búsqueda. Sobre suelo se conserva el trabajo
+útil, en lugar de cambiar de objetivo en cada decisión.
+
+Siguen vigentes dieta, afinidad/peso de la casta, cupos, territorio y exclusiones
+temporales de navegación. Una reserva propia no se pierde al llenar el último
+cupo; una orden tampoco habilita a robar el puesto ajeno ni a cancelar un
+retorno cargado. La selección sigue limitada a 64 y al valor real de la mejora.
+Se comparte una consulta espacial del círculo cada 0,2 s; las búsquedas de
+reemplazo se espacian 0,6 s salvo agotamiento, sin otro barrido global por cuadro.
+El radio de trabajo coincide con el dibujo al cambiar el zoom.
+
+Cada casta nace y permanece a su **escala nativa**. Alejar la cámara ya no agranda
+hormigas ni enemigos/hitboxes. Se conserva el culling a intervalos y el detalle
+visual por cámara, no se agregan sprites o trabajo de IA para compensar el zoom.
+Cada retazo mantiene el tamaño real del hueco, compensando únicamente la escala
+del atlas y de su hormiga.
+
+### Hasta tres microbocados, no uno de tamaño triple
+
+`tamano_bocado=6` sigue siendo el máximo por lado de **cada porción sólida**.
+La capacidad de una tanda se copia al nacer según la dieta y el tope
+`porciones_por_ciclo_max=3`: comida del piso permite hasta una; madera/telas,
+hasta dos; resistentes y paredes, hasta tres. No se añaden nodos de tienda.
+
+El ciclo admite daño una sola vez. Hasta dos continuaciones sólo gastan crédito
+ya pagado del mismo frente; no vuelven a sumar daño, corrosión ni veneno. Se
+comprueba contacto antes de cada operación y se detiene si retrocede el borde,
+se agota el crédito/material o se llena el buche. Cada porción ocupa un lugar
+del buche y copia su región, tamaño y origen antes de que la siguiente reemplace
+la muestra de la fuente. Corte/Cantera conservan su transporte colectivo:
+dejan el valor realmente retirado en montones, sin cobrarlo otra vez.
+
+La igualdad exigida es **suma de áreas retiradas = hueco nuevo**, y **valor
+extraído = carga + montones + entregas**, según corresponda. Hasta tres retazos
+usan los arrays y el atlas existentes, sin texturas/nodos por operación. Tres
+porciones máximas suman 108 unidades cuadradas: un 0,755% del rectángulo de
+110×130 del cartón, no un cuarto. Así mejora el flujo con nuevas dietas sin
+convertir daño alto en desapariciones desproporcionadas. El ritmo efectivo
+sigue dependiendo de crédito, alcance, cupos, buche y viajes.
+
+### Dos decisiones activas: entrada y Ráfaga
+
+Las mejoras de entradas conceden **cupos**, ya no colocaciones automáticas en
+puntos fijos. En cada expedición, `N` o el botón Entrada abre una vista previa;
+clic izquierdo confirma el piso exacto y `Esc`, clic derecho o `N` cancela.
+Se exige territorio con margen de 40 unidades, piso libre y separación mínima
+de 96 respecto de otros accesos. Un punto inválido no consume el cupo. Los
+accesos ya colocados no se mueven ni cambian retornos en curso.
+
+Se mantienen cinco niveles de la mejora y uno por la adaptación de Casa,
+con tope de seis normales. El acceso adelantado de proyecto sigue siendo
+independiente y automático: nido + seis manuales + uno de proyecto, hasta ocho.
+La elección por distancia es O(8) sólo al iniciar/fallar un regreso; la cola
+normal valida el camino. Colocar no ejecuta otro A* ni garantiza la ruta más
+corta global. Los cupos comprados persisten; la colocación se decide en cada run.
+
+Ráfaga carga con **20 entregas reales**, no con premios, corrosión ni destrucciones.
+`E` o su botón consume esa carga y da **8 s de daño ×1,75 y ritmo de mordida
+×1,25**, sin alterar velocidad de movimiento. El descanso de **30 s empieza al
+activar**, no al terminar. No se extiende ni acumula. El multiplicador de daño
+se consulta al emitir la mordida; el veneno captura ese factor una sola vez.
+El ritmo modifica sólo el avance del reloj de mordida, sin reescribir su
+intervalo base ni el daño copiado al nacer. Es independiente del frenesí
+automático de entregas; ambos conservan sus reglas.
+
+### Silbato y presentación sin barras físicas
+
+El cierre es inmediato para extracción: `activa=false` y el guard compartido
+se establecen antes de procesar más hijos. Se cancelan trabajo sin retirar,
+erosión/preparaciones pendientes, veneno, dominó, eventos y poderes; ya no se
+drena daño pendiente después del silbato. No se borra material para completar
+una misión o cobrar una recompensa tardía. Sólo la carga ya extraída puede
+volver durante la retirada existente; lo que no llega no se acredita.
+
+Se retiran las barras de vida del dibujo de comida, muebles y enemigos. El
+material ausente es la señal principal de desgaste; la inspección del HUD
+mantiene porcentaje consumido, trabajadoras, requisitos y componentes. Las
+barras de tiempo, compras y frenesí siguen siendo controles de interfaz, no
+salud flotante sobre los objetos.
+
+Las amenazas alternan su tipo propio con cucarachas o escarabajos, con avisos
+de entrada/robo y hasta tres individuos simultáneos; una bandada de palomas
+consume los tres lugares. La cadencia depende del destino y las mejoras.
+Vencerlas paga botín: más oportunidades también pueden cambiar el ingreso,
+aunque no se cambien precios. La variación de los timbres de mordida y las
+partículas usa azar privado, sin consumir el de las decisiones de IA.
+
+El robo conserva la masa física y su valor en el botín enemigo, sin cobrar
+bonus de destrucción ni adjudicar alimentos/hallazgos a la colonia. Esto
+también se aplica al último píxel, al retiro entero de rata/aspiradora y a
+los picotazos de paloma. Si roban un envoltorio, su contenido aparece físicamente,
+pero no cuenta como un hallazgo del jugador. Una mordida posterior de hormiga
+conserva sus premios normales: el origen enemigo es transitorio, no un campo
+guardado. Es otra corrección económica intencional; no se puede atribuir todo
+cambio de ingresos a velocidad de extracción.
+
+El guardado sigue en esquema 10 y el contenido pasa a 9, separando récords
+de reglas anteriores. `prueba_area_feromonas`, `prueba_microbocados` y
+`prueba_corte_y_poderes` cubren selección/reservas, conservación y corte real;
+`prueba_evoluciones_viaje` suma conservación de tandas de Cantera. Las capturas
+y perfiles gráficos se registran en `tests/RENDIMIENTO.md`. No garantizan
+60 FPS en equipos no probados ni duración de campaña: faltan recorridos nuevos
+y observación humana para atribuir tiempos o satisfacción a estos cambios.

@@ -44,6 +44,33 @@ func medir(configuracion: Dictionary) -> void:
 	run.camara.set_process_unhandled_input(false)
 	run.radio_actual = 9500
 	run.niebla.radio = 9500
+	# Fixture activo: simula la elección manual de accesos antes del estrés.
+	# Gameplay nunca los coloca solo. Se usa el mismo piso/cupo que el jugador.
+	var candidatos: Array[Vector2] = []
+	for ambiente: Dictionary in Mundos.plano(Juego.lugar_actual).ambientes:
+		var rect: Rect2 = ambiente.rect
+		for y in range(64, int(rect.size.y), 128):
+			for x in range(64, int(rect.size.x), 128):
+				var punto := rect.position + Vector2(x, y)
+				if run.entradas.puede_colocar(punto):
+					candidatos.append(punto)
+	# Distribución determinista antes de medir, no búsquedas caras en gameplay.
+	while run.entradas_disponibles() > 0:
+		var mejor := Vector2.INF
+		var distancia := 0.0
+		for punto in candidatos:
+			var cercana := INF
+			for entrada: Vector2 in run.entradas.puntos:
+				cercana = minf(cercana, punto.distance_squared_to(entrada))
+			if cercana > distancia and run.entradas.puede_colocar(punto):
+				mejor = punto
+				distancia = cercana
+		if mejor == Vector2.INF:
+			break
+		run.iniciar_colocacion_entrada()
+		assert(run.colocar_entrada(mejor))
+	assert(run.entradas._normales == 5, "El estrés requiere los cinco accesos comprados, colocados en piso real")
+	print("ACCESOS %s: %d manuales + nido/proyecto" % [configuracion.destino, run.entradas._normales])
 	run.camara.zoom = Vector2.ONE * 0.28
 	run.camara.position = Vector2(1200, 700)
 	run.camara.force_update_scroll()

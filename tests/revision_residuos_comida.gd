@@ -257,7 +257,7 @@ func _probar_barra() -> void:
 	for y in range(floori(centro.y - alto * ESCALA * 0.4), ceili(centro.y + alto * ESCALA * 0.4)):
 		for x in range(floori(centro.x - alimento.radio * ESCALA * 0.7), ceili(centro.x + alimento.radio * ESCALA * 0.7)):
 			presentes += int(imagen.get_pixel(x, y).a > 0.1)
-	comprobar(presentes > 0, "la barra de vida conserva su dibujo aunque la máscara corporal esté vacía y el alimento rotado")
+	comprobar(presentes == 0, "una máscara vacía no deja barras de salud aunque el alimento esté rotado")
 	alimento.veneno_restante = 0.5
 	alimento.queue_redraw()
 	var con_veneno := await _capturar()
@@ -267,7 +267,7 @@ func _probar_barra() -> void:
 			var previo := imagen.get_pixel(x, y)
 			var actual := con_veneno.get_pixel(x, y)
 			indicadores += int(actual.a > previo.a + 0.05 and actual.g > actual.r)
-	comprobar(indicadores > 0, "los indicadores de veneno siguen visibles junto a la barra sin confundirlos con el cuerpo vacío")
+	comprobar(indicadores > 0, "el estado de veneno sigue visible sin una barra de salud ni cuerpo residual")
 	alimento.queue_free()
 	await get_tree().process_frame
 

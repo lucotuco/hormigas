@@ -156,10 +156,10 @@ func probar_escala() -> void:
 	var run := crear_run()
 	run.process_mode = Node.PROCESS_MODE_INHERIT
 	await get_tree().create_timer(1.0).timeout
-	var zoom := run.camara.zoom.x
 	var escala := run.colonia.hormigas[0].scale.x / run.colonia.hormigas[0].escala_casta
 	verificar(run.colonia.cantidad() == 1, "la colonia arranca con una sola obrera")
-	verificar(is_equal_approx(escala, clampf(Colonia.ESCALA_EN_PANTALLA / zoom, 1.0, 5.0)) and escala * zoom >= 1.4, "con la cámara alejada las hormigas se ven más grandes")
+	# El zoom ya no compensa el tamaño: la obrera mantiene su escala nativa.
+	verificar(is_equal_approx(escala, 1.0), "alejar la cámara conserva el tamaño propio de la hormiga")
 	run.queue_free()
 	await get_tree().process_frame
 

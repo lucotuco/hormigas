@@ -104,8 +104,8 @@ func secuencia(run: Run, fuente: PiezaCasa, nombre: String) -> void:
 
 
 ## Tres estados del mismo objeto nativo: cerrado, un retazo real y abierto.
-## Se amplía sólo el buche del fixture para no simular viajes entre capturas;
-## nunca se cambia vida, daño geométrico, tamaño de porción ni valor del papel.
+## Se amplía el buche y se aísla un retazo por ciclo para leer cada captura;
+## nunca se cambia vida, tamaño de porción ni valor del papel.
 func secuencia_envoltorio(run: Run, fuente: Comida) -> void:
 	var id := fuente.id
 	var nombre := "envoltorio_" + fuente.forma
@@ -114,6 +114,7 @@ func secuencia_envoltorio(run: Run, fuente: Comida) -> void:
 	var punto := fuente.punto_mordida(Vector2.ZERO, run.radio_actual)
 	var h := run.colonia._nacer("obrera", punto)
 	h._capacidad = 1000 # Fixture de aspecto: conserva hasta tres muestras, no mil.
+	h._porciones_ciclo = 1 # La secuencia muestra explícitamente el primer retazo.
 	h.estado = Hormiga.Estado.MORDIENDO
 	h.comida = fuente
 	h.rotation = (fuente.punto_contacto(punto) - punto).angle()

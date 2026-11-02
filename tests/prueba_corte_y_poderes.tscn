@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/prueba_corte_y_poderes.gd" id="1"]
+
+[node name="PruebaCorteYPoderes" type="Node"]
+script = ExtResource("1")

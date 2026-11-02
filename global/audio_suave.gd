@@ -37,15 +37,25 @@ static func crear(nombre: String) -> AudioStreamWAV:
 			duracion = 0.09
 			ruido = 0.08
 		"deposito":
-			notas = [660.0, 990.0]
-			duracion = 0.115
+			notas = [392.0, 587.33]
+			duracion = 0.13
+		"epico":
+			notas = [196.0, 261.63, 329.63, 392.0, 523.25]
+			duracion = 0.85
+		"aviso":
+			notas = [392.0, 293.66]
+			duracion = 0.24
+		"espantar":
+			notas = [240.0, 350.0]
+			duracion = 0.10
+			ruido = 0.28
 		"romper":
 			notas = [294.0, 392.0, 490.0]
 			duracion = 0.23
 			ruido = 0.18
 		"comprar":
-			notas = [523.25, 659.25, 783.99, 1046.5]
-			duracion = 0.42
+			notas = [392.0, 493.88, 587.33]
+			duracion = 0.28
 		"no":
 			notas = [293.66, 261.63]
 			duracion = 0.16
@@ -66,18 +76,25 @@ static func crear(nombre: String) -> AudioStreamWAV:
 	rng.seed = nombre.hash()
 	var filtro := 0.0
 	var material := nombre.begins_with("mordida") or nombre == "levantar"
+	var celebracion := nombre in ["epico", "crecer", "fin"]
 	for i in muestras:
 		var t := float(i) / frecuencia
 		var muestra := 0.0
 		for n in notas.size():
-			var inicio := n * duracion * 0.11
+			var inicio := n * duracion * (0.12 if celebracion else 0.08)
 			var edad := t - inicio
 			if edad < 0.0:
 				continue
-			var ataque := minf(edad / 0.008, 1.0)
-			var envolvente := ataque * exp(-edad * (9.0 if material else 7.0) / duracion)
+			var ataque := smoothstep(0.0, 0.006 if material else 0.009, edad)
+			var envolvente := ataque * exp(-edad * (9.0 if material else 5.0) / duracion)
 			var f: float = notas[n]
-			muestra += (sin(TAU * f * edad) + 0.16 * sin(TAU * f * 2.0 * edad)) * envolvente / notas.size()
+			# Fundamental redonda, armónico corto y cuerpo grave: no una alarma
+			# aguda por cada depósito. Toda la grabación se sintetiza acá.
+			var cuerpo := sin(TAU * f * edad)
+			cuerpo += 0.10 * sin(TAU * f * 2.0 * edad) * exp(-edad * 35.0)
+			if celebracion:
+				cuerpo += 0.18 * sin(TAU * f * 0.5 * edad)
+			muestra += cuerpo * envolvente / notas.size()
 		filtro = lerpf(filtro, rng.randf_range(-1.0, 1.0), 0.22 if material else 0.32)
 		# Un crujido amortiguado y breve, no una nota larga por cada hormiga.
 		muestra += filtro * ruido * exp(-t * (12.0 if material else 20.0) / duracion) * minf(t / 0.004, 1.0)

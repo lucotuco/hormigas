@@ -14,6 +14,9 @@ var run: Run
 var _rect := Rect2()
 var _color := Color.WHITE
 var _escala_anterior := 1.0
+var _animacion: Tween
+var _cancelada := false
+var _azar := RandomNumberGenerator.new()
 
 
 ## Arranca la celebración. `entregadas` son las coronas que dio (0 si ya se
@@ -44,6 +47,10 @@ static func celebrar_destino(r: Run, entregadas: int) -> Conquista:
 
 
 func _empezar(entregadas: int) -> void:
+	if not is_instance_valid(run) or not run.activa:
+		cancelar()
+		return
+	_azar.seed = 417319
 	var centro := _rect.get_center()
 	var tamano := _rect.size.length()
 	# En headless (pruebas y bot) no hay nada que mirar: sin cámara lenta.
@@ -54,26 +61,37 @@ func _empezar(entregadas: int) -> void:
 		Engine.time_scale = CAMARA_LENTA
 	run.camara.sacudir(24.0)
 	Sonido.tocar("romper", 0.5, 0.0)
-	var tween := create_tween().set_ignore_time_scale(true)
+	_animacion = create_tween().set_ignore_time_scale(true)
 	for i in ESTALLIDOS:
-		tween.tween_callback(_estallido.bind(i))
-		tween.tween_interval(0.09)
-	tween.tween_callback(func() -> void:
+		_animacion.tween_callback(_estallido.bind(i))
+		_animacion.tween_interval(0.09)
+	_animacion.tween_callback(func() -> void:
+		if _cancelada or not is_instance_valid(run) or not run.activa:
+			return
 		run.efectos.explosion(centro, Color("f0d277"), tamano * 0.35)
 		run.hud.migas_voladoras(run.a_pantalla(centro), 40)
 		Sonido.tocar("crecer", 0.8, 0.0))
-	tween.tween_interval(maxf(0.0, DURACION_LENTA - ESTALLIDOS * 0.09))
-	tween.tween_callback(_terminar_lenta)
+	_animacion.tween_interval(maxf(0.0, DURACION_LENTA - ESTALLIDOS * 0.09))
+	_animacion.tween_callback(_terminar_lenta)
 	run.hud.mostrar_conquista(_titulo(), _detalle(entregadas))
 
 
 func _estallido(i: int) -> void:
-	var p := _rect.position + Vector2(randf(), randf()) * _rect.size
-	run.efectos.explosion(p, _color.lerp(Color.WHITE, randf() * 0.3), _rect.size.length() * 0.08)
+	if _cancelada or not is_instance_valid(run) or not run.activa:
+		return
+	var p := _rect.position + Vector2(_azar.randf(), _azar.randf()) * _rect.size
+	run.efectos.explosion(p, _color.lerp(Color.WHITE, _azar.randf() * 0.3), _rect.size.length() * 0.08)
 	run.efectos.chispas(p, Color("f0d277"), 10)
 	run.camara.sacudir(8.0)
 	if i % 3 == 0:
 		Sonido.tocar("romper", 0.6 + i * 0.05, 0.05)
+
+
+func cancelar() -> void:
+	_cancelada = true
+	if _animacion and _animacion.is_valid():
+		_animacion.kill()
+	_terminar_lenta()
 
 
 func _terminar_lenta() -> void:

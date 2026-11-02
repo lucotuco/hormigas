@@ -34,16 +34,24 @@ func _ready() -> void:
 		h._velocidad = 240
 		h._meta_ruta = Vector2.INF
 	await medir("sin_llamado", false)
+	# Cantidad real del escenario: base8 + Llamado5×3 + Coordinación1 =24.
+	Juego.niveles.rastro_persistente = 5
+	Juego.niveles.pisoton = 1
+	Juego._cache_stats.clear()
 	await medir("cursor_24", true)
 	Juego.niveles.rastro_persistente = 10
 	Juego.niveles.pisoton = 25
 	Juego._cache_stats.clear()
+	# El máximo comprable vigente es63, separado del estrés técnico de64.
 	await medir("cursor_maximo", true)
 	# Un mueble bloqueado también debe permitir reunir hormigas sin romperlo.
 	await medir("cursor_sobre_muebles", true, true)
 	# Son fases consecutivas de estrés, no una comparación controlada con las
 	# anteriores: el mundo y la carga de trabajo ya evolucionaron entre medidas.
-	# Reunir sólo 64; las otras 436 mantienen su IA y el presupuesto de rutas.
+	# Escenarios SINTÉTICOS del tope técnico64, no el máximo económico63.
+	# Sólo esta stat de prueba se fija en el cache; no cambia la producción,
+	# los CSV ni niveles comprables. Las otras436 mantienen IA y cuotas reales.
+	Juego._cache_stats["feromona_cantidad"] = float(Feromonas.MAX_ATRAIDAS)
 	var suelo := _buscar_suelo()
 	if suelo == Vector2.INF:
 		push_error("No se encontró suelo libre para medir la recuperación del llamado")

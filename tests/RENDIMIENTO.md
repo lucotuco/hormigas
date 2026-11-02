@@ -1,5 +1,9 @@
 # Rendimiento gráfico y memoria
 
+La pasada de controles/feedback del **2/11/2026** se documenta al final. Cambia
+la colocación de accesos y el trabajo por ciclo; sus mediciones no son un A/B
+de economía idéntica contra las anteriores.
+
 La medición de cuerpo/sombra y contacto exterior está al final de **30/10/2026**;
 la ampliación por proyectos y su estrés específico, en **1/11/2026**.
 Las tablas anteriores conservan su contexto histórico: no son un control A/B
@@ -1289,3 +1293,117 @@ Revisión gráfica de material visible (68) y mordiscos (13, incluidos 108
 primeros bocados/lados), sin fallas después de corregir las dos siluetas.
 Regresión completa posterior a la reexportación: 52 suites headless sin fallas,
 errores de script ni advertencias. Guardado y configuración personal intactos.
+
+## Controles activos, microbocados y feedback — 2/11/2026
+
+Se elimina la escala compensada de hormigas al alejar la cámara. Se conserva
+el descarte por cámara y el detalle visual espaciado, no la escala artificial.
+El área de feromonas comparte candidatas cada 0,2 s: no se hace un escaneo de
+todo el mapa por cada hormiga. El frente exacto y A* siguen usando sus colas.
+
+Aprender materiales permite hasta 1/2/3 porciones por ciclo. Sólo la primera
+admite daño; las otras gastan crédito del mismo frente, revalidando alcance,
+capacidad y material real. Cada muestra sigue limitada a 6×6, sin lectura GPU
+ni nuevos nodos por astilla. Es una mejora intencional del flujo tardío, no una
+reducción de la resistencia de los objetos ni una comparación de igual ingreso.
+
+El vuelo al contador reutiliza 40 registros desde un solo Control. Cien tandas
+no crean nodos/tweens por miga; el procesamiento vacío se apaga. El feedback
+mundial comparte topes de 600 partículas, 24 ondas y puertas de emisión.
+Audio: 16 voces fijas, seis reservadas a UI/hitos; ver
+[criterios y límites de la investigación](../docs/AUDIO_Y_SENSACION.md).
+El azar de audio/presentación no consume el de IA. Se retiran el shader de
+franjas no referenciado, sus buffers/uniforms antiguos, dioramas y métodos
+exclusivos del drenaje de cierre eliminado; no se borran guardados ni fixtures.
+
+### Estrés con cinco accesos elegidos y 500 hormigas
+
+Godot 4.7.2, GL Compatibility, RTX 3060, 1920×1080, VSync apagado,
+`perfil_proyectos.tscn --fixed-fps 60`, 90 cuadros de calentamiento y 360 medidos.
+El fixture coloca los cinco accesos comprados mediante la misma API manual y
+validación de piso del juego, antes de medir. Busca puntos distribuidos una
+sola vez; esa búsqueda sintética no existe en gameplay. Daño artificial de
+estrés declarado; no es una medición de duración de campaña.
+Log: `.godot/qa/activa_perfil_accesos5.log`.
+
+| Destino / equipo | Media | p95 | Peor | Dibujos medios | Máscaras completas / pendientes |
+|---|---:|---:|---:|---:|---:|
+| Museo / Sondeo+Barrido | 9,48 ms | 12,44 ms | 13,80 ms | 719 | 96 / 0 |
+| Coliseo / Cantera+Contagio | 8,12 ms | 11,31 ms | 13,32 ms | 666 | 96 / 6 |
+| Eiffel / Cantera+Puente | 10,06 ms | 14,41 ms | 17,25 ms | 724 | 118 / 1 |
+
+Topes observados: seis rutas/cuadro; 2/4/5 montones activos de un máximo 64.
+Erosión: 8/11/12 operaciones máximas por cuadro, 0,61/0,35/0,58 ms de operación
+individual máxima, 2/0/0 recursos pendientes. Preparación: servicio máximo
+1,094/1,113/1,094 ms. El log conserva trabajo emitido/admitido e ingresos reales;
+el silbato descarta lo todavía no retirado, no liquida daños después del cierre.
+
+Las posiciones de accesos y el orden de trabajo difieren del sistema automático
+anterior. No corresponde atribuir toda diferencia de tiempo sólo a optimización,
+ni ocultar trabajo pendiente. Aún hubo un cuadro de 17,25 ms: no garantiza 60 FPS
+constantes, campaña completa ni rendimiento en GPU integrada.
+
+### Revisión de presentación y entrada real
+
+Pruebas con renderer real a 1920×1080 y 1000×620. La revisión de entrada usa
+eventos reales de teclado/mouse: N, clic inválido, cancelación, clic exacto en
+piso libre, no ataque/feromona accidental, E con feedback y Esc de pausa.
+`revision_input_poderes`: 26 verificaciones sin fallas. Las coordenadas del
+clic se toman del evento, no de una posición global de mouse potencialmente
+vieja. Capturas de hormiguero y controles en `.godot/qa/activa_*.png`.
+
+`revision_residuos_comida`: 341 verificaciones; `revision_material_visible`: 68;
+`revision_mordiscos`: 13, que incluye 108 primeros bocados/lados. Sin fallas,
+incluidos 60 vaciados de material con alfa estrictamente cero. Las barras
+físicas ya no se dibujan; la inspección usa un porcentaje gris discreto.
+
+### Cursor sostenido y en movimiento
+
+Misma GPU/paso fijo, 500 hormigas, `perfil_feromonas.tscn`; 40 cuadros de
+calentamiento y 200 medidos por fase. Log
+`.godot/qa/cierre_perfil_feromonas.log`. Son fases consecutivas: el mundo y la
+carga evolucionan, no es A/B contra cada fila anterior.
+
+| Fase | Seleccionadas al final | Media | p95 | Peor |
+|---|---:|---:|---:|---:|
+| Sin llamado | 0 | 8,12 ms | 11,08 ms | 13,18 ms |
+| Cursor de 24 | 24 | 8,32 ms | 10,44 ms | 14,05 ms |
+| Máximo comprable | 63 | 9,63 ms | 11,79 ms | 16,66 ms |
+| Sobre muebles | 63 | 9,75 ms | 13,63 ms | 16,89 ms |
+| Suelo sin objetivo, estrés técnico 64 | 64 | 8,23 ms | 9,92 ms | 11,64 ms |
+| Objetivo agotado sin soltar, estrés técnico 64 | 64 | 8,86 ms | 11,42 ms | 17,90 ms |
+
+Las dos últimas fases fijan explícitamente el límite técnico 64 en la caché
+del fixture: el máximo comprable normal sigue siendo 63, no se cambian los CSV.
+Conservan orden y 500 hormigas activas. El fixture anterior exigía 64 aunque
+sus niveles daban 63; se corrigió su preparación, no se rebajó la verificación.
+
+### Pilotos de ritmo, no duración humana
+
+`bot_balance.tscn --headless --fixed-fps 60`, órdenes materiales, ingresos reales,
+sin calibración ni daño manual. Sólo escriben estados nuevos dentro de QA.
+Seis expediciones desde cero: 4,91 min de simulación incluyendo retirada y sin
+tienda; una obrera inicial, segunda comprada tras la tercera, dos en la sexta.
+Log/salida: `.godot/qa/activa_inicio_sin_calibrar_v9.txt` y su JSON homónimo.
+No alcanzan la primera dieta y no validan toda la progresión temprana.
+
+Una expedición avanzada retoma **sólo como entrada** el snapshot QA histórico
+`componentes_piloto_restaurante_20261101.json` (min 87,23 de aquella simulación,
+no campaña actual desde cero). Completa 3,27 min adicionales con dieta 3 y 500
+unidades máximas: 105 partes consumidas, cero cargas sin entregar y final por
+tiempo. Ingresos incluyendo bonus: comida 4.378,78M, muebles 87,72M,
+estructura 1.525,30M; la suma no es sólo valor de objetos ni una tasa comparable
+al inicio. El bot decide fundar después de esa run; no prueba otra expedición
+de la siguiente colonia. Salida separada: `activa_tardia_sin_calibrar_v9.json/.txt`.
+
+Ambos resultados corresponden al origen enemigo corregido: robar el último
+material no paga bonus al jugador. La batería completa final pasó 57 suites
+sin fallas, errores de script ni advertencias. Se repitieron después las
+revisiones gráficas de entrada real (26), interfaz (sin fallas) y residuos (341).
+Los flags opcionales del bot se activan por existencia, incluso vacíos: estos
+pilotos verificaron su ausencia antes de lanzar. La tanda `_verificado_` que
+los definía vacíos activó calibración y se descartó, no se usa en estos números.
+
+Estos recorridos comprueban ingreso, transporte y avance reales en dos
+configuraciones; no prueban satisfacción ni estiman horas de una persona.
+Los FPS sólo se midieron con renderer real en los perfiles anteriores.

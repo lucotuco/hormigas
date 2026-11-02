@@ -41,57 +41,131 @@ class TextoFlotante:
 
 
 var _particulas: Array[Particula] = []
+var _libres: Array[Particula] = []
 var _ondas: Array[Onda] = []
+var _ondas_libres: Array[Onda] = []
 var _textos: Array[TextoFlotante] = []
 var _rect_textos: Array[Rect2] = []
 var _marcas: Array[Dictionary] = []
 const MAX_MARCAS := 16
 var _pausa_marca := 0.0
+var _pausa_entrega := 0.0
+var _pausa_epico := 0.0
+var _cerrado := false
+var _azar := RandomNumberGenerator.new()
+
+
+func _ready() -> void:
+	_azar.seed = 41731 # El feedback no consume el azar de enemigos/IA.
+	set_process(false)
+
+
+## Una entrega ya cobrada: pequeño pulso hacia la entrada, no otra moneda.
+## El gate global evita una ráfaga por cada una de las quinientas hormigas.
+func entrega(pos: Vector2, cantidad: float, combo := 0, material_id := -1) -> void:
+	if _cerrado or cantidad <= 0.0 or _pausa_entrega > 0.0 or not _en_vista(pos):
+		return
+	_pausa_entrega = 0.10
+	var tinta := Color("f0d18c") if material_id < 1 else Color("c8b17d")
+	var cantidad_particulas := 4 + mini(4, maxi(0, combo) / 8)
+	for i in mini(cantidad_particulas, MAX_PARTICULAS - _particulas.size()):
+		var direccion := Vector2.from_angle(TAU * i / cantidad_particulas + _azar.randf_range(-0.1, 0.1))
+		_agregar_particula(pos + direccion * 12.0, -direccion * _azar.randf_range(15.0, 25.0),
+			0.28, tinta, _azar.randf_range(1.4, 2.0))
+	_agregar_onda(pos, 18.0, 0.22, tinta)
+	_despertar()
+
+
+## Sólo se llama por una victoria/hito REAL. Una ráfaga, máximo dos ondas,
+## sin emisores ni nodos por fragmento ni cadenas de timers/tweens.
+func epico(pos: Vector2, color: Color, radio := 70.0) -> void:
+	if _cerrado or _pausa_epico > 0.0 or not _en_vista(pos, radio + 100.0):
+		return
+	_pausa_epico = 0.75
+	var alcance := clampf(radio, 24.0, 160.0)
+	for i in mini(36, MAX_PARTICULAS - _particulas.size()):
+		var direccion := Vector2.from_angle(i * TAU / 36.0 + _azar.randf_range(-0.04, 0.04))
+		_agregar_particula(pos + direccion * alcance * 0.12,
+			direccion * _azar.randf_range(55.0, 160.0), _azar.randf_range(0.5, 0.85),
+			color.lerp(Color("fff0bf"), _azar.randf() * 0.6), _azar.randf_range(1.8, 3.4))
+	_agregar_onda(pos, alcance, 0.5, color)
+	_agregar_onda(pos, alcance * 0.68, 0.7, color.lightened(0.3))
+	_despertar()
+
+
+func _despertar() -> void:
+	set_process(true)
+	queue_redraw()
+
+
+## Terminal por instancia: callbacks tardíos no reviven la run abandonada.
+func limpiar() -> void:
+	_cerrado = true
+	for p in _particulas:
+		_libres.append(p)
+	_particulas.clear()
+	for o in _ondas:
+		_ondas_libres.append(o)
+	_ondas.clear()
+	_textos.clear()
+	_marcas.clear()
+	_rect_textos.clear()
+	_pausa_marca = 0.0
+	_pausa_entrega = 0.0
+	_pausa_epico = 0.0
+	set_process(false)
+	queue_redraw()
 
 ## Una señal breve por habilidad, con límite global; no un emisor por hormiga.
 func habilidad(desde: Vector2, hasta: Vector2, color: Color) -> void:
-	if _pausa_marca > 0 or _marcas.size() >= MAX_MARCAS or not _en_vista(desde):
+	if _cerrado or _pausa_marca > 0 or _marcas.size() >= MAX_MARCAS or not _en_vista(desde):
 		return
 	_pausa_marca = 0.08
 	_marcas.append({"a": desde, "b": hasta, "color": color, "vida": 0.35})
-	queue_redraw()
+	_despertar()
 
 
 ## Chispitas rápidas de las mordidas. No generar efectos fuera de cámara.
 func chispas(pos: Vector2, color: Color, cantidad: int, material_id := -1) -> void:
-	if not _en_vista(pos):
+	if _cerrado or not _en_vista(pos):
 		return
 	for i in mini(cantidad, MAX_PARTICULAS - _particulas.size()):
-		_agregar_particula(pos, Vector2.from_angle(randf() * TAU) * randf_range(30.0, 90.0),
-			randf_range(0.2, 0.4), color.lightened(randf_range(0.0, 0.3)), randf_range(1.0, 1.8))
+		_agregar_particula(pos, Vector2.from_angle(_azar.randf() * TAU) * _azar.randf_range(30.0, 90.0),
+			_azar.randf_range(0.2, 0.4), color.lightened(_azar.randf_range(0.0, 0.3)), _azar.randf_range(1.0, 1.8))
 		_particulas.back().material_id = material_id
+	_despertar()
 
 
 ## Explosión al destruir una comida: pedazos + onda expansiva.
 func explosion(pos: Vector2, color: Color, radio: float) -> void:
-	if not _en_vista(pos, radio * 2.5 + 100):
+	if _cerrado or not _en_vista(pos, radio * 2.5 + 100):
 		return
 	var cantidad := int(clampf(radio * 1.8, 10.0, 90.0))
 	var fuerza := clampf(radio * 6.0, 60.0, 320.0)
 	for i in mini(cantidad, MAX_PARTICULAS - _particulas.size()):
-		var dir := Vector2.from_angle(randf() * TAU)
-		_agregar_particula(pos + dir * randf() * radio * 0.6, dir * randf_range(0.3, 1.0) * fuerza,
-			randf_range(0.45, 0.9), color.lerp(Color.WHITE, randf_range(0.0, 0.35)),
-			randf_range(1.2, 2.0) + minf(radio * 0.08, 5.0))
+		var dir := Vector2.from_angle(_azar.randf() * TAU)
+		_agregar_particula(pos + dir * _azar.randf() * radio * 0.6, dir * _azar.randf_range(0.3, 1.0) * fuerza,
+			_azar.randf_range(0.45, 0.9), color.lerp(Color.WHITE, _azar.randf_range(0.0, 0.35)),
+			_azar.randf_range(1.2, 2.0) + minf(radio * 0.08, 5.0))
+	_agregar_onda(pos, radio * 2.5 + 12.0, 0.35, color.lightened(0.5))
+	_despertar()
+
+
+func _agregar_onda(pos: Vector2, radio: float, vida: float, color: Color) -> void:
 	if _ondas.size() >= MAX_ONDAS:
 		return
-	var onda := Onda.new()
+	var onda: Onda = _ondas_libres.pop_back() if not _ondas_libres.is_empty() else Onda.new()
 	onda.pos = pos
-	onda.radio_max = radio * 2.5 + 12.0
-	onda.vida_max = 0.35
-	onda.vida = onda.vida_max
-	onda.color = color.lightened(0.5)
+	onda.radio_max = radio
+	onda.vida_max = vida
+	onda.vida = vida
+	onda.color = color
 	_ondas.append(onda)
 
 
 ## "+12" flotando hacia arriba.
 func numero(pos: Vector2, cantidad: float, color: Color, escala := 1.0) -> void:
-	if cantidad <= 0 or not _en_vista(pos):
+	if _cerrado or cantidad <= 0 or not _en_vista(pos):
 		return
 	# Agrupar durante una ventana fija: el texto termina aunque siga habiendo
 	# depósitos. Se suman los valores, no se descartan ingresos visuales.
@@ -108,7 +182,7 @@ func numero(pos: Vector2, cantidad: float, color: Color, escala := 1.0) -> void:
 
 
 func texto(pos: Vector2, contenido: String, color: Color, escala := 1.0) -> void:
-	if not _en_vista(pos):
+	if _cerrado or not _en_vista(pos):
 		return
 	if _textos.size() >= MAX_TEXTOS:
 		_textos.pop_front()
@@ -121,24 +195,31 @@ func texto(pos: Vector2, contenido: String, color: Color, escala := 1.0) -> void
 	t.vida_max = 0.9
 	t.vida = t.vida_max
 	_textos.append(t)
+	_despertar()
 
 
 func _agregar_particula(pos: Vector2, vel: Vector2, vida: float, color: Color, tamano: float) -> void:
 	if _particulas.size() >= MAX_PARTICULAS:
 		return
-	var p := Particula.new()
+	var p: Particula = _libres.pop_back() if not _libres.is_empty() else Particula.new()
 	p.pos = pos
 	p.vel = vel
 	p.vida = vida
 	p.vida_max = vida
 	p.color = color
 	p.tamano = tamano
+	p.material_id = -1
 	_particulas.append(p)
 
 
 func _process(delta: float) -> void:
 	_pausa_marca = maxf(0, _pausa_marca - delta)
+	_pausa_entrega = maxf(0, _pausa_entrega - delta)
+	_pausa_epico = maxf(0, _pausa_epico - delta)
 	if _particulas.is_empty() and _ondas.is_empty() and _textos.is_empty() and _marcas.is_empty():
+		if maxf(_pausa_marca, maxf(_pausa_entrega, _pausa_epico)) <= 0.0:
+			set_process(false)
+		queue_redraw()
 		return
 	for i in range(_marcas.size() - 1, -1, -1):
 		_marcas[i].vida -= delta
@@ -153,12 +234,14 @@ func _process(delta: float) -> void:
 			# El orden no afecta a estos cuadrados; no desplazar hasta 600 referencias.
 			_particulas[i] = _particulas.back()
 			_particulas.pop_back()
+			_libres.append(p)
 			continue
 		p.pos += p.vel * delta
 		p.vel *= friccion
 	for i in range(_ondas.size() - 1, -1, -1):
 		_ondas[i].vida -= delta
 		if _ondas[i].vida <= 0.0:
+			_ondas_libres.append(_ondas[i])
 			_ondas.remove_at(i)
 	for i in range(_textos.size() - 1, -1, -1):
 		var t := _textos[i]
