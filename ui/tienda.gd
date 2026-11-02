@@ -57,8 +57,6 @@ var _lbl_estado: Label
 var _lbl_pista: Label
 var _aviso_compra := {"id": "", "texto": ""}
 var _estados: Dictionary = {}
-var _huellas: Dictionary = {}
-var _huellas_pendientes := true
 
 
 func _ready() -> void:
@@ -162,8 +160,6 @@ func zona_explorada() -> Rect2:
 		var e: Dictionary = _estados[id]
 		if e.nivel > 0 or (e.abierta and not e.misterio):
 			zona = zona.merge(PlanoHormiguero.rect(id))
-	for region in HuellasNido.regiones(_huellas):
-		zona = zona.merge(region)
 	return zona.grow(40)
 
 
@@ -507,8 +503,6 @@ func _agregar_descubrimiento(id: String) -> void:
 			if adaptacion.destino == "casa":
 				_lbl_estado.text = tr("Se conserva al fundar: %s") % tr(adaptacion.descripcion)
 				break
-	elif id == "viajes" and not _huellas.get("conjuntos", {}).is_empty():
-		_lbl_estado.text = tr("Los recuerdos del recorrido se conservan al fundar.")
 
 
 func _ficha_mejora(id: String, e: Dictionary) -> void:
@@ -802,23 +796,14 @@ func _ir_al_menu() -> void:
 
 
 func _on_migas_cambiaron(_total: float) -> void:
-	# terminar_run actualiza esta estadística antes de emitir la señal. El
-	# saldo solo no prueba un hallazgo, y comprar no reconstruye los recuerdos.
-	if Juego.estadistica("migas_totales") > 0 and not "provisiones" in _huellas.get("descubrimientos", []):
-		_huellas_pendientes = true
 	_refrescar()
 
 
 func _refrescar_historia() -> void:
-	_huellas_pendientes = true
 	_refrescar()
 
 
 func _refrescar() -> void:
-	if _huellas_pendientes:
-		_huellas = HuellasNido.capturar()
-		_huellas_pendientes = false
-		_corte_tierra.actualizar_huellas(_huellas)
 	_boton_run.text = tr("Explorar") + "  →"
 	_actualizar_revelados()
 	_actualizar_siguiente_paso()

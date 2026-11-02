@@ -197,8 +197,9 @@ Si movés el cursor, se actualizan el área y la selección. Sobre un objeto
 comestible, la orden explícita tiene prioridad sobre el trabajo automático;
 sobre suelo, reparte las obreras entre recursos del círculo. Conserva las
 reservas útiles y reemplaza un objetivo agotado sin exigir soltar el clic.
-Respeta cupos, dietas, peso de la casta y exclusiones de navegación: señalar un
-recurso lleno no roba un puesto. El área coincide con el círculo visible,
+Respeta cupos, dietas, peso de la casta y exclusiones de navegación: señalar una
+miga llena no roba un puesto. **Un mueble o estructura señalado no tiene cupo**:
+mantener el clic sobre el gran objetivo junta a todas las llamadas. El área coincide con el círculo visible,
 también al cambiar el zoom; se muestrea una vez cada 0,2 s y se comparte entre
 las seleccionadas. Al soltar, termina la orden sin dejar rastros anteriores.
 Las que ya transportan una carga terminan su regreso antes de responder.
@@ -340,10 +341,11 @@ y mejoras sí se guardan**. No se borra el progreso de partidas anteriores.
 
 La rama Territorio permite comprar **cinco cupos de entradas secundarias**,
 desde 1.000 migas y con Explorar la casa 6. Conquistar la casa agrega un sexto
-cupo permanente. **Se colocan manualmente en cada expedición** con `N` o el
-botón Entrada: la vista previa indica si el piso elegido está libre, dentro
-del territorio y separado de los accesos existentes. Un intento inválido no
-consume el cupo; los accesos ya colocados no se mueven. El acceso adelantado de
+cupo permanente. **Se colocan una vez** con `N` o el botón Entrada: la vista
+previa indica si el piso elegido está libre, dentro del territorio y separado
+de los accesos existentes. Un intento inválido no consume el cupo. Quedan
+guardadas por destino (`Juego.entradas_colocadas`) y se reponen solas en cada
+expedición; con `N`, un clic sobre una entrada la levanta para moverla. El acceso adelantado de
 proyecto sigue siendo independiente y automático. Máximo: nido, seis manuales
 y uno de proyecto. No se simulan túneles: las hormigas eligen el punto de
 entrega más cercano en línea recta, comprueban su ruta con la cola normal y
@@ -991,7 +993,7 @@ no sirve para estimar duración de campaña ni rendimiento habitual.
 
 `prueba_componentes_proyecto.tscn` cubre las partes físicas, su guardado,
 escondites y migración. `prueba_acceso_proyecto.tscn` comprueba el acceso propio
-y el cap independiente. `prueba_huellas_nido.tscn` separa recuerdos y compras;
+y el cap independiente;
 `prueba_erosion_presupuestada.tscn` verifica turnos, masa, premios y cierre sin
 bloqueo ni tiempo gratuito. Para ver cuerpo/sombra y componentes restaurados,
 corran `revision_componentes.tscn` con el renderer real.

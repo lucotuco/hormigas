@@ -68,13 +68,13 @@ func entregas_necesarias() -> int:
 
 
 func iniciar_colocacion() -> bool:
-	if not is_instance_valid(run) or not run.activa or run.entradas.disponibles() <= 0:
+	if not is_instance_valid(run) or not run.activa or (run.entradas.disponibles() <= 0 and run.entradas._manuales.is_empty()):
 		return false
 	colocando_entrada = true
 	run.feromonas.soltar()
 	_reloj_vista = 0
 	set_process(true)
-	run.hud.mostrar_aviso(tr("Elegí piso libre para la entrada · clic confirma · Esc cancela"))
+	run.hud.mostrar_aviso(tr("Elegí piso libre para la entrada · clic sobre una entrada la levanta · Esc cancela"))
 	return true
 
 
@@ -86,7 +86,14 @@ func cancelar_colocacion() -> void:
 
 
 func colocar(pos: Vector2) -> bool:
-	if not colocando_entrada or not run.entradas.colocar(pos):
+	if not colocando_entrada:
+		return false
+	# Clic sobre una entrada ya puesta: se levanta para moverla. El modo sigue
+	# abierto para elegir su lugar nuevo.
+	if run.entradas.quitar(pos):
+		run.hud.mostrar_aviso(tr("Entrada levantada · elegí su lugar nuevo"))
+		return true
+	if not run.entradas.colocar(pos):
 		return false
 	cancelar_colocacion()
 	run.hud.mostrar_aviso(tr("Entrada colocada"))

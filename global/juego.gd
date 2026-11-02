@@ -86,6 +86,9 @@ var componentes_proyecto_devorados: Dictionary = {}
 var tesoros_proyecto_abiertos: Dictionary = {}
 ## Recuerdos de envoltorios abiertos: sin HP parcial, premio ni mejora extra.
 var hallazgos_casa_abiertos: Dictionary = {}
+## Entradas secundarias que el jugador colocó en cada destino: {destino: [[x, y], ...]}.
+## Se reponen solas al empezar cada expedición mientras haya cupos comprados.
+var entradas_colocadas: Dictionary = {}
 var _guardado_proyectos_pendiente := false
 var hitos: Dictionary = {}
 ## Jalea real ganada en toda la historia: da el bonus pasivo (no baja al gastar).
@@ -264,6 +267,8 @@ const REVELABLES := {
 	"legado": "Jalea real: fundá colonias y mejorá a la reina",
 	"doradas": "Migas doradas: pisalas antes de que desaparezcan",
 	"amenazas": "Amenazas: cada destino tiene la suya; pisalas para salvar a la colonia",
+	"rafaga": "Ráfaga: cada 20 entregas apretá E y la colonia muerde más fuerte",
+	"entradas": "Entradas: apretá N para colocarlas; quedan puestas en las próximas expediciones",
 }
 ## Desbloqueos clave que marcan la progresión; el HUD muestra el próximo.
 const DIETAS := ["mordida_madera", "mordida_resistente", "mordida_muros"]
@@ -671,6 +676,10 @@ func _condicion_revelar(id: String) -> bool:
 			return runs_jugadas >= 3
 		"amenazas":
 			return runs_jugadas >= 6
+		"rafaga":
+			return runs_jugadas >= 3
+		"entradas":
+			return stat("entradas") >= 1
 	return true
 
 
@@ -1158,6 +1167,7 @@ func datos_partida() -> Dictionary:
 		"objetivos_proyecto_devorados": objetivos_proyecto_devorados.duplicate(), "metas_devoradas": metas_devoradas.duplicate(),
 		"componentes_proyecto_devorados": componentes_proyecto_devorados.duplicate(), "tesoros_proyecto_abiertos": tesoros_proyecto_abiertos.duplicate(),
 		"hallazgos_casa_abiertos": hallazgos_casa_abiertos.duplicate(),
+		"entradas_colocadas": entradas_colocadas.duplicate(true),
 		"legado": legado, "coronas": coronas, "fundaciones": fundaciones, "prioridad": prioridad,
 		"descubiertos": descubiertos,
 		"jalea": jalea, "niveles_jalea": niveles_jalea, "migas_colonia": migas_colonia,
@@ -1218,6 +1228,12 @@ func restaurar_partida(datos: Dictionary) -> void:
 		for id in hallazgos_guardados:
 			if id is String and hallazgos_guardados[id] is bool and hallazgos_guardados[id] and not CatalogoHallazgos.por_id(id).is_empty():
 				hallazgos_casa_abiertos[id] = true
+	entradas_colocadas = {}
+	var entradas_guardadas = datos.get("entradas_colocadas", {})
+	if entradas_guardadas is Dictionary:
+		for destino in entradas_guardadas:
+			if Mundos.INFO.has(destino) and entradas_guardadas[destino] is Array:
+				entradas_colocadas[destino] = _puntos_validos(entradas_guardadas[destino])
 	var hitos_guardados = datos.get("hitos", {})
 	if hitos_guardados is Dictionary:
 		for id in hitos_guardados:
@@ -1383,6 +1399,7 @@ func reiniciar_estado() -> void:
 	componentes_proyecto_devorados.clear()
 	tesoros_proyecto_abiertos.clear()
 	hallazgos_casa_abiertos.clear()
+	entradas_colocadas.clear()
 	hitos.clear()
 	legado = 0
 	jalea = 0
@@ -1614,3 +1631,32 @@ func _leer_csv(ruta: String) -> Array[Dictionary]:
 ## Convierte texto a número aceptando coma decimal (Google Sheets en español exporta "1,5").
 func _num(texto: String) -> float:
 	return texto.strip_edges().replace(",", ".").to_float()
+
+
+## Puntos [x, y] finitos de una partida guardada; descarta lo que no sirve.
+func _puntos_validos(lista: Array) -> Array:
+	var validos: Array = []
+	for p in lista:
+		if p is Array and p.size() == 2 and (p[0] is float or p[0] is int) and (p[1] is float or p[1] is int):
+			var v := Vector2(float(p[0]), float(p[1]))
+			if v.is_finite() and validos.size() < EntradasHormiguero.MAX_NORMALES:
+				validos.append([v.x, v.y])
+	return validos
+
+
+func entradas_de(destino: String) -> Array[Vector2]:
+	var puntos: Array[Vector2] = []
+	for p in entradas_colocadas.get(destino, []):
+		puntos.append(Vector2(float(p[0]), float(p[1])))
+	return puntos
+
+
+## Recuerda dónde puso el jugador sus entradas en este destino. No es progreso:
+## no cobra nada ni cambia cupos; sólo evita colocarlas en cada expedición.
+func guardar_entradas(destino: String, puntos: Array[Vector2]) -> void:
+	var lista: Array = []
+	for p in puntos:
+		if lista.size() < EntradasHormiguero.MAX_NORMALES:
+			lista.append([p.x, p.y])
+	entradas_colocadas[destino] = lista
+	_programar_guardado_proyectos()

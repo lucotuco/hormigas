@@ -25,7 +25,7 @@ func _ready() -> void:
 	Sonido.silenciado = true
 	Ajustes.pausar_sin_foco = false
 	await probar_cap_y_retorno()
-	for destino in HuellasNido.CONJUNTOS:
+	for destino in ["restaurante", "museo", "obelisco", "coliseo", "eiffel"]:
 		await probar_plano_real(destino)
 	await probar_persistencia()
 	Juego.reiniciar_estado()
@@ -213,7 +213,6 @@ func probar_persistencia() -> void:
 	regreso.queue_free()
 	await get_tree().process_frame
 	verificar(Juego.fundar_colonia() and Juego.lugar_actual == "casa" and Juego.proyecto_completo(proyecto.id), "fundar vuelve al nido y conserva el proyecto que ganó el acceso")
-	verificar(HuellasNido.capturar().conjuntos.get("restaurante", []) == [0], "el mismo flag histórico conserva también el recuerdo visual del hormiguero")
 
 
 func verificar(ok: bool, detalle: String) -> void:

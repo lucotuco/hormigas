@@ -294,14 +294,6 @@ static func rastro(ci: CanvasItem, kit: String, puntos: PackedVector2Array) -> v
 		resto = t - tramo
 
 
-## Reservas propias del nido, no miniaturas de muebles ni destinos. Se
-## dibujan sólo al cambiar la historia y comparten el CanvasItem de la cámara.
-static func reserva(ci: CanvasItem, r: Rect2, cantidad: int, color := Color("d6ba82")) -> void:
-	for i in mini(cantidad, 8):
-		var p := r.get_center() + Vector2((i % 4 - 1.5) * r.size.x * 0.13, r.size.y * (0.12 + (i / 4 as int) * 0.15))
-		ci.draw_circle(p, minf(4.0, r.size.y * 0.075), color)
-
-
 static func _pintar(ci: CanvasItem, p: Dictionary) -> void:
 	var estilo: Array = ESTILOS[p.capa]
 	var puntos: PackedVector2Array = p.puntos
