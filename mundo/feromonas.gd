@@ -173,6 +173,11 @@ func _trabajo_elegible(c, h: Hormiga) -> bool:
 		return false
 	if h._comidas_sin_ruta.has(c.get_instance_id()) or RolesHormiga.afinidad(h.casta, c) <= 0:
 		return false
+	# Un mueble o una estructura que el jugador señala con el clic no tiene
+	# cupo: mantener el clic sobre el gran objetivo junta a todas las llamadas,
+	# como un enjambre. Una miga sí reparte el exceso entre sus vecinas.
+	if c == objetivo_comida and c is PiezaCasa:
+		return true
 	# Su propia reserva ya está incluida en trabajadoras: no expulsarla por
 	# llenar el último cupo, pero tampoco asignar otras sobre el mismo puesto.
 	return h.comida == c or c.trabajadoras < c.cupos_trabajo()

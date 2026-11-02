@@ -135,15 +135,35 @@ func probar_entradas_manuales() -> void:
 		"el acceso queda en la posición exacta elegida y usa un solo cupo")
 	verificar(not r.poderes.colocando_entrada and r.entradas.elegir(elegida) == elegida,
 		"confirmar sale del modo y habilita el punto como entrega más cercana")
-	verificar(r.iniciar_colocacion_entrada() and not r.colocar_entrada(elegida), "un punto existente no se duplica")
+	verificar(r.iniciar_colocacion_entrada() and r.colocar_entrada(elegida) and not r.entradas.puntos.has(elegida) and r.entradas_disponibles() == 2 and r.poderes.colocando_entrada,
+		"clic sobre una entrada puesta la levanta para moverla y devuelve su cupo")
+	verificar(r.colocar_entrada(elegida) and r.entradas.puntos.has(elegida) and r.entradas_disponibles() == 1, "la entrada levantada se vuelve a colocar")
+	r.iniciar_colocacion_entrada()
 	r.cancelar_colocacion_entrada()
 	verificar(not r.poderes.colocando_entrada and r.entradas_disponibles() == 1, "cancelar no consume el cupo disponible")
 	r.iniciar_colocacion_entrada()
-	verificar(r.colocar_entrada(Vector2(400, -50)) and r.entradas_disponibles() == 0 and not r.iniciar_colocacion_entrada(),
-		"el último cupo se coloca y no permite exceder lo comprado")
+	verificar(r.colocar_entrada(Vector2(400, -50)) and r.entradas_disponibles() == 0, "el último cupo se coloca")
+	verificar(r.iniciar_colocacion_entrada() and not r.colocar_entrada(Vector2(-300, 120)), "sin cupos se puede abrir el modo para mover, pero no agregar otra")
+	r.cancelar_colocacion_entrada()
 	verificar(Juego.migas_run == saldo and r.entradas.puntos.size() == 3, "colocar accesos no crea recursos ni mueve el nido")
+	verificar(Juego.entradas_de(Juego.lugar_actual) == [elegida, Vector2(400, -50)], "las entradas colocadas quedan guardadas para el destino")
 	r.cocina = original
 	r.queue_free()
+	await get_tree().process_frame
+	# La expedición siguiente las repone sola, en el mismo lugar.
+	var guardado := Juego.datos_partida()
+	var otra := crear()
+	Juego.restaurar_partida(guardado)
+	Juego.niveles = {"entradas": 2, "mordida_madera": 1}
+	Juego._cache_stats.clear()
+	var cocina_otra := CocinaControlada.new()
+	otra.add_child(cocina_otra)
+	otra.cocina = cocina_otra
+	otra.radio_actual = 620
+	otra.entradas._reponer_guardadas()
+	verificar(otra.entradas.puntos == [Vector2.ZERO, elegida, Vector2(400, -50)] and otra.entradas_disponibles() == 0, "la expedición siguiente repone las entradas guardadas sin pedir N")
+	verificar(Juego.entradas_de("casa").size() == 2, "las posiciones sobreviven a guardar y cargar la partida")
+	otra.queue_free()
 	await get_tree().process_frame
 
 

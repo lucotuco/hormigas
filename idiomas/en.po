@@ -2647,8 +2647,6 @@ msgstr "A baguette stash"
 msgid "Se conserva al fundar: %s"
 msgstr "Kept when founding: %s"
 
-msgid "Los recuerdos del recorrido se conservan al fundar."
-msgstr "Memories from your journey are kept when founding a colony."
 
 msgid "Partes conservadas: %d/%d · %s"
 msgstr "Parts kept: %d/%d · %s"
@@ -2752,8 +2750,6 @@ msgstr "A beetle! Shoo it away before it picks up the scraps"
 msgid "¡Ráfaga! Mordidas más fuertes por unos segundos"
 msgstr "Burst! Stronger bites for a few seconds"
 
-msgid "Elegí piso libre para la entrada · clic confirma · Esc cancela"
-msgstr "Choose clear floor for the entrance · click to place · Esc to cancel"
 
 msgid "Entrada colocada"
 msgstr "Entrance placed"
@@ -2796,3 +2792,15 @@ msgstr "%s · %d%% consumed · %d working"
 
 msgid "Hormiguero"
 msgstr "Anthill"
+
+msgid "Ráfaga: cada 20 entregas apretá E y la colonia muerde más fuerte"
+msgstr "Burst: every 20 deliveries press E and the colony bites harder"
+
+msgid "Entradas: apretá N para colocarlas; quedan puestas en las próximas expediciones"
+msgstr "Entrances: press N to place them; they stay in place for future expeditions"
+
+msgid "Elegí piso libre para la entrada · clic sobre una entrada la levanta · Esc cancela"
+msgstr "Pick free floor for the entrance · click an entrance to pick it up · Esc cancels"
+
+msgid "Entrada levantada · elegí su lugar nuevo"
+msgstr "Entrance picked up · choose its new spot"

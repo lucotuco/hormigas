@@ -24,6 +24,10 @@ var _radio_busqueda := -1.0
 var _puntos_busqueda := -1
 var _reloj := 0.0
 var _escala_visual := 1.0
+## Las entradas manuales de expediciones anteriores se reponen una sola vez,
+## cuando la run ya está activa y la cocina conoce el piso libre.
+var _repuestas := false
+var _manuales: Array[Vector2] = []
 
 func iniciar(r: Run) -> void:
 	run = r
@@ -32,7 +36,23 @@ func iniciar(r: Run) -> void:
 	actualizar()
 
 func actualizar() -> void:
+	if not _repuestas and is_instance_valid(run) and run.activa:
+		_repuestas = true
+		_reponer_guardadas()
 	_actualizar_proyecto()
+
+
+## Vuelve a poner donde estaban las entradas que el jugador ya colocó. Si una
+## quedó inválida (territorio más chico, menos cupos) se saltea sin moverla.
+func _reponer_guardadas() -> void:
+	for pos in Juego.entradas_de(Juego.lugar_actual):
+		if disponibles() <= 0:
+			break
+		if puede_colocar(pos):
+			puntos.append(pos)
+			_manuales.append(pos)
+			_normales += 1
+	queue_redraw()
 
 
 func disponibles() -> int:
@@ -55,7 +75,31 @@ func colocar(pos: Vector2) -> bool:
 	if not puede_colocar(pos):
 		return false
 	puntos.append(pos)
+	_manuales.append(pos)
 	_normales += 1
+	Juego.guardar_entradas(Juego.lugar_actual, _manuales)
+	queue_redraw()
+	return true
+
+
+## La entrada manual más cercana a pos (dentro de su dibujo), o INF.
+func manual_en(pos: Vector2) -> Vector2:
+	for punto in _manuales:
+		if punto.distance_squared_to(pos) <= MARGEN_ACCESO * MARGEN_ACCESO * 1.5:
+			return punto
+	return Vector2.INF
+
+
+## Levanta una entrada manual para moverla: libera su cupo y la olvida.
+## Las hormigas que volvían hacia ella eligen otra al fallar su ruta.
+func quitar(pos: Vector2) -> bool:
+	var punto := manual_en(pos)
+	if punto == Vector2.INF:
+		return false
+	_manuales.erase(punto)
+	puntos.erase(punto)
+	_normales -= 1
+	Juego.guardar_entradas(Juego.lugar_actual, _manuales)
 	queue_redraw()
 	return true
 

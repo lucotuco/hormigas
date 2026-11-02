@@ -892,7 +892,7 @@ func _actualizar_poderes() -> void:
 	if not is_instance_valid(run.poderes):
 		return
 	var libres := run.entradas_disponibles()
-	_boton_entrada.visible = libres > 0 or run.poderes.colocando_entrada
+	_boton_entrada.visible = libres > 0 or run.poderes.colocando_entrada or not run.entradas._manuales.is_empty()
 	_boton_entrada.disabled = not run.activa
 	_boton_entrada.text = tr("Cancelar [N]") if run.poderes.colocando_entrada else tr("Entrada [N] · %d") % libres
 	_boton_rafaga.disabled = not run.poderes.lista()
@@ -908,7 +908,7 @@ func _actualizar_poderes() -> void:
 ## Al empezar la run, avisa qué mecánicas aparecieron desde la última vez.
 func _anunciar_novedades() -> void:
 	var nuevas := PackedStringArray()
-	for id in ["frenesi", "gran_objetivo", "prioridades", "doradas", "amenazas"]:
+	for id in ["frenesi", "gran_objetivo", "prioridades", "doradas", "amenazas", "rafaga", "entradas"]:
 		if Juego.revelado(id) and Juego.es_nuevo(id):
 			nuevas.append(tr(Juego.REVELABLES[id]))
 			Juego.marcar_visto(id)
