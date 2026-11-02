@@ -56,6 +56,8 @@ var _lbl_costo: Label
 var _lbl_estado: Label
 var _lbl_pista: Label
 var _aviso_compra := {"id": "", "texto": ""}
+## Fundaciones ya mostradas: al volver con una colonia nueva se enfoca la reina.
+var _fundaciones_vistas := -1
 var _estados: Dictionary = {}
 
 
@@ -608,6 +610,28 @@ func _ficha_seccion(id: String, e: Dictionary) -> void:
 			_lbl_detalle.text = tr("Castas, equipo y evoluciones.") if e.abierta else tr("Después de la cuarta expedición.")
 		"legado":
 			_lbl_detalle.text = tr("Mejoras de la reina · %d de jalea.") % Juego.jalea if e.abierta else tr("Se abre con un hito o una corona.")
+			_lbl_estado.text = descripcion_reina()
+
+
+## Cómo está la reina según las colonias fundadas (ver ArteCamara._reina).
+func descripcion_reina() -> String:
+	match clampi(Juego.fundaciones, 0, 6):
+		0: return tr("Reina joven: todavía tiene alas.")
+		1: return tr("Primera colonia fundada: se arrancó las alas.")
+		2, 3: return tr("Reina madura: la cuidan sus obreras.")
+		4, 5: return tr("Reina coronada: brilla de jalea real.")
+	return tr("Reina de reinas: un cortejo completo la rodea.")
+
+
+## Al fundar, la vista viaja a la cámara de la reina y la celebra: así se ve
+## qué cambió en ella (alas, abdomen, cuidadoras, corona, ofrendas).
+func _mostrar_reina_nueva() -> void:
+	_corte_tierra.encuadrar(PlanoHormiguero.rect("legado").grow(150), true, ArbolHormiguero.ZOOM_MAXIMO)
+	_corte_tierra.celebrar("legado")
+	_aviso_compra = {"id": "legado", "texto": descripcion_reina()}
+	get_tree().create_timer(0.45).timeout.connect(func() -> void:
+		if is_instance_valid(_corte_tierra):
+			_corte_tierra.celebrar("legado"))
 
 
 func _nombre_rama(rama: String) -> String:
@@ -816,6 +840,9 @@ func _refrescar() -> void:
 	_estados = _calcular_estados()
 	var tuneles := _calcular_tuneles()
 	_corte_tierra.actualizar(_estados, tuneles[0], tuneles[1])
+	if _fundaciones_vistas >= 0 and Juego.fundaciones > _fundaciones_vistas:
+		_mostrar_reina_nueva()
+	_fundaciones_vistas = Juego.fundaciones
 	var disponibles := disponibles_por_rama()
 	for rama in _leyenda:
 		var boton: Button = _leyenda[rama]
