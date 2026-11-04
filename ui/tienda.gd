@@ -56,6 +56,9 @@ var _lbl_costo: Label
 var _lbl_estado: Label
 var _lbl_pista: Label
 var _aviso_compra := {"id": "", "texto": ""}
+## Al encuadrar la reina, los botones se mueven bajo un mouse quieto. Ese
+## mouse_entered no elige otra cámara: el foco dura hasta una entrada real.
+var _foco_programatico := false
 ## Fundaciones ya mostradas: al volver con una colonia nueva se enfoca la reina.
 var _fundaciones_vistas := -1
 var _estados: Dictionary = {}
@@ -163,6 +166,25 @@ func zona_explorada() -> Rect2:
 		if e.nivel > 0 or (e.abierta and not e.misterio):
 			zona = zona.merge(PlanoHormiguero.rect(id))
 	return zona.grow(40)
+
+
+func _input(evento: InputEvent) -> void:
+	if not _foco_programatico:
+		return
+	if evento is InputEventMouseMotion and not evento.relative.is_zero_approx():
+		_foco_programatico = false
+		# La cámara ya pudo recibir un hover por el movimiento del lienzo.
+		# Después del GUI, leerlo aun si su id no volvió a cambiar con el mouse.
+		_seguir_hover_real.call_deferred()
+	elif evento is InputEventMouseButton and evento.pressed:
+		_foco_programatico = false
+	elif evento.is_action_pressed("ui_cancel"):
+		_foco_programatico = false
+
+
+func _seguir_hover_real() -> void:
+	if not _foco_programatico and _seccion == "hogar":
+		_on_camara_sobrevolada(_corte_tierra.sobrevolada if _corte_tierra.get_global_rect().has_point(get_global_mouse_position()) else "")
 
 
 func _unhandled_input(evento: InputEvent) -> void:
@@ -302,6 +324,7 @@ func _crear_leyenda() -> Control:
 
 
 func _encuadrar_rama(rama: String) -> void:
+	_foco_programatico = false
 	var zona := PlanoHormiguero.rect(SALAS[rama].raiz)
 	for id in _estados:
 		if rama in String(_estados[id].get("rama", "")).split("|"):
@@ -401,7 +424,7 @@ func _crear_ficha() -> PanelContainer:
 
 
 func _on_camara_sobrevolada(id: String) -> void:
-	if _seccion != "hogar":
+	if _seccion != "hogar" or _foco_programatico:
 		return
 	if id == "":
 		if _mejora_seleccionada != "":
@@ -417,6 +440,7 @@ func _on_camara_sobrevolada(id: String) -> void:
 
 
 func _on_camara_pulsada(id: String) -> void:
+	_foco_programatico = false
 	if _seccion != "hogar":
 		# Con una sección abierta, tocar el hormiguero vuelve a él sin comprar.
 		_cambiar_pestana("hogar")
@@ -435,6 +459,7 @@ func _on_camara_pulsada(id: String) -> void:
 
 
 func _on_camara_pulsada_derecha(id: String) -> void:
+	_foco_programatico = false
 	if _seccion == "hogar" and Juego.castas_por_id.has(id) and Juego.revelado("castas"):
 		_cambiar_pestana("castas")
 		_panel_castas._seleccionar(id)
@@ -452,6 +477,7 @@ func _seleccionar_mejora(id: String) -> void:
 
 
 func _cerrar_ficha() -> void:
+	_foco_programatico = false
 	_ficha_mejoras.hide()
 	_ficha_id = ""
 	_mejora_seleccionada = ""
@@ -626,11 +652,19 @@ func descripcion_reina() -> String:
 ## Al fundar, la vista viaja a la cámara de la reina y la celebra: así se ve
 ## qué cambió en ella (alas, abdomen, cuidadoras, corona, ofrendas).
 func _mostrar_reina_nueva() -> void:
+	# La fundación se confirma desde Jalea real. Ese panel tapa el centro:
+	# volver al lienzo antes de enfocar y dejar la explicación junto a la reina.
+	_cambiar_pestana("hogar")
+	_foco_programatico = true
+	_mejora_seleccionada = "legado"
+	_corte_tierra.seleccion = "legado"
+	_aviso_compra = {"id": "legado", "texto": descripcion_reina()}
+	_mostrar_ficha("legado")
 	_corte_tierra.encuadrar(PlanoHormiguero.rect("legado").grow(150), true, ArbolHormiguero.ZOOM_MAXIMO)
 	_corte_tierra.celebrar("legado")
-	_aviso_compra = {"id": "legado", "texto": descripcion_reina()}
 	get_tree().create_timer(0.45).timeout.connect(func() -> void:
-		if is_instance_valid(_corte_tierra):
+		if is_instance_valid(_corte_tierra) and _foco_programatico and _seccion == "hogar" and _mejora_seleccionada == "legado":
+			_mostrar_ficha("legado")
 			_corte_tierra.celebrar("legado"))
 
 
@@ -683,6 +717,9 @@ func _calcular_estados() -> Dictionary:
 				"legado":
 					e.kit = "reina"
 					e.extra = mini(6, Juego.fundaciones)
+					# La etapa deja de crecer en seis, pero otro decreto cambia
+					# el color: también debe invalidar el dibujo retenido.
+					e.decreto = Juego.decreto
 		elif Juego.mejoras_por_id.has(id):
 			var m: Dictionary = Juego.mejoras_por_id[id]
 			e.rama = m.rama

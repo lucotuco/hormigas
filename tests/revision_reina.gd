@@ -37,12 +37,20 @@ func _ready() -> void:
 		await get_tree().process_frame
 	# Volver al hormiguero con una colonia nueva enfoca y celebra a la reina.
 	Juego.reiniciar_estado()
+	Juego.migas_colonia = 100000
+	Juego.completar_destino()
 	var tienda := preload("res://ui/tienda.tscn").instantiate()
 	add_child(tienda)
 	await esperar(3)
-	Juego.fundaciones = 1
-	tienda._refrescar()
-	await esperar(30)
+	tienda._on_camara_pulsada("legado")
+	tienda._panel_legado._pedir_fundacion()
+	var confirmar: VentanaFundar = tienda._panel_legado._confirmar
+	comprobar(is_instance_valid(confirmar) and tienda._panel_seccion.visible, "La fundación empieza en el panel real de Jalea")
+	confirmar.elegir("numerosa")
+	confirmar.fundar()
+	await get_tree().create_timer(0.5).timeout
+	comprobar(Juego.fundaciones == 1 and tienda._seccion == "hogar" and not tienda._panel_seccion.visible and tienda._ficha_mejoras.visible,
+		"Fundar desde Jalea vuelve al hormiguero y deja visible la ficha de la reina")
 	comprobar(tienda._aviso_compra.id == "legado", "Fundar enfoca la cámara de la reina y explica qué cambió")
 	await captura("reina_al_fundar")
 	print("REVISIÓN REINA: %d fallas" % fallas)

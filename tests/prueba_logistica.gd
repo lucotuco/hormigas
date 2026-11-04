@@ -96,6 +96,81 @@ func probar_entradas() -> void:
 	h.position += Vector2(8, 0)
 	h._pensar()
 	verificar(h.objetivo == punto, "la IA conserva su puesto durante el acercamiento al mismo recurso")
+	# Levantar el acceso NO modifica el piso: la ruta vieja seguiría siendo
+	# válida y permitía descargar donde ya no había agujero.
+	var regreso := r.colonia._nacer("cargadora", entrada + Vector2(50, 0))
+	regreso.carga = 13
+	regreso._carga_origen.assign([0.0, 5.0, 8.0])
+	regreso._material_carga = 3
+	regreso.comida = c
+	regreso.bocados = 2
+	regreso._retazos.append(Rect2(1, 2, 3, 4))
+	regreso._tamanos_retazos.append(Vector2(3, 4))
+	regreso._origenes_retazos.append(c.position)
+	regreso._angulos_retazos.append(0.1)
+	regreso._tiempos_retazos.append(0.0)
+	regreso._volver()
+	verificar(regreso.objetivo == entrada, "el caso de mover empieza con una cargadora regresando al acceso que se levantará")
+	regreso._ruta = PackedVector2Array([entrada])
+	regreso._meta_ruta = entrada
+	regreso._pedido_ruta = entrada
+	regreso._indice_ruta = 0
+	regreso._espera_ruta = 0.7
+	# Un pedido real ya en espera debe conservar su ticket al cambiar la meta.
+	r.cocina._cuadro_rutas = Engine.get_process_frames()
+	r.cocina._pedidos_cuadro = r.cocina.limite_rutas_por_cuadro
+	verificar(not r.cocina.admitir_ruta(regreso) and r.cocina._en_cola.has(regreso.get_instance_id()),
+		"la cargadora entra realmente en la cola mientras está agotado el presupuesto")
+	var ticket: int = r.cocina._en_cola[regreso.get_instance_id()]
+	var otra_entrada := r.entradas.puntos[2]
+	var otro := r.colonia._nacer("obrera", otra_entrada + Vector2(10, 0))
+	otro.carga = 3
+	otro._volver()
+	otro._ruta = PackedVector2Array([otra_entrada])
+	otro._meta_ruta = otra_entrada
+	otro._pedido_ruta = otra_entrada
+	var consultas := r.cocina.consultas_ruta
+	var ingresos := Juego.migas_run
+	verificar(r.entradas.quitar(entrada), "se levanta realmente el acceso aunque su piso y la ruta sigan libres")
+	verificar(regreso.objetivo != entrada and r.entradas.puntos.has(regreso.objetivo)
+		and regreso._ruta.is_empty() and regreso._meta_ruta == Vector2.INF
+		and regreso._pedido_ruta == Vector2.INF and regreso._espera_ruta == 0,
+		"levantar reasigna el retorno y descarta el recorrido viejo antes de otro movimiento")
+	var nueva_entrada := regreso.objetivo
+	verificar(regreso.carga == 13 and regreso._carga_origen == [0.0, 5.0, 8.0]
+		and regreso.bocados == 2 and regreso._recuerdo == c
+		and regreso._material_carga == 3 and regreso._retazos == [Rect2(1, 2, 3, 4)]
+		and regreso._tamanos_retazos == [Vector2(3, 4)] and regreso._origenes_retazos == [c.position]
+		and regreso._angulos_retazos == [0.1] and regreso._tiempos_retazos == [0.0],
+		"reasignar conserva toda la carga, su desglose, el recuerdo y las muestras físicas")
+	verificar(otro.objetivo == otra_entrada and otro._ruta == PackedVector2Array([otra_entrada])
+		and otro.carga == 3 and h.objetivo == punto,
+		"no se alteran retornos a otros accesos ni hormigas que están recolectando")
+	verificar(r.cocina.consultas_ruta == consultas and Juego.migas_run == ingresos,
+		"quitar no ejecuta A* en masa ni entrega recursos a distancia")
+	regreso.position = entrada
+	# Agotar este cuadro obliga a esperar en el hueco eliminado. No puede
+	# descargar ahí ni reutilizar la ruta mientras espera el presupuesto normal.
+	r.cocina._cuadro_rutas = Engine.get_process_frames()
+	r.cocina._pedidos_cuadro = r.cocina.limite_rutas_por_cuadro
+	regreso._caminar(0)
+	verificar(regreso.carga == 13 and Juego.migas_run == ingresos and regreso._ruta.is_empty(),
+		"esperar turno sobre el agujero eliminado no permite una descarga fantasma")
+	verificar(r.cocina._en_cola.get(regreso.get_instance_id(), -1) == ticket,
+		"cambiar la meta no duplica ni manda al final el ticket real que ya esperaba")
+	regreso._velocidad = 1600 # Acelera sólo el viaje de este fixture.
+	var max_rutas := 0
+	for i in 900:
+		await get_tree().process_frame
+		regreso._process(1.0 / 60)
+		max_rutas = maxi(max_rutas, r.cocina._pedidos_cuadro)
+		if regreso.carga == 0:
+			break
+	verificar(regreso.carga == 0 and is_equal_approx(Juego.migas_run - ingresos, 13)
+		and r.entradas.puntos.has(nueva_entrada)
+		and regreso.position.distance_to(nueva_entrada) <= Hormiguero.RADIO_ENTRADA
+		and max_rutas <= r.cocina.limite_rutas_por_cuadro,
+		"la carga llega exactamente una vez a un acceso vigente usando la cola de rutas existente")
 	r.queue_free()
 	await get_tree().process_frame
 

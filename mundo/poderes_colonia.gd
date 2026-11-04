@@ -72,6 +72,7 @@ func iniciar_colocacion() -> bool:
 		return false
 	colocando_entrada = true
 	run.feromonas.soltar()
+	run.entradas.mostrar_guardadas(true)
 	_reloj_vista = 0
 	set_process(true)
 	run.hud.mostrar_aviso(tr("Elegí piso libre para la entrada · clic sobre una entrada la levanta · Esc cancela"))
@@ -81,6 +82,8 @@ func iniciar_colocacion() -> bool:
 func cancelar_colocacion() -> void:
 	colocando_entrada = false
 	_posicion_vista = Vector2.INF
+	if is_instance_valid(run) and is_instance_valid(run.entradas):
+		run.entradas.cancelar_reubicacion()
 	set_process(false)
 	queue_redraw()
 
@@ -147,7 +150,7 @@ func _process(delta: float) -> void:
 		return
 	_reloj_vista = 1.0 / 30.0
 	_posicion_vista = get_global_mouse_position()
-	_valida_vista = run.entradas.puede_colocar(_posicion_vista)
+	_valida_vista = run.entradas.puede_levantar(_posicion_vista) or run.entradas.puede_colocar(_posicion_vista)
 	queue_redraw()
 
 

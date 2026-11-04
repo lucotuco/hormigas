@@ -150,6 +150,7 @@ func _ready() -> void:
 	add_child(poderes)
 	poderes.iniciar(self)
 	activa = true
+	entradas.actualizar()
 	recorrido.queue_redraw()
 	# Un checkpoint entre el último objeto y su celebración puede contener
 	# todo el trabajo hecho sin la corona. Resolverlo no repone ni paga material.

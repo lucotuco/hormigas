@@ -88,6 +88,13 @@ func cantidad() -> int:
 	return hormigas.size()
 
 
+## Sólo al levantar un acceso: no se consulta la lista por hormiga/cuadro.
+## Reasignar descarta el recorrido viejo, pero A* conserva su cola/presupuesto.
+func reasignar_entrada_quitada(punto: Vector2) -> void:
+	for h in hormigas:
+		h.reasignar_entrada_quitada(punto)
+
+
 func _process(delta: float) -> void:
 	_reloj_visibilidad -= delta
 	if _reloj_visibilidad <= 0:

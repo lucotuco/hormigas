@@ -591,6 +591,23 @@ func _volver() -> void:
 	queue_redraw()
 
 
+## Quitar el agujero no bloquea el piso ni hace fallar la ruta anterior.
+## Cambia únicamente los retornos hacia ese acceso, conservando su carga,
+## recuerdo y muestras. La ruta nueva se pide en el turno normal de caminar.
+func reasignar_entrada_quitada(punto: Vector2) -> void:
+	if estado != Estado.VOLVIENDO or objetivo != punto:
+		return
+	_entradas_fallidas.erase(punto)
+	objetivo = run.entradas.elegir(global_position, _entradas_fallidas)
+	_meta_ruta = Vector2.INF
+	_pedido_ruta = Vector2.INF
+	_ruta = PackedVector2Array()
+	_indice_ruta = 0
+	_ruta_fallida = false
+	_espera_ruta = 0
+	_esperando_ruta = false
+
+
 func _descargar() -> void:
 	if carga > 0:
 		_tiempo_descarga = _reloj_vida

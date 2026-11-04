@@ -345,12 +345,18 @@ cupo permanente. **Se colocan una vez** con `N` o el botón Entrada: la vista
 previa indica si el piso elegido está libre, dentro del territorio y separado
 de los accesos existentes. Un intento inválido no consume el cupo. Quedan
 guardadas por destino (`Juego.entradas_colocadas`) y se reponen solas en cada
-expedición; con `N`, un clic sobre una entrada la levanta para moverla. El acceso adelantado de
+expedición; con `N`, un clic sobre una entrada la levanta para moverla. Las
+posiciones que no se pueden activar por cupos, territorio u obstáculos se
+conservan; mover una no borra las demás ni cambia su orden. En modo N, las
+guardadas inactivas aparecen tenues y pueden moverse si hay un cupo disponible.
+El acceso adelantado de
 proyecto sigue siendo independiente y automático. Máximo: nido, seis manuales
 y uno de proyecto. No se simulan túneles: las hormigas eligen el punto de
 entrega más cercano en línea recta, comprueban su ruta con la cola normal y
 prueban otro si está aislado. La selección sólo sucede al iniciar el regreso
-o fallar una ruta; colocar otro acceso no cambia un retorno en curso.
+o fallar una ruta; colocar otro acceso no cambia un retorno en curso. Levantar
+uno sí reasigna sus retornos a una entrada vigente, sin perder carga ni ejecutar
+sus rutas fuera de la cola normal.
 
 Al terminar hay **hasta 6 segundos de retirada**: sólo las hormigas cargadas
 regresan. **El silbato corta la extracción inmediatamente**: cancela crédito

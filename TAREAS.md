@@ -1,5 +1,15 @@
 # Tareas
 
+## Entradas conservadas y fundación visible — 2/11
+
+- [x] Separar layout guardado y accesos activos: mover/quitar una posición no borra las históricas sin cupo, territorio o piso libre.
+- [x] Mantener el índice de una entrada movida; cubrir fundación real de seis cupos a uno, guardado JSON y expedición siguiente.
+- [x] Permitir editar posiciones inactivas desde N cuando existe un cupo real; sin accesos gratis ni sobrescritura silenciosa del séptimo slot.
+- [x] Reponer manuales antes del premio de proyecto y reintentar pendientes sólo cuando cambia territorio, geometría o cupos.
+- [x] Reasignar únicamente los retornos al acceso quitado, conservando carga, origen, retazos y ticket; A* sigue usando su cola normal.
+- [x] Volver al hormiguero al fundar desde Jalea real, mostrar la ficha de la reina e invalidar su color cuando cambia el decreto.
+- [x] Cerrar regresión completa: 57 suites lógicas sin fallas; revisiones gráficas de reina, hormiguero y controles (26 verificaciones), incluido cursor quieto durante el encuadre de la reina.
+
 ## Trabajo activo y satisfacción — 2/11
 
 - [x] Quitar dioramas de canastos/muebles/turismo del hormiguero y encabezados de relleno; conservar cámaras, conexiones e historial.

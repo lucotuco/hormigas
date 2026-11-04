@@ -1407,3 +1407,28 @@ los definía vacíos activó calibración y se descartó, no se usa en estos nú
 Estos recorridos comprueban ingreso, transporte y avance reales en dos
 configuraciones; no prueban satisfacción ni estiman horas de una persona.
 Los FPS sólo se midieron con renderer real en los perfiles anteriores.
+
+### Entradas conservadas y fundación visible — 2/11/2026
+
+El layout completo de entradas se conserva aunque una nueva colonia tenga
+menos cupos. Las posiciones pendientes sólo se reconsideran cuando cambia
+la geometría, el territorio o la capacidad, dentro de la actualización existente
+de 2 Hz. No se agrega un recorrido del mapa por cuadro.
+
+Al levantar una entrada, un único recorrido de la colonia reasigna sólo sus
+retornos. Conserva carga, origen y retazos; invalida la ruta vieja, pero no
+ejecuta A* inmediatamente ni duplica un ticket ya en espera. La ruta nueva
+usa la misma cola y el límite existente de seis consultas por cuadro.
+
+Son correcciones de estado y navegación, no una nueva medición de FPS ni
+un cambio de economía. Las pruebas específicas cubren seis entradas guardadas
+con un cupo después de fundar, la siguiente expedición y una entrega única
+después de retirar el acceso que tenía una ruta ya en cola.
+
+Verificación: 57 suites lógicas sin fallas, errores de script ni advertencias.
+La nueva suite de fundación tiene 32 verificaciones e incluye la transición
+de seis a siete fundaciones, hover sintético y cancelación real del foco.
+Revisiones con renderer real: reina e interfaz sin fallas; controles de poderes,
+26 verificaciones a 1920×1080 y 1000×620. Logs de cierre
+`arreglos_final_*.log` en `.godot/qa/`; controles en
+`correcciones_revision_input_poderes.log`. El guardado personal no se escribe.

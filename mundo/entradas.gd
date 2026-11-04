@@ -24,10 +24,15 @@ var _radio_busqueda := -1.0
 var _puntos_busqueda := -1
 var _reloj := 0.0
 var _escala_visual := 1.0
-## Las entradas manuales de expediciones anteriores se reponen una sola vez,
-## cuando la run ya está activa y la cocina conoce el piso libre.
+## Reintenta las posiciones pendientes sólo al cambiar territorio, cupos o
+## geometría. El layout completo vive en Juego; _manuales sólo son las activas.
 var _repuestas := false
 var _manuales: Array[Vector2] = []
+var _version_repuesta := -1
+var _radio_repuesto := -1.0
+var _cupos_repuestos := -1
+var _indice_reubicacion := -1
+var _mostrar_guardadas := false
 
 func iniciar(r: Run) -> void:
 	run = r
@@ -36,23 +41,56 @@ func iniciar(r: Run) -> void:
 	actualizar()
 
 func actualizar() -> void:
-	if not _repuestas and is_instance_valid(run) and run.activa:
-		_repuestas = true
-		_reponer_guardadas()
+	if not is_instance_valid(run) or not run.activa:
+		return
+	# Primero se recupera lo elegido por el jugador. El premio de proyecto
+	# busca un desvío si su ancla coincide con una de esas entradas guardadas.
+	_reponer_guardadas()
 	_actualizar_proyecto()
 
 
 ## Vuelve a poner donde estaban las entradas que el jugador ya colocó. Si una
 ## quedó inválida (territorio más chico, menos cupos) se saltea sin moverla.
 func _reponer_guardadas() -> void:
+	var cupos := clampi(int(Juego.stat("entradas")), 0, MAX_NORMALES)
+	if _repuestas and _version_repuesta == run.cocina.version and is_equal_approx(_radio_repuesto, run.radio_actual) and _cupos_repuestos == cupos:
+		return
+	_repuestas = true
+	_version_repuesta = run.cocina.version
+	_radio_repuesto = run.radio_actual
+	_cupos_repuestos = cupos
+	var agregadas := false
 	for pos in Juego.entradas_de(Juego.lugar_actual):
-		if disponibles() <= 0:
+		# Levantar una entrada reserva su cupo hasta colocarla o cancelar.
+		# No activar otra histórica en medio de ese movimiento explícito.
+		if disponibles() <= int(_indice_reubicacion >= 0):
 			break
+		if _manuales.has(pos):
+			continue
 		if puede_colocar(pos):
 			puntos.append(pos)
 			_manuales.append(pos)
 			_normales += 1
-	queue_redraw()
+			agregadas = true
+	if agregadas:
+		queue_redraw()
+
+
+func hay_guardadas() -> bool:
+	return not Juego.entradas_colocadas.get(Juego.lugar_actual, []).is_empty()
+
+
+func mostrar_guardadas(mostrar: bool) -> void:
+	if _mostrar_guardadas != mostrar:
+		_mostrar_guardadas = mostrar
+		queue_redraw()
+
+
+func cancelar_reubicacion() -> void:
+	if _indice_reubicacion >= 0:
+		_indice_reubicacion = -1
+		_repuestas = false
+	mostrar_guardadas(false)
 
 
 func disponibles() -> int:
@@ -61,6 +99,11 @@ func disponibles() -> int:
 
 func puede_colocar(pos: Vector2) -> bool:
 	if not is_instance_valid(run) or not run.activa or run.terminada or disponibles() <= 0 or not pos.is_finite():
+		return false
+	var guardadas := Juego.entradas_de(Juego.lugar_actual)
+	# Una histórica inactiva también reserva su lugar entre las seis. Para
+	# cambiarla hay que levantar ESA posición, nunca sobrescribir otra oculta.
+	if guardadas.size() >= MAX_NORMALES and not guardadas.has(pos):
 		return false
 	if pos.length() + MARGEN_ACCESO > run.radio_actual or not run.cocina.libre(pos, MARGEN_ACCESO):
 		return false
@@ -77,29 +120,53 @@ func colocar(pos: Vector2) -> bool:
 	puntos.append(pos)
 	_manuales.append(pos)
 	_normales += 1
-	Juego.guardar_entradas(Juego.lugar_actual, _manuales)
+	var guardadas := Juego.entradas_de(Juego.lugar_actual)
+	if not guardadas.has(pos):
+		# Conservar su prioridad al moverla: una entrada primera no termina
+		# detrás de cinco históricas que la colonia todavía no puede activar.
+		if _indice_reubicacion >= 0:
+			guardadas.insert(mini(_indice_reubicacion, guardadas.size()), pos)
+		else:
+			guardadas.append(pos)
+		Juego.guardar_entradas(Juego.lugar_actual, guardadas)
+	_indice_reubicacion = -1
 	queue_redraw()
 	return true
 
 
-## La entrada manual más cercana a pos (dentro de su dibujo), o INF.
+## Incluye las históricas inactivas, visibles tenues durante el modo N: así
+## se puede liberar/mover un slot aunque ninguna entrada haya podido reponerse.
 func manual_en(pos: Vector2) -> Vector2:
-	for punto in _manuales:
+	for punto in Juego.entradas_de(Juego.lugar_actual):
 		if punto.distance_squared_to(pos) <= MARGEN_ACCESO * MARGEN_ACCESO * 1.5:
 			return punto
 	return Vector2.INF
 
 
+func puede_levantar(pos: Vector2) -> bool:
+	var punto := manual_en(pos)
+	# Una activa devuelve su cupo. Una histórica inactiva no lo devuelve:
+	# no ofrecer moverla si la colonia no podría colocar su reemplazo.
+	return punto != Vector2.INF and (_manuales.has(punto) or disponibles() > int(_indice_reubicacion >= 0))
+
+
 ## Levanta una entrada manual para moverla: libera su cupo y la olvida.
-## Las hormigas que volvían hacia ella eligen otra al fallar su ruta.
+## Las hormigas que volvían hacia una activa reciben un nuevo destino real.
 func quitar(pos: Vector2) -> bool:
 	var punto := manual_en(pos)
-	if punto == Vector2.INF:
+	if punto == Vector2.INF or not puede_levantar(pos):
 		return false
-	_manuales.erase(punto)
-	puntos.erase(punto)
-	_normales -= 1
-	Juego.guardar_entradas(Juego.lugar_actual, _manuales)
+	var guardadas := Juego.entradas_de(Juego.lugar_actual)
+	_indice_reubicacion = guardadas.find(punto)
+	guardadas.remove_at(_indice_reubicacion)
+	Juego.guardar_entradas(Juego.lugar_actual, guardadas)
+	if _manuales.has(punto):
+		_manuales.erase(punto)
+		puntos.erase(punto)
+		_normales -= 1
+		# Primero deja de ser un destino válido; después se reasignan sólo
+		# sus retornos, sin ejecutar A* fuera de la cola presupuestada normal.
+		run.colonia.reasignar_entrada_quitada(punto)
 	queue_redraw()
 	return true
 
@@ -186,3 +253,11 @@ func _draw() -> void:
 		draw_arc(pos, 42, 0, TAU, 20, Color("9bb879"), 4)
 		draw_string(ThemeDB.fallback_font, pos + Vector2(-42, -52), tr("ENTRADA"), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("f3e4b9"))
 	draw_set_transform(Vector2.ZERO)
+	if _mostrar_guardadas:
+		for punto in Juego.entradas_de(Juego.lugar_actual):
+			if _manuales.has(punto):
+				continue
+			# Se distinguen de las bocas activas y sólo aparecen al editar.
+			# Conservan su radio de selección real, aunque estén fuera del alcance.
+			draw_circle(punto, MARGEN_ACCESO, Color(Color("ceb477"), 0.09))
+			draw_arc(punto, MARGEN_ACCESO, 0, TAU, 24, Color(Color("ceb477"), 0.55), 2.0)

@@ -1,14 +1,25 @@
 extends Node
 ## El silbato corta extracción; entradas manuales y Ráfaga no crean recursos.
 const RUN := preload("res://mundo/run.tscn")
+const HISTORICAS: Array[Vector2] = [Vector2(250, 25), Vector2(400, -50),
+	Vector2(-250, 25), Vector2(-400, -50), Vector2(250, 300), Vector2(-250, 300)]
 var total := 0
 var fallas := 0
 
 class CocinaControlada extends Cocina:
+	var limite_x := 500.0
+	var bloqueadas: Array[Rect2] = []
+	var consultas_libre := 0
 	func _ready() -> void:
 		pass
 	func libre(pos: Vector2, margen := 0.0, _volando := false) -> bool:
-		return pos.is_finite() and pos.x < 500 and margen == EntradasHormiguero.MARGEN_ACCESO
+		consultas_libre += 1
+		if not pos.is_finite() or pos.x >= limite_x or margen != EntradasHormiguero.MARGEN_ACCESO:
+			return false
+		for rect in bloqueadas:
+			if rect.grow(margen).has_point(pos):
+				return false
+		return true
 
 
 func _ready() -> void:
@@ -19,6 +30,10 @@ func _ready() -> void:
 	await probar_corte()
 	await probar_rafaga()
 	await probar_entradas_manuales()
+	await probar_layout_tras_fundar()
+	await probar_guardadas_pendientes()
+	await probar_slots_reservados()
+	await probar_orden_acceso_proyecto()
 	Juego.reiniciar_estado()
 	print("Corte y poderes de colonia: %d verificaciones; %d fallas." % [total, fallas])
 	get_tree().quit(1 if fallas else 0)
@@ -160,6 +175,7 @@ func probar_entradas_manuales() -> void:
 	otra.add_child(cocina_otra)
 	otra.cocina = cocina_otra
 	otra.radio_actual = 620
+	otra.entradas._repuestas = false # El fixture cargó el layout después de crear la run.
 	otra.entradas._reponer_guardadas()
 	verificar(otra.entradas.puntos == [Vector2.ZERO, elegida, Vector2(400, -50)] and otra.entradas_disponibles() == 0, "la expedición siguiente repone las entradas guardadas sin pedir N")
 	verificar(Juego.entradas_de("casa").size() == 2, "las posiciones sobreviven a guardar y cargar la partida")
@@ -172,3 +188,203 @@ func verificar(ok: bool, detalle: String) -> void:
 	if not ok:
 		fallas += 1
 	print(("OK: " if ok else "FALLA: ") + detalle)
+
+
+func instalar_cocina(r: Run) -> CocinaControlada:
+	var cocina := CocinaControlada.new()
+	r.add_child(cocina)
+	r.cocina = cocina
+	r.entradas._repuestas = false # La geometría controlada reemplaza la cocina nativa del fixture.
+	return cocina
+
+
+func renovar_entradas(r: Run) -> void:
+	# En estos casos se reemplazó la cocina DESPUÉS del inicio real. Usar un
+	# nodo nuevo aísla el layout de cualquier selección hecha con el plano nativo.
+	r.entradas.queue_free()
+	r.entradas = EntradasHormiguero.new()
+	r.add_child(r.entradas)
+	r.entradas.iniciar(r)
+
+
+func probar_layout_tras_fundar() -> void:
+	var r := crear()
+	instalar_cocina(r)
+	Juego.lugares_completados["casa"] = true
+	Juego.niveles.entradas = 5
+	Juego.coronas = 1
+	Juego._cache_stats.clear()
+	Juego.guardar_entradas("casa", HISTORICAS)
+	r.entradas.actualizar()
+	verificar(r.entradas._normales == 6 and Juego.entradas_de("casa") == HISTORICAS,
+		"el layout de seis posiciones se activa con cinco niveles y la adaptación real de Casa")
+	verificar(Juego.fundar_colonia() and Juego.stat("entradas") == 1 and Juego.entradas_de("casa") == HISTORICAS,
+		"fundar reduce seis cupos a uno sin borrar las seis posiciones históricas")
+	r.queue_free()
+	await get_tree().process_frame
+	var nueva: Run = RUN.instantiate()
+	add_child(nueva)
+	nueva.process_mode = Node.PROCESS_MODE_DISABLED
+	instalar_cocina(nueva)
+	renovar_entradas(nueva)
+	verificar(nueva.entradas._manuales == [HISTORICAS[0]] and nueva.entradas._normales == 1 and Juego.entradas_de("casa") == HISTORICAS,
+		"la nueva colonia repone sólo el primer cupo y conserva las otras cinco posiciones no activas")
+	var reemplazo := Vector2(0, 300)
+	verificar(nueva.iniciar_colocacion_entrada() and nueva.colocar_entrada(HISTORICAS[0]),
+		"una entrada activa se puede levantar aunque ya use el único cupo de la colonia")
+	nueva.entradas.actualizar()
+	verificar(nueva.entradas._normales == 0 and nueva.entradas.puntos == [Vector2.ZERO],
+		"el cupo levantado se reserva para el movimiento, sin activar otra histórica entre clics")
+	verificar(nueva.colocar_entrada(reemplazo) and nueva.entradas._manuales == [reemplazo],
+		"la entrada levantada se coloca en su destino nuevo sin gastar otro cupo")
+	var esperado := HISTORICAS.duplicate()
+	esperado[0] = reemplazo
+	verificar(Juego.entradas_de("casa") == esperado,
+		"mover la primera modifica sólo esa posición y conserva su prioridad delante de las otras cinco")
+	var guardado: Dictionary = JSON.parse_string(JSON.stringify(Juego.datos_partida()))
+	nueva.queue_free()
+	await get_tree().process_frame
+	Juego.restaurar_partida(guardado)
+	var siguiente: Run = RUN.instantiate()
+	add_child(siguiente)
+	siguiente.process_mode = Node.PROCESS_MODE_DISABLED
+	instalar_cocina(siguiente)
+	renovar_entradas(siguiente)
+	verificar(siguiente.entradas._manuales == [reemplazo] and Juego.entradas_de("casa") == esperado,
+		"guardar/cargar y otra expedición de un cupo recuperan la primera movida sin perder las cinco reservadas")
+	siguiente.queue_free()
+	await get_tree().process_frame
+
+
+func probar_guardadas_pendientes() -> void:
+	var r := crear()
+	var cocina := instalar_cocina(r)
+	var a := Vector2(250, 25)
+	var b := Vector2(400, -50)
+	var c := Vector2(-800, 0)
+	var historicas: Array[Vector2] = [a, b, c]
+	cocina.bloqueadas.append(Rect2(b - Vector2.ONE * 20, Vector2.ONE * 40))
+	Juego.guardar_entradas("casa", historicas)
+	r.entradas.actualizar()
+	verificar(r.entradas._manuales == [a] and Juego.entradas_de("casa") == historicas,
+		"territorio y obstáculos impiden activar dos posiciones sin borrarlas del layout")
+	var consultas := cocina.consultas_libre
+	for i in 100:
+		r.entradas.actualizar()
+	verificar(cocina.consultas_libre == consultas,
+		"las históricas pendientes no repiten consultas de piso mientras no cambien geometría, radio o cupos")
+	var extra := Vector2(0, 300)
+	verificar(r.entradas.colocar(extra) and Juego.entradas_de("casa") == [a, b, c, extra],
+		"agregar con un slot libre conserva también las históricas bloqueadas y remotas")
+	verificar(r.entradas.quitar(extra) and Juego.entradas_de("casa") == historicas,
+		"quitar esa entrada borra sólo su propia posición, no el subconjunto que faltaba restaurar")
+	r.entradas.cancelar_reubicacion()
+	r.radio_actual = 1000
+	r.entradas.actualizar()
+	verificar(r.entradas._manuales == [a, c] and Juego.entradas_de("casa") == historicas,
+		"ampliar territorio repone la histórica ahora accesible sin pedir otro clic ni cambiar el layout")
+	cocina.bloqueadas.clear()
+	cocina.version += 1
+	Juego.niveles.entradas = 3
+	Juego._cache_stats.clear()
+	r.entradas.actualizar()
+	verificar(r.entradas._normales == 3 and r.entradas.puntos.has(b) and Juego.entradas_de("casa") == historicas,
+		"recuperar cupos y liberar geometría repone también la posición antes bloqueada")
+	consultas = cocina.consultas_libre
+	for i in 100:
+		r.entradas.actualizar()
+	verificar(cocina.consultas_libre == consultas and r.entradas.puntos.size() == 4,
+		"las restauraciones completas quedan cacheadas, sin duplicados ni búsquedas repetidas")
+	r.queue_free()
+	await get_tree().process_frame
+
+
+func probar_slots_reservados() -> void:
+	for cantidad in range(7):
+		var r := crear()
+		var cocina := instalar_cocina(r)
+		Juego.lugares_completados["casa"] = true
+		Juego.niveles.entradas = 5
+		Juego._cache_stats.clear()
+		var historicas := HISTORICAS.slice(0, cantidad)
+		for punto in historicas:
+			cocina.bloqueadas.append(Rect2(punto - Vector2.ONE * 20, Vector2.ONE * 40))
+		Juego.guardar_entradas("casa", historicas)
+		r.entradas.actualizar()
+		verificar(r.entradas._normales == 0 and r.entradas.puntos == [Vector2.ZERO],
+			"%d slots guardados pueden quedar inactivos sin convertirse en cupos usados" % cantidad)
+		var extra := Vector2(0, 300)
+		var colocada := r.entradas.colocar(extra)
+		var esperado := historicas.duplicate()
+		if cantidad < EntradasHormiguero.MAX_NORMALES:
+			esperado.append(extra)
+		verificar(colocada == (cantidad < EntradasHormiguero.MAX_NORMALES) and Juego.entradas_de("casa") == esperado,
+			"%d slots reservados: agregar respeta el máximo de seis sin sobrescribir ninguna histórica" % cantidad)
+		if cantidad == EntradasHormiguero.MAX_NORMALES:
+			var saldo := Juego.migas_run
+			verificar(r.iniciar_colocacion_entrada() and r.entradas._mostrar_guardadas and r.entradas.puede_levantar(historicas[0]),
+				"con seis reservadas y cero activas, N muestra y permite levantar la histórica elegida")
+			verificar(r.colocar_entrada(historicas[0]) and r.entradas._normales == 0 and r.entradas.puntos == [Vector2.ZERO],
+				"levantar una inactiva libera su slot guardado, no resta un cupo activo inexistente")
+			esperado = historicas.duplicate()
+			esperado[0] = extra
+			verificar(r.colocar_entrada(extra) and Juego.entradas_de("casa") == esperado and r.entradas._normales == 1 and not r.entradas._mostrar_guardadas,
+				"mover esa histórica reutiliza exactamente su slot e índice y cierra la edición tenue")
+			Juego.niveles.entradas = 1
+			Juego.lugares_completados.clear()
+			Juego._cache_stats.clear()
+			verificar(not r.entradas.puede_levantar(historicas[1]) and not r.entradas.quitar(historicas[1]) and Juego.entradas_de("casa") == esperado,
+				"con el único cupo ocupado, una histórica inactiva no se ofrece para un movimiento imposible")
+			verificar(r.entradas.puede_levantar(extra) and Juego.migas_run == saldo,
+				"la activa sí puede levantarse porque devuelve su cupo real, sin crear ingresos")
+			r.entradas.quitar(extra)
+			r.cancelar_colocacion_entrada()
+			var restantes := historicas.slice(1)
+			verificar(r.entradas._indice_reubicacion == -1 and Juego.entradas_de("casa") == restantes,
+				"cancelar limpia el índice del movimiento y conserva todas las demás posiciones guardadas")
+			Juego.niveles.entradas = 0
+			Juego._cache_stats.clear()
+			r.hud._actualizar_poderes()
+			verificar(not r.iniciar_colocacion_entrada() and r.hud._boton_entrada.disabled and not r.entradas.puede_levantar(historicas[1]),
+				"sin cupos reales ni entradas activas, N y la vista previa no ofrecen mover una histórica gratis")
+		r.queue_free()
+		await get_tree().process_frame
+
+
+func probar_orden_acceso_proyecto() -> void:
+	var r := crear()
+	var cocina := instalar_cocina(r)
+	cocina.limite_x = 100000
+	Juego.lugar_actual = "restaurante"
+	Juego.niveles.entradas = 1
+	Juego._cache_stats.clear()
+	var proyecto: Dictionary
+	for candidato in ProyectosCampana.del_destino("restaurante"):
+		if int(candidato.entrada) == 1:
+			proyecto = candidato
+			break
+	for objetivo in proyecto.objetivos:
+		Juego.registrar_objetivo_proyecto(objetivo.id)
+	var ultimo: Dictionary = proyecto.objetivos.back()
+	var ancla := Vector2.INF
+	for mueble: Dictionary in Mundos.plano("restaurante").muebles:
+		if mueble.tipo == ultimo.tipo and mueble.rect.position.distance_squared_to(ultimo.pos) < 0.01:
+			ancla = mueble.rect.get_center()
+			break
+	Juego.guardar_entradas("restaurante", [ancla])
+	r.entradas.queue_free()
+	r.entradas = EntradasHormiguero.new()
+	r.add_child(r.entradas)
+	r.radio_actual = 12000
+	r.activa = false
+	r.entradas.iniciar(r)
+	verificar(r.entradas.puntos == [Vector2.ZERO] and r.entradas.punto_proyecto == Vector2.INF,
+		"antes de activar la run, el premio de proyecto no ocupa una posición manual todavía sin restaurar")
+	r.activa = true
+	r.entradas.actualizar()
+	verificar(r.entradas._manuales == [ancla] and r.entradas.punto_proyecto == ancla + Vector2(96, 0) and r.entradas.puntos.size() == 3,
+		"al activar se restaura primero la manual exacta y el proyecto elige su desvío independiente")
+	verificar(Juego.entradas_de("restaurante") == [ancla] and r.entradas._normales == 1,
+		"el premio de proyecto no reescribe el layout ni consume otro cupo manual")
+	r.queue_free()
+	await get_tree().process_frame
