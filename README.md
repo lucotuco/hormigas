@@ -530,6 +530,10 @@ las de la tienda y nada se guarda.
   desde `EvolucionRun`; migas, botín, buche y cría van por `Juego.mods_run`.
 - Llegar al tope de 500 hormigas convierte la eclosión en "colonia
   desbordada": +5% de daño por cada nivel que ya no puede eclosionar.
+- La mitad de las **migas doradas** abren un **cofre**: una mutación extra,
+  rara o mejor, sin gastar néctar.
+- Pasar 25, 50, 100… hormigas vivas en la run se festeja una vez (cartel,
+  onda y temblor); sólo cuenta lo que creció en la expedición.
 - Aparece después de la primera compra: las primeras expediciones siguen
   siendo la obrera sola. El bot elige con `BOT_CARTAS=mejor|azar`; sin
   pantalla, las pruebas eligen solas (`EvolucionRun.modo_automatico`).
@@ -873,7 +877,8 @@ lluvia de migas y un cartel con las coronas y el destino que se abre. Sin
 pantalla (pruebas y bot) no hay cámara lenta.
 
 Además, la **miga dorada** aparece cada tanto: pisala antes de que se apague y
-da migas, frenesí o +8 s. Las amenazas llegan desde la sexta expedición y las
+da migas, frenesí, +8 s o (con el néctar a la vista) un cofre de mutación.
+Las amenazas llegan desde la sexta expedición y las
 migas doradas desde la tercera; una flecha en el borde de la pantalla señala
 las que quedan fuera de la vista. Los pisotones automáticos no las resuelven:
 son el momento de clickear. Código en `mundo/eventos.gd` y `mundo/evento.gd`;
