@@ -395,6 +395,17 @@ func mostrar_racha(cantidad: int) -> void:
 
 
 
+## Hitos de la horda en la run (EvolucionRun): el mismo cartel que las rachas.
+func mostrar_horda(cantidad: int) -> void:
+	if not is_instance_valid(_lbl_racha) or not run.activa or run.terminada:
+		return
+	_lbl_racha.text = tr("¡%d HORMIGAS!") % cantidad
+	_lbl_racha.pivot_offset = Vector2(160, 20)
+	_lbl_racha.modulate.a = 1.0
+	_lbl_racha.show()
+	_racha_visible = 1.15
+
+
 func mostrar_combo(combo: int) -> void:
 	if run.terminada:
 		return
@@ -432,6 +443,8 @@ func mostrar_fin() -> void:
 	_lbl_fin_resumen.text = tr("%s migas/s · %s") % [Juego.formatear_corto(run.produccion_run), (tr("%+.0f%% frente al récord anterior") % run.mejora_produccion) if run.tenia_record else tr("primer registro en este destino")]
 	_lbl_fin_detalle.text = tr("Comidas: %d · Partes de la casa: %d\nMejor combo: x%d\nTotal en el hormiguero: %s") % [
 		Juego.comidas_destruidas_run, Juego.partes_destruidas_run, Juego.mejor_combo_run, Juego.formatear(Juego.migas)]
+	if is_instance_valid(run.evolucion) and run.evolucion.habilitada:
+		_lbl_fin_detalle.text += tr("\nNivel %d · %d mutaciones · %d hormigas al final") % [run.evolucion.nivel, run.evolucion.historial.size(), run.colonia.cantidad()]
 	_lbl_fin_detalle.text += tr("\nAlimentos %s · Muebles %s · Estructuras %s") % [Juego.formatear_corto(run.ingresos[0]), Juego.formatear_corto(run.ingresos[1]), Juego.formatear_corto(run.ingresos[2])]
 	if run.limpieza_lograda:
 		_lbl_fin_detalle.text += tr("\nLimpieza: %.1f s · Total con entregas: %.1f s") % [run.tiempo_limpieza, run.tiempo_jugado + run.tiempo_retirada]

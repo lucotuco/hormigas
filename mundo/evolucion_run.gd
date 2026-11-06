@@ -27,6 +27,10 @@ const DANO_POR_DESBORDE := 0.05
 const PROB_CRITICO_MAX := 0.75
 const MULT_CRITICO_BASE := 3.0
 const REVOLVER_POR_RUN := 1
+## Niveles de suerte extra al tirar las rarezas de un cofre dorado.
+const SUERTE_COFRE := 6
+## Celebraciones de la horda: al pasar estas cantidades de hormigas vivas.
+const HITOS_HORDA := [25, 50, 100, 150, 200, 300, 400, 500]
 ## Las cartas aparecen un instante después del nivel: primero se ve la eclosión.
 const DEMORA_OFERTA := 0.45
 const MAX_TEXTOS_CRITICO_POR_SEGUNDO := 6.0
@@ -44,6 +48,9 @@ var nivel := 0
 var nectar := 0.0
 var necesario := NECTAR_MINIMO
 var pendientes := 0
+## Cofres por abrir (parte de `pendientes`): se ofrecen antes que los niveles.
+var cofres := 0
+var oferta_cofre := false
 var eligiendo := false
 var oferta: Array[Dictionary] = []
 var revolver_restante := REVOLVER_POR_RUN
@@ -121,6 +128,19 @@ func sumar_nectar(cantidad: float) -> void:
 		_subir_nivel()
 
 
+## Miga dorada: una oferta extra, sin gastar néctar, con rareza rara o mejor.
+func abrir_cofre() -> bool:
+	if not habilitada or not en_juego():
+		return false
+	cofres += 1
+	pendientes += 1
+	run.efectos.rafaga(Vector2.ZERO, 100)
+	Sonido.tocar("legendaria", 1.1, 0.0)
+	if _demora_oferta < 0.0 and not eligiendo:
+		_demora_oferta = DEMORA_OFERTA
+	return true
+
+
 func progreso() -> float:
 	return clampf(nectar / maxf(necesario, 0.001), 0.0, 1.0)
 
@@ -161,6 +181,7 @@ func _process(delta: float) -> void:
 	if _reloj_enjambre <= 0.0:
 		_reloj_enjambre = 0.5
 		_recalcular()
+		_celebrar_horda()
 	if _demora_oferta >= 0.0:
 		_demora_oferta -= delta
 		if _demora_oferta < 0.0:
@@ -177,9 +198,11 @@ func _ofrecer() -> void:
 	if not en_juego():
 		pendientes = 0
 		return
-	oferta = generar_oferta()
+	oferta_cofre = cofres > 0
+	oferta = generar_oferta(oferta_cofre)
 	if oferta.is_empty():
 		pendientes = 0
+		cofres = 0
 		return
 	eligiendo = true
 	var modo := automatico()
@@ -199,8 +222,8 @@ func pesos_rareza(n: int) -> Dictionary:
 	}
 
 
-func _tirar_rareza() -> String:
-	var pesos := pesos_rareza(nivel)
+func _tirar_rareza(suerte := 0) -> String:
+	var pesos := pesos_rareza(nivel + suerte)
 	var total := 0.0
 	for r in Juego.RAREZAS:
 		total += float(pesos[r])
@@ -216,11 +239,14 @@ func disponible(m: Dictionary) -> bool:
 	return m.max <= 0 or int(elegidas.get(m.id, 0)) < m.max
 
 
-func generar_oferta() -> Array[Dictionary]:
+## Un cofre tira con más suerte y nunca trae comunes.
+func generar_oferta(de_cofre := false) -> Array[Dictionary]:
 	var cartas: Array[Dictionary] = []
 	var usadas := {}
 	for i in CARTAS_POR_OFERTA:
-		var rareza := _tirar_rareza()
+		var rareza := _tirar_rareza(SUERTE_COFRE if de_cofre else 0)
+		if de_cofre and rareza == "comun":
+			rareza = "rara"
 		var candidatas: Array[Dictionary] = []
 		# Si no hay ninguna de esa rareza, baja de a un escalón.
 		var indice := Juego.RAREZAS.find(rareza)
@@ -267,7 +293,7 @@ func revolver() -> bool:
 	if not eligiendo or revolver_restante <= 0:
 		return false
 	revolver_restante -= 1
-	oferta = generar_oferta()
+	oferta = generar_oferta(oferta_cofre)
 	Sonido.tocar("carta", 0.9, 0.0)
 	oferta_lista.emit(oferta)
 	return true
@@ -284,6 +310,9 @@ func elegir(indice: int) -> void:
 	if c.rareza == "legendaria":
 		Juego.sumar_estadistica("mutaciones_legendarias")
 	pendientes = maxi(0, pendientes - 1)
+	if oferta_cofre:
+		cofres = maxi(0, cofres - 1)
+	oferta_cofre = false
 	eligiendo = false
 	oferta.clear()
 	mutacion_elegida.emit(c)
@@ -365,6 +394,31 @@ func _recalcular() -> void:
 	_mult_dano = 1.0 + _suma_dano + _bonus_enjambre * enjambres + _bonus_furia * nivel + DANO_POR_DESBORDE * desbordes
 
 
+## Pasar 100, 200… hormigas vivas en la run se festeja una vez. Los hitos
+## que ya se tenían al salir del nido no cuentan: sólo lo que creció acá.
+var _hito_horda := -1
+
+func _celebrar_horda() -> void:
+	if not en_juego() or run.colonia._por_salir > 0:
+		return
+	var vivas := run.colonia.cantidad()
+	if _hito_horda < 0:
+		_hito_horda = 0
+		while _hito_horda < HITOS_HORDA.size() and vivas >= HITOS_HORDA[_hito_horda]:
+			_hito_horda += 1
+		return
+	var alcanzado := -1
+	while _hito_horda < HITOS_HORDA.size() and vivas >= HITOS_HORDA[_hito_horda]:
+		alcanzado = HITOS_HORDA[_hito_horda]
+		_hito_horda += 1
+	if alcanzado < 0:
+		return
+	run.hud.mostrar_horda(alcanzado)
+	run.efectos.racha(Vector2.ZERO, mini(8, _hito_horda + 1))
+	run.camara.sacudir(4.0 + _hito_horda)
+	Sonido.tocar("crecer", 1.0 + _hito_horda * 0.03, 0.0)
+
+
 func multiplicador_dano() -> float:
 	return _mult_dano
 
@@ -403,6 +457,7 @@ func cerrar() -> void:
 		eligiendo = false
 		oferta.clear()
 	pendientes = 0
+	cofres = 0
 	_demora_oferta = -1.0
 	_cerrar_ui()
 

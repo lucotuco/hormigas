@@ -3110,3 +3110,15 @@ msgstr "Legendary mutations"
 
 msgid "Mordidas críticas"
 msgstr "Critical bites"
+
+msgid "¡%d HORMIGAS!"
+msgstr "%d ANTS!"
+
+msgid "\nNivel %d · %d mutaciones · %d hormigas al final"
+msgstr "\nLevel %d · %d mutations · %d ants at the end"
+
+msgid "¡Cofre dorado! Una mutación rara o mejor"
+msgstr "Golden chest! A rare-or-better mutation"
+
+msgid "¡COFRE DORADO!"
+msgstr "GOLDEN CHEST!"

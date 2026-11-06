@@ -17,6 +17,7 @@ func _ready() -> void:
 	await probar_niveles()
 	await probar_eleccion_del_jugador()
 	await probar_efectos()
+	await probar_cofre_y_horda()
 	await probar_fin_de_run()
 	EvolucionRun.modo_automatico = "auto"
 	get_tree().paused = false
@@ -166,6 +167,33 @@ func probar_efectos() -> void:
 	e.aplicar(e.carta(Juego.mutaciones_por_id["fuerza_enjambre"], "rara"))
 	var con_enjambre := e.multiplicador_dano()
 	verificar(is_equal_approx(con_enjambre, 1.15 + 0.04 * 2), "Fuerza del enjambre suma por cada 50 hormigas (%.3f con %d)" % [con_enjambre, r.colonia.cantidad()])
+	await cerrar(r)
+
+
+func probar_cofre_y_horda() -> void:
+	EvolucionRun.modo_automatico = "jugador"
+	var r := crear()
+	var e := r.evolucion
+	verificar(e.abrir_cofre() and e.cofres == 1 and e.pendientes == 1, "una miga dorada puede abrir un cofre de mutación")
+	e._demora_oferta = -1.0
+	e._ofrecer()
+	var sin_comunes := true
+	for c in e.oferta:
+		sin_comunes = sin_comunes and c.rareza != "comun"
+	verificar(e.oferta_cofre and sin_comunes, "el cofre no trae cartas comunes")
+	verificar(e._ui._titulo.text == "¡COFRE DORADO!", "la pantalla del cofre tiene su propio título")
+	e.elegir(0)
+	verificar(e.cofres == 0 and e.nivel == 0 and not get_tree().paused, "abrir el cofre no gasta néctar ni sube de nivel")
+	# Hitos de la horda: sólo lo que creció en esta run.
+	r.colonia._por_salir = 0
+	for i in 30:
+		r.colonia._nacer()
+	e._celebrar_horda()
+	verificar(e._hito_horda == 1, "los hitos ya superados al salir no se festejan")
+	for i in 25:
+		r.colonia._nacer()
+	e._celebrar_horda()
+	verificar(e._hito_horda == 2 and r.hud._lbl_racha.text == "¡50 HORMIGAS!", "pasar 50 hormigas se festeja con un cartel")
 	await cerrar(r)
 
 
