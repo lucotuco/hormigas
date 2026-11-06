@@ -194,7 +194,7 @@ func _init() -> void:
 func mostrar(oferta: Array[Dictionary]) -> void:
 	_bloqueada = false
 	visible = true
-	_titulo.text = tr("¡NIVEL %d!") % evolucion.nivel
+	_titulo.text = tr("¡COFRE DORADO!") if evolucion.oferta_cofre else tr("¡NIVEL %d!") % evolucion.nivel
 	var extra := ""
 	if evolucion.pendientes > 1:
 		extra = "  ·  " + tr("%d niveles por elegir") % evolucion.pendientes

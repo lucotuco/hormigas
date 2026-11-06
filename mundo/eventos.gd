@@ -279,6 +279,11 @@ func premiar(e: Evento) -> float:
 	var premio := 0.0
 	if e.tipo == "dorada":
 		Juego.sumar_estadistica("migas_doradas")
+		# Con el néctar a la vista, la mitad de las doradas son un cofre:
+		# una mutación extra, rara o mejor (EvolucionRun.abrir_cofre).
+		if is_instance_valid(run.evolucion) and run.evolucion.habilitada and randf() < 0.5 and run.evolucion.abrir_cofre():
+			run.hud.mostrar_aviso(tr("¡Cofre dorado! Una mutación rara o mejor"))
+			return 0.0
 		match ["migas", "frenesi", "tiempo"].pick_random():
 			"frenesi":
 				run.frenesi_restante = maxf(run.frenesi_restante, 10.0)
