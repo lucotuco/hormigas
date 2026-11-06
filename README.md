@@ -292,6 +292,9 @@ trabajadoras, la dieta requerida y sus componentes conservados, cuando los hay.
 lee en el material ausente; tiempo, compras y frenesí conservan sus indicadores
 de interfaz. Cada operación recorta junto a la mordida **una porción sólida de
 hasta 6×6 unidades del mundo**, no una franja proporcional a todo el daño.
+Excepción: contra un **gran objetivo** (del destino o de un proyecto) el bocado
+crece con el daño que no entra en 6×6, hasta 24×24 (`PiezaCasa.lado_para_dano`).
+Sin eso, mejorar las mandíbulas casi no servía para tirarlo.
 Cada ciclo admite hasta **1 porción al inicio, 2 al aprender madera y 3 al
 aprender resistentes o paredes**. Es un máximo, no una extracción garantizada:
 se corta antes si falta crédito, contacto, material o espacio en el buche.
@@ -451,7 +454,10 @@ partida nueva; no se borra ni se reinicia automáticamente la partida existente.
 
 **Fundar colonia** (pestaña Jalea real, con confirmación) reinicia migas,
 mejoras y castas y los convierte en **jalea real**: 3 por corona de la colonia
-más la raíz cuarta de (migas juntadas en la colonia / 100.000). La jalea se gasta en el
+más la raíz cuarta de (migas juntadas en la colonia / 100.000). Pasados 100,
+la parte por migas crece con la raíz cuadrada del resto (`TOPE_SUAVE_JALEA_MIGAS`).
+La colonia nueva hereda el 1% de las migas (`MIGAS_HEREDADAS`), y Reservas de
+la reina suma un 10% más por nivel. La jalea se gasta en el
 **árbol de la reina** (`datos/jalea.csv`), que es permanente: atajos (nacer con
 las dietas aprendidas, conservar migas o castas), poder (daño, migas, obreras,
 tiempo) y reglas nuevas (hallazgos compartidos, más niveles de tope, corona doble).

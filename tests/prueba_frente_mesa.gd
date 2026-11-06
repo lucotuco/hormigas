@@ -65,11 +65,20 @@ func probar_mesa(llamado: bool) -> void:
 		return
 	run.entradas.puntos.append(entrada)
 	run.entradas.queue_redraw()
+	# Calibrar UNA porción base para aislar circulación/contacto de la IA.
+	# Las metas ahora agrandan el bocado con el daño: usar vida_max forzaría
+	# 24u y dejaría de cubrir esta regresión de frentes pequeños de 6u.
+	# Compensar los mismos factores que recibe lado_para_dano(), sin cambiar
+	# el tamaño real de la mesa ni los límites de localidad de las aserciones.
+	var lado_base := Juego.stat("tamano_bocado")
+	var densidad := mesa.vida_max / maxf(mesa.rect_mundo.get_area(), 1.0)
+	var factor_dano := RolesHormiga.dano("obrera", mesa.nivel_requerido) * run.reglas.factor_dano(mesa)
+	var dano_porcion_base := densidad * lado_base * lado_base / factor_dano
 	for i in 8:
 		var h := run.colonia._nacer("obrera", entrada + Vector2(0, (i - 4) * 2))
 		h._capacidad = 8
 		h._porciones_ciclo = 1
-		h._dano = mesa.vida_max # Siempre una sola porción máxima de 6u, no daño global.
+		h._dano = dano_porcion_base
 		h._intervalo_mordida = 0.25
 		h._velocidad = 200.0
 	var observaciones: Array[Dictionary] = []

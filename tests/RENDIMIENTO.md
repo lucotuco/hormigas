@@ -2160,3 +2160,36 @@ de estrés todavía exceden 16,67ms: no garantiza 60 FPS constantes ni ausencia
 de costo de la IA. CPU aislada, audio, GPU integrada y sensación humana no
 medidos. Log `apoyo_cierre_perfil_estimulos.log`, informe
 `.godot/qa/perfil_estimulos.json`. El atlas permanece en 47,5MiB.
+
+### Integración con el balance de main — 6/11
+
+Se conserva el balance remoto: los objetivos grandes aprovechan el daño con
+bocados de hasta 24u, mientras los muebles comunes siguen en 6u. La regresión
+de circulación en la mesa calibra su fuerza a una porción base; no reduce
+la mesa ni relaja sus límites de contacto, localidad o entregas. La suite
+nueva `prueba_bocado_adaptativo` cubre ambos tamaños, sus límites y entradas
+inválidas, y sigue el mismo material desde la extracción hasta el depósito:
+31 comprobaciones tanto en headless como con el atlas real.
+
+**75 suites lógicas / 0 fallas**, sin errores ni advertencias; logs
+`main_integrado_prueba_*`. GPU: 153 comprobaciones de masticación y 13 del
+ciclo de mesa, además de las 31 adaptativas; logs `main_gpu_*`. Se conservan
+las huellas de partida y ajustes. No se volvió a medir la campaña completa:
+la estimación histórica de cuatro horas no valida esta combinación de IA.
+
+Repetido el protocolo Full HD / GL Compatibility / RTX 3060, sin VSync,
+audio silenciado, 500 IA, 40 cuadros de calentamiento y 600 muestras por
+caso. Milisegundos entre cuadros (media / p95 / peor):
+
+| Destino | Control | Completo |
+|---|---|---|
+| Casa | 15,65 / 20,81 / 29,59 | 20,54 / 27,32 / 36,60 |
+| Museo | 15,08 / 20,73 / 25,82 | 19,72 / 25,86 / 29,60 |
+| Coliseo | 13,98 / 20,70 / 26,54 | 17,72 / 25,40 / 34,56 |
+| Eiffel | 13,97 / 19,91 / 30,48 | 18,23 / 25,48 / 34,78 |
+
+Ocho casos / 0 fallas, navegación y extracción reales, pools acotados y
+sin actividad nueva tras cerrar. Log `main_integrado_perfil_estimulos.log`.
+No es un A/B causal de rendimiento respecto de la versión anterior: cambió
+el trabajo por bocado y no se aisló la carga de la máquina. El p95 supera
+16,67ms; no garantiza 60 FPS constantes, CPU aislada, audio ni GPU integrada.

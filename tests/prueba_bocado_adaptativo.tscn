@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/prueba_bocado_adaptativo.gd" id="1_bocado"]
+
+[node name="PruebaBocadoAdaptativo" type="Node"]
+script = ExtResource("1_bocado")
