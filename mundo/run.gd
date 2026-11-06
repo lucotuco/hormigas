@@ -52,6 +52,7 @@ var cerrando_erosion := false
 var tiempo_espera_erosion := 0.0
 var _extraccion_cerrada := false
 var poderes: PoderesColonia
+var evolucion: EvolucionRun
 var reglas: ReglasDestino
 var entradas: EntradasHormiguero
 var retirando := false
@@ -157,6 +158,9 @@ func _ready() -> void:
 	poderes = PoderesColonia.new()
 	add_child(poderes)
 	poderes.iniciar(self)
+	evolucion = EvolucionRun.new()
+	add_child(evolucion)
+	evolucion.iniciar(self)
 	activa = true
 	entradas.actualizar()
 	recorrido.queue_redraw()
@@ -463,12 +467,21 @@ func factor_ritmo() -> float:
 	return Juego.stat("frenesi_ritmo") if frenesi_restante > 0 else 1.0
 
 
+## Paso de las hormigas: frenesí y mutaciones de velocidad de la run.
+func factor_paso() -> float:
+	return factor_ritmo() * (evolucion.multiplicador_paso() if is_instance_valid(evolucion) else 1.0)
+
+
 func multiplicador_dano_activo() -> float:
-	return poderes.multiplicador_dano() if is_instance_valid(poderes) else 1.0
+	return (poderes.multiplicador_dano() if is_instance_valid(poderes) else 1.0) * (evolucion.multiplicador_dano() if is_instance_valid(evolucion) else 1.0)
 
 
 func multiplicador_ritmo_activo() -> float:
-	return poderes.multiplicador_ritmo() if is_instance_valid(poderes) else 1.0
+	return (poderes.multiplicador_ritmo() if is_instance_valid(poderes) else 1.0) * (evolucion.multiplicador_ritmo() if is_instance_valid(evolucion) else 1.0)
+
+
+func tirada_critica(pos: Vector2) -> float:
+	return evolucion.tirada_critica(pos) if is_instance_valid(evolucion) else 1.0
 
 
 func activar_rafaga() -> bool:
@@ -543,6 +556,8 @@ func _cerrar() -> void:
 	retirando = false
 	feromonas.soltar()
 	terminada = true
+	if is_instance_valid(evolucion):
+		evolucion.cerrar()
 	cola_erosion.cancelar()
 	preparador_mordiscos.cancelar()
 	Sonido.detener_mundo()

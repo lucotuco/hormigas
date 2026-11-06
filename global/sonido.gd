@@ -26,6 +26,10 @@ const SONIDOS := {
 	"crecer":    {"volumen": -5.0,  "intervalo": 0.5},
 	"tic":       {"volumen": -9.0,  "intervalo": 0.3},
 	"fin":       {"volumen": -4.0,  "intervalo": 0.5},
+	"nivel":     {"volumen": -7.0,  "intervalo": 0.25},
+	"carta":     {"volumen": -11.0, "intervalo": 0.08},
+	"legendaria": {"volumen": -6.0, "intervalo": 0.4},
+	"critico":   {"volumen": -21.0, "intervalo": 0.12},
 }
 const TAMANO_POOL := 16
 const VOCES_MUNDO := 10
@@ -104,12 +108,14 @@ func entrega(combo := 0, especial := false) -> void:
 
 
 func _es_mundo(nombre: String) -> bool:
-	return nombre.begins_with("mordida") or nombre in ["levantar", "deposito", "romper", "aviso", "espantar", "impacto", "racha", "poder"]
+	return nombre.begins_with("mordida") or nombre in ["levantar", "deposito", "romper", "aviso", "espantar", "impacto", "racha", "poder", "critico"]
 
 
 func _prioridad(nombre: String) -> int:
-	if nombre in ["epico", "crecer", "fin", "poder"]:
+	if nombre in ["epico", "crecer", "fin", "poder", "nivel", "legendaria"]:
 		return 3
+	if nombre == "carta":
+		return 2
 	if nombre in ["comprar", "no", "clic"]:
 		return 2
 	return 0 if nombre.begins_with("mordida") or nombre == "levantar" else 1

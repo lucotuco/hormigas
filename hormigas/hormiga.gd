@@ -168,6 +168,11 @@ func iniciar(r: Run, tipo := "obrera") -> void:
 		Graficos.preparado.connect(_crear_sprite, CONNECT_ONE_SHOT)
 
 
+## La capacidad puede crecer en plena run (mutaciones). Una vez por elección.
+func refrescar_capacidad() -> void:
+	_capacidad = Juego.stats_casta(casta).capacidad
+
+
 func detener() -> void:
 	estado = Estado.QUIETA
 	_masticando_visual = false
@@ -404,7 +409,7 @@ func _caminar(delta: float) -> void:
 			estado = Estado.EXPLORANDO
 			_elegir_destino_al_azar()
 		return
-	var presupuesto := _velocidad * run.factor_ritmo() * delta
+	var presupuesto := _velocidad * run.factor_paso() * delta
 	while presupuesto > 0.0 and _indice_ruta < _ruta.size():
 		var destino := _ruta[_indice_ruta]
 		var distancia := global_position.distance_to(destino)
@@ -519,7 +524,7 @@ func _morder(delta: float) -> void:
 	var actual := comida
 	# Ráfaga modifica sólo el trabajo emitido ahora. El daño base de la casta
 	# no se reescribe y los ticks de veneno no reciben el multiplicador otra vez.
-	var dano_activo := _dano * run.multiplicador_dano_activo()
+	var dano_activo := _dano * run.multiplicador_dano_activo() * run.tirada_critica(global_position)
 	var lado_bocado := Juego.stat("tamano_bocado")
 	if actual is PiezaCasa:
 		lado_bocado = actual.lado_para_dano(dano_activo * RolesHormiga.dano(casta, actual.nivel_requerido) * run.reglas.factor_dano(actual), lado_bocado)

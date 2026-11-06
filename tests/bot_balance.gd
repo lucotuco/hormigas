@@ -27,6 +27,7 @@ extends Node
 ##   BOT_CLICS    órdenes por segundo (por defecto CLICS_POR_SEGUNDO); 1 se
 ##                parece más a una persona que mira la pantalla
 ##   BOT_TRABADO  runs sin progreso antes de pensar en fundar (por defecto RUNS_TRABADO)
+##   BOT_CARTAS   cómo elige las mutaciones de la run: "mejor" (por defecto) o "azar"
 ##   BOT_ORDEN    "materiales" dirige primero al material recién aprendido;
 ##                "cercania" prioriza alimento cercano (por defecto). Ambos
 ##                empiezan sobre migas reales, no sobre el cartón gigante.
@@ -148,6 +149,9 @@ func _ready() -> void:
 	calibrar = OS.has_environment("BOT_CALIBRAR")
 	if OS.has_environment("BOT_DECRETO"):
 		decreto = OS.get_environment("BOT_DECRETO")
+	# Mutaciones de la run: "mejor" (por defecto en headless) o "azar".
+	if OS.has_environment("BOT_CARTAS"):
+		EvolucionRun.modo_automatico = OS.get_environment("BOT_CARTAS")
 	paciente = OS.has_environment("BOT_PACIENTE")
 	if OS.has_environment("BOT_CLICS"):
 		clics_por_segundo = maxf(0.2, float(OS.get_environment("BOT_CLICS")))
@@ -295,6 +299,7 @@ func jugar_run() -> float:
 	minutos += (run.tiempo_jugado + run.tiempo_retirada) / 60.0
 	var ganado := Juego.migas_run
 	var partes := Juego.partes_destruidas_run
+	anotar("   nivel %d · %d mutaciones · colonia final %d" % [run.evolucion.nivel, run.evolucion.historial.size(), run.colonia.cantidad()])
 	anotar("   producción %.1f/s · ingresos comida/muebles/estructura (incluyen bonus) %s · cargas sin entregar %s · fin %s" % [run.produccion_run, JSON.stringify(run.ingresos), Juego.formatear(run.cargas_pendientes), "limpieza" if run.limpieza_lograda else ("colonia perdida" if run.colonia_perdida else "tiempo")])
 	# Daño hecho al gran objetivo en esta run (para calibrar vida_meta).
 	var meta := run.objetivo_mapa
