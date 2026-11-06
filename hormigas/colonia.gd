@@ -78,6 +78,29 @@ func iniciar(r: Run) -> void:
 	_activa = true
 
 
+## La stat "cría" puede cambiar en plena run (mutaciones): conserva el reloj.
+func recalcular_cria() -> void:
+	var cria := Juego.stat("cria")
+	_intervalo_cria = 10.0 / cria if cria > 0.0 else 0.0
+	if _intervalo_cria > 0.0:
+		_reloj_cria = minf(_reloj_cria, _intervalo_cria)
+
+
+## Una tanda de obreras que sale ya del nido (subir de nivel en la run).
+## Devuelve cuántas nacieron: el tope de la colonia puede dejar menos.
+func eclosionar(cantidad_solicitada: int, celebrar := true) -> int:
+	if not _activa or not run.activa:
+		return 0
+	var cantidad_real := mini(cantidad_solicitada, MAX_HORMIGAS - hormigas.size())
+	for i in cantidad_real:
+		var h := _nacer("obrera", Vector2.from_angle(randf() * TAU) * randf_range(3.0, 14.0))
+		if h != null and celebrar:
+			h.rotation = h.position.angle()
+	if cantidad_real > 0:
+		run.efectos.chispas(Vector2.ZERO, Color(1.0, 0.92, 0.6), mini(40, 6 + cantidad_real))
+	return cantidad_real
+
+
 func detener() -> void:
 	_activa = false
 	for h in hormigas:

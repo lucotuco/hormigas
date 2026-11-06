@@ -2952,3 +2952,161 @@ msgstr "Colony pulse"
 
 msgid "+1 s de frenesí y un halo en las entradas."
 msgstr "+1 s of frenzy and a halo around entrances."
+
+# Néctar y mutaciones de la run
+
+msgid "¡NIVEL %d!"
+msgstr "LEVEL %d!"
+
+msgid "¡Eclosión! +%d hormigas"
+msgstr "Hatching! +%d ants"
+
+msgid "¡Colonia desbordada! +%d%% de daño"
+msgstr "Colony overflowing! +%d%% damage"
+
+msgid "¡CRÍTICO!"
+msgstr "CRIT!"
+
+msgid "NIVEL %d"
+msgstr "LEVEL %d"
+
+msgid "Ya tenés ×%d"
+msgstr "You have ×%d"
+
+msgid "%d niveles por elegir"
+msgstr "%d levels to pick"
+
+msgid "Elegí una mutación para esta expedición  ·  1 · 2 · 3"
+msgstr "Pick a mutation for this expedition  ·  1 · 2 · 3"
+
+msgid "Revolver (R) · %d"
+msgstr "Reroll (R) · %d"
+
+msgid "En esta expedición: %s"
+msgstr "This expedition: %s"
+
+msgid "Mandíbulas de sierra"
+msgstr "Saw mandibles"
+
+msgid "+{v}% de daño"
+msgstr "+{v}% damage"
+
+msgid "Patas de grillo"
+msgstr "Cricket legs"
+
+msgid "Caminan {v}% más rápido"
+msgstr "Walk {v}% faster"
+
+msgid "Mordida nerviosa"
+msgstr "Nervous bite"
+
+msgid "Muerden {v}% más rápido"
+msgstr "Bite {v}% faster"
+
+msgid "Ojo certero"
+msgstr "Keen eye"
+
+msgid "+{v}% de mordidas críticas"
+msgstr "+{v}% critical bites"
+
+msgid "Hocico dorado"
+msgstr "Golden snout"
+
+msgid "+{v}% de migas"
+msgstr "+{v}% crumbs"
+
+msgid "Puesta masiva"
+msgstr "Mass laying"
+
+msgid "Las eclosiones traen {v}% más hormigas"
+msgstr "Hatchings bring {v}% more ants"
+
+msgid "Néctar espeso"
+msgstr "Thick nectar"
+
+msgid "+{v}% de néctar por entrega"
+msgstr "+{v}% nectar per delivery"
+
+msgid "Destruir algo paga +{v}% de su valor"
+msgstr "Destroying something pays +{v}% of its value"
+
+msgid "Colmillos brutales"
+msgstr "Brutal fangs"
+
+msgid "Las críticas hacen +{v}× de daño"
+msgstr "Crits deal +{v}× damage"
+
+msgid "Fuerza del enjambre"
+msgstr "Swarm strength"
+
+msgid "+{v}% de daño por cada 50 hormigas"
+msgstr "+{v}% damage per 50 ants"
+
+msgid "Buche elástico"
+msgstr "Stretchy crop"
+
+msgid "+{v} bocado por viaje"
+msgstr "+{v} bite per trip"
+
+msgid "Reloj de arena"
+msgstr "Hourglass"
+
+msgid "+{v} s de expedición"
+msgstr "+{v} s of expedition"
+
+msgid "Nodriza real"
+msgstr "Royal nurse"
+
+msgid "+{v} crías cada 10 s"
+msgstr "+{v} broods every 10 s"
+
+msgid "Hermanas perdidas"
+msgstr "Lost sisters"
+
+msgid "Cada entrega tiene {v}% de traer una hormiga nueva"
+msgstr "Each delivery has a {v}% chance to bring a new ant"
+
+msgid "Furia de la colmena"
+msgstr "Hive fury"
+
+msgid "+{v}% de daño por cada nivel de esta expedición"
+msgstr "+{v}% damage per level this expedition"
+
+msgid "Corona de la reina"
+msgstr "Queen's crown"
+
+msgid "+{v}% de daño, velocidad y migas"
+msgstr "+{v}% damage, speed and crumbs"
+
+msgid "Marea negra"
+msgstr "Black tide"
+
+msgid "Nacen ya tantas hormigas como el {v}% de la colonia"
+msgstr "Instantly hatch ants equal to {v}% of the colony"
+
+msgid "COMÚN"
+msgstr "COMMON"
+
+msgid "RARA"
+msgstr "RARE"
+
+msgid "ÉPICA"
+msgstr "EPIC"
+
+msgid "LEGENDARIA"
+msgstr "LEGENDARY"
+
+msgid "Néctar: cada entrega llena la barra; al subir de nivel eclosionan hormigas y elegís una mutación"
+msgstr "Nectar: every delivery fills the bar; on level up ants hatch and you pick a mutation"
+
+msgid "Mayor nivel en una expedición"
+msgstr "Highest level in an expedition"
+
+msgid "Mutaciones elegidas"
+msgstr "Mutations picked"
+
+msgid "Mutaciones legendarias"
+msgstr "Legendary mutations"
+
+msgid "Mordidas críticas"
+msgstr "Critical bites"

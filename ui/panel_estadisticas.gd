@@ -58,6 +58,10 @@ func grupos() -> Array[Dictionary]:
 			["mejor_combo", tr("Mejor combo"), "x%d" % int(Juego.estadistica("mejor_combo"))],
 			["pisotones", tr("Pisotones"), Juego.formatear(Juego.estadistica("pisotones"))],
 			["migas_doradas", tr("Migas doradas"), Juego.formatear(Juego.estadistica("migas_doradas"))],
+			["mayor_nivel", tr("Mayor nivel en una expedición"), Juego.formatear(Juego.estadistica("mayor_nivel"))],
+			["mutaciones_elegidas", tr("Mutaciones elegidas"), Juego.formatear(Juego.estadistica("mutaciones_elegidas"))],
+			["mutaciones_legendarias", tr("Mutaciones legendarias"), Juego.formatear(Juego.estadistica("mutaciones_legendarias"))],
+			["criticos", tr("Mordidas críticas"), Juego.formatear(Juego.estadistica("criticos"))],
 		]},
 		{"titulo": tr("DESTRUCCIÓN"), "filas": [
 			["comidas_devoradas", tr("Comidas devoradas"), Juego.formatear(Juego.estadistica("comidas_devoradas"))],

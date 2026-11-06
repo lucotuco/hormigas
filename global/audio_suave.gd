@@ -64,6 +64,21 @@ static func crear(nombre: String) -> AudioStreamWAV:
 		"fin":
 			notas = [659.25, 587.33, 523.25, 392.0]
 			duracion = 0.75
+		"nivel":
+			# Arpegio que sube y queda arriba: "subiste".
+			notas = [392.0, 493.88, 587.33, 783.99, 987.77]
+			duracion = 0.62
+		"carta":
+			notas = [587.33, 880.0]
+			duracion = 0.16
+			ruido = 0.05
+		"legendaria":
+			notas = [261.63, 392.0, 523.25, 659.25, 783.99, 1046.5]
+			duracion = 0.88
+		"critico":
+			notas = [196.0, 392.0]
+			duracion = 0.09
+			ruido = 0.4
 	var frecuencia := 22050
 	var muestras := int(duracion * frecuencia)
 	var bytes := PackedByteArray()
@@ -71,7 +86,7 @@ static func crear(nombre: String) -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = nombre.hash()
 	var filtro := 0.0
-	var celebracion := nombre in ["epico", "crecer", "fin", "racha", "poder"]
+	var celebracion := nombre in ["epico", "crecer", "fin", "racha", "poder", "nivel", "legendaria"]
 	for i in muestras:
 		var t := float(i) / frecuencia
 		var muestra := 0.0

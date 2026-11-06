@@ -34,6 +34,14 @@ const RUTA_COMIDAS := "res://datos/comidas.csv"
 const RUTA_CASTAS := "res://datos/castas.csv"
 const RUTA_JALEA := "res://datos/jalea.csv"
 const RUTA_DECRETOS := "res://datos/decretos.csv"
+const RUTA_MUTACIONES := "res://datos/mutaciones.csv"
+## Mutaciones de la run (mundo/evolucion_run.gd). Las rarezas multiplican el
+## valor de la fila (relativo a su rareza mínima) y suben con el nivel.
+const RAREZAS := ["comun", "rara", "epica", "legendaria"]
+const FACTOR_RAREZA := {"comun": 1.0, "rara": 1.6, "epica": 2.5, "legendaria": 4.0}
+const EFECTOS_MUTACION := ["dano", "velocidad", "ritmo", "critico", "critico_mult", "migas",
+	"eclosion", "nectar", "botin", "enjambre", "capacidad", "tiempo", "cria", "hermanas",
+	"furia", "todo", "marea"]
 
 # --- Prestigio (ver docs/DISENO_PROGRESION.md) ---
 ## Jalea al fundar = JALEA_POR_CORONA × coronas + ⌊(migas de la colonia / DIVISOR_JALEA_MIGAS) ^ EXPONENTE_JALEA_MIGAS⌋
@@ -74,6 +82,11 @@ var jalea_por_id: Dictionary = {}
 ## Decretos de la reina: al fundar se elige uno, que rige toda la colonia nueva.
 var decretos: Array[Dictionary] = []
 var decretos_por_id: Dictionary = {}
+var mutaciones: Array[Dictionary] = []
+var mutaciones_por_id: Dictionary = {}
+## Modificadores que sólo valen durante la run en curso: stat -> [suma, multiplica].
+## Los escribe EvolucionRun; se vacían al empezar y al cobrar la run.
+var mods_run: Dictionary = {}
 
 # --- Partida guardada ---
 var migas: float = 0.0
@@ -277,6 +290,7 @@ const REVELABLES := {
 	"amenazas": "Amenazas: cada destino tiene la suya; pisalas para salvar a la colonia",
 	"rafaga": "Ráfaga: cada 20 entregas apretá E y la colonia muerde más fuerte",
 	"entradas": "Entradas: apretá N para colocarlas; quedan puestas en las próximas expediciones",
+	"mutaciones": "Néctar: cada entrega llena la barra; al subir de nivel eclosionan hormigas y elegís una mutación",
 }
 ## Desbloqueos clave que marcan la progresión; el HUD muestra el próximo.
 const DIETAS := ["mordida_madera", "mordida_resistente", "mordida_muros"]
@@ -297,7 +311,8 @@ const ESTADISTICAS := ["migas_totales", "migas_gastadas", "tiempo_total", "tiemp
 	"comidas_devoradas", "partes_devoradas", "pisotones", "derrumbes", "hormigas_nacidas",
 	"mayor_colonia", "mejor_combo", "objetivos_conquistados", "coronas_ganadas",
 	"niveles_comprados", "castas_reclutadas", "jalea_gastada",
-	"amenazas_vencidas", "hormigas_perdidas", "migas_doradas"]
+	"amenazas_vencidas", "hormigas_perdidas", "migas_doradas",
+	"mayor_nivel", "mutaciones_elegidas", "mutaciones_legendarias", "criticos"]
 var estadisticas: Dictionary = {}
 var _inicio_run := 0.0
 
@@ -372,8 +387,26 @@ func stat(nombre: String) -> float:
 		push_error("Stat desconocida: '%s'. Agregala en %s." % [nombre, RUTA_STATS])
 		return 0.0
 	var resultado := _calcular(nombre)
+	if mods_run.has(nombre):
+		resultado = (resultado + float(mods_run[nombre][0])) * float(mods_run[nombre][1])
 	_cache_stats[nombre] = resultado
 	return resultado
+
+
+## Fija cuánto se suma y por cuánto se multiplica una stat hasta que termine la run.
+func fijar_en_run(nombre: String, suma: float, multiplica := 1.0) -> void:
+	if not stats_base.has(nombre):
+		push_error("Stat desconocida en la run: '%s'" % nombre)
+		return
+	mods_run[nombre] = [suma, multiplica]
+	_cache_stats.erase(nombre)
+
+
+func limpiar_mods_run() -> void:
+	if mods_run.is_empty():
+		return
+	mods_run.clear()
+	_cache_stats.clear()
 
 
 ## El contexto permite mostrar otra colonia sin mutar la partida ni su caché.
@@ -668,6 +701,9 @@ func marcar_visto(id: String) -> void:
 
 func _condicion_revelar(id: String) -> bool:
 	match id:
+		"mutaciones":
+			# Después de la primera compra: hasta ahí, la obrera sola.
+			return runs_jugadas >= 1 and (estadistica("niveles_comprados") >= 1 or fundaciones > 0)
 		"compra_lote", "frenesi":
 			return runs_jugadas >= 2
 		"gran_objetivo":
@@ -1126,6 +1162,7 @@ func registrar_maximo(clave: String, valor: float) -> void:
 # =====================================================================
 
 func iniciar_run() -> void:
+	limpiar_mods_run()
 	actualizar_evoluciones()
 	_run_cobrada = false
 	migas_run = 0.0
@@ -1141,6 +1178,7 @@ func sumar_migas_run(cantidad: float) -> void:
 
 
 func terminar_run() -> void:
+	limpiar_mods_run()
 	_run_cobrada = true
 	migas += migas_run
 	migas_colonia += migas_run
@@ -1400,6 +1438,7 @@ func _restaurar_componentes(datos: Dictionary) -> void:
 
 
 func reiniciar_estado() -> void:
+	mods_run.clear()
 	_guardado_proyectos_pendiente = false
 	_run_cobrada = false
 	migas_run = 0.0
@@ -1584,6 +1623,21 @@ func _cargar_datos() -> void:
 			d.efectos.append({"stat": partes[0], "tipo": partes[1], "valor": _num(partes[2])})
 		decretos.append(d)
 		decretos_por_id[d.id] = d
+
+	mutaciones.clear()
+	mutaciones_por_id.clear()
+	for fila in _leer_csv(RUTA_MUTACIONES):
+		var mu := {"id": fila.id, "nombre": fila.nombre, "descripcion": fila.descripcion,
+			"efecto": fila.efecto, "valor": _num(fila.valor), "rareza_minima": fila.rareza_minima,
+			"max": int(_num(fila.max))}
+		if mu.efecto not in EFECTOS_MUTACION:
+			push_error("Mutación '%s': efecto desconocido '%s'" % [mu.id, mu.efecto])
+			continue
+		if mu.rareza_minima not in RAREZAS:
+			push_error("Mutación '%s': rareza desconocida '%s'" % [mu.id, mu.rareza_minima])
+			continue
+		mutaciones.append(mu)
+		mutaciones_por_id[mu.id] = mu
 
 	comidas.clear()
 	for fila in _leer_csv(RUTA_COMIDAS):

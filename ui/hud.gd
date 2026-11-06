@@ -541,7 +541,7 @@ func _crear_migas(raiz: Control) -> void:
 	_lbl_combo = _combo_visual.etiqueta
 	_lbl_racha = Estilo.etiqueta("", 32, Color("ffe39a"), 2)
 	_lbl_racha.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_lbl_racha.position = Vector2(-160, 70)
+	_lbl_racha.position = Vector2(-160, 104)
 	_lbl_racha.size = Vector2(320, 40)
 	_lbl_racha.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_lbl_racha.hide()
@@ -608,7 +608,7 @@ func _crear_avisos(raiz: Control) -> void:
 	_lbl_aviso.custom_minimum_size = Vector2(620, 0)
 	_lbl_aviso.size.x = 620
 	_lbl_aviso.add_theme_stylebox_override("normal", Estilo.panel(14, 10))
-	_lbl_aviso.position = Vector2(-310, 116)
+	_lbl_aviso.position = Vector2(-310, 148)
 	_lbl_aviso.visible = false
 	raiz.add_child(_lbl_aviso)
 
@@ -1102,6 +1102,9 @@ func pausado() -> bool:
 
 func pausar() -> void:
 	if not is_inside_tree() or not is_node_ready() or (not run.activa and not run.cerrando_erosion) or pausado():
+		return
+	# Elegir una mutación ya pausa la run y tiene sus propios controles.
+	if is_instance_valid(run.evolucion) and run.evolucion.eligiendo:
 		return
 	run.feromonas.soltar()
 	run.cancelar_colocacion_entrada()

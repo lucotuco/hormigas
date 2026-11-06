@@ -92,6 +92,9 @@ func claves_del_juego() -> Dictionary:
 		_sumar(claves, [n.nombre, n.descripcion])
 	for d in Juego.decretos:
 		_sumar(claves, [d.nombre, d.descripcion])
+	for m in Juego.mutaciones:
+		_sumar(claves, [m.nombre, m.descripcion])
+	_sumar(claves, EleccionMutacion.NOMBRES_RAREZA.values())
 	for a in Juego.adaptaciones:
 		_sumar(claves, [a.nombre, a.descripcion])
 	for proyecto in ProyectosCampana.todos():

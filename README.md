@@ -231,6 +231,7 @@ reveladas quedan visibles para siempre, y lo nuevo se marca con "¡Nuevo!":
 
 | Mecánica | Aparece |
 |---|---|
+| Néctar, niveles y mutaciones | Después de la primera compra |
 | Compra ×10 / Máx y frenesí | Desde la segunda run |
 | Botón y texto del gran objetivo | Desde la tercera run |
 | Pestaña Castas | Desde la cuarta run (o al tener una especialista) |
@@ -509,6 +510,31 @@ y ritmo de mordida ×1.5, con descanso para no encadenarlo indefinidamente. Las
 mandíbulas crecen visualmente con sus mejoras; buche y legado cambian el abdomen
 y las marcas del cuerpo. La reina adquiere una corona especial al conquistar
 un monumento.
+
+### Néctar, niveles y mutaciones (la run como roguelite)
+
+Cada entrega real llena la **barra de néctar** (bajo el reloj). Al llenarla la
+colonia **sube de nivel**: eclosiona de golpe un 15% de la colonia (al menos
+una obrera) y, medio segundo después, la run se pausa para elegir **una de tres
+mutaciones** con clic o `1` `2` `3`; `R` revuelve la oferta una vez por run.
+Las mutaciones valen sólo en esa expedición: al cobrarla, las stats vuelven a
+las de la tienda y nada se guarda.
+
+- Rarezas: común, rara, épica y legendaria (gris, azul, violeta y dorado). La
+  rareza multiplica el valor de la fila ×1 / ×1,6 / ×2,5 / ×4 respecto de su
+  rareza mínima, y con cada nivel de la run salen mejores rarezas.
+- Néctar del nivel *n* = máx(6, hormigas × 1,2) × (1 + 0,8 × *n*): atado a la
+  colonia, da 4–7 niveles por run con una obrera o con quinientas.
+- Las mutaciones están en `datos/mutaciones.csv` (`efecto`, `valor`,
+  `rareza_minima`, `max`). Daño, ritmo, paso y críticos se leen por mordida
+  desde `EvolucionRun`; migas, botín, buche y cría van por `Juego.mods_run`.
+- Llegar al tope de 500 hormigas convierte la eclosión en "colonia
+  desbordada": +5% de daño por cada nivel que ya no puede eclosionar.
+- Aparece después de la primera compra: las primeras expediciones siguen
+  siendo la obrera sola. El bot elige con `BOT_CARTAS=mejor|azar`; sin
+  pantalla, las pruebas eligen solas (`EvolucionRun.modo_automatico`).
+
+Pruebas: `prueba_mutaciones`; capturas: `revision_mutaciones`.
 
 **Ráfaga es otro poder, manual y separado del frenesí.** Veinte entregas reales
 cargan el botón; `E` activa 8 segundos de daño ×1,75 y ritmo de mordida ×1,25,
