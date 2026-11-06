@@ -18,8 +18,8 @@ const CARTAS_POR_OFERTA := 3
 ## Atarlo a la colonia mantiene parecida la cantidad de niveles por run con
 ## una obrera o con quinientas; el tiempo entre niveles crece dentro de la run.
 const NECTAR_MINIMO := 6.0
-const NECTAR_POR_HORMIGA := 0.8
-const CRECE_POR_NIVEL := 0.35
+const NECTAR_POR_HORMIGA := 1.2
+const CRECE_POR_NIVEL := 0.8
 ## Cada nivel eclosiona esta parte de la colonia (al menos una obrera).
 const ECLOSION := 0.15
 const HORMIGAS_POR_ENJAMBRE := 50.0
