@@ -63,17 +63,18 @@ func probar_reglas_del_lado() -> void:
 		verificar(invalidos, nombre + ": daño bajo, negativo o no finito nunca agranda el bocado")
 		verificar(is_equal_approx(pieza.lado_para_dano(288.0, BASE), 12.0)
 			and is_equal_approx(pieza.lado_para_dano(1152.0, BASE), 24.0)
-			and is_equal_approx(pieza.lado_para_dano(1.0e12, BASE), 24.0),
-			nombre + ": la fuerza intermedia crece por densidad y la fuerza enorme queda en veinticuatro")
+			and is_equal_approx(pieza.lado_para_dano(4608.0, BASE), 48.0)
+			and is_equal_approx(pieza.lado_para_dano(1.0e12, BASE), 48.0),
+			nombre + ": la fuerza intermedia crece por densidad y la fuerza enorme queda en cuarenta y ocho")
 		var monotono := true
 		var previo := BASE
-		for dano: float in [0.0, 32.0, 72.0, 150.0, 288.0, 500.0, 1152.0, 1.0e12]:
+		for dano: float in [0.0, 32.0, 72.0, 150.0, 288.0, 500.0, 1152.0, 4608.0, 1.0e12]:
 			var lado := pieza.lado_para_dano(dano, BASE)
-			monotono = monotono and lado >= previo and lado >= BASE and lado <= BASE * 4.0
+			monotono = monotono and lado >= previo and lado >= BASE and lado <= BASE * PiezaCasa.LADO_MAXIMO_POR_DANO
 			previo = lado
-		verificar(monotono and pieza.lado_para_dano(1.0e12, 3.0) == 12.0
-			and pieza.lado_para_dano(1.0e12, 10.0) == 40.0,
-			nombre + ": la cota siempre es cuatro veces el lado recibido, no un tamaño sin límite")
+		verificar(monotono and pieza.lado_para_dano(1.0e12, 3.0) == 24.0
+			and pieza.lado_para_dano(1.0e12, 10.0) == 80.0,
+			nombre + ": la cota siempre es ocho veces el lado recibido, no un tamaño sin límite")
 		verificar(firma == [pieza.vida, pieza.vida_max, pieza.rect_mundo, pieza.version_forma, pieza.pieza],
 			nombre + ": calcular el tamaño no modifica resistencia, geometría ni metadatos")
 	pieza.pieza = {"meta": true}
@@ -151,7 +152,7 @@ func probar_mesa_real(es_meta: bool) -> void:
 	var carga_real := h.carga
 	var retirado := vida - mesa.vida
 	var tamano := mesa.tamano_bocado()
-	var cota := BASE * 4.0 if es_meta else BASE
+	var cota := BASE * PiezaCasa.LADO_MAXIMO_POR_DANO if es_meta else BASE
 	verificar(h.bocados == 1 and carga_real > 0.0 and h.estado == Hormiga.Estado.MORDIENDO
 		and h._dano == dano_fixture and h._capacidad == 1000 and h._porciones_ciclo == 1,
 		nombre + ": una llamada real produce un solo bocado sin forzar regreso, capacidad ni daño extra")

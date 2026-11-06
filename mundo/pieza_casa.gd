@@ -511,7 +511,10 @@ func alcanza_desde(pos: Vector2) -> bool:
 ## hasta usar todo el daño, con tope de LADO_MAXIMO_POR_DANO veces el lado.
 ## Sin esto, mejorar el daño casi no servía contra el gran objetivo: un daño
 ## 14 veces mayor sólo duplicaba lo que la colonia le sacaba en una run.
-const LADO_MAXIMO_POR_DANO := 4.0
+## Con tope ×4 (24×24) la colonia que ya compró la casa pegaba muy por encima
+## del techo: sacaba la misma fracción del área por run con cualquier vida y
+## la mesa quedaba trabada en ~85%. Con ×8 manda otra vez la vida de la meta.
+const LADO_MAXIMO_POR_DANO := 8.0
 
 func lado_para_dano(dano: float, base: float) -> float:
 	# Sólo los grandes objetivos (del destino y de los proyectos): el resto de
