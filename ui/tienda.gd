@@ -55,6 +55,9 @@ var _lbl_cambio: Label
 var _lbl_costo: Label
 var _lbl_estado: Label
 var _lbl_pista: Label
+var _lbl_utilidad: Label
+var _vista_compra: VistaCompra
+var _vista_confirmada: Dictionary = {}
 var _aviso_compra := {"id": "", "texto": ""}
 ## Al encuadrar la reina, los botones se mueven bajo un mouse quieto. Ese
 ## mouse_entered no elige otra cámara: el foco dura hasta una entrada real.
@@ -93,8 +96,8 @@ func _ready() -> void:
 	_cuerpo_mejoras.add_child(_crear_leyenda())
 	var ayuda := PanelContainer.new()
 	ayuda.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ayuda.add_theme_stylebox_override("panel", Estilo.caja(Color(0.09, 0.07, 0.05, 0.72), 8, Color.TRANSPARENT, 0, 7))
-	ayuda.add_child(Estilo.etiqueta(tr("Mouse: ver · clic: comprar · arrastrá y usá la rueda para recorrer"), 13, Color(0.88, 0.88, 0.79, 0.7)))
+	ayuda.add_theme_stylebox_override("panel", Estilo.caja(Color("201c17ed"), 8, Color.TRANSPARENT, 0, 7))
+	ayuda.add_child(Estilo.etiqueta(tr("Mouse: ver · clic: comprar · arrastrá y usá la rueda para recorrer"), 13, Estilo.TEXTO_SUAVE))
 	ayuda.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	ayuda.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	ayuda.position = Vector2(14, -14)
@@ -103,7 +106,7 @@ func _ready() -> void:
 	_ficha_mejoras.hide()
 	_cuerpo_mejoras.add_child(_ficha_mejoras)
 	_panel_seccion = PanelContainer.new()
-	_panel_seccion.add_theme_stylebox_override("panel", Estilo.caja(Color("182019"), 24, Color("8d7751"), 2, 20))
+	_panel_seccion.add_theme_stylebox_override("panel", Estilo.panel(20, 16))
 	_panel_seccion.hide()
 	_area_nido.add_child(_panel_seccion)
 	var contenido := VBoxContainer.new()
@@ -375,17 +378,17 @@ func _crear_ficha() -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.custom_minimum_size.x = 350
-	var caja := Estilo.caja(Color("1d221d"), 12, Color("4b5945"), 2, 0)
-	caja.shadow_color = Color(0, 0, 0, 0.5)
-	caja.shadow_size = 14
-	caja.shadow_offset = Vector2(0, 8)
+	var caja := Estilo.panel(0)
+	caja.shadow_color = Color(0, 0, 0, 0.24)
+	caja.shadow_size = 8
+	caja.shadow_offset = Vector2(0, 5)
 	panel.add_theme_stylebox_override("panel", caja)
 	var columna := VBoxContainer.new()
 	columna.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	columna.add_theme_constant_override("separation", 0)
 	panel.add_child(columna)
 	_ficha_franja = ColorRect.new()
-	_ficha_franja.custom_minimum_size.y = 6
+	_ficha_franja.custom_minimum_size.y = 3
 	_ficha_franja.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	columna.add_child(_ficha_franja)
 	var margen := MarginContainer.new()
@@ -414,12 +417,21 @@ func _crear_ficha() -> PanelContainer:
 	textos.add_child(_lbl_rama)
 	for nombre in ["_lbl_detalle", "_lbl_cambio", "_lbl_costo", "_lbl_estado", "_lbl_pista"]:
 		var tamano: int = {"_lbl_detalle": 14, "_lbl_cambio": 16, "_lbl_costo": 15, "_lbl_estado": 13, "_lbl_pista": 12}[nombre]
-		var color: Color = {"_lbl_detalle": Estilo.TEXTO_SUAVE, "_lbl_cambio": Estilo.VERDE, "_lbl_costo": Estilo.ACENTO, "_lbl_estado": Estilo.TEXTO_SUAVE, "_lbl_pista": Color("8d927f")}[nombre]
+		var color: Color = {"_lbl_detalle": Estilo.TEXTO_SUAVE, "_lbl_cambio": Estilo.VERDE, "_lbl_costo": Estilo.ACENTO, "_lbl_estado": Estilo.TEXTO_SUAVE, "_lbl_pista": Color("aab49f")}[nombre]
 		var etiqueta := Estilo.etiqueta("", tamano, color)
 		etiqueta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		etiqueta.custom_minimum_size.x = 322
 		textos.add_child(etiqueta)
 		set(nombre, etiqueta)
+	_vista_compra = VistaCompra.new()
+	_vista_compra.hide()
+	textos.add_child(_vista_compra)
+	# Una sola comparación para la ficha abierta, no un simulador por cámara.
+	textos.move_child(_vista_compra, 3)
+	_lbl_utilidad = Estilo.etiqueta("", 12, Color("cfb68a"))
+	_lbl_utilidad.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lbl_utilidad.custom_minimum_size.x = 322
+	textos.add_child(_lbl_utilidad)
 	return panel
 
 
@@ -491,6 +503,7 @@ func _mostrar_ficha(id: String) -> void:
 		return
 	if id != _ficha_id and _aviso_compra.id != id:
 		_aviso_compra = {"id": "", "texto": ""}
+		_vista_confirmada = {}
 	_ficha_id = id
 	var e: Dictionary = _estados[id]
 	_ficha_franja.color = e.color
@@ -504,6 +517,14 @@ func _mostrar_ficha(id: String) -> void:
 		"seccion": _ficha_seccion(id, e)
 		"casta": _ficha_casta(id, e)
 		_: _ficha_mejora(id, e)
+	var modelo := {}
+	if not e.misterio and (e.tipo == "casta" or e.nivel < e.maximo):
+		modelo = VistaCompra.comparar(id)
+	if _aviso_compra.id == id and not _vista_confirmada.is_empty():
+		modelo = _vista_confirmada
+	_vista_compra.mostrar(modelo)
+	_lbl_utilidad.text = VistaCompra.aviso_llamado(id) if not e.misterio and e.nivel < e.maximo else ""
+	_lbl_utilidad.visible = not _lbl_utilidad.text.is_empty()
 	_agregar_descubrimiento(id)
 	if _aviso_compra.id == id:
 		_lbl_estado.text = _aviso_compra.texto
@@ -601,6 +622,10 @@ func _ficha_casta(id: String, e: Dictionary) -> void:
 	_lbl_sala.label_settings.font_color = c.color.lightened(0.25)
 	_lbl_rama.text = tr("CASTA · %s") % tr(c.rol).to_upper()
 	_lbl_detalle.text = tr(c.habilidad)
+	if id == "cargadora":
+		_lbl_detalle.text = tr("Junta restos y lleva más bocados por viaje.")
+	elif id == "carpintera":
+		_lbl_detalle.text = tr("Corta madera; las cargadoras retiran los restos.")
 	_lbl_estado.text = ""
 	_lbl_pista.text = tr("Clic derecho: detalles y evoluciones")
 	var oferta := Juego.cotizar_casta(id, Juego.cantidad_compra)
@@ -613,7 +638,7 @@ func _ficha_casta(id: String, e: Dictionary) -> void:
 		_lbl_cambio.text = tr("Sale en cada expedición.")
 		_lbl_costo.text = tr("Colonia completa")
 	else:
-		_lbl_cambio.text = tr("Sale en cada expedición.")
+		_lbl_cambio.text = tr("%d → %d por expedición") % [e.nivel, e.nivel + maxi(1, oferta.cantidad)]
 		if oferta.puede:
 			_lbl_costo.text = tr("Reclutar ×%d · %s migas") % [maxi(1, oferta.cantidad), Juego.formatear(oferta.costo)]
 		else:
@@ -950,6 +975,7 @@ func _valor_stat(stat: String, valor: float) -> String:
 
 func _comprar(id: String) -> void:
 	var texto := ""
+	var comparacion := VistaCompra.comparar(id)
 	if Juego.castas_por_id.has(id) and not Juego.mejoras_por_id.has(id):
 		if not Juego.revelado("castas"):
 			Sonido.tocar("no")
@@ -974,6 +1000,8 @@ func _comprar(id: String) -> void:
 		texto = tr("Comprado ×%d\n%s → %s") % [compradas, _valor_stat(stat, antes), _valor_stat(stat, Juego.stat(stat))]
 	else:
 		return
+	# Al comprar queda el cambio que acabás de lograr, no el próximo precio.
+	_vista_confirmada = comparacion
 	Sonido.tocar("comprar", 1.0, 0.01)
 	_corte_tierra.celebrar(id)
 	_aviso(id, texto)

@@ -57,7 +57,7 @@ func probar_partida_vieja() -> void:
 func probar_proxima_meta() -> void:
 	Juego.reiniciar_estado()
 	var meta := Juego.proxima_meta()
-	verificar(meta.tipo == "nivel" and meta.objetivo == 3.0 and meta.actual == 0.0, "la primera meta es subir Mandíbulas fuertes a nivel 3")
+	verificar(meta.tipo == "migas" and meta.id == "mas_obreras" and meta.objetivo == Juego.costo("mas_obreras") and meta.actual == 0.0, "la primera meta es comprar la segunda obrera con ingresos reales")
 	Juego.niveles = {"mandibulas": 4}
 	Juego._cache_stats.clear()
 	meta = Juego.proxima_meta()
@@ -85,7 +85,7 @@ func probar_hud() -> void:
 	await get_tree().process_frame
 	var hud := run.hud
 	var meta := Juego.proxima_meta()
-	verificar(hud._panel_meta.visible and hud._lbl_meta_titulo.text == "Empezá por las migas cercanas" and "comprar más obreras" in hud._lbl_meta_progreso.text and "cartón puede esperar" in hud._lbl_meta_progreso.text, "el HUD orienta a juntar migas y comprar obreras, dejando el cartón como proyecto posterior")
+	verificar(hud._panel_meta.visible and hud._lbl_meta_titulo.text == "Empezá por las migas cercanas" and hud._lbl_meta_nombre.text == "Tu segunda obrera" and "cartón puede esperar" in hud._lbl_meta_progreso.text, "el HUD propone la segunda obrera y deja el cartón para una colonia mayor")
 	verificar(hud._lbl_meta_nombre.text == meta.nombre and is_equal_approx(hud._barra_meta.value, meta.actual / meta.objetivo * 100.0), "la ayuda inicial conserva la meta económica compartida y su contador, no una barra de completar cartón")
 	verificar(not hud._panel_inferior.visible, "la primera run no muestra prioridades, frenesí ni gran objetivo")
 	run.queue_free()

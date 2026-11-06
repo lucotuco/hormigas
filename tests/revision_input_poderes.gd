@@ -81,7 +81,17 @@ func probar(tam: Vector2i) -> void:
 		and run.entradas_disponibles() == 2 and not run.feromonas.activa,
 		"%s: Esc real cancela colocación y no se propaga al menú de pausa" % tam)
 	await tecla(KEY_N)
-	var enemigo: Evento = run.eventos.aparecer("cucaracha")[0]
+	# La cocina doble sólo admite el punto de la entrada: no representa el
+	# piso donde puede nacer un encuentro. Usar la geometría real al crearlo.
+	run.cocina = original
+	var candidatas := run.eventos.aparecer("cucaracha")
+	run.cocina = cocina
+	verificar(not candidatas.is_empty(), "%s: el enemigo de control nace sobre piso real" % tam)
+	if candidatas.is_empty():
+		run.queue_free()
+		await cuadros(2)
+		return
+	var enemigo: Evento = candidatas[0]
 	enemigo.set_process(false)
 	enemigo.position = valida
 	var golpes := enemigo.golpes
@@ -118,9 +128,9 @@ func probar(tam: Vector2i) -> void:
 	await tecla(KEY_E)
 	verificar(run.poderes.activa_restante > 0 and run.poderes.carga_entregas == 0,
 		"%s: E real activa la misma Ráfaga que el botón" % tam)
-	verificar(run.efectos._pausa_epico > 0 and not run.efectos._particulas.is_empty()
+	verificar(run.efectos._pausa_rafaga > 0 and not run.efectos._particulas.is_empty()
 		and Juego.migas_run == ingreso,
-		"%s: E real también dispara el feedback épico sin crear ingresos" % tam)
+		"%s: E real también dispara el feedback de activación sin crear ingresos" % tam)
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("res://.godot/qa/activa_input_poderes_%dx%d.png" % [tam.x, tam.y])
 	if get_tree().paused:

@@ -10,6 +10,7 @@ func _ready() -> void:
 		await Graficos.preparado
 	var imagen := Graficos.textura.get_image()
 	var vistos: Dictionary = {}
+	var exportados := {}
 	for datos: Dictionary in Graficos.catalogo_muebles():
 		var id := Graficos.clave_mueble(datos)
 		if vistos.has(id):
@@ -25,7 +26,9 @@ func _ready() -> void:
 		var maximo := Vector2i.ZERO
 		for y in tam.y:
 			for x in tam.x:
-				if imagen.get_pixelv(origen + Vector2i(x, y)).a > 0.5:
+				# El marco conserva cobertura AA. Material y navegación siguen
+				# usando >0.5 en las filas, no la sombra descartada del original.
+				if imagen.get_pixelv(origen + Vector2i(x, y)).a > 0.001:
 					minimo = minimo.min(Vector2i(x, y))
 					maximo = maximo.max(Vector2i(x + 1, y + 1))
 		assert(maximo.x > minimo.x and maximo.y > minimo.y, id)
@@ -81,6 +84,15 @@ func _ready() -> void:
 			for zona: Array in conjunto:
 				for i in 4:
 					zona[i] = snappedf(float(zona[i]) / medidas[i % 2], 0.0000001)
-		print("MATERIAL=" + JSON.stringify({"id": id, "datos": {"limites": [limite.position.x, limite.position.y, limite.size.x, limite.size.y], "formas": formas, "perfil": perfil}}))
+		var material := {"limites": [limite.position.x, limite.position.y, limite.size.x, limite.size.y], "formas": formas, "perfil": perfil}
+		exportados[id] = material
+		print("MATERIAL=" + JSON.stringify({"id": id, "datos": material}))
+	# Regeneración mecánica del recurso de autoría, sólo con opción explícita.
+	# El juego y las revisiones normales nunca escriben este archivo.
+	if "--guardar" in OS.get_cmdline_user_args():
+		var archivo := FileAccess.open("res://datos/siluetas_muebles.json", FileAccess.WRITE)
+		assert(archivo != null, "No se pudo guardar el catálogo exportado")
+		archivo.store_string(JSON.stringify(exportados, " ") + "\n")
+		archivo.close()
 	print("EXPORTACION_MATERIAL_OK " + str(vistos.size()))
 	get_tree().quit()

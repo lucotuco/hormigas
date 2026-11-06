@@ -3,7 +3,6 @@ extends CanvasLayer
 ## Interfaz durante la run: migas, tiempo, hormigas, combo, avisos y el panel
 ## de fin de run. Se arma por código para no tener que tocar la escena.
 
-const DURACION_COMBO_VISIBLE := 1.2
 const RUNS_CON_AYUDA := 3
 
 @onready var run: Run = get_parent()
@@ -15,6 +14,15 @@ var _relleno_tiempo: StyleBoxFlat
 var _lbl_tiempo: Label
 var _lbl_hormigas: Label
 var _lbl_combo: Label
+var _combo_visual: ComboVisual
+var _lbl_ganancia: Label
+var _lbl_racha: Label
+var _ganancia_reciente := 0.0
+var _ganancia_ventana := 0.0
+var _ganancia_visible := 0.0
+var _ganancia_sucia := false
+var _categoria_ganancia := 0
+var _racha_visible := 0.0
 var _lbl_aviso: Label
 var _lbl_ayuda: Label
 var _panel_fin: PanelContainer
@@ -39,7 +47,8 @@ var _barra_frenesi: ProgressBar
 var _prioridades: Dictionary = {}
 var _hitos_vistos := 0
 var _tween_aviso: Tween
-var _tween_combo: Tween
+var _combo_pendiente := 0
+var _combo_sucio := false
 var _panel_inferior: PanelContainer
 var _nodos_prioridad: Array[Control] = []
 var _boton_objetivo: Button
@@ -53,10 +62,10 @@ var _relleno_meta: StyleBoxFlat
 var _meta_lista := false
 var _lbl_llamado: Label
 var _boton_paso: Button
-var _objetivo_paso: PiezaCasa
-var _silla_inicial: PiezaCasa
-var _silla_buscada := false
+var _objetivo_paso: Comida
+var _zona_paso := Rect2()
 var _columna_progresion: VBoxContainer
+var _panel_progresion: PanelContainer
 var _tipo_meta_actual := ""
 var _tiene_proyectos := false
 
@@ -69,9 +78,10 @@ var _migas_mostradas := 0.0
 var _vuelo_migas: VueloMigas
 var _boton_entrada: Button
 var _boton_rafaga: Button
-var _tiempo_combo := -100.0
 var _reloj := 0.0
-var _tween_pulso: Tween
+var _pulso_migas := 0.0
+var _rafaga_lista := false
+var _pulso_poder := 0.0
 
 
 class IconoMiga extends Control:
@@ -117,6 +127,8 @@ class IndicadorEventos extends Control:
 			"rata": return tr("Rata · Ver")
 			"cucaracha": return tr("Cucaracha · Ver")
 			"escarabajo": return tr("Escarabajo · Ver")
+			"avispa": return tr("Avispa · Ver")
+			"rival": return tr("Hormiga rival · Ver")
 			"dorada": return tr("Miga dorada · Ver")
 		return ""
 
@@ -130,6 +142,8 @@ class IndicadorEventos extends Control:
 			"rata": return tr("Está robando comida")
 			"cucaracha": return tr("Espantala mientras abre la comida")
 			"escarabajo": return tr("Espantalo antes de que cargue los restos")
+			"avispa": return tr("Espantala antes de que ataque")
+			"rival": return tr("Recuperá los restos antes de que escape")
 			"dorada": return tr("Recogela antes de que desaparezca")
 		return ""
 
@@ -231,8 +245,8 @@ func _ready() -> void:
 	_vuelo_migas.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_vuelo_migas)
 	_vuelo_migas.llegaron.connect(_miga_llego)
-	_lbl_llamado = Estilo.etiqueta("", 13, Color("c2ecd2"), 4)
-	_lbl_llamado.add_theme_stylebox_override("normal", Estilo.caja(Color("20302a"), 8, Color(0.55, 0.75, 0.65, 0.25), 1, 10))
+	_lbl_llamado = Estilo.etiqueta("", 13, Color("c2ecd2"))
+	_lbl_llamado.add_theme_stylebox_override("normal", Estilo.panel(10, 8))
 	_lbl_llamado.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_lbl_llamado.visible = false
 	raiz.add_child(_lbl_llamado)
@@ -248,12 +262,35 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_reloj += delta
+	if _ganancia_sucia:
+		_presentar_ganancia()
+	if _combo_sucio:
+		_presentar_combo()
+	_combo_visual.avanzar(delta)
+	_ganancia_ventana = maxf(0.0, _ganancia_ventana - delta)
+	if _ganancia_visible > 0.0:
+		_ganancia_visible = maxf(0.0, _ganancia_visible - delta)
+		_lbl_ganancia.modulate.a = minf(1.0, _ganancia_visible * 3.0)
+		_lbl_ganancia.visible = _ganancia_visible > 0.0
+	if _racha_visible > 0.0:
+		_racha_visible = maxf(0.0, _racha_visible - delta)
+		var edad := 1.15 - _racha_visible
+		_lbl_racha.scale = Vector2.ONE * (1.0 + 0.22 * maxf(0.0, 1.0 - edad / 0.22))
+		_lbl_racha.modulate.a = minf(1.0, _racha_visible * 4.0)
+		_lbl_racha.visible = _racha_visible > 0.0
+	# Relojes compartidos, sin crear/descartar tweens por cada depósito.
+	if _pulso_migas > 0.0:
+		_pulso_migas = maxf(0.0, _pulso_migas - delta)
+		_caja_migas.scale = Vector2.ONE * (1.0 + 0.11 * sin(PI * _pulso_migas / 0.18))
+	if _pulso_poder > 0.0:
+		_pulso_poder = maxf(0.0, _pulso_poder - delta)
+		_boton_rafaga.modulate = Color.WHITE.lerp(Color("ffe5a0"), sin(PI * _pulso_poder / 0.65) * 0.6)
 	# Contador de migas que "corre" hacia el valor real.
 	var real := Juego.migas_run
 	_migas_mostradas = lerpf(_migas_mostradas, real, 1.0 - exp(-10.0 * delta))
 	if absf(real - _migas_mostradas) < 0.5:
 		_migas_mostradas = real
-	_lbl_migas.text = Juego.formatear(_migas_mostradas)
+	_lbl_migas.text = Efectos.formatear_importe(_migas_mostradas)
 
 	var restante := run.tiempo_restante
 	_lbl_tiempo.text = "%d s" % int(ceil(restante))
@@ -308,37 +345,67 @@ func _process(delta: float) -> void:
 			lineas.append(" · ".join(grupo))
 		_lbl_composicion.text = "\n".join(lineas)
 
-	if _lbl_combo.visible and _reloj - _tiempo_combo > DURACION_COMBO_VISIBLE:
-		_lbl_combo.modulate.a = move_toward(_lbl_combo.modulate.a, 0.0, delta * 3.0)
-		if _lbl_combo.modulate.a <= 0.0:
-			_lbl_combo.visible = false
-
-
 # =====================================================================
 # API que usa la run
 # =====================================================================
 
 ## Migas que salen volando desde un punto de la pantalla hasta el contador.
 func migas_voladoras(desde: Vector2, cantidad: int) -> void:
+	if not get_viewport().get_visible_rect().grow(30).has_point(desde):
+		return
 	var destino := _caja_migas.global_position + Vector2(36, _caja_migas.size.y * 0.62)
 	_vuelo_migas.emitir(desde, destino, cantidad)
 
 
+## Sólo el libro real de ingresos llama acá: agrupa una tanda corta aunque
+## su entrada esté fuera de cámara. No cobra ni redondea la moneda del juego.
+func registrar_ganancia(cantidad: float, categoria := 0) -> void:
+	if cantidad <= 0.0 or not is_finite(cantidad) or not is_instance_valid(_lbl_ganancia) or run.terminada:
+		return
+	if _ganancia_ventana <= 0.0:
+		_ganancia_reciente = 0.0
+		_ganancia_ventana = 0.32
+		_ganancia_visible = 0.0
+	var primera := _ganancia_visible <= 0.0
+	_ganancia_reciente += cantidad
+	_ganancia_visible = 1.1
+	_categoria_ganancia = clampi(categoria, 0, 2)
+	_ganancia_sucia = true
+	if primera:
+		_presentar_ganancia()
+	_miga_llego()
+
+
+func _presentar_ganancia() -> void:
+	_ganancia_sucia = false
+	_lbl_ganancia.text = "+" + Efectos.formatear_importe(_ganancia_reciente)
+	_lbl_ganancia.label_settings.font_color = [Color("ffe093"), Color("ffbc93"), Color("a9e1f1")][_categoria_ganancia]
+	_lbl_ganancia.modulate.a = 1.0
+	_lbl_ganancia.show()
+
+
+func mostrar_racha(cantidad: int) -> void:
+	if cantidad <= 0 or not is_instance_valid(_lbl_racha) or not run.activa or run.terminada:
+		return
+	_lbl_racha.text = tr("¡%d ENTREGAS!") % cantidad
+	_lbl_racha.pivot_offset = Vector2(160, 20)
+	_lbl_racha.modulate.a = 1.0
+	_lbl_racha.show()
+	_racha_visible = 1.15
+
+
 
 func mostrar_combo(combo: int) -> void:
-	if combo < 3:
+	if run.terminada:
 		return
-	_tiempo_combo = _reloj
-	_lbl_combo.text = tr("COMBO x%d") % combo
-	_lbl_combo.visible = true
-	_lbl_combo.modulate.a = 1.0
-	_lbl_combo.pivot_offset = Vector2(0.0, _lbl_combo.size.y / 2.0)
-	_lbl_combo.scale = Vector2.ONE * (1.0 + minf(combo, 50) * 0.008 + 0.25)
-	var tween := _lbl_combo.create_tween()
-	if _tween_combo and _tween_combo.is_running():
-		_tween_combo.kill()
-	_tween_combo = tween
-	tween.tween_property(_lbl_combo, "scale", Vector2.ONE * (1.0 + minf(combo, 50) * 0.008), 0.15)
+	_combo_pendiente = combo
+	_combo_sucio = true
+
+
+## Muchas obreras pueden descargar juntas: sólo el último combo se dibuja.
+func _presentar_combo() -> void:
+	_combo_sucio = false
+	_combo_visual.actualizar(_combo_pendiente)
 
 
 func mostrar_aviso(texto: String) -> void:
@@ -359,6 +426,7 @@ func mostrar_aviso(texto: String) -> void:
 
 func mostrar_fin() -> void:
 	_lbl_aviso.hide()
+	limpiar_recompensas()
 	_lbl_fin_titulo.text = (tr("¡Mapa despejado!") if run.limpieza_completa else tr("¡Zona despejada!")) if run.limpieza_lograda else (tr("¡Se comieron a la colonia!") if run.colonia_perdida else tr("¡Se acabó el tiempo!"))
 	_lbl_fin_migas.text = tr("+%s migas") % Juego.formatear(Juego.migas_run)
 	_lbl_fin_resumen.text = tr("%s migas/s · %s") % [Juego.formatear_corto(run.produccion_run), (tr("%+.0f%% frente al récord anterior") % run.mejora_produccion) if run.tenia_record else tr("primer registro en este destino")]
@@ -424,10 +492,26 @@ func _ajustar_resumen_fin() -> void:
 # Construcción de la interfaz
 # =====================================================================
 
+func limpiar_recompensas() -> void:
+	_lbl_racha.hide()
+	_lbl_ganancia.hide()
+	_racha_visible = 0.0
+	_ganancia_visible = 0.0
+	_ganancia_ventana = 0.0
+	_ganancia_reciente = 0.0
+	_ganancia_sucia = false
+	_combo_sucio = false
+	_combo_visual.limpiar()
+	run.camara.detener_sacudida()
+	_pulso_migas = 0.0
+	_caja_migas.scale = Vector2.ONE
+	_vuelo_migas.limpiar()
+
+
 func _crear_migas(raiz: Control) -> void:
 	_caja_migas = PanelContainer.new()
 	_caja_migas.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_caja_migas.add_theme_stylebox_override("panel", Estilo.caja(Estilo.PANEL, 12, Color(1, 1, 1, 0.08), 1, 12))
+	_caja_migas.add_theme_stylebox_override("panel", Estilo.panel())
 	_caja_migas.position = Vector2(16, 16)
 	_caja_migas.custom_minimum_size = Vector2(190, 0)
 	raiz.add_child(_caja_migas)
@@ -443,13 +527,33 @@ func _crear_migas(raiz: Control) -> void:
 	icono.custom_minimum_size = Vector2(28, 28)
 	icono.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fila.add_child(icono)
-	_lbl_migas = Estilo.etiqueta("0", 32, Estilo.ACENTO, 4)
+	_lbl_migas = Estilo.etiqueta("0", 36, Estilo.ACENTO)
 	fila.add_child(_lbl_migas)
+	_lbl_ganancia = Estilo.etiqueta("", 21, Color("ffe093"))
+	_lbl_ganancia.hide()
+	columna.add_child(_lbl_ganancia)
 
-	_lbl_combo = Estilo.etiqueta("", 24, Estilo.ACENTO, 6)
-	_lbl_combo.position = Vector2(24, 104)
-	_lbl_combo.visible = false
-	raiz.add_child(_lbl_combo)
+	_combo_visual = ComboVisual.new()
+	# Reservar también la línea de ganancia y el pulso máximo del contador.
+	_combo_visual.position = Vector2(16, 156)
+	raiz.add_child(_combo_visual)
+	_combo_visual.impacto.connect(_impacto_combo)
+	_lbl_combo = _combo_visual.etiqueta
+	_lbl_racha = Estilo.etiqueta("", 32, Color("ffe39a"), 2)
+	_lbl_racha.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_lbl_racha.position = Vector2(-160, 70)
+	_lbl_racha.size = Vector2(320, 40)
+	_lbl_racha.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lbl_racha.hide()
+	raiz.add_child(_lbl_racha)
+
+
+func _impacto_combo(intensidad: float) -> void:
+	if run.activa and not run.terminada:
+		# El golpe no debe perturbar un objetivo sostenido ni el arrastre.
+		if run.feromonas.activa or run.camara.arrastrando:
+			intensidad = minf(intensidad, 3.0)
+		run.camara.sacudir(intensidad)
 
 
 func _crear_tiempo(raiz: Control) -> void:
@@ -460,15 +564,17 @@ func _crear_tiempo(raiz: Control) -> void:
 	caja.position = Vector2(-190, 14)
 	caja.add_theme_constant_override("separation", 4)
 	raiz.add_child(caja)
-	_lbl_tiempo = Estilo.etiqueta("%d s" % int(Juego.stat("duracion_run")), 22, Estilo.TEXTO, 5)
+	_lbl_tiempo = Estilo.etiqueta("%d s" % int(Juego.stat("duracion_run")), 22, Estilo.TEXTO)
 	_lbl_tiempo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lbl_tiempo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_lbl_tiempo.add_theme_stylebox_override("normal", Estilo.panel(6, 8))
 	caja.add_child(_lbl_tiempo)
 	_barra_tiempo = ProgressBar.new()
 	_barra_tiempo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_barra_tiempo.show_percentage = false
 	_barra_tiempo.custom_minimum_size = Vector2(380, 12)
 	_barra_tiempo.value = 100.0
-	_barra_tiempo.add_theme_stylebox_override("background", Estilo.caja(Color(0, 0, 0, 0.5), 6, Color(1, 1, 1, 0.1), 1, 0))
+	_barra_tiempo.add_theme_stylebox_override("background", Estilo.caja(Color("28342c"), 6, Estilo.BORDE_PANEL, 1, 0))
 	_relleno_tiempo = Estilo.caja(Estilo.VERDE, 6, Color.TRANSPARENT, 0, 0)
 	_barra_tiempo.add_theme_stylebox_override("fill", _relleno_tiempo)
 	caja.add_child(_barra_tiempo)
@@ -477,19 +583,21 @@ func _crear_tiempo(raiz: Control) -> void:
 func _crear_hormigas(raiz: Control) -> void:
 	var caja := PanelContainer.new()
 	caja.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	caja.add_theme_stylebox_override("panel", Estilo.caja(Estilo.PANEL, 12, Color(1, 1, 1, 0.08), 1, 12))
+	caja.add_theme_stylebox_override("panel", Estilo.panel())
 	caja.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	caja.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	caja.position = Vector2(-16, 16)
 	raiz.add_child(caja)
+	var columna := VBoxContainer.new()
+	columna.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	columna.add_theme_constant_override("separation", 5)
+	caja.add_child(columna)
 	_lbl_hormigas = Estilo.etiqueta(tr("Hormigas: %d") % 0, 18, Estilo.TEXTO)
-	caja.add_child(_lbl_hormigas)
-	_lbl_composicion = Estilo.etiqueta("", 12, Estilo.TEXTO, 3)
+	_lbl_hormigas.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	columna.add_child(_lbl_hormigas)
+	_lbl_composicion = Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
 	_lbl_composicion.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_lbl_composicion.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_lbl_composicion.position = Vector2(-356, 78)
-	_lbl_composicion.custom_minimum_size.x = 340
-	raiz.add_child(_lbl_composicion)
+	columna.add_child(_lbl_composicion)
 
 
 func _crear_avisos(raiz: Control) -> void:
@@ -499,18 +607,19 @@ func _crear_avisos(raiz: Control) -> void:
 	_lbl_aviso.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_lbl_aviso.custom_minimum_size = Vector2(620, 0)
 	_lbl_aviso.size.x = 620
-	_lbl_aviso.add_theme_stylebox_override("normal", Estilo.caja(Color(0.10, 0.14, 0.12, 0.94), 10, Color(0.7, 0.7, 0.5, 0.25), 1, 14))
+	_lbl_aviso.add_theme_stylebox_override("normal", Estilo.panel(14, 10))
 	_lbl_aviso.position = Vector2(-310, 116)
 	_lbl_aviso.visible = false
 	raiz.add_child(_lbl_aviso)
 
 	_lbl_ayuda = Estilo.etiqueta(
 		tr("Mantené clic: llamar hormigas · Clic en amenazas y premios: interactuar\nRueda: zoom · Botón derecho o central / WASD: mover · R: hormiguero · H: mapa · Esc: pausa"),
-		13, Estilo.TEXTO, 4)
-	_lbl_ayuda.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		13, Estilo.TEXTO_SUAVE)
+	_lbl_ayuda.add_theme_stylebox_override("normal", Estilo.panel(8, 8))
+	_lbl_ayuda.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_lbl_ayuda.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_lbl_ayuda.offset_left = 28
-	_lbl_ayuda.offset_right = -28
+	_lbl_ayuda.offset_left = -480
+	_lbl_ayuda.offset_right = 480
 	_lbl_ayuda.offset_top = -145
 	_lbl_ayuda.offset_bottom = -105
 	_lbl_ayuda.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -556,10 +665,10 @@ func _crear_cartel(raiz: Control) -> void:
 	corona.custom_minimum_size = Vector2(0, 74)
 	corona.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	columna.add_child(corona)
-	_lbl_cartel_titulo = Estilo.etiqueta("", 36, Estilo.ACENTO, 6)
+	_lbl_cartel_titulo = Estilo.etiqueta("", 36, Estilo.ACENTO)
 	_lbl_cartel_titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(_lbl_cartel_titulo)
-	_lbl_cartel_detalle = Estilo.etiqueta("", 18, Estilo.TEXTO, 3)
+	_lbl_cartel_detalle = Estilo.etiqueta("", 18, Estilo.TEXTO)
 	_lbl_cartel_detalle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(_lbl_cartel_detalle)
 
@@ -591,20 +700,20 @@ func _crear_panel_fin(raiz: Control) -> void:
 	centro.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	raiz.add_child(centro)
 	_panel_fin = PanelContainer.new()
-	_panel_fin.add_theme_stylebox_override("panel", Estilo.caja(Color(0.12, 0.08, 0.05, 0.96), 18, Estilo.ACENTO.darkened(0.3), 2, 20))
+	_panel_fin.add_theme_stylebox_override("panel", Estilo.caja(Estilo.PANEL, 16, Color(Estilo.ACENTO, 0.55), 1, 20))
 	_panel_fin.visible = false
 	centro.add_child(_panel_fin)
 	var columna := VBoxContainer.new()
 	columna.add_theme_constant_override("separation", 8)
 	columna.custom_minimum_size = Vector2(620, 0)
 	_panel_fin.add_child(columna)
-	_lbl_fin_titulo = Estilo.etiqueta(tr("¡Se acabó el tiempo!"), 30, Estilo.TEXTO, 4)
+	_lbl_fin_titulo = Estilo.etiqueta(tr("¡Se acabó el tiempo!"), 30, Estilo.TEXTO)
 	_lbl_fin_titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(_lbl_fin_titulo)
-	_lbl_fin_record = Estilo.etiqueta(tr("¡NUEVO RÉCORD!"), 18, Estilo.VERDE, 3)
+	_lbl_fin_record = Estilo.etiqueta(tr("¡NUEVO RÉCORD!"), 18, Estilo.VERDE)
 	_lbl_fin_record.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(_lbl_fin_record)
-	_lbl_fin_migas = Estilo.etiqueta(tr("+%s migas") % "0", 44, Estilo.ACENTO, 6)
+	_lbl_fin_migas = Estilo.etiqueta(tr("+%s migas") % "0", 44, Estilo.ACENTO)
 	_lbl_fin_migas.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	columna.add_child(_lbl_fin_migas)
 	_lbl_fin_resumen = Estilo.etiqueta("", 17, Estilo.VERDE)
@@ -645,27 +754,35 @@ func _abrir_archivo() -> void:
 	if is_instance_valid(_ventana):
 		return
 	_ventana = PanelArchivo.new()
+	_ventana.z_index = 100 # Encima de una celebración congelada por la pausa.
 	_ventana.cerrada.connect(func() -> void:
 		_ventana = null
 		_boton_tienda.grab_focus())
 	get_child(0).add_child(_ventana)
 
 func _crear_progresion(raiz: Control) -> void:
+	_panel_progresion = PanelContainer.new()
+	_panel_progresion.position = Vector2(16, 250)
+	_panel_progresion.custom_minimum_size.x = 300
+	_panel_progresion.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel_progresion.add_theme_stylebox_override("panel", Estilo.panel())
+	# Una placa libre no se achica sola cuando desaparece una fila. Resolver
+	# sólo al cambiar su mínimo evita conservar el alto de la inspección previa.
+	_panel_progresion.minimum_size_changed.connect(_panel_progresion.reset_size)
+	raiz.add_child(_panel_progresion)
 	_columna_progresion = VBoxContainer.new()
-	_columna_progresion.position = Vector2(20, 250)
-	_columna_progresion.size.x = 300
-	_columna_progresion.custom_minimum_size.x = 300
+	_columna_progresion.custom_minimum_size.x = 276
 	_columna_progresion.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_columna_progresion.add_theme_constant_override("separation", 7)
-	raiz.add_child(_columna_progresion)
-	_lbl_lugar = Estilo.etiqueta("", 14, Estilo.TEXTO, 3)
+	_columna_progresion.add_theme_constant_override("separation", 6)
+	_panel_progresion.add_child(_columna_progresion)
+	_lbl_lugar = Estilo.etiqueta("", 14, Estilo.TEXTO)
 	_columna_progresion.add_child(_lbl_lugar)
-	_lbl_etapa = Estilo.etiqueta("", 13, Color("d4ccaa"), 3)
+	_lbl_etapa = Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
 	_columna_progresion.add_child(_lbl_etapa)
-	_lbl_meta = Estilo.etiqueta("", 12, Color("c4cfa0"), 3)
+	_lbl_meta = Estilo.etiqueta("", 12, Color("c4cfa0"))
 	_lbl_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_columna_progresion.add_child(_lbl_meta)
-	_lbl_objetivo = Estilo.etiqueta("", 12, Color("a1a79e"), 2)
+	_lbl_objetivo = Estilo.etiqueta("", 12, Estilo.TEXTO_SUAVE)
 	_lbl_objetivo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_columna_progresion.add_child(_lbl_objetivo)
 
@@ -677,7 +794,7 @@ func _crear_prioridades(raiz: Control) -> void:
 	panel.offset_top = -64
 	panel.offset_bottom = -12
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.add_theme_stylebox_override("panel", Estilo.caja(Color("1f2921"), 12, Color("58664b"), 1, 9))
+	panel.add_theme_stylebox_override("panel", Estilo.panel(9))
 	raiz.add_child(panel)
 	_panel_inferior = panel
 	var fila := HFlowContainer.new()
@@ -736,8 +853,8 @@ func _crear_prioridades(raiz: Control) -> void:
 func _crear_proxima_meta(raiz: Control) -> void:
 	_panel_meta = PanelContainer.new()
 	_panel_meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel_meta.add_theme_stylebox_override("panel", Estilo.caja(Estilo.PANEL, 12, Color(1, 1, 1, 0.08), 1, 12))
-	_panel_meta.position = Vector2(16, 140)
+	_panel_meta.add_theme_stylebox_override("panel", Estilo.panel())
+	_panel_meta.position = Vector2(16, 240)
 	_panel_meta.custom_minimum_size = Vector2(300, 0)
 	raiz.add_child(_panel_meta)
 	var columna := VBoxContainer.new()
@@ -746,7 +863,7 @@ func _crear_proxima_meta(raiz: Control) -> void:
 	_panel_meta.add_child(columna)
 	_lbl_meta_titulo = Estilo.etiqueta(tr("PRÓXIMO DESBLOQUEO"), 11, Estilo.TEXTO_SUAVE)
 	columna.add_child(_lbl_meta_titulo)
-	_lbl_meta_nombre = Estilo.etiqueta("", 15, Estilo.TEXTO, 3)
+	_lbl_meta_nombre = Estilo.etiqueta("", 15, Estilo.TEXTO)
 	_lbl_meta_nombre.custom_minimum_size.x = 276
 	_lbl_meta_nombre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	columna.add_child(_lbl_meta_nombre)
@@ -754,7 +871,7 @@ func _crear_proxima_meta(raiz: Control) -> void:
 	_barra_meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_barra_meta.show_percentage = false
 	_barra_meta.custom_minimum_size = Vector2(276, 10)
-	_barra_meta.add_theme_stylebox_override("background", Estilo.caja(Color(0, 0, 0, 0.5), 5, Color(1, 1, 1, 0.1), 1, 0))
+	_barra_meta.add_theme_stylebox_override("background", Estilo.caja(Color("141e18"), 5, Estilo.BORDE_PANEL, 1, 0))
 	_relleno_meta = Estilo.caja(Estilo.ACENTO, 5, Color.TRANSPARENT, 0, 0)
 	_barra_meta.add_theme_stylebox_override("fill", _relleno_meta)
 	columna.add_child(_barra_meta)
@@ -775,36 +892,36 @@ func _ver_paso() -> void:
 	# otra vez evita enfocar su objeto anterior, sin recorrer las piezas aquí.
 	if _tipo_meta_actual in ["proyecto", "objetivo"]:
 		_objetivo_paso = run.objetivo_actual()
+	elif _tipo_meta_actual == "escena" and is_instance_valid(run.casa):
+		var siguiente := run.casa.meta()
+		_objetivo_paso = siguiente.get("objetivo")
+		_zona_paso = siguiente.get("zona", Rect2())
 	if not is_instance_valid(_objetivo_paso) or not _objetivo_paso.disponible() or not run.activa:
 		return
 	run.feromonas.soltar()
 	run.camara.arrastrando = false
-	run.camara.mirar(_objetivo_paso.position, _objetivo_paso.rect_mundo.size)
+	var zona: Rect2 = _zona_paso if _zona_paso.has_area() else (_objetivo_paso.rect_mundo if _objetivo_paso is PiezaCasa else Rect2(_objetivo_paso.position - Vector2.ONE * _objetivo_paso.radio, Vector2.ONE * _objetivo_paso.radio * 2))
+	run.camara.mirar(zona.get_center(), zona.size)
 
 
 func _actualizar_meta() -> void:
 	var meta := Juego.proxima_meta()
 	var inicio_con_migas := Juego.lugar_actual == "casa" and Juego.stat("materiales") < 1
 	_objetivo_paso = null
-	# La geometría se consulta una sola vez, después de generar el escenario.
-	if run.activa and not _silla_buscada:
-		_silla_buscada = true
-		for parte in run.comidas.partes:
-			if parte.pieza.get("perfil", "") == "silla_inicial":
-				_silla_inicial = parte
-				break
-	if meta.get("accion", "") not in ["legado", "viajes"] and is_instance_valid(_silla_inicial) and _silla_inicial.disponible() and not Juego.hitos.has("primera_silla"):
-		meta = {"tipo": "madera", "nombre": tr("Tu primera silla de madera")}
-		_objetivo_paso = _silla_inicial
+	_zona_paso = Rect2()
+	if run.activa and is_instance_valid(run.casa) and meta.get("accion", "") not in ["legado", "viajes"]:
+		var escena := run.casa.meta()
+		if not escena.is_empty():
+			meta = escena
+			_objetivo_paso = escena.objetivo
+			_zona_paso = escena.zona
 	_tipo_meta_actual = meta.tipo
 	var actual := 0.0
 	var objetivo := 1.0
 	var texto := ""
 	match meta.tipo:
-		"madera":
-			actual = _silla_inicial.vida_max - _silla_inicial.vida
-			objetivo = _silla_inicial.vida_max
-			texto = tr("Ya comen madera y la buscan solas. Podés llamarlas para concentrar el trabajo.")
+		"escena":
+			texto = meta.detalle
 		"migas":
 			actual = meta.actual
 			objetivo = maxf(1.0, meta.objetivo)
@@ -823,7 +940,7 @@ func _actualizar_meta() -> void:
 				objetivo = maxf(1.0, _objetivo_paso.vida_max)
 				actual = objetivo - _objetivo_paso.vida
 				texto += "\n" + tr("%s · %d%% devorado") % [_objetivo_paso.nombre, int(actual / objetivo * 100.0)]
-				var componentes := _objetivo_paso.resumen_componentes()
+				var componentes: Dictionary = _objetivo_paso.resumen_componentes()
 				if not componentes.is_empty():
 					texto += "\n" + tr("Partes conservadas: %d/%d · %s") % [componentes.completados, componentes.total, tr(componentes.nombre)]
 		"objetivo":
@@ -838,8 +955,8 @@ func _actualizar_meta() -> void:
 		_:
 			actual = 1.0
 			texto = meta.detalle
-	_lbl_meta_titulo.text = tr("PROYECTO DEL RECORRIDO") if meta.tipo == "proyecto" else (tr("GRAN OBJETIVO") if meta.tipo == "objetivo" else (tr("SIGUIENTE PASO") if meta.tipo in ["viaje", "madera"] or meta.get("accion", "") == "legado" else tr("PRÓXIMO DESBLOQUEO")))
-	if inicio_con_migas:
+	_lbl_meta_titulo.text = tr("PROYECTO DEL RECORRIDO") if meta.tipo == "proyecto" else (tr("GRAN OBJETIVO") if meta.tipo == "objetivo" else (tr("SIGUIENTE PASO") if meta.tipo in ["viaje", "escena"] or meta.get("accion", "") == "legado" else tr("PRÓXIMO DESBLOQUEO")))
+	if inicio_con_migas and meta.tipo != "escena":
 		_lbl_meta_titulo.text = tr("Empezá por las migas cercanas")
 	_lbl_meta_nombre.text = meta.nombre
 	_boton_paso.visible = is_instance_valid(_objetivo_paso) and run.activa and _objetivo_paso.disponible()
@@ -849,11 +966,11 @@ func _actualizar_meta() -> void:
 	var lista: bool = meta.tipo == "migas" and actual >= objetivo
 	if lista:
 		texto = tr("¡Ya te alcanza! Compralo en el taller al terminar")
-	if inicio_con_migas:
+	if inicio_con_migas and meta.tipo != "escena":
 		# Orientar la recolección sin sustituir la compra ni su progreso real.
-		texto += "\n" + tr("Juntá migas para comprar más obreras al volver. El cartón puede esperar a una colonia más grande.")
+		texto += "\n" + tr("Comprá al volver. El cartón puede esperar a una colonia más grande.")
 	_lbl_meta_progreso.text = texto
-	_columna_progresion.position.y = _panel_meta.position.y + _panel_meta.get_combined_minimum_size().y + 14
+	_panel_progresion.position.y = _panel_meta.position.y + _panel_meta.get_combined_minimum_size().y + 10
 	_relleno_meta.bg_color = Estilo.VERDE if lista else Estilo.ACENTO
 	if lista and not _meta_lista:
 		Sonido.tocar("comprar", 1.2, 0.0)
@@ -895,7 +1012,13 @@ func _actualizar_poderes() -> void:
 	_boton_entrada.visible = libres > 0 or run.poderes.colocando_entrada or run.entradas.hay_guardadas()
 	_boton_entrada.disabled = not run.activa or (libres <= 0 and run.entradas._manuales.is_empty())
 	_boton_entrada.text = tr("Cancelar [N]") if run.poderes.colocando_entrada else tr("Entrada [N] · %d") % libres
-	_boton_rafaga.disabled = not run.poderes.lista()
+	var lista := run.poderes.lista()
+	_boton_rafaga.disabled = not lista
+	if lista and not _rafaga_lista:
+		_pulso_poder = 0.65
+		mostrar_aviso(tr("¡Ráfaga lista! Activala con E"))
+		Sonido.tocar("racha", 0.9, 0.0)
+	_rafaga_lista = lista
 	if run.poderes.activa_restante > 0:
 		_boton_rafaga.text = tr("Ráfaga · %d s") % ceili(run.poderes.activa_restante)
 	elif run.poderes.descanso_restante > 0:
@@ -951,6 +1074,7 @@ func mostrar_inspeccion(c: Comida) -> void:
 			_lbl_objetivo.text += "\n" + tr("Partes conservadas: %d/%d · %s") % [componentes.completados, componentes.total, tr(componentes.nombre)]
 	elif c is FragmentoCasa:
 		_lbl_objetivo.text = tr("%s · %s migas\nPeso %d · las cargadoras priorizan estos restos") % [c.nombre, Juego.formatear(c.recompensa), c.peso]
+	_lbl_objetivo.visible = not _lbl_objetivo.text.is_empty()
 
 
 ## La inspección real bajo el cursor siempre manda. Sólo en espacio vacío
@@ -1024,6 +1148,7 @@ func _mostrar_ventana(ventana: VentanaModal, secundaria := false) -> void:
 			_ventana.cerrada.disconnect(reanudar)
 		_ventana.queue_free()
 	_ventana = ventana
+	ventana.z_index = 100
 	add_child(ventana)
 	if secundaria:
 		ventana.cerrada.connect(func() -> void:
@@ -1050,9 +1175,7 @@ func _notification(what: int) -> void:
 
 
 func _miga_llego() -> void:
-	if _tween_pulso and _tween_pulso.is_running():
+	if _pulso_migas > 0.0:
 		return
 	_caja_migas.pivot_offset = _caja_migas.size / 2.0
-	_caja_migas.scale = Vector2.ONE * 1.06
-	_tween_pulso = _caja_migas.create_tween()
-	_tween_pulso.tween_property(_caja_migas, "scale", Vector2.ONE, 0.12)
+	_pulso_migas = 0.18

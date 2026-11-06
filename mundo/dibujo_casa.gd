@@ -1,17 +1,25 @@
 class_name DibujoCasa
 extends RefCounted
 ## Ilustración cenital: materiales, volúmenes, tapizados y objetos domésticos.
+const MONUMENTOS := preload("res://mundo/dibujo_monumentos.gd")
 
 static func caja(l: CanvasItem, r: Rect2, color: Color, borde := Color.TRANSPARENT, radio := 14.0) -> void:
 	if not r.has_area():
 		return
 	var radio_valido := int(minf(radio, minf(r.size.x, r.size.y) * 0.5))
-	l.draw_style_box(Estilo.caja(color, radio_valido, borde, 3 if borde.a > 0 else 0, 0), r)
+	var estilo := Estilo.caja(color, radio_valido, borde, 2 if borde.a > 0 else 0, 0)
+	estilo.corner_detail = 20
+	estilo.anti_aliasing_size = 0.6
+	l.draw_style_box(estilo, r)
 
 static func ovalo(l: CanvasItem, r: Rect2, color: Color) -> void:
-	l.draw_set_transform(r.get_center(), 0, r.size * 0.5)
-	l.draw_circle(Vector2.ZERO, 1, color)
-	l.draw_set_transform(Vector2.ZERO)
+	# Dibujar la elipse a su tamaño real evita ampliar el pequeño polígono
+	# usado por un círculo de radio uno. Sólo se calcula durante el horneado.
+	var puntos := PackedVector2Array()
+	for i in 64:
+		puntos.append(r.get_center() + Vector2.from_angle(TAU * i / 64.0) * r.size * 0.5)
+	l.draw_colored_polygon(puntos, color)
+	l.draw_polyline(puntos + PackedVector2Array([puntos[0]]), color, 0.7, true)
 
 static func alfombra(l: CanvasItem, r: Rect2, color: Color) -> void:
 	caja(l, Rect2(r.position + Vector2(12, 18), r.size), Color(0.1, 0.08, 0.06, 0.12), Color.TRANSPARENT, 28)
@@ -84,6 +92,9 @@ static func pared(l: CanvasItem, rect: Rect2, con_sombra := true) -> void:
 		l.draw_line(Vector2(rect.end.x - 4, rect.position.y), rect.end - Vector2(4, 0), Color("b4a58d"), 6)
 
 static func mueble(l: CanvasItem, m: Dictionary) -> void:
+	if MONUMENTOS.tiene(m.tipo):
+		MONUMENTOS.dibujar(l, m)
+		return
 	if ArteCasa.dibujar(l, m):
 		return
 	if m.get("acabado", "") == "carton":
@@ -98,17 +109,17 @@ static func _volumen(l: CanvasItem, r: Rect2, color: Color, radio: float) -> voi
 	# Luz de arriba a la izquierda y apoyo corto abajo a la derecha en todas
 	# las piezas. Estas capas se hornean una sola vez, junto con los detalles.
 	caja(l, Rect2(r.position + Vector2(9, 14), r.size).grow(3), Color(0.19, 0.16, 0.11, 0.10), Color.TRANSPARENT, radio + 3)
-	caja(l, Rect2(r.position + Vector2(3, 6), r.size), color.darkened(0.30), Color.TRANSPARENT, radio)
-	caja(l, r, color, color.darkened(0.25), radio)
+	caja(l, Rect2(r.position + Vector2(2, 4), r.size), color.darkened(0.22), Color.TRANSPARENT, radio)
+	caja(l, r, color, color.darkened(0.18), radio)
 	var margen := maxf(8, minf(r.size.x, r.size.y) * 0.035)
-	l.draw_line(r.position + Vector2(radio, margen), Vector2(r.end.x - radio, r.position.y + margen), Color(color.lightened(0.28), 0.65), 3, true)
+	l.draw_line(r.position + Vector2(radio, margen), Vector2(r.end.x - radio, r.position.y + margen), Color(color.lightened(0.22), 0.65), 1.6, true)
 
 
 static func _veta_suave(l: CanvasItem, r: Rect2, color: Color) -> void:
-	for i in 3:
+	for i in 2:
 		var y := r.position.y + r.size.y * (0.25 + i * 0.23)
 		var x := r.position.x + r.size.x * (0.12 + (i % 2) * 0.11)
-		l.draw_polyline(PackedVector2Array([Vector2(x, y), Vector2(x + r.size.x * 0.28, y - 3), Vector2(x + r.size.x * 0.55, y + 2)]), Color(color.darkened(0.32), 0.20), 2, true)
+		l.draw_polyline(PackedVector2Array([Vector2(x, y), Vector2(x + r.size.x * 0.28, y - 3), Vector2(x + r.size.x * 0.55, y + 2)]), Color(color.darkened(0.28), 0.13), 1.4, true)
 
 
 static func _taza_ilustrada(l: CanvasItem, centro: Vector2, radio: float) -> void:
@@ -131,7 +142,9 @@ static func _ilustrado(l: CanvasItem, m: Dictionary) -> void:
 	match m.tipo:
 		"canasto", "carrito", "kiosco", "colectivo", "taxi", "farol", "papelera", "cartel", "columna", "anfora", "fuente":
 			_urbano(l, m)
-		"silla", "planta", "inodoro":
+		"silla":
+			_silla_tapizada(l, m)
+		"planta", "inodoro":
 			_perfil_ilustrado(l, m)
 		"mesa", "mesa_comedor", "ratona", "escritorio", "mesita", "banco":
 			_volumen(l, r.grow(-5), madera, menor * 0.07)
@@ -232,8 +245,15 @@ static func _ilustrado(l: CanvasItem, m: Dictionary) -> void:
 				var tabla := Rect2(p + s * Vector2(0.10, 0.16), s * Vector2(0.43, 0.67))
 				_volumen(l, tabla, Color("c19b68"), 12)
 				_veta_suave(l, tabla, Color("c19b68"))
-				l.draw_line(tabla.position + tabla.size * Vector2(0.24, 0.35), tabla.position + tabla.size * Vector2(0.62, 0.65), Color("d9dec9"), menor * 0.045, true)
+				# Filo, lomo y remaches legibles: siguen horneados en el mismo
+				# cuerpo comestible, nunca como objetos o sombras independientes.
+				l.draw_colored_polygon(PackedVector2Array([tabla.position + tabla.size * Vector2(0.20, 0.29),
+					tabla.position + tabla.size * Vector2(0.58, 0.52), tabla.position + tabla.size * Vector2(0.62, 0.65),
+					tabla.position + tabla.size * Vector2(0.49, 0.60)]), Color("c7d5ce"))
+				l.draw_line(tabla.position + tabla.size * Vector2(0.20, 0.29), tabla.position + tabla.size * Vector2(0.62, 0.65), Color("edf1df"), maxf(1.5, menor * 0.009), true)
 				l.draw_line(tabla.position + tabla.size * Vector2(0.62, 0.65), tabla.position + tabla.size * Vector2(0.81, 0.80), Color("655b47"), menor * 0.05, true)
+				for i in 2:
+					l.draw_circle(tabla.position + tabla.size * Vector2(0.67 + i * 0.085, 0.69 + i * 0.067), maxf(1.0, menor * 0.006), Color("cab895"))
 				for i in 2:
 					l.draw_circle(p + s * Vector2(0.70 + i * 0.14, 0.48), menor * 0.08, Color("b97b56") if i == 0 else Color("899768"))
 		"heladera":
@@ -282,53 +302,131 @@ static func _rect_frente(r: Rect2, frente: String) -> Rect2:
 	return r
 
 
+static func _silla_tapizada(l: CanvasItem, m: Dictionary) -> void:
+	# Autoría propia, NO el polígono de bandas de la navegación. El respaldo,
+	# los largueros y el asiento tienen curvas continuas y un hueco verdadero.
+	# Se hornea una vez; sus siluetas comestibles se exportan desde este dibujo.
+	var r: Rect2 = m.rect
+	var frente: String = m.get("frente", "sur")
+	var menor := minf(r.size.x, r.size.y)
+	var madera := Color("b28a59")
+	var canto := Color("73583d")
+	var luz := Color("d8b582")
+	var tela: Color = m.color
+	# Dos uniones reales; no una mancha marrón envolviendo todo el asiento.
+	for x in [0.16, 0.76]:
+		_caja_silla(l, r, frente, Rect2(x, 0.14, 0.08, 0.32), madera.darkened(0.13), canto, 0.022, 1)
+	# Respaldo y asiento, con canto inferior corto y bisel fino.
+	for pieza in [Rect2(0.075, 0.045, 0.85, 0.19), Rect2(0.10, 0.31, 0.80, 0.64)]:
+		var normalizado: Rect2 = _rect_frente(pieza, frente)
+		var fisico := Rect2(r.position + normalizado.position * r.size, normalizado.size * r.size)
+		var radio := menor * (0.065 if pieza.size.y < 0.3 else 0.10)
+		var borde := Estilo.caja(canto, int(radio), Color.TRANSPARENT, 0, 0)
+		borde.corner_detail = 16
+		l.draw_style_box(borde, Rect2(fisico.position + Vector2(0, 2), fisico.size))
+		var cara := Estilo.caja(madera, int(radio), canto, 1, 0)
+		cara.corner_detail = 16
+		l.draw_style_box(cara, fisico)
+		var bisel := Estilo.caja(Color.TRANSPARENT, int(maxf(2, radio - 2)), luz, 1, 0)
+		bisel.corner_detail = 16
+		l.draw_style_box(bisel, fisico.grow(-2))
+	# Un solo almohadón, ribete fino y plano de luz: no rectángulos borrosos
+	# concéntricos ni texturas fotográficas. El verde sigue siendo el del juego.
+	_caja_silla(l, r, frente, Rect2(0.155, 0.078, 0.69, 0.12), tela.darkened(0.12), canto, 0.035, 1)
+	_caja_silla(l, r, frente, Rect2(0.16, 0.355, 0.68, 0.535), tela.darkened(0.22), canto, 0.075, 1)
+	_caja_silla(l, r, frente, Rect2(0.17, 0.36, 0.66, 0.51), tela, tela.lightened(0.22), 0.070, 1)
+	_caja_silla(l, r, frente, Rect2(0.19, 0.378, 0.62, 0.47), Color.TRANSPARENT, tela.darkened(0.15), 0.055, 1)
+	# Costuras cortas en las esquinas del tapizado; siempre dentro del cuerpo.
+	for x in [0.20, 0.80]:
+		for y in [0.39, 0.835]:
+			var a := _rect_frente(Rect2(Vector2(x, y), Vector2.ZERO), frente).position
+			var b := _rect_frente(Rect2(Vector2(x + (0.025 if x < 0.5 else -0.025), y + (0.018 if y < 0.5 else -0.018)), Vector2.ZERO), frente).position
+			l.draw_line(r.position + a * r.size, r.position + b * r.size, tela.darkened(0.25), 0.8, true)
+	for uv in [Vector2(0.115, 0.14), Vector2(0.885, 0.14)]:
+		var punto := r.position + _rect_frente(Rect2(uv, Vector2.ZERO), frente).position * r.size
+		l.draw_circle(punto, menor * 0.012, canto, true, -1.0, true)
+		l.draw_line(punto + Vector2(-0.6, 0), punto + Vector2(0.6, 0), luz, 0.6, true)
+
+
+static func _caja_silla(l: CanvasItem, r: Rect2, frente: String, zona: Rect2, color: Color, borde: Color, radio: float, grosor: int) -> void:
+	var uv := _rect_frente(zona, frente)
+	var caja_fisica := Rect2(r.position + uv.position * r.size, uv.size * r.size)
+	var estilo := Estilo.caja(color, int(minf(r.size.x, r.size.y) * radio), borde, grosor, 0)
+	estilo.corner_detail = 16
+	l.draw_style_box(estilo, caja_fisica)
+
+
 static func _perfil_ilustrado(l: CanvasItem, m: Dictionary) -> void:
 	var r: Rect2 = m.rect
 	var p := r.position
 	var s := r.size
 	var menor := minf(s.x, s.y)
 	var c: Color = m.color
-	var base := Color("897354") if m.tipo == "silla" else (Color("6c845d") if m.tipo == "planta" else Color("dedaca"))
-	# El contorno de autoría es estable, no depende de la máscara exportada
-	# desde este mismo dibujo. Así regenerar el atlas no deforma el mueble.
-	var datos := m.duplicate()
-	datos.rect = Rect2(0, 0, 1, 1)
-	datos.frente = "sur"
-	var bandas := SiluetaMueble.perfil_base(datos)
-	var contorno := PackedVector2Array()
-	contorno.append(Vector2(bandas[0].position.x, bandas[0].position.y))
-	for banda in bandas:
-		contorno.append(Vector2(banda.position.x, banda.get_center().y))
-	contorno.append(Vector2(bandas.back().position.x, bandas.back().end.y))
-	contorno.append(bandas.back().end)
-	for i in range(bandas.size() - 1, -1, -1):
-		contorno.append(Vector2(bandas[i].end.x, bandas[i].get_center().y))
-	contorno.append(Vector2(bandas[0].end.x, bandas[0].position.y))
-	var frente: String = m.get("frente", "sur") if m.tipo == "silla" else "sur"
-	for i in contorno.size():
-		var normalizado := _rect_frente(Rect2(contorno[i], Vector2.ZERO), frente).position
-		contorno[i] = p + s * normalizado
-	var sombra := PackedVector2Array()
-	for punto in contorno:
-		sombra.append(punto + Vector2(5, 8))
-	l.draw_colored_polygon(sombra, Color(0.17, 0.15, 0.10, 0.14))
-	l.draw_colored_polygon(contorno, base)
-	l.draw_polyline(contorno + PackedVector2Array([contorno[0]]), base.darkened(0.18), 2, true)
-	if m.tipo == "silla":
-		for detalle in [{"rect": Rect2(0.13, 0.08, 0.56, 0.16), "color": c.darkened(0.20)}, {"rect": Rect2(0.14, 0.29, 0.53, 0.43), "color": c}, {"rect": Rect2(0.18, 0.33, 0.45, 0.35), "color": c.lightened(0.07)}]:
-			var normalizado := _rect_frente(detalle.rect, frente)
-			caja(l, Rect2(p + normalizado.position * s, normalizado.size * s), detalle.color, Color(base.lightened(0.20), 0.8), menor * 0.04)
-	elif m.tipo == "inodoro":
-		caja(l, Rect2(p + s * Vector2(0.13, 0.025), s * Vector2(0.56, 0.19)), Color("ece5d2"), Color("c5c5b4"), menor * 0.045)
-		l.draw_circle(p + s * Vector2(0.57, 0.10), menor * 0.035, Color("98a99b"))
-		ovalo(l, Rect2(p + s * Vector2(0.20, 0.35), s * Vector2(0.44, 0.45)), Color("f0e9d6"))
-		ovalo(l, Rect2(p + s * Vector2(0.25, 0.40), s * Vector2(0.34, 0.34)), Color("c8d4c2"))
-		ovalo(l, Rect2(p + s * Vector2(0.29, 0.44), s * Vector2(0.26, 0.25)), Color("b2c7b6"))
+	# Autoría continua e independiente de las bandas de navegación. Estas
+	# curvas sólo se dibujan al hornear el atlas compartido del arranque.
+	if m.tipo == "inodoro":
+		var loza := Color("e8e3d5").lerp(c, 0.08)
+		var canto := Color("aab4a5")
+		# La base, la taza y el tanque son piezas de loza con unión real.
+		ovalo(l, Rect2(p + s * Vector2(0.29, 0.67), s * Vector2(0.42, 0.29)), canto)
+		ovalo(l, Rect2(p + s * Vector2(0.32, 0.67), s * Vector2(0.36, 0.25)), loza.darkened(0.04))
+		ovalo(l, Rect2(p + s * Vector2(0.15, 0.21), s * Vector2(0.70, 0.71)), canto)
+		ovalo(l, Rect2(p + s * Vector2(0.17, 0.20), s * Vector2(0.66, 0.69)), loza)
+		ovalo(l, Rect2(p + s * Vector2(0.20, 0.25), s * Vector2(0.60, 0.59)), Color("f5efdf"))
+		ovalo(l, Rect2(p + s * Vector2(0.27, 0.33), s * Vector2(0.46, 0.44)), Color("9daea0"))
+		ovalo(l, Rect2(p + s * Vector2(0.29, 0.35), s * Vector2(0.42, 0.39)), Color("c5d2bf"))
+		ovalo(l, Rect2(p + s * Vector2(0.34, 0.44), s * Vector2(0.32, 0.24)), Color("a8c4b4"))
+		ovalo(l, Rect2(p + s * Vector2(0.38, 0.46), s * Vector2(0.22, 0.13)), Color("bed5c4"))
+		for x in [0.29, 0.63]:
+			caja(l, Rect2(p + s * Vector2(x, 0.255), s * Vector2(0.08, 0.045)), canto, Color("d5d9c8"), menor * 0.018)
+		var tanque := Rect2(p + s * Vector2(0.10, 0.04), s * Vector2(0.80, 0.23))
+		caja(l, tanque, loza.darkened(0.07), canto, menor * 0.065)
+		caja(l, Rect2(p + s * Vector2(0.11, 0.035), s * Vector2(0.78, 0.195)), Color("f0eadc"), Color("d3d5c4"), menor * 0.055)
+		l.draw_line(p + s * Vector2(0.20, 0.075), p + s * Vector2(0.63, 0.075), Color("fcf5e6"), maxf(0.8, menor * 0.009), true)
+		ovalo(l, Rect2(p + s * Vector2(0.69, 0.105), s * Vector2(0.11, 0.055)), Color("849b8e"))
+		ovalo(l, Rect2(p + s * Vector2(0.70, 0.105), s * Vector2(0.09, 0.037)), Color("cbd8c9"))
 	else:
-		# Grupos de hojas grandes, sin ruido fotográfico ni brillos puntuales.
-		for hoja in [{"a": Vector2(0.42, 0.48), "b": Vector2(0.38, 0.07), "c": Vector2(0.50, 0.37)}, {"a": Vector2(0.42, 0.47), "b": Vector2(0.20, 0.15), "c": Vector2(0.35, 0.42)}, {"a": Vector2(0.44, 0.48), "b": Vector2(0.76, 0.18), "c": Vector2(0.58, 0.47)}, {"a": Vector2(0.42, 0.50), "b": Vector2(0.09, 0.39), "c": Vector2(0.30, 0.61)}, {"a": Vector2(0.45, 0.50), "b": Vector2(0.77, 0.49), "c": Vector2(0.57, 0.67)}, {"a": Vector2(0.43, 0.49), "b": Vector2(0.24, 0.70), "c": Vector2(0.39, 0.80)}, {"a": Vector2(0.44, 0.51), "b": Vector2(0.66, 0.69), "c": Vector2(0.48, 0.84)}]:
-			l.draw_colored_polygon(PackedVector2Array([p + s * hoja.a, p + s * hoja.b, p + s * hoja.c]), c.lightened(0.07))
-			l.draw_line(p + s * hoja.a, p + s * hoja.b, Color("a0b183"), 2, true)
+		var barro := Color("af8962")
+		# Maceta visible entre hojas: borde, tierra y cuerpo no se confunden.
+		ovalo(l, Rect2(p + s * Vector2(0.24, 0.45), s * Vector2(0.52, 0.48)), barro.darkened(0.22))
+		ovalo(l, Rect2(p + s * Vector2(0.27, 0.44), s * Vector2(0.46, 0.43)), barro)
+		ovalo(l, Rect2(p + s * Vector2(0.30, 0.47), s * Vector2(0.40, 0.35)), Color("d2ae7c"))
+		ovalo(l, Rect2(p + s * Vector2(0.34, 0.50), s * Vector2(0.32, 0.28)), Color("66583d"))
+		var hojas := [
+			[Vector2(0.49, 0.61), Vector2(0.13, 0.29), 0.11, -0.10],
+			[Vector2(0.49, 0.60), Vector2(0.35, 0.055), 0.12, -0.06],
+			[Vector2(0.51, 0.62), Vector2(0.82, 0.12), 0.12, -0.12],
+			[Vector2(0.48, 0.61), Vector2(0.055, 0.57), 0.12, 0.01],
+			[Vector2(0.52, 0.61), Vector2(0.945, 0.47), 0.12, -0.03],
+			[Vector2(0.48, 0.59), Vector2(0.19, 0.84), 0.095, 0.03],
+			[Vector2(0.53, 0.60), Vector2(0.80, 0.85), 0.10, -0.06],
+			[Vector2(0.50, 0.62), Vector2(0.59, 0.17), 0.105, 0.09],
+			[Vector2(0.50, 0.64), Vector2(0.28, 0.40), 0.085, 0.12],
+		]
+		for hoja: Array in hojas:
+			var tono := c.lightened(float(hoja[3])) if float(hoja[3]) >= 0.0 else c.darkened(-float(hoja[3]))
+			_hoja_planta(l, p + s * Vector2(hoja[0]), p + s * Vector2(hoja[1]), menor * float(hoja[2]), tono)
+		l.draw_circle(p + s * Vector2(0.50, 0.61), menor * 0.030, c.lightened(0.08), true, -1.0, true)
+
+
+static func _hoja_planta(l: CanvasItem, origen: Vector2, punta: Vector2, ancho: float, color: Color) -> void:
+	var eje := punta - origen
+	var lateral := eje.orthogonal().normalized() * ancho
+	var contorno := PackedVector2Array()
+	var luz := PackedVector2Array()
+	# Dos Bézier por hoja producen una punta nítida y laterales curvos.
+	for i in 13:
+		var punto := origen.bezier_interpolate(origen + eje * 0.20 - lateral,
+			origen + eje * 0.80 - lateral * 0.75, punta, i / 12.0)
+		contorno.append(punto)
+		luz.append(punto)
+	for i in range(1, 12):
+		contorno.append(punta.bezier_interpolate(origen + eje * 0.80 + lateral * 0.75,
+			origen + eje * 0.20 + lateral, origen, i / 12.0))
+	l.draw_colored_polygon(contorno, color)
+	l.draw_colored_polygon(luz, color.lightened(0.08))
+	l.draw_polyline(contorno + PackedVector2Array([contorno[0]]), color.darkened(0.22), maxf(0.7, ancho * 0.065), true)
+	l.draw_line(origen, origen + eje * 0.89, color.lightened(0.22), maxf(0.7, ancho * 0.055), true)
 
 
 static func _urbano(l: CanvasItem, m: Dictionary) -> void:
@@ -453,6 +551,12 @@ static func _silla(l: CanvasItem, m: Dictionary) -> void:
 	caja(l, Rect2(p + Vector2(4, -4), s - Vector2(8, 12)), Color("c3a06b"), Color("e0bd85"), 3)
 	l.draw_line(p + Vector2(s.x * 0.5, 2), p + Vector2(s.x * 0.5, s.y - 18), Color("b18b59"), 3)
 	l.draw_rect(Rect2(p + Vector2(6, s.y * 0.35), Vector2(s.x - 12, s.y * 0.18)), Color("d1b17e"))
+	# Papel mate, borde de cinta y pliegue doble; todo pertenece al cartón.
+	l.draw_line(p + Vector2(8, s.y * 0.35 + 1), p + Vector2(s.x - 8, s.y * 0.35 + 1), Color("e4c895"), 1, true)
+	l.draw_line(p + Vector2(s.x * 0.5 + 2, 5), p + Vector2(s.x * 0.5 + 2, s.y * 0.30), Color("dec28d"), 1, true)
+	for i in 3:
+		var x := 18.0 + i * 19.0
+		l.draw_line(p + Vector2(x, s.y * 0.68), p + Vector2(x + 12, s.y * 0.68 - 1), Color(0.40, 0.29, 0.17, 0.20), 0.8, true)
 	for i in 5:
 		l.draw_line(p + Vector2(15 + i * 18, s.y - 12), p + Vector2(15 + i * 18, s.y - 4), Color("c3a06b"), 3)
 

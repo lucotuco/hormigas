@@ -89,15 +89,18 @@ func probar_pasos() -> void:
 	Juego.niveles.mordida_madera = 1
 	Juego._cache_stats.clear()
 	run.hud._actualizar_meta()
-	verificar(run.hud._lbl_meta_nombre.text == "Tu primera silla de madera" and run.hud._boton_paso.visible, "comprar madera propone una demostración visible antes de la próxima dieta")
+	verificar(run.hud._lbl_meta_nombre.text == "Abrí un atajo" and run.hud._boton_paso.visible, "comprar madera propone el atajo físico antes de la próxima dieta")
 	var silla := run.hud._objetivo_paso
 	run.feromonas.mantener_en(Vector2.ZERO)
 	run.hud._ver_paso()
 	verificar(run.camara.position == silla.position and not run.feromonas.activa, "Ver encuadra el mueble sin dañarlo ni dejar feromonas pulsadas")
 	run._on_comida_destruida(silla)
 	verificar(Juego.hitos.has("primera_silla"), "la silla real sí concede su hito")
+	# Este caso aísla el HUD: el callback de hito no destruye material.
+	# Recorrido de casa cubre aparte el desarme completo mediante hormigas.
+	silla.muerta = true
 	run.hud._actualizar_meta()
-	verificar(not run.hud._boton_paso.visible, "el paso no se sigue ofreciendo después de completarlo")
+	verificar(run.hud._objetivo_paso != silla and run.casa.meta().get("id", "") != "silla_atajo", "el paso no se sigue ofreciendo después de completarlo")
 	run.queue_free()
 	await get_tree().process_frame
 

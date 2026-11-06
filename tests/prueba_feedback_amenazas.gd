@@ -144,8 +144,8 @@ func probar_amenazas() -> void:
 		var esperas_validas := true
 		for i in 20:
 			var segundos := Eventos.espera_entre_amenazas()
-			esperas_validas = esperas_validas and segundos >= 12.0 and segundos <= 22.0
-		verificar(esperas_validas, lugar + ": cadencia entre doce y veintidós segundos sin intervalo por hormiga")
+			esperas_validas = esperas_validas and segundos >= Eventos.parametro("espera_min") and segundos <= Eventos.parametro("espera_max")
+		verificar(esperas_validas, lugar + ": cadencia dentro de sus límites de CSV, sin intervalo por hormiga")
 	Juego.lugar_actual = "casa"
 	var eventos := run.eventos
 	verificar(eventos._proxima_amenaza() == "arana" and eventos._proxima_amenaza() == "cucaracha"
@@ -153,8 +153,12 @@ func probar_amenazas() -> void:
 	var bandada := eventos.aparecer("paloma")
 	verificar(bandada.size() == 3 and eventos.amenazas_activas() == 3
 		and eventos.grupos_de_amenaza() == 1, "la bandada cuenta tres individuos y un grupo")
-	verificar(eventos.aparecer("cucaracha").is_empty() and eventos.aparecer("paloma").is_empty(),
-		"ni una variante ni otra bandada atraviesan el límite real de tres")
+	var restante := eventos.aparecer("cucaracha")
+	verificar(restante.size() == 1 and eventos.amenazas_activas() == Eventos.MAX_AMENAZAS
+		and eventos.aparecer("paloma").is_empty() and eventos.aparecer("cucaracha").is_empty(),
+		"bandada y variante ocupan los cuatro lugares reales, sin atravesar el límite")
+	for enemigo in restante:
+		enemigo._terminar()
 	for ave in bandada:
 		ave._terminar()
 	for tipo in ["cucaracha", "escarabajo"]:

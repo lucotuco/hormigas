@@ -18,6 +18,7 @@ var max_operacion_usec := 0
 var trabajo_emitido := 0.0
 var trabajo_admitido := 0.0
 var ingresos_reales := 0.0
+var trabajo_cancelado_zona := 0.0
 
 
 func iniciar(r: Run) -> void:
@@ -37,6 +38,8 @@ func olvidar_fuente(objetivo: Comida) -> void:
 
 func encolar(objetivo: Comida, dano: float, origen: Vector2) -> bool:
 	if not _admite or not is_instance_valid(run) or not run.activa or run.terminada or not is_instance_valid(objetivo) or objetivo.muerta or dano <= 0 or not is_finite(dano) or not origen.is_finite():
+		return false
+	if objetivo.erosion_origen_agotado(origen):
 		return false
 	var trabajo := minf(dano * objetivo.factor_erosion(), objetivo.vida)
 	if trabajo <= 0 or not is_finite(trabajo):
@@ -133,26 +136,41 @@ func procesar(presupuesto_usec := -1, max_pasos := -1) -> void:
 		var tramos: Array = tarea.tramos
 		var tramo: Dictionary = tramos[int(tarea.cursor)]
 		var antes := Time.get_ticks_usec()
-		var migas: float = objetivo.erosion_paso(tramo.dano, tramo.origen)
+		var ya_agotada: bool = objetivo.erosion_origen_agotado(tramo.origen)
+		var migas := 0.0
+		if not ya_agotada:
+			migas = objetivo.erosion_paso(tramo.dano, tramo.origen)
 		max_operacion_usec = maxi(max_operacion_usec, Time.get_ticks_usec() - antes)
 		if objetivo.material_preparandose():
 			# La preparación no es un frente inaccesible ni admite daño/crédito.
 			# Conservar el tramo; la publicación atómica lo vuelve ejecutable.
 			_cola.append(id)
 			continue
-		var admitido := clampf(objetivo.trabajo_erosion_admitido, 0, tramo.dano)
+		var admitido := 0.0 if ya_agotada else clampf(objetivo.trabajo_erosion_admitido, 0, tramo.dano)
 		tramo.dano = maxf(0, tramo.dano - admitido)
 		trabajo_admitido += admitido
 		tarea.visual += migas
 		ingresos_reales += migas
 		if migas > 0:
+			# El número confirma el trozo retirado, no el centro original de
+			# un mueble enorme donde ninguna hormiga está trabajando.
+			tarea.pos = objetivo.origen_bocado()
 			var categoria := 2 if objetivo is PiezaCasa and objetivo.nivel_requerido >= 3 else (1 if objetivo is PiezaCasa else 0)
 			run.registrar_ingreso(migas, categoria)
 		if objetivo.muerta:
 			_finalizar_tarea(id, tarea)
 			_fuentes.erase(id)
 			continue
-		if tramo.dano <= 0 and not objetivo.erosion_continua:
+		if ya_agotada or objetivo.erosion_zona_agotada:
+			# La mancha inicial ya no contiene material. No perseguir otra
+			# región ni aparcar miles de ticks que esa misma roja renueva quieta.
+			# Sólo se descarta trabajo aún no admitido; el crédito del material
+			# no es dinero y nunca se acredita por terminar esta transacción.
+			trabajo_cancelado_zona += float(tramo.dano)
+			objetivo.cancelar_veneno_en(tramo.origen)
+			objetivo.terminar_tramo_erosion()
+			tarea.cursor += 1
+		elif tramo.dano <= 0 and not objetivo.erosion_continua:
 			objetivo.terminar_tramo_erosion()
 			tarea.cursor += 1
 		elif admitido == 0 and migas == 0 and not objetivo.erosion_continua:

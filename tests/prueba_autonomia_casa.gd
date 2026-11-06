@@ -3,9 +3,13 @@ extends Node
 ## sin monedas inventadas ni cambios en la partida del jugador.
 class PiezaContada extends PiezaCasa:
 	var consultas_alcance := 0
+	var consultas_contacto := 0
 	func alcanza_desde(pos: Vector2) -> bool:
 		consultas_alcance += 1
 		return super.alcanza_desde(pos)
+	func material_cercano(pos: Vector2) -> Vector2:
+		consultas_contacto += 1
+		return super.material_cercano(pos)
 
 var total := 0
 var fallas := 0
@@ -84,17 +88,21 @@ func probar_alcance_retenido() -> void:
 	h.estado = Hormiga.Estado.MORDIENDO
 	h._reloj_mordida = 1000
 	pieza.consultas_alcance = 0
+	pieza.consultas_contacto = 0
 	for i in 120:
 		h._morder(1.0 / 60)
-	verificar(pieza.consultas_alcance == 1 and h.estado == Hormiga.Estado.MORDIENDO, "120 cuadros quieta comprueban el alcance geométrico una sola vez")
-	var previo := pieza.consultas_alcance
+	verificar(pieza.consultas_contacto == 1 and pieza.consultas_alcance == 0 and h.estado == Hormiga.Estado.MORDIENDO,
+		"120 cuadros quieta consultan el contacto exacto una sola vez, sin repetir el alcance")
+	var previo := pieza.consultas_contacto
 	pieza.version_forma += 1
 	h._morder(1.0 / 60)
-	verificar(pieza.consultas_alcance == previo + 1, "una sección que cambia invalida el alcance retenido")
+	verificar(pieza.consultas_contacto == previo + 1 and pieza.consultas_alcance == 0,
+		"una sección que cambia invalida el contacto retenido sin una consulta redundante de alcance")
 	h.position += Vector2(0, 0.1)
-	previo = pieza.consultas_alcance
+	previo = pieza.consultas_contacto
 	h._morder(1.0 / 60)
-	verificar(pieza.consultas_alcance == previo + 1, "cualquier desplazamiento vuelve a comprobar el frente de mordida")
+	verificar(pieza.consultas_contacto == previo + 1 and pieza.consultas_alcance == 0,
+		"cualquier desplazamiento vuelve a comprobar una sola vez el contacto exacto")
 	h.position = Vector2(-500, -200)
 	h._morder(1.0 / 60)
 	verificar(h.estado == Hormiga.Estado.YENDO_A_COMIDA, "si el material ya no llega a la boca se busca un borde nuevo")
@@ -105,8 +113,11 @@ func probar_alcance_retenido() -> void:
 	h.position = otra.punto_mordida(Vector2.ZERO, run.radio_actual)
 	h.comida = otra
 	h.estado = Hormiga.Estado.MORDIENDO
+	otra.consultas_alcance = 0
+	otra.consultas_contacto = 0
 	h._morder(1.0 / 60)
-	verificar(otra.consultas_alcance == 1 and pieza.trabajadoras == 0, "cambiar de recurso no reutiliza el alcance de la pieza anterior")
+	verificar(otra.consultas_contacto == 1 and otra.consultas_alcance == 0 and pieza.trabajadoras == 0,
+		"cambiar de recurso consulta una sola vez su contacto y no reutiliza el de la pieza anterior")
 	h.carga = 9
 	h.position = Vector2(-500, -200)
 	run.radio_actual = 100 # No queda un puesto de esta pieza dentro del territorio.

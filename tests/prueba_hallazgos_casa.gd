@@ -76,7 +76,7 @@ func probar_generacion() -> void:
 	var despues := resumen(abierta)
 	verificar(is_equal_approx(antes.masa, despues.masa) and is_equal_approx(antes.valor, despues.valor), "envoltorios más contenidos conservan toda la masa y el valor nativos, sin bonus extra")
 	verificar(antes.posiciones == despues.posiciones and antes.migas == despues.migas and antes.migas.size() == 138, "no cambian posiciones, semilla ni ninguna de las 138 migas")
-	verificar(abierta.comidas._hallazgos.is_empty() and abierta.comidas.resistencia_reservada() == 0, "otra expedición repone sólo la comida normal de los paquetes ya abiertos")
+	verificar(abierta.comidas._hallazgos.is_empty() and is_equal_approx(abierta.comidas.resistencia_reservada(), float(abierta.comidas._comida_atajo.tipo.vida)), "los paquetes abiertos no reservan comida; sólo queda la galletita del atajo todavía cerrado")
 	verificar(antes.contexto != despues.contexto, "los récords distinguen una casa con paquetes de otra donde ya se abrieron")
 	abierta.queue_free()
 	await get_tree().process_frame

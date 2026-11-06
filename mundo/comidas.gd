@@ -8,6 +8,7 @@ extends Node2D
 ## datos/comidas.csv.
 
 signal comida_destruida(comida: Comida)
+signal atajo_abierto(comida: Comida)
 
 const ESCENA_COMIDA := preload("res://mundo/comida.tscn")
 const SEMILLA_MAPA := 20261026
@@ -28,6 +29,8 @@ var ultimo_cambio := 0.0
 var _distancias_limpieza: Dictionary = {}
 ## Hasta tres contenidos reservados. Todavía no son objetivos ni premios.
 var _hallazgos: Dictionary = {}
+## Una galletita nativa espera detrás de la silla. No es otro premio monetario.
+var _comida_atajo: Dictionary = {}
 
 
 func generar() -> void:
@@ -45,6 +48,7 @@ func generar() -> void:
 	_indice.clear()
 	_distancias_limpieza.clear()
 	_hallazgos.clear()
+	_comida_atajo.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = SEMILLA_MAPA
 	var ocupados: Array[Vector3] = []  # x, y, radio
@@ -90,7 +94,9 @@ func generar() -> void:
 					_crear(tipo, pos, rng.randi())
 					break
 	_repartir_periferia()
+	_repartir_inicio()
 	_preparar_hallazgos()
+	_preparar_atajo()
 	# Meta fija sobre el plato: siempre existe y puede descubrirse desde la niebla.
 	for tipo in Juego.comidas:
 		if tipo.id == "banquete":
@@ -104,9 +110,67 @@ func generar() -> void:
 		_indexar(parte)
 
 
+## Acerca seis migas existentes al nido sin alterar cantidad, valor ni azar.
+func _repartir_inicio() -> void:
+	if Juego.lugar_actual != "casa":
+		return
+	# Después del azar histórico: misma cantidad/HP/valor/semilla, cero RNG.
+	var elegidas: Array[Comida] = []
+	for comida in lista:
+		if comida.id == "miga" and comida.position.length() > 900.0:
+			elegidas.append(comida)
+			if elegidas.size() == 6:
+				break
+	var ocupados: Array[Vector3] = []
+	for comida in lista:
+		if not elegidas.has(comida):
+			ocupados.append(Vector3(comida.position.x, comida.position.y, comida.radio))
+	var siguiente := 0
+	for pos: Vector2 in PlanoCasa.MIGAS_INICIO:
+		if siguiente >= elegidas.size():
+			break
+		var comida := elegidas[siguiente]
+		if not _hay_lugar(pos, comida.radio, ocupados):
+			continue
+		_quitar_del_indice(comida)
+		comida.position = pos
+		comida.set_meta("inicio_casa", true)
+		_indexar(comida)
+		ocupados.append(Vector3(pos.x, pos.y, comida.radio))
+		siguiente += 1
+
+
+func _preparar_atajo() -> void:
+	if Juego.lugar_actual != "casa" or Juego.lugares_completados.has("casa") \
+		or ComponentesProyecto.objetivo_terminado("casa/silla_inicial", Juego.componentes_proyecto_devorados):
+		return
+	for comida in lista:
+		if comida.id != "galletita" or comida.position.length() <= 900.0:
+			continue
+		_comida_atajo = {"tipo": _tipo_comida(comida.id).duplicate(), "semilla": comida.semilla_dibujo}
+		lista.erase(comida)
+		_quitar_del_indice(comida)
+		comida.queue_free()
+		return
+
+
+func _abrir_atajo(parte: PiezaCasa) -> void:
+	var run: Run = get_parent()
+	if _comida_atajo.is_empty() or parte.pieza.get("perfil", "") != "silla_inicial" \
+		or parte.retiro_amenaza or not run.activa or run.terminada:
+		return
+	var datos := _comida_atajo
+	_comida_atajo = {}
+	# Quitar la silla abre el segmento directo desde el nido. La comida
+	# todavía debe extraerse y transportarse: aparecer no acredita nada.
+	var comida := _crear(datos.tipo, PlanoCasa.PREMIO_ATAJO, int(datos.semilla))
+	comida.set_meta("premio_atajo", true)
+	atajo_abierto.emit(comida)
+
+
 ## El patio usa alimentos del catálogo que ya estaban generados, no crea
-## recompensa adicional. Se hace al final para conservar el azar y todas las
-## ubicaciones del arranque (hasta900). Sin consultas periódicas ni RNG extra.
+## recompensa adicional. Conserva el azar y las ubicaciones históricas del
+## arranque (hasta 900), antes de acercar las seis migas iniciales.
 func _repartir_periferia() -> void:
 	var presupuesto := mini(6, floori(lista.size() * 0.05))
 	var usadas: Dictionary = {}
@@ -200,6 +264,8 @@ func _preparar_hallazgos() -> void:
 
 func resistencia_reservada() -> float:
 	var total := 0.0
+	if not _comida_atajo.is_empty():
+		total += float(_comida_atajo.tipo.vida)
 	for hallazgo: Dictionary in _hallazgos.values():
 		total += float(hallazgo.contenido.vida)
 	return total
@@ -257,6 +323,7 @@ func _on_destruida(comida: Comida) -> void:
 	if comida is PiezaCasa:
 		get_parent().cocina.quitar_pieza(comida.pieza.clave)
 		partes.erase(comida)
+		_abrir_atajo(comida)
 	elif comida is FragmentoCasa:
 		fragmentos.erase(comida)
 		_pilas.erase(comida.clave_apilado)
@@ -386,7 +453,9 @@ func contagiar(pos: Vector2, original: Comida, dano: float, run: Run) -> int:
 	var total := 0
 	for c in _candidatas(pos, 80):
 		if c != original and c.disponible() and c.distancia_a(pos) <= 55 and c.en_territorio(run.radio_actual):
-			c.aplicar_veneno(dano, 2.0, run)
+			# El contagio llega desde esta hormiga, no desde el borde derecho
+			# predeterminado del objeto vecino (muy lejano en una mesa grande).
+			c.aplicar_veneno(dano, 2.0, run, pos)
 			total += 1
 			if total >= 2:
 				break

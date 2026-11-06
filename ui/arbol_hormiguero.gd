@@ -438,7 +438,37 @@ class CapaCamaras extends Control:
 			if kit == "comun" and not especial:
 				ArteCamara.punteado(self, "comun", centro, r.size, Color(0.92, 0.776, 0.49, 0.75 if not e.lejana else 0.35))
 			if not e.misterio:
-				ArteCamara.contenido(self, kit, centro, r.size, e.lleno, orden, e.mezcla, e.extra)
+				if e.nivel <= 0 or not _insignia_visual(id, r, color):
+					ArteCamara.contenido(self, kit, centro, r.size, e.lleno, orden, e.mezcla, e.extra)
+
+	## Las tres mejoras de efectos dejan una marca legible al comprarlas.
+	## Se conserva en esta capa: ningún emisor, nodo o animación por cámara.
+	func _insignia_visual(id: String, r: Rect2, color: Color) -> bool:
+		var c := r.get_center()
+		match id:
+			"migas_brillantes":
+				for d in [Vector2(-7, 5), Vector2(1, 2), Vector2(8, 6)]:
+					draw_circle(c + d, 4.5, color.darkened(0.18))
+					draw_arc(c + d, 3.2, PI * 1.05, PI * 1.8, 8, color.lightened(0.25), 1.2, true)
+				_destello(c + Vector2(-17, -3), 4.0, color.lightened(0.4))
+				_destello(c + Vector2(14, -7), 5.0, color.lightened(0.4))
+			"mandibulas_destello":
+				for i in 3:
+					var p := c + Vector2((i - 1) * 8.0, 0)
+					draw_colored_polygon(PackedVector2Array([p + Vector2(-6, 9), p + Vector2(1, -8), p + Vector2(5, -11), p + Vector2(-2, 7)]), color)
+				_destello(c + Vector2(17, -6), 4.5, color.lightened(0.45))
+			"pulso_colonia":
+				draw_arc(c, 14, 0, TAU, 32, Color(color, 0.35), 1.6, true)
+				draw_arc(c, 8.5, 0, TAU, 24, Color(color, 0.75), 1.6, true)
+				draw_circle(c, 3.8, color.lightened(0.25))
+				for i in 3:
+					draw_circle(c + Vector2.from_angle(-PI * 0.5 + i * TAU / 3.0) * 14.0, 2, color.lightened(0.25))
+			_:
+				return false
+		return true
+
+	func _destello(c: Vector2, radio: float, color: Color) -> void:
+		draw_colored_polygon(PackedVector2Array([c + Vector2(0, -radio), c + Vector2(1.2, -1.2), c + Vector2(radio, 0), c + Vector2(1.2, 1.2), c + Vector2(0, radio), c + Vector2(-1.2, 1.2), c + Vector2(-radio, 0), c + Vector2(-1.2, -1.2)]), color)
 
 	func _mover(puntos: PackedVector2Array, d: Vector2) -> PackedVector2Array:
 		var salida := PackedVector2Array()

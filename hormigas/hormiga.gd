@@ -31,7 +31,11 @@ var comida: Comida = null:
 		comida = nueva
 		_version_objetivo = -1
 		_version_mirada = -1
+		_vida_mirada = -1.0
+		_distancia_apoyo = INF
 		_reubicando_frente = false
+		_masticando_visual = false
+		_contacto_visual = Vector2.INF
 		if is_instance_valid(comida):
 			comida.trabajadoras += 1
 			if is_instance_valid(run) and is_instance_valid(run.colonia):
@@ -54,6 +58,7 @@ var _reloj_mordida := 0.0
 var _reubicando_frente := false
 var _reloj_vagar := 0.0
 var _ruta := PackedVector2Array()
+var _origen_ruta := Vector2.INF
 var _indice_ruta := 0
 var _espera_ruta := 0.0
 var _ruta_fallida := false
@@ -88,8 +93,16 @@ var _tipo_animacion := ""
 var _evolucion_animacion := -1
 var _version_objetivo := -1
 var _version_mirada := -1
+var _vida_mirada := -1.0
+var _distancia_apoyo := INF
 var _posicion_mirada := Vector2.INF
 var _angulo_mordida := 0.0
+var _masticando_visual := false
+var _contacto_visual := Vector2.INF
+var _desfase_masticar := 0.0
+var _masticando_animacion := false
+var _animacion_masticar: Array[Rect2] = []
+var _desplazamiento_masticar := Vector2.ZERO
 var _entradas_fallidas: Dictionary = {}
 var _carga_origen: Array[float] = [0.0, 0.0, 0.0]
 ## Hasta tres muestras del material realmente retirado, en el atlas común.
@@ -147,6 +160,7 @@ func iniciar(r: Run, tipo := "obrera") -> void:
 	_reloj_pensar = randf() * INTERVALO_PENSAR
 	_proxima_memoria = randf() * 0.6
 	_fase = randf() * TAU
+	_desfase_masticar = _fase # Reutiliza el azar de nacimiento, no consume RNG nuevo.
 	_elegir_destino_al_azar()
 	if Graficos.listo:
 		_crear_sprite()
@@ -156,9 +170,12 @@ func iniciar(r: Run, tipo := "obrera") -> void:
 
 func detener() -> void:
 	estado = Estado.QUIETA
+	_masticando_visual = false
 	_esperando_ruta = false
 	comida = null
 	run.colonia.exploracion.liberar(get_instance_id())
+	_actualizar_sprite()
+	queue_redraw()
 
 func _exit_tree() -> void:
 	comida = null
@@ -224,10 +241,8 @@ func _pensar() -> void:
 	if carga > 0:
 		if estado == Estado.MORDIENDO:
 			return
-		if _reubicando_frente and estado == Estado.YENDO_A_COMIDA and _comida_valida(comida):
-			# Cambiar de borde no termina el viaje ni vacía el buche. Continúa
-			# sobre la misma pieza, sin buscar otro recurso con carga encima.
-			return
+		# Un retazo ya arrancado se entrega antes de buscar otra orilla. Esto
+		# también recupera portadoras que estaban reubicándose entre frentes.
 		_volver()
 		return
 	if run.feromonas.llama_a(self):
@@ -252,7 +267,7 @@ func _pensar() -> void:
 			elegida = run.feromonas.trabajo_para(self)
 			if elegida != null:
 				run.colonia.avistar(elegida)
-		if _comida_valida(elegida) and elegida.alcanza_desde(global_position) and (not _reubicando_frente or global_position.distance_squared_to(objetivo) < 16):
+		if _comida_valida(elegida) and _alcanza_trabajo(elegida):
 			comida = elegida
 			if estado != Estado.MORDIENDO:
 				_reloj_mordida = _intervalo_mordida * 0.4
@@ -288,7 +303,7 @@ func _pensar() -> void:
 		# Al cambiar a una miga o un montón que ya está a la boca no hace
 		# falta volver a entrar en la cola global ni caminar hasta su centro.
 		# Esto importa cuando otra hormiga termina el trabajo a nuestros pies.
-		if comida.alcanza_desde(global_position) and (not _reubicando_frente or global_position.distance_squared_to(objetivo) < 16):
+		if _alcanza_trabajo(comida):
 			estado = Estado.MORDIENDO
 			_esperando_ruta = false
 			_reloj_mordida = _intervalo_mordida * 0.4
@@ -310,6 +325,18 @@ func _actualizar_puesto() -> void:
 	if estado not in [Estado.YENDO_A_COMIDA, Estado.SIGUIENDO] or _version_objetivo != version:
 		objetivo = comida.punto_trabajo(global_position, run.radio_actual, casta == "voladora", _puesto)
 		_version_objetivo = version
+
+
+func _alcanza_trabajo(fuente: Comida) -> bool:
+	if fuente is PiezaCasa:
+		if estado == Estado.MORDIENDO and fuente == comida:
+			return true # El apoyo vivo se revalida antes del reloj de mordida.
+		# El alcance máximo no es una orden de detenerse antes de llegar.
+		# Mantener el puesto elegido también permite apoyar en curvas/diagonales
+		# que necesitan más de 9u para respetar el margen de navegación.
+		if fuente != comida or not objetivo.is_finite() or global_position.distance_squared_to(objetivo) > 0.0625:
+			return false
+	return fuente.alcanza_desde(global_position)
 
 
 func _caminar(delta: float) -> void:
@@ -335,7 +362,9 @@ func _caminar(delta: float) -> void:
 		estado = Estado.EXPLORANDO
 		_elegir_destino_al_azar()
 		return
-	var umbral := 144.0 if estado == Estado.SIGUIENDO else 16.0
+	# Al ir a comer, el destino de la ruta debe tener la misma precisión que
+	# la llegada al apoyo. Ignorar ajustes de 2u la dejaba en un puesto viejo.
+	var umbral := 144.0 if estado == Estado.SIGUIENDO else (0.0625 if estado == Estado.YENDO_A_COMIDA else 16.0)
 	var necesita_ruta := _meta_ruta == Vector2.INF or _pedido_ruta.distance_squared_to(objetivo) > umbral
 	if not necesita_ruta:
 		_esperando_ruta = false
@@ -347,6 +376,7 @@ func _caminar(delta: float) -> void:
 			_espera_ruta = 0.6
 			return
 		_ruta = run.cocina.ruta(global_position, meta, run.radio_actual, casta == "voladora")
+		_origen_ruta = global_position
 		_indice_ruta = 0
 		_meta_ruta = meta
 		_pedido_ruta = objetivo
@@ -360,7 +390,7 @@ func _caminar(delta: float) -> void:
 			return
 	# Seguir avanzando por el recorrido seguro anterior mientras espera turno.
 	if _indice_ruta >= _ruta.size():
-		if necesita_ruta and (_espera_ruta > 0 or _meta_ruta == Vector2.INF):
+		if necesita_ruta and (_espera_ruta > 0 or _meta_ruta == Vector2.INF or _esperando_ruta):
 			return
 		if estado == Estado.SIGUIENDO and global_position.distance_squared_to(_meta_ruta) < 9:
 			return
@@ -393,7 +423,7 @@ func _caminar(delta: float) -> void:
 				comida = null
 				estado = Estado.EXPLORANDO
 				_elegir_destino_al_azar()
-			elif comida.alcanza_desde(global_position) and (not _reubicando_frente or global_position.distance_squared_to(objetivo) < 16):
+			elif _alcanza_trabajo(comida):
 				estado = Estado.MORDIENDO
 				_reloj_mordida = _intervalo_mordida * randf_range(0.3, 1.0)
 		Estado.VOLVIENDO:
@@ -421,6 +451,7 @@ func _morder(delta: float) -> void:
 	# frente sin interpretar la espera como falta de contacto. No se consume
 	# ni se acumula reloj de daño, carga o varios mordiscos durante la espera.
 	if not comida.preparar_material():
+		_masticando_visual = false
 		return
 	var hacia := (comida.global_position - global_position).angle()
 	if comida is PiezaCasa:
@@ -428,14 +459,44 @@ func _morder(delta: float) -> void:
 		# un arco. Alcance y orientación comparten la invalidación: una obrera
 		# quieta no vuelve a recorrer las secciones del mueble en cada cuadro.
 		# Cambiar de pieza, moverse o perder una sección obliga a comprobarlos.
-		if _version_mirada != comida.version_forma or _posicion_mirada != global_position:
-			if not comida.alcanza_desde(global_position):
+		if _version_mirada != comida.version_forma or _vida_mirada != comida.vida or _posicion_mirada != global_position:
+			# La máscara cambia antes de publicar la navegación cada 0,12s.
+			# Si una mordida lejana no retiró ESTE apoyo, cuatro lecturas R8
+			# evitan repetir nearest para toda la colonia por cada astilla.
+			var conserva_apoyo: bool = _version_mirada == comida.version_forma and _posicion_mirada == global_position and comida.mordiscos != null and comida.mordiscos.contacto_vigente(_contacto_visual)
+			if not conserva_apoyo:
+				_contacto_visual = comida.material_cercano(global_position)
+			var distancia := global_position.distance_to(_contacto_visual)
+			var mismo_puesto := _posicion_mirada == global_position and is_finite(_distancia_apoyo)
+			var apoyo_maximo := _distancia_apoyo if mismo_puesto else minf(Cocina.MARGEN + 5, maxf(PiezaCasa.DISTANCIA_TRABAJO, distancia + 0.25))
+			if not _contacto_visual.is_finite() or distancia > apoyo_maximo:
 				_reubicar_frente()
 				return
-			var direccion: Vector2 = comida.material_cercano(global_position) - global_position
+			_distancia_apoyo = apoyo_maximo
+			var direccion: Vector2 = _contacto_visual - global_position
 			_angulo_mordida = direccion.angle() if direccion.length_squared() > 0.001 else hacia
 			_version_mirada = comida.version_forma
+			_vida_mirada = comida.vida
 			_posicion_mirada = global_position
+		hacia = _angulo_mordida
+		_masticando_visual = _contacto_visual.is_finite()
+	elif not comida is FragmentoCasa:
+		# Confirmar el apoyo ANTES del primer bocado: con capacidad uno ya
+		# estaría volviendo al llenarse. Una consulta por llegada/posición;
+		# las siguientes mordidas renuevan el contacto como siempre.
+		if _version_mirada == -1 or _vida_mirada != comida.vida or _posicion_mirada != global_position:
+			var conserva_apoyo: bool = _posicion_mirada == global_position and comida.mordiscos != null and comida.mordiscos.contacto_vigente(comida.to_local(_contacto_visual))
+			if not conserva_apoyo:
+				_contacto_visual = comida.punto_contacto(global_position)
+			if not _contacto_visual.is_finite() or global_position.distance_squared_to(_contacto_visual) > 9.0:
+				_reubicar_frente()
+				return
+			_version_mirada = 0
+			_vida_mirada = comida.vida
+			_posicion_mirada = global_position
+			_masticando_visual = _contacto_visual.is_finite() and global_position.distance_squared_to(_contacto_visual) <= 9.0
+			if _masticando_visual:
+				_angulo_mordida = (_contacto_visual - global_position).angle()
 		hacia = _angulo_mordida
 	rotation = rotate_toward(rotation, hacia, VELOCIDAD_GIRO * delta)
 	_reloj_mordida -= delta * run.factor_ritmo() * run.multiplicador_ritmo_activo()
@@ -450,6 +511,8 @@ func _morder(delta: float) -> void:
 			_reubicar_frente()
 			return
 		_reubicando_frente = false
+		_contacto_visual = contacto
+		_masticando_visual = true
 		_angulo_mordida = (contacto - global_position).angle()
 		rotation = rotate_toward(rotation, _angulo_mordida, VELOCIDAD_GIRO * delta)
 	_reloj_mordida += _intervalo_mordida
@@ -533,7 +596,7 @@ func _desprender_porcion(actual: Comida, dano_activo: float, lado_bocado: float,
 	_color_carga = actual.color
 	_tiempo_bocado = _reloj_vida
 	_reloj_visual = 0
-	run.efectos.chispas(global_position + Vector2.from_angle(rotation) * 4.0, actual.color, 1, _material_carga)
+	run.efectos.mordida(global_position + Vector2.from_angle(rotation) * 4.0, actual.color, _material_carga, Vector2.from_angle(rotation))
 	# El timbre sólo confirma material retirado. Su puerta global es compartida
 	# con el levantado; no suena por crédito pendiente ni fuera de cámara.
 	if not Sonido.silenciado and en_pantalla and visible and Sonido.detalle_material(run.camara.zoom.x, run.colonia.hormigas.size()):
@@ -551,11 +614,17 @@ func _desprender_porcion(actual: Comida, dano_activo: float, lado_bocado: float,
 
 
 func _reubicar_frente() -> void:
+	_masticando_visual = false
+	_reloj_visual = 0.0
+	if carga > 0:
+		# La capacidad permite juntar porciones contiguas. Si este borde se
+		# alejó, no perseguir el resto del mueble con material en la boca:
+		# transportar lo recogido y volver después por un frente nuevo.
+		_volver()
+		return
+	_distancia_apoyo = INF
 	var destino := comida.punto_trabajo(global_position, run.radio_actual, casta == "voladora", _puesto)
 	if destino == Vector2.INF:
-		if carga > 0:
-			_volver()
-			return
 		# Un frente todavía pendiente de sincronización no debe generar una
 		# rueda infinita de intentos. La memoria compartida podrá retomarlo.
 		_comidas_sin_ruta[comida.get_instance_id()] = _reloj_vida + 0.6
@@ -576,6 +645,7 @@ func _reubicar_frente() -> void:
 
 
 func _volver() -> void:
+	var regreso_inicial := _invertir_tramo_recorrido()
 	run.colonia.exploracion.liberar(get_instance_id())
 	_siguiendo_llamado = false
 	_esperando_ruta = false
@@ -585,10 +655,35 @@ func _volver() -> void:
 	_entradas_fallidas.clear()
 	objetivo = run.entradas.elegir(global_position)
 	_meta_ruta = Vector2.INF
-	_ruta = PackedVector2Array()
+	# Mientras espera el turno global puede desandar su ida comprobada.
+	# El material sólo desaparece durante la run: esos segmentos no se
+	# vuelven sólidos. No se inventa una recta hacia el nido ni otro A*.
+	_ruta = regreso_inicial
 	_indice_ruta = 0
 	_espera_ruta = 0
+	_reloj_visual = 0.0
 	queue_redraw()
+
+
+func _invertir_tramo_recorrido() -> PackedVector2Array:
+	var vuelta := PackedVector2Array()
+	if _ruta.is_empty() or not _origen_ruta.is_finite() or _ruta_fallida:
+		return vuelta
+	var indice := clampi(_indice_ruta, 0, _ruta.size())
+	var anterior := _origen_ruta if indice == 0 else _ruta[indice - 1]
+	var siguiente := _ruta[mini(indice, _ruta.size() - 1)]
+	# No reutilizar una ruta después de reposicionar una hormiga: debe seguir
+	# sobre el segmento que realmente caminó. Es una comprobación O(1).
+	if Geometry2D.get_closest_point_to_segment(global_position, anterior, siguiente).distance_squared_to(global_position) > 0.0001:
+		return vuelta
+	var ultimo := global_position
+	for i in range(indice - 1, -1, -1):
+		if ultimo.distance_squared_to(_ruta[i]) > 0.0001:
+			vuelta.append(_ruta[i])
+			ultimo = _ruta[i]
+	if ultimo.distance_squared_to(_origen_ruta) > 0.0001:
+		vuelta.append(_origen_ruta)
+	return vuelta
 
 
 ## Quitar el agujero no bloquea el piso ni hace fallar la ruta anterior.
@@ -612,6 +707,36 @@ func _descargar() -> void:
 	if carga > 0:
 		_tiempo_descarga = _reloj_vida
 	run.depositar(carga, objetivo, 0 if _material_carga <= 0 else (2 if _material_carga >= 3 else 1), _carga_origen)
+	_vaciar_carga()
+	if run.retirando:
+		detener()
+		return
+	# Vuelve a la misma comida si sigue ahí: así se forman las filas de hormigas.
+	if _comida_valida(_recuerdo) and _recuerdo.trabajadoras < _recuerdo.cupos_trabajo() and Comidas.en_territorio(_recuerdo, run.radio_actual):
+		comida = _recuerdo
+		estado = Estado.YENDO_A_COMIDA
+		objetivo = comida.punto_mordida(global_position, run.radio_actual, casta == "voladora")
+	else:
+		estado = Estado.EXPLORANDO
+		_elegir_destino_al_azar()
+	_recuerdo = null
+
+
+## La avispa retira sólo material que ya viajaba. No acredita ingreso ni
+## vuelve a extraerlo del mapa: queda en su botín hasta vencerla o perderla.
+func soltar_carga_para_robo() -> Dictionary:
+	if not is_instance_valid(run) or not run.activa or run.terminada or carga <= 0.0:
+		return {}
+	var retirada := {"valor": carga, "material": _material_carga}
+	_vaciar_carga()
+	if estado == Estado.VOLVIENDO:
+		estado = Estado.EXPLORANDO
+		_ruta_fallida = false
+		_elegir_destino_al_azar()
+	return retirada
+
+
+func _vaciar_carga() -> void:
 	_carga_origen.fill(0.0)
 	carga = 0.0
 	_material_carga = -1
@@ -626,18 +751,6 @@ func _descargar() -> void:
 		_carga_sprite.hide()
 	_reloj_visual = 0
 	queue_redraw()
-	if run.retirando:
-		detener()
-		return
-	# Vuelve a la misma comida si sigue ahí: así se forman las filas de hormigas.
-	if _comida_valida(_recuerdo) and _recuerdo.trabajadoras < _recuerdo.cupos_trabajo() and Comidas.en_territorio(_recuerdo, run.radio_actual):
-		comida = _recuerdo
-		estado = Estado.YENDO_A_COMIDA
-		objetivo = comida.punto_mordida(global_position, run.radio_actual, casta == "voladora")
-	else:
-		estado = Estado.EXPLORANDO
-		_elegir_destino_al_azar()
-	_recuerdo = null
 
 
 func _elegir_destino_al_azar() -> void:
@@ -663,7 +776,7 @@ func _draw() -> void:
 		AspectoHormiga.dibujar(self, casta, _color, _fase, carga > 0.0, _color_carga)
 	elif carga > 0 and Graficos.listo:
 		# Los retazos adicionales comparten el CanvasItem de la hormiga.
-		# Su levantado usa el tick visual compartido de 12 Hz sólo 0,18 s;
+		# Su levantado usa el tick visual compartido de 12 Hz sólo 0,28 s;
 		# después quedan retenidos hasta otra carga o descarga, no por cuadro.
 		for i in range(1, _retazos.size()):
 			var region := _retazos[i]
@@ -685,9 +798,24 @@ func _guardar_retazo(fuente: Comida) -> void:
 		_tamanos_retazos.append(tamano)
 		_origenes_retazos.append(fuente.origen_bocado())
 		_tiempos_retazos.append(_reloj_vida)
-		_levantando_retazos = true
-	if _retazos.size() == 1:
-		_origen_retazo = _origenes_retazos[0]
+	else:
+		# Tres muestras del material transportado, no un límite al buche.
+		# Retener las más recientes permite ver cada nuevo levantado incluso
+		# con capacidad alta. El valor y su origen siguen en carga/_carga_origen;
+		# no se agrandan retazos ni se crean otros sprites para representarlos.
+		for i in 2:
+			_retazos[i] = _retazos[i + 1]
+			_angulos_retazos[i] = _angulos_retazos[i + 1]
+			_tamanos_retazos[i] = _tamanos_retazos[i + 1]
+			_origenes_retazos[i] = _origenes_retazos[i + 1]
+			_tiempos_retazos[i] = _tiempos_retazos[i + 1]
+		_retazos[2] = region
+		_angulos_retazos[2] = fuente.global_rotation - global_rotation
+		_tamanos_retazos[2] = tamano
+		_origenes_retazos[2] = fuente.origen_bocado()
+		_tiempos_retazos[2] = _reloj_vida
+	_levantando_retazos = true
+	_origen_retazo = _origenes_retazos[0]
 	queue_redraw()
 
 
@@ -698,13 +826,16 @@ func _sonido_bocado(fuente: Comida) -> String:
 		return "mordida_carton"
 	if fuente is PiezaCasa and (fuente.pieza.get("practica", false) or fuente.pieza.get("dibujo", {}).get("acabado", "") == "carton"):
 		return "mordida_carton"
-	return ["mordida", "mordida_madera", "mordida_metal", "mordida_piedra"][clampi(_material_carga, 0, 3)]
+	# La gran mesa exige dieta 3 por progresión, pero sigue siendo madera.
+	# El timbre describe el objeto; no cambia la categoría económica cargada.
+	var material := MaterialesCasa.nivel_tipo(fuente.pieza.tipo) if fuente is PiezaCasa else _material_carga
+	return ["mordida", "mordida_madera", "mordida_metal", "mordida_piedra"][clampi(material, 0, 3)]
 
 
 ## Sólo cambia el dibujo. La carga real y la posición física ya fueron
 ## resueltas por la mordida/ruta; nunca se interpolan ni se vuelven a cobrar.
 func _posicion_retazo(indice: int) -> Vector2:
-	var pinza := Vector2(5.8 - indice * 0.3, (1 if indice % 2 else -1) * 1.6 if indice > 0 else 0.0)
+	var pinza := Vector2(5.8 - indice * 0.3, (1 if indice % 2 else -1) * 1.6 if indice > 0 else 0.0) + _desplazamiento_masticar
 	if not _detalle_bocado or indice >= _origenes_retazos.size() or indice >= _tiempos_retazos.size():
 		return pinza
 	var edad := _reloj_vida - _tiempos_retazos[indice]
@@ -748,15 +879,29 @@ func _actualizar_sprite() -> void:
 		_tipo_animacion = casta
 		_evolucion_animacion = _evolucion
 		_animacion = Graficos.animacion(casta, _evolucion)
-	_cuerpo.region_rect = _animacion[cuadro]
+		_animacion_masticar = Graficos.animacion(casta, _evolucion, true)
 	_detalle_bocado = en_pantalla and run.camara.zoom.x >= 0.28
+	var masticaba := _masticando_animacion
+	_masticando_animacion = _esta_masticando() and not _animacion_masticar.is_empty()
+	var fase_masticar := _reloj_vida * TAU * AspectoHormiga.CICLOS_MASTICAR + _desfase_masticar
+	if _masticando_animacion:
+		var cuadro_masticar := floori(fposmod(fase_masticar, TAU) / TAU * _animacion_masticar.size())
+		_cuerpo.region_rect = _animacion_masticar[cuadro_masticar]
+	else:
+		_cuerpo.region_rect = _animacion[cuadro]
+	_desplazamiento_masticar = Vector2.ZERO
+	if _masticando_animacion:
+		# La boca se apoya en el contacto YA calculado por la IA; no consulta
+		# otra vez la geometría. Compensa también el cuerpo chico de las minis.
+		var apoyo := clampf(to_local(_contacto_visual).length() - 6.7, 0.0, 14.0)
+		_desplazamiento_masticar.x = apoyo * (0.9 + AspectoHormiga.cierre_masticar(fase_masticar) * 0.1)
 	var progreso := clampf(1.0 - _reloj_mordida / maxf(_intervalo_mordida, 0.001), 0, 1) if estado == Estado.MORDIENDO else 0.0
 	var preparacion := AspectoHormiga.preparar_bocado(progreso) if _detalle_bocado else 0.0
-	var tiron := AspectoHormiga.pulso_bocado(_reloj_vida - _tiempo_bocado, 0.19) if _detalle_bocado else 0.0
-	var entrega := AspectoHormiga.pulso_bocado(_reloj_vida - _tiempo_descarga, 0.22) if _detalle_bocado else 0.0
-	_cuerpo.position = Vector2(-preparacion * 1.25 + tiron * 1.4 + entrega * 0.7, entrega * 0.35)
-	_cuerpo.rotation = preparacion * 0.035 - tiron * 0.055
-	_cuerpo.scale = Vector2(1.0 - preparacion * 0.055 + tiron * 0.035, 1.0 + preparacion * 0.035 - entrega * 0.04) / 3.0
+	var tiron := AspectoHormiga.pulso_bocado(_reloj_vida - _tiempo_bocado, 0.19) if _detalle_bocado and estado != Estado.QUIETA else 0.0
+	var entrega := AspectoHormiga.pulso_bocado(_reloj_vida - _tiempo_descarga, 0.22) if _detalle_bocado and estado != Estado.QUIETA else 0.0
+	var postura := AspectoHormiga.postura_bocado(preparacion, tiron, entrega, carga > 0 and _detalle_bocado and estado != Estado.QUIETA, _fase, _material_carga)
+	postura.origin += _desplazamiento_masticar
+	_cuerpo.transform = postura
 	_cuerpo.modulate = Color(1.025, 1.025, 1.0) if estado == Estado.MORDIENDO else Color.WHITE
 	_carga_sprite.visible = carga > 0
 	if not _retazos.is_empty():
@@ -772,9 +917,19 @@ func _actualizar_sprite() -> void:
 		_carga_sprite.scale = Vector2.ONE * (0.12 if _material_carga >= 0 else 0.16) * (1.55 if casta == "cargadora" else 1.0)
 		_carga_sprite.modulate = Color.WHITE if _material_carga >= 0 else _color_carga
 		_carga_sprite.position = Vector2(5, 0)
+	if _retazos.size() > 1 and (masticaba or _masticando_animacion):
+		# Los dos retazos retenidos también acompañan el apoyo de la cabeza.
+		# Mismo tick visible de 12 Hz; no agrega un proceso ni otro sprite.
+		queue_redraw()
 	if _levantando_retazos:
 		# Sólo los dos retazos secundarios necesitan redibujarse. Se reutiliza
-		# el tick visual de 12 Hz, durante como máximo 0,18 s por muestra.
+		# el tick visual de 12 Hz, durante como máximo 0,28 s por muestra.
 		if _retazos.size() > 1:
 			queue_redraw()
 		_levantando_retazos = _detalle_bocado and not _tiempos_retazos.is_empty() and _reloj_vida - _tiempos_retazos.back() < AspectoHormiga.DURACION_LEVANTADO
+
+
+## Sólo visual y sólo con contacto confirmado por el trabajo real. Preparar
+## una máscara, seguir feromonas o esperar una ruta no simulan estar comiendo.
+func _esta_masticando() -> bool:
+	return _detalle_bocado and estado == Estado.MORDIENDO and _masticando_visual and _contacto_visual.is_finite() and _comida_valida(comida) and not run.retirando and run.activa and absf(angle_difference(rotation, _angulo_mordida)) < 0.5

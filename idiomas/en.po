@@ -6,6 +6,106 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: en\n"
 
+msgid "Tu segunda obrera"
+msgstr "Your second worker"
+
+msgid "Dos obreras: dos viajes al mismo tiempo."
+msgstr "Two workers: two trips at the same time."
+
+msgid "La galletita del atajo"
+msgstr "The shortcut cookie"
+
+msgid "El camino quedó libre. Ahora llevá la comida al nido."
+msgstr "The path is clear. Now carry the food to the nest."
+
+msgid "Abrí un atajo"
+msgstr "Open a shortcut"
+
+msgid "Desarmá esta silla: hay una galletita detrás."
+msgstr "Dismantle this chair: there's a cookie behind it."
+
+msgid "¿Qué guarda la alacena?"
+msgstr "What's inside the cupboard?"
+
+msgid "Vaciá una hoja. El hueco y el hallazgo se conservan."
+msgstr "Eat through one door. The opening and discovery are kept."
+
+msgid "Algo cruje dentro"
+msgstr "Something crunches inside"
+
+msgid "Abrí la bolsita entre varias hormigas y descubrí el cereal."
+msgstr "Open the bag with several ants and discover the cereal."
+
+msgid "¡Atajo abierto! Hay una galletita detrás."
+msgstr "Shortcut open! There's a cookie behind it."
+
+msgid "Comprá al volver. El cartón puede esperar a una colonia más grande."
+msgstr "Buy when you return. The cardboard can wait for a larger colony."
+
+msgid "Junta restos y lleva más bocados por viaje."
+msgstr "Gathers loose fragments and carries more bites per trip."
+
+msgid "Corta madera; las cargadoras retiran los restos."
+msgstr "Cuts wood; haulers collect the fragments."
+
+msgid "%d → %d por expedición"
+msgstr "%d → %d per expedition"
+
+msgid "Antes"
+msgstr "Before"
+
+msgid "Después"
+msgstr "After"
+
+msgid "%d al salir"
+msgstr "%d at departure"
+
+msgid "Más manos desde la primera miga."
+msgstr "More workers from the first crumb."
+
+msgid "Mismo bocado; menos viajes de vuelta."
+msgstr "Same bite; fewer return trips."
+
+msgid "Madera bloqueada"
+msgstr "Wood locked"
+
+msgid "Madera disponible"
+msgstr "Wood available"
+
+msgid "Mordés el borde y transportás el trozo."
+msgstr "Bite the edge and carry the piece."
+
+msgid "%d accesos extra"
+msgstr "%d extra entrances"
+
+msgid "N: elegís dónde acortar la vuelta."
+msgstr "N: choose where to shorten the return."
+
+msgid "Retira primero los restos del grupo."
+msgstr "Prioritizes the colony's loose fragments."
+
+msgid "%s en madera"
+msgstr "%s against wood"
+
+msgid "Más daño; el trozo no se agranda."
+msgstr "More damage; the piece stays the same size."
+
+msgid "Colonia inicial: %d. Ya responden todas; rinde al sumar hormigas."
+msgstr "Starting colony: %d. All already respond; useful when you add ants."
+
+msgid "Al salir responderán %d de %d disponibles. El resto de la capacidad queda para futuras crías."
+msgstr "At departure, %d of %d available ants will respond. Spare capacity is ready for future hatchlings."
+
+msgid "Primera entrega"
+msgstr "First delivery"
+
+msgid "Respaldo y asiento"
+msgstr "Backrest and seat"
+
+msgid "Patas y base"
+msgstr "Legs and base"
+
+
 msgid "Araña · Ver"
 msgstr "Spider · Find"
 
@@ -50,12 +150,6 @@ msgstr "Collect it before it disappears"
 
 msgid "Ver en el mapa"
 msgstr "Find on the map"
-
-msgid "Tu primera silla de madera"
-msgstr "Your first wooden chair"
-
-msgid "Ya comen madera y la buscan solas. Podés llamarlas para concentrar el trabajo."
-msgstr "They can eat wood and find it on their own. Call them to focus their work."
 
 msgid "TRABAJO EN EQUIPO"
 msgstr "TEAMWORK"
@@ -1544,9 +1638,6 @@ msgstr "Hold click: call ants · Click threats and rewards: interact\nWheel: zoo
 msgid "Empezá por las migas cercanas"
 msgstr "Start with nearby crumbs"
 
-msgid "Juntá migas para comprar más obreras al volver. El cartón puede esperar a una colonia más grande."
-msgstr "Collect crumbs to buy more workers when you return. The cardboard can wait for a larger colony."
-
 msgid "Al conquistar: "
 msgstr "On conquest: "
 
@@ -2819,3 +2910,45 @@ msgstr "Crowned queen: she glows with royal jelly."
 
 msgid "Reina de reinas: un cortejo completo la rodea."
 msgstr "Queen of queens: a full court surrounds her."
+
+msgid "¡Ráfaga lista! Activala con E"
+msgstr "Burst ready! Press E to activate"
+
+msgid "Avispa · Ver"
+msgstr "Wasp · Show"
+
+msgid "Hormiga rival · Ver"
+msgstr "Rival ant · Show"
+
+msgid "Espantala antes de que ataque"
+msgstr "Scare it off before it attacks"
+
+msgid "Recuperá los restos antes de que escape"
+msgstr "Recover the scraps before it escapes"
+
+msgid "¡Una avispa! Espantala antes de que se lleve una carga"
+msgstr "A wasp! Scare it off before it steals a load"
+
+msgid "¡Una hormiga rival! Quiere llevarse los restos"
+msgstr "A rival ant! It wants to take the scraps"
+
+msgid "¡%d ENTREGAS!"
+msgstr "%d DELIVERIES!"
+
+msgid "Migas brillantes"
+msgstr "Sparkling crumbs"
+
+msgid "Migas +8%. Entregas con destellos."
+msgstr "Crumbs +8%. Sparkling deliveries."
+
+msgid "Mordida chispeante"
+msgstr "Spark bite"
+
+msgid "Daño +8%. Cortes con chispas."
+msgstr "Damage +8%. Sparks when biting."
+
+msgid "Pulso de la colonia"
+msgstr "Colony pulse"
+
+msgid "+1 s de frenesí y un halo en las entradas."
+msgstr "+1 s of frenzy and a halo around entrances."

@@ -85,13 +85,13 @@ func _ready() -> void:
 	var columna_fondo := PanelContainer.new()
 	columna_fondo.set_anchors_preset(Control.PRESET_LEFT_WIDE)
 	columna_fondo.custom_minimum_size.x = 440
-	columna_fondo.add_theme_stylebox_override("panel", Estilo.caja(Color(0.07, 0.08, 0.07, 0.88), 0, Color.TRANSPARENT, 0, 48))
+	columna_fondo.add_theme_stylebox_override("panel", Estilo.caja(Color("182019f5"), 0, Color.TRANSPARENT, 0, 48))
 	add_child(columna_fondo)
 	var columna := VBoxContainer.new()
 	columna.alignment = BoxContainer.ALIGNMENT_CENTER
 	columna.add_theme_constant_override("separation", 12)
 	columna_fondo.add_child(columna)
-	columna.add_child(Estilo.etiqueta(NOMBRE_JUEGO, 64, Estilo.ACENTO, 6))
+	columna.add_child(Estilo.etiqueta(NOMBRE_JUEGO, 64, Estilo.ACENTO))
 	var lema := Estilo.etiqueta(tr("Una colonia. Una casa entera para comer."), 16, Estilo.TEXTO_SUAVE)
 	lema.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	columna.add_child(lema)

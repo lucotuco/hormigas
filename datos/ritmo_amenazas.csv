@@ -1,0 +1,16 @@
+id,valor
+primera_min,6
+primera_max,10
+entre_min,13
+entre_max,19
+espera_min,6
+espera_max,19
+simultaneas_base,2
+presion_por_amenaza,3
+radio_interes_min,120
+radio_interes_max,280
+distancia_segura,85
+pausa_golpe,0.18
+consulta_objetivo,0.5
+consulta_contacto,0.2
+escape_duracion,4

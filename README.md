@@ -73,6 +73,7 @@ res://
     mundos.gd     Seis destinos y sus planos, objetivos y progresión de campaña
     proyectos_campana.gd Catálogo de proyectos físicos por destino, desde datos/proyectos.csv
     recorrido_destino.gd Progreso de proyectos, premios y objetivo sugerido sin proceso por cuadro
+    recorrido_casa.gd Próximo encuentro físico: paquete, silla/atajo y alacena
     fragmento_casa.gd Montones de fragmentos transportables, sin física individual
     roles_hormiga.gd Afinidades por material, carga y preferencias de las castas
     hormiguero.gd  La entrada del hormiguero en (0, 0)
@@ -86,6 +87,7 @@ res://
     ventana_modal.gd  Base de las ventanas (configuración, estadísticas, pausa)
     panel_configuracion.gd / panel_estadisticas.gd
     tienda.gd      El hormiguero de mejoras entre runs: ficha, compras y secciones
+    vista_compra.gd Comparación retenida antes/después con capacidades reales
     arbol_hormiguero.gd  Vista del hormiguero: arrastrar, zoom y capas de dibujo
     plano_hormiguero.gd  Dónde está cada cámara y por dónde pasan sus túneles
     arte_camara.gd Forma, contenido y rastro de cada rama
@@ -114,7 +116,7 @@ La tienda es un corte de tierra de 1700 × 1900 con la **reina en el centro**
 (abre la Jalea real), **Viajes en la boca** y la **sala de Castas** (fichas
 completas y evoluciones) en el túnel principal. Alrededor salen siete ramas:
 Castas, Colonia, Recolección, Mandíbulas, Feromonas, Tiempo y Territorio, con
-89 cámaras: 82 mejoras y las 7 castas que se reclutan. Las ramas se separan y
+92 cámaras: 85 mejoras y las 7 castas que se reclutan. Las ramas se separan y
 se vuelven a juntar: las **cámaras compartidas** (borde punteado) piden una
 mejora de cada rama, y algunos túneles cruzan de una rama a otra. Cada túnel
 que llega a una cámara sale de uno de sus requisitos reales.
@@ -382,7 +384,7 @@ conserva las últimas 128 limpiezas y hasta 1024 marcas por categoría. Sólo co
 la misma dieta, alcance y versión del mapa; las mejoras pueden ser distintas.
 Se conserva al fundar y permite exportar un JSON independiente de la partida.
 Las partidas viejas cargan sin inventar récords. El contenido actual se identifica
-como versión de mapa 9, para no comparar estas reglas con planos anteriores.
+como versión de mapa 11, para no comparar estas reglas con planos anteriores.
 
 Los depósitos próximos se agrupan en ventanas de 0,35 s; el total económico
 no se limita. El piso tiene menos contraste, parte de la comida forma grupos
@@ -429,7 +431,7 @@ muestra objetos pendientes, premio y progreso; `G` lleva al próximo objetivo
 accesible sin mantener el llamado anterior. La niebla y las dietas siguen vigentes.
 
 **Un objeto de proyecto completamente devorado queda terminado** entre
-expediciones y fundaciones. Doce muebles concretos tienen además 35 componentes
+expediciones y fundaciones. Trece muebles concretos tienen además 37 componentes
 reconocibles: puertas, estantes, expositores y partes de fuentes. Cada componente
 completamente devorado se conserva, incluido su hueco en cuerpo, sombra y
 navegación. El daño de un componente sin terminar se reinicia: no se reconstruye
@@ -441,7 +443,7 @@ Tres proyectos abren nuevas evoluciones.
 Después de la conquista histórica, los muebles vuelven como recursos normales,
 sin resistencia de misión ni premios de proyecto repetidos.
 
-La partida usa versión 10 y el mapa 9. Los récords nuevos distinguen qué
+La partida usa versión 10 y el mapa 11. Los récords nuevos distinguen qué
 objetos, componentes y escondites estaban pendientes al iniciar. Las partidas anteriores conservan sus
 victorias: los proyectos de destinos ya conquistados se consideran cumplidos,
 sin premios retroactivos. Para jugar toda la campaña ampliada hace falta una
@@ -516,6 +518,9 @@ captura el factor una sola vez. Valores en `datos/stats_base.csv`.
   Los cuerpos animan a 12 cuadros por segundo y el movimiento sigue siendo fluido.
 - Búsquedas espaciales por sectores para alimento y obstáculos, en vez de recorrer
   todos los objetos por cada decisión de cada hormiga.
+  Los recortes del mobiliario tienen un límite envolvente cacheado: se descartan
+  antes de recorrer sus bandas si la consulta queda fuera. Se actualiza al
+  cambiar el material, sin simplificar huecos ni ampliar colisiones.
 - Selección de feromonas con un heap acotado, cada 0,2 segundos, sin ordenar
   toda la colonia. La consulta espacial del área también es compartida;
   reasignar un trabajo no recorre el mapa por hormiga y por cuadro. Cursor
@@ -532,12 +537,13 @@ captura el factor una sola vez. Valores en `datos/stats_base.csv`.
   siendo válidas al quitar material, sin forzar a todas las hormigas a recalcular.
 - Niebla en una superficie, textos con un tamaño de fuente fijo y efectos limitados.
   Lo que está fuera de pantalla no vuelve a dibujar la animación de sus hormigas.
-- El juego normal está limitado a 60 FPS. Un solo atlas compartido de unos
-  34 MiB RGBA8 sirve para los seis destinos y tres etapas visuales; sólo el
+- El juego normal está limitado a 60 FPS. Un solo atlas compartido de
+  48 MiB RGBA8 sirve para los seis destinos y tres etapas visuales; sólo el
   escenario activo tiene nodos. Máximos: 64 montones, 600 partículas, 24 ondas
-  y 40 textos almacenados (como máximo 10 visibles, 6 al alejar). No se generan
-  efectos visuales lejos de cámara. Las cuatro hojas de arte preiluminado son
-  recursos fijos compartidos, no una textura ni un emisor por instancia.
+  y 40 textos almacenados (como máximo 12 visibles, 8 al alejar). No se generan
+  efectos visuales lejos de cámara. El arte se hornea una sola vez; las hojas
+  antiguas de muebles y monumentos se cargan sólo si se solicita ese recurso,
+  no una textura ni un emisor por instancia.
 
 El benchmark gráfico usa el renderizador real, la casa completa y grupos de 5,
 150 y 500 hormigas; añade una fase de demolición con 500. No guarda la partida;
@@ -560,6 +566,28 @@ Ver resultados y límites de la medición en `tests/RENDIMIENTO.md`.
 Los efectos actuales se sintetizan en `global/audio_suave.gd`, con ataques y
 finales suaves, notas armónicas y límites de superposición. Los WAV originales
 se conservan como referencia. No se necesitan recursos externos adicionales.
+
+Las mordidas confirmadas generan golpes y astillas locales; las entregas
+convergen hacia la entrada, desde la primera obrera. Destrucción, hitos de
+racha, Ráfaga y victoria tienen gestos distintos. Un solo lienzo comparte hasta
+600 partículas, 24 ondas, 40 textos y 16 trazos, con puertas y descarte por
+cámara. Los acentos no cambian el tamaño físico del bocado ni dan recursos.
+Contador y combo usan relojes compartidos, sin crear tweens por depósito.
+Cada entrega muestra su ganancia real en la entrada y junto al contador,
+incluidos los decimales de la primera obrera. Las tandas se agrupan durante
+0,28 s en el mapa y 0,32 s en el HUD; sumar no prolonga el mismo número
+indefinidamente ni vuelve a cobrar. Los depósitos conservan 24–26 px en pantalla
+y los bonus 32 px, con pop, contorno y sombra, sin agrandar las hormigas.
+Se dibujan hasta 12 números sin superponer (ocho con zoom inferior a 0,25).
+Las migas con estela viajan al contador en el mismo pool de 40; los hitos de
+entregas tienen un anuncio grande, no un multiplicador económico nuevo.
+Ganancia y combo se formatean una vez por cuadro, no por hormiga; el cierre
+vacía la presentación y rechaza callbacks tardíos.
+Ráfaga avisa una vez al cargarse; los sonidos de golpe, racha y poder comparten
+el pool de 16 voces. `tests/perfil_estimulos.tscn` exige renderer real y Full HD.
+`tests/revision_recompensas_juego.tscn` captura mordida, transporte, entrega,
+racha y bonus en una Run real a zoom normal y alejado. Usa cargas físicas y
+valor nativo de la comida: las cifras no son premios inventados para la foto.
 
 ### Castas y reclutamiento
 
@@ -820,10 +848,23 @@ son el momento de clickear. Código en `mundo/eventos.gd` y `mundo/evento.gd`;
 revisión visual en `tests/revision_eventos.tscn` y `tests/revision_comidas.tscn`.
 
 La amenaza del lugar alterna con cucarachas (casa, restaurante y museo) o
-escarabajos (Obelisco, Coliseo y Eiffel). La cadencia aumenta con el destino y
-las mejoras de la colonia, con un máximo de **tres individuos** activos; una
-bandada de tres palomas ocupa los tres lugares. Los avisos de entrada/robo
-permiten reaccionar antes de la acción. Vencer más amenazas también aporta
+escarabajos (Obelisco, Coliseo y Eiffel), e incorpora encuentros situacionales:
+una **avispa** anuncia una pasada sobre una carga en tránsito; una **hormiga
+rival** disputa montones reales y trata de escapar con ellos. Golpearlas
+interrumpe brevemente su acción y muestra los golpes que faltan. No se agrandan
+con el zoom ni se habilita daño manual sobre alimentos.
+
+La primera amenaza llega 6–10 segundos después de comenzar una expedición
+que ya tenga desbloqueadas amenazas. La espera siguiente va de 6 a 19 segundos,
+según destino y progreso; los encuentros simultáneos crecen de dos a cuatro
+grupos, con un máximo duro de **cuatro individuos**. Una bandada usa tres lugares.
+Nacen cerca del trabajo visible, con piso libre, separación y aviso, en lugar
+de viajar desde una frontera territorial lejana; si no hay piso seguro, no
+aparecen. La huida dura hasta cuatro segundos, sin retener un cupo por minutos.
+Ritmo y enemigos nuevos se configuran en `datos/ritmo_amenazas.csv` y
+`datos/amenazas_activas.csv` (incluir ambos al exportar).
+
+Los avisos de entrada/robo permiten reaccionar antes de la acción. Vencer más amenazas también aporta
 botín: estas reglas y los nuevos poderes **sí pueden cambiar los ingresos**,
 aunque no se suban precios. Los pilotos viejos no validan la duración actual;
 falta medir de nuevo la campaña y observar jugadores.
@@ -1028,6 +1069,130 @@ estas comprobaciones de reglas ni permite prometer duración humana.
 renderer real: cuerpo/sombra parciales, ausencia de trazos con la máscara vacía,
 detalles conectados, máscaras compartidas/privadas e indicadores sin recortar.
 Guarda las comparativas en `.godot/qa/residuos_*.png`, sin tocar la partida.
+
+## Recorrido inicial y compras perceptibles
+
+La primera sugerencia es comprar una segunda obrera. Seis migas existentes se
+acercan al nido; conservan cantidad, resistencia, valor y semilla. Cuando la
+colonia puede hacerlo, el HUD propone abrir un paquete, desarmar la silla que
+abre un atajo o descubrir lo que guarda una hoja de alacena. Son sugerencias
+opcionales sobre objetos reales. La silla conserva dos partes completas entre
+expediciones; al terminarla libera el camino y una galletita nativa reservada.
+Hay que transportarla para cobrarla. Las casas conquistadas no repiten esta
+escena ni pierden su progreso.
+
+Las fichas de obreras, carga, carpinteras, madera y entradas comparan antes y
+después con los valores reales del lote. El llamado avisa si su capacidad ya
+alcanza a toda la población inicial. Son dibujos retenidos, sin otra simulación.
+La mordida marca apoyo, tirón y levantado; cada porción mantiene su tamaño real.
+Las sillas tienen respaldo, uniones y asiento propios de contornos redondeados;
+ya no se dibujan desde las bandas simplificadas de navegación. Sus siete
+acabados comparten atlas y material exportado. Las cercanas se hornean a tres
+texeles por unidad, sin el margen vacío anterior. Muebles, comida y monumentos
+conservan cobertura suavizada en sus contornos, sin usar las bandas de colisión
+como dibujo. Pisos y paneles usan menos ruido, bordes finos y sombras cortas.
+El empaquetado MaxRects y los márgenes compactos dejan el atlas en
+2048×6144 / 48 MiB, por debajo de los 49,5 MiB anteriores. Sólo se calcula al
+arrancar; la resolución no cambia con el zoom ni se reduce automáticamente:
+hacerlo invalidaría las siluetas comestibles. El presupuesto de autoría se
+verifica antes del horneado. No se agregan búsquedas ni efectos por hormiga.
+
+Tras editar arte, `exportar_material_muebles.tscn -- --guardar` y
+`exportar_siluetas.tscn -- --guardar` regeneran sus metadatos de autoría en
+`datos/`; sin `--guardar` sólo los imprimen. Las revisiones GPU contrastan el
+material completo de los 59 acabados y los bordes suavizados, no sólo capturas.
+
+`prueba_recorrido_casa`, `prueba_compras_claras`, `prueba_direccion_material`
+y `prueba_registro_percepcion` cubren estas reglas. Sus revisiones gráficas
+guardan escenas y fichas reales en `.godot/qa/`. Para una sesión desde cero sin
+afectar la partida, ejecutar `tests/sesion_casa.tscn` con F6; el protocolo y el
+informe local están explicados en `docs/PRUEBA_CASA.md`.
+
+## Combo y mejoras con efectos propios
+
+En 3/10/25/50/100/250 entregas, el combo golpea enorme en el centro de la
+pantalla: sacudida, ondas y destellos, y un vuelo de regreso al contador con
+el nuevo color. Dura 1,04 s, sin detener la simulación ni bloquear el mouse.
+Cuenta depósitos, no multiplica las migas. Las descargas simultáneas se
+agrupan por cuadro; subir de etapa durante el efecto actualiza esa misma
+animación sin reiniciarla ni encolar otras. Temblor cero conserva el combo
+quieto en el HUD. Pausar congela el efecto; finalizar lo cancela.
+No lleva placa ni oscurece el mapa: las letras se separan del fondo con
+contorno, sombra corta teñida y su color de etapa.
+
+Tres cámaras opcionales nuevas: **Migas brillantes** (migas +8%, destellos al
+entregar), **Mordida chispeante** (daño +8%, corte y chispas al comer) y
+**Pulso de la colonia** (+1 s de frenesí, halo en las entradas mientras dura).
+Cada una se compra una sola vez; se reinician al fundar, sin borrar recuerdos.
+No agregan emisores por hormiga ni agrandan el atlas. Tests dedicados:
+`prueba_combo_visual`, `prueba_mejoras_visuales`, `prueba_compras_visuales`;
+capturas `revision_combo_visual` y `revision_mejoras_visuales`.
+
+## Regreso desde bordes y pasillos finos
+
+Los puestos junto a muebles pueden tener espacio real para caminar aunque
+no quepa una celda conservadora de navegación. En ese caso un enlace local
+de hasta dos esquinas conecta el puesto con la misma rejilla, tanto a la
+ida como al regreso. Cada tramo comprueba las colisiones normales: no hay
+teletransporte, cobros a distancia ni reducción del margen de seguridad.
+Conserva la cola compartida de rutas; el caché positivo tiene tope de 128.
+`prueba_regreso_bordes` cubre mordidas reales, cargas parciales, feromonas
+mantenidas y 500 retornos simultáneos desde estos pasillos.
+
+## Consumo y frentes vivos
+
+El material que falta en el dibujo también falta en la navegación, aunque
+queden restos en los cuatro extremos de una celda. La misma máscara R8 y su
+árbol de ocupación resuelven huecos, distancias y segmentos; no se reconstruye
+una lista de rectángulos por cada bocado ni se agregan cuerpos físicos.
+
+Las portadoras entregan lo recogido cuando pierden el contacto, sin perseguir
+otra orilla para completar el buche. Si el frente sigue al alcance, conservan
+su capacidad normal. Se ven las tres muestras más recientes, a escala real.
+Los puestos laterales se proyectan sobre el contorno vivo con intentos locales
+acotados, para no concentrar a todas las trabajadoras en el mismo punto.
+
+La marcha llega al puesto antes de empezar a trabajar (0,25u de tolerancia);
+el alcance de adquisición ya no la frena cuatro unidades antes. En una cara
+recta el apoyo está a 9u; curvas y esquinas conservan el margen de navegación.
+Se retiene la distancia real del apoyo elegido: si ese borde retrocede,
+se busca otro puesto o se entrega la carga parcial, en vez de agrandar el alcance.
+Si otra boca retira el contacto, se revisa al cambiar la vida del recurso,
+sin esperar la siguiente mordida ni la publicación diferida de geometría.
+Hasta cuatro lecturas directas de la máscara conservan el apoyo cuando el
+corte fue lejos; sólo se busca otra frontera si ese punto dejó de existir.
+Los alimentos miran ese contacto, no el centro de una silueta ya agujereada.
+El caché de puestos también recuerda su contacto y descarta los apoyos retirados.
+
+Al volver con carga puede desandar el tramo de ida realmente recorrido
+mientras espera la ruta global. Sólo reutiliza ese prefijo si sigue sobre
+su último segmento; no inventa rectas, no atraviesa muebles ni entrega a
+distancia. La cola y sus límites de rutas/tiempo siguen vigentes.
+
+Comer tiene cuatro poses propias: patas apoyadas, cabeza contra el contacto
+real y mandíbulas que abren y cierran a dos ciclos visuales por segundo. El
+gesto continúa al trabajar material duro, aunque todavía no salga un píxel;
+el tirón y la carga sólo aparecen cuando se desprende un trozo real. Esperar
+una máscara, seguir el cursor o quedar quieta no muestran esa masticación.
+Reutiliza los dos sprites y el tick visual de 12 Hz; no agrega partículas,
+tweens, consultas geométricas ni daño desde el dibujo. Al alejarse se omite
+el detalle, sin agrandar las hormigas.
+
+Mantener feromonas sobre un mueble conserva la orden cuando se abre un hueco
+bajo el cursor. Salir de su huella, apuntar a otro recurso o soltar reemplaza
+esa orden. La hormiga igualmente debe llegar al material para morderlo.
+
+El veneno queda en una mancha de contacto inicial de hasta 32×32 unidades;
+no sigue avanzando por toda una mesa desde una roja quieta. Cada servicio
+retira una porción de hasta 16 unidades. Agotar la mancha cancela ese origen,
+sin convertir crédito pendiente en dinero. Manchas, fragmentos y números se
+ubican junto al material retirado. Hasta 64 contactos recordados por recurso.
+
+Regresiones específicas: `prueba_ciclo_consumo`, `prueba_geometria_material`,
+`prueba_geometria_veneno`, `prueba_erosion_presupuestada` y
+`prueba_frente_mesa`. La última se puede ejecutar con renderer real a
+1920×1080 para guardar capturas en `.godot/qa/mesa_*`; acelera daño y viajes
+del fixture, no estima el ritmo ni la duración de una partida humana.
 
 ## Exportar
 

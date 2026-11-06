@@ -76,6 +76,10 @@ func probar_tienda() -> void:
 
 func probar_resumen() -> void:
 	Juego.reiniciar_estado()
+	# El consejo de logística se evalúa después de la compra inicial.
+	# Una primera obrera con saldo suficiente propone primero sumar otra.
+	Juego.niveles.mas_obreras = 1
+	Juego._cache_stats.clear()
 	var run: Run = preload("res://mundo/run.tscn").instantiate()
 	add_child(run)
 	run.process_mode = Node.PROCESS_MODE_DISABLED

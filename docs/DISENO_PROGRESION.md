@@ -1167,3 +1167,109 @@ de reglas anteriores. `prueba_area_feromonas`, `prueba_microbocados` y
 y perfiles gráficos se registran en `tests/RENDIMIENTO.md`. No garantizan
 60 FPS en equipos no probados ni duración de campaña: faltan recorridos nuevos
 y observación humana para atribuir tiempos o satisfacción a estos cambios.
+
+## Estímulos y encuentros activos — 4/11, mapa 10
+
+El pedido es reforzar los estímulos durante la expedición, no volver a alargar
+el ahorro. Se conservan precios, resistencia, fuerza de la mordida, tamaño de
+porción, velocidad, reglas de feromonas y arranque con una obrera. Los acentos
+de entrega/racha/poder son presentación: no multiplican ni inventan ingresos.
+Contador y combo reemplazan tweens por depósito con tres relojes compartidos.
+
+Cada mordida confirmada tiene un golpe local del material; una entrega converge
+en la entrada. Destrucción, hito, Ráfaga y respuesta enemiga usan formas distintas
+dentro del mismo lienzo limitado, sin texturas o nodos por hormiga. Aviso,
+impacto y rechazo describen transiciones reales, no progreso ficticio.
+
+Las amenazas siguen desbloqueándose en la sexta expedición. Su primera entrada
+pasa a 6–10 segundos y la espera posterior a 6–19 según progreso. El tope duro
+sube a cuatro individuos y los grupos permitidos crecen de dos a cuatro. Los
+puntos de aparición buscan piso seguro cercano al trabajo visible, con aviso;
+no hay un largo viaje desde el radio de 9500 unidades. Una huida libera su lugar
+en hasta cuatro segundos. Las consultas de objetivos se espacian; no hay un
+A* adicional por enemigo ni búsquedas de 500 hormigas por cuadro.
+
+La avispa marca por adelantado una carga y hace una pasada; la rival recoge
+un montón físico. El robo vacía una sola vez la carga/orígenes/retazos de su
+víctima, sin depósito, estadísticas de entrega ni carga de Ráfaga. La víctima
+continúa sin saltar de posición. Ambas conservan lo robado en su botín; vencerlas
+devuelve ese valor más la base vigente, sin el factor de recuperación ×1,5 de
+las amenazas antiguas. No se vuelve a pagar el material en el mapa.
+
+Más encuentros y premios sí pueden variar la economía activa. Los pilotos
+históricos no validan esta duración ni demuestran diversión; se separan las
+pruebas de conservación, un piloto corto de balance y el estrés gráfico de
+500 hormigas. El mapa pasa a 10 para separar récords, sin cambiar el esquema
+10 del guardado ni borrar partidas o registros anteriores.
+
+## Casa legible y consecuencias físicas — 4/11, mapa 11
+
+El arranque conserva una obrera, expediciones de 45 s y todos los precios,
+daños, velocidades y tamaños de porción. El objetivo inicial pasa a una
+segunda obrera: una compra cuyo resultado se puede reconocer. Seis migas del
+catálogo existente se acercan a la entrada con validación de espacio; no se
+duplica alimento ni se consume azar adicional. Esto sí cambia distancias de
+viaje y puede modificar el ritmo: los pilotos anteriores no lo validan.
+
+La primera silla guarda dos componentes completos, sobre sus doce celdas
+existentes: respaldo/asiento y patas/base. Al terminarla queda libre un camino
+directo desde el nido y aparece detrás una galletita previamente reservada del
+mismo inventario. Conserva HP, valor y semilla; aparecer no entrega moneda y
+el bonus de la silla sigue siendo el normal. La reserva cuenta en la masa
+inicial. Componentes y paso sobreviven a expediciones y fundaciones; una casa
+ya conquistada no vuelve a exigir la escena ni retiene otra recompensa.
+
+Paquete, silla y hoja de alacena son sugerencias según las capacidades actuales,
+no cerraduras de progresión. Las referencias se obtienen al generar y el HUD
+consulta su estado en su refresco existente. Ninguna hormiga hace búsquedas
+adicionales para este recorrido. Consultar una sugerencia no compra, descubre
+ni cobra nada.
+
+Las comparaciones de compra muestran capacidades reales antes/después,
+incluidos lotes y castas; el llamado explica cuando ya cubre la colonia inicial.
+El gesto de trabajo y los timbres diferencian material y entrega, manteniendo
+la economía y los retazos físicos. La mayor definición se limita a siete
+acabados del atlas compartido, con preflight y máximo de 4 MiB adicionales.
+
+Mapa 11 separa los récords de esta distribución y sus consecuencias. El
+esquema de guardado sigue en 10. La validación automática de conservación,
+navegación y rendimiento no demuestra satisfacción: el informe local F6
+registra entregas, compras, hallazgos y etapas para observar eso jugando.
+
+## Combo por etapas y compras visibles — 4/11
+
+La racha sigue contando depósitos reales dentro de 1,2 s: no multiplica las
+migas, no agrega daño ni se mantiene viva por una animación. En 3/10/25/50/100/250
+entregas cambia tamaño, paleta y acento visual. Varias descargas en un cuadro
+publican sólo el último número y una celebración, sin repetir seis explosiones
+si se saltean escalones. Cada etapa tiene ahora un impacto enorme en el
+centro (0,44 s), sacudida de cámara y ondas, seguido de un vuelo al contador
+hasta 1,04 s con el nuevo color. Un escalón mayor durante ese viaje adopta
+su número/color sin reiniciar el reloj ni encolar celebraciones. No se
+detiene la simulación. Temblor cero conserva la información quieta en el HUD.
+La sacudida usa una oscilación propia, no el azar de la IA; se reduce mientras
+se mantienen feromonas o se arrastra el mapa y no empieza durante la retirada.
+
+Se agregan tres hojas opcionales de **un nivel**, sin modificar precios o
+requisitos anteriores y sin convertirlas en llaves para las dietas:
+
+| Compra | Requisito | Precio | Beneficio y consecuencia visible |
+|---|---|---:|---|
+| Migas brillantes | Buche grande 1 | 120 | Migas ×1,08; destellos y arcos de recibo al entregar |
+| Mordida chispeante | Mandíbulas fuertes 2 | 180 | Daño ×1,08; corte y chispas sobre el contacto real |
+| Pulso de la colonia | Feromona de alarma 1 | 1200 | Frenesí +1 s; halo en las entradas mientras dura |
+
+Los bonus son pequeños y acotados: no escalan con la cantidad de partículas
+ni con el combo. Cada compra muestra su antes/después real y se borra al
+fundar como las demás mejoras. Las partidas previas parten de nivel cero;
+no se agregan campos al guardado ni premios retroactivos. Los dibujos nuevos
+no cambian el hueco, la porción transportada ni su valor; el bonus económico
+de Migas brillantes y el daño adicional sí son cambios de balance intencionales.
+Los pilotos previos no calibran esta nueva ruta opcional de compras.
+
+El combo usa un solo lienzo y 32 partículas preasignadas. Los acentos del
+mundo comparten los pools de 600 partículas/24 ondas y sus puertas globales;
+el halo recorre hasta ocho entradas, nunca toda la colonia. Los tres flags
+se cachean al iniciar, sin consultas de tienda por hormiga. El silbato apaga
+el halo; las últimas entregas conservan su pago normal y el cierre final
+descarta animaciones y callbacks tardíos.

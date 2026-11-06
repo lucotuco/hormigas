@@ -18,14 +18,15 @@ static func dibujar(l: CanvasItem) -> void:
 
 
 static func _sendero(l: CanvasItem, r: Rect2, color := Color("c7bea5")) -> void:
-	l.draw_rect(r, color.darkened(0.13))
-	l.draw_rect(r.grow(-10), color)
+	l.draw_rect(r, color.darkened(0.075))
+	l.draw_rect(r.grow(-6), color)
 	var horizontal := r.size.x > r.size.y
 	var largo := r.size.x if horizontal else r.size.y
-	for i in range(1, floori(largo / 360.0)):
-		var a := r.position + (Vector2(i * 360, 10) if horizontal else Vector2(10, i * 360))
-		var b := a + (Vector2(0, r.size.y - 20) if horizontal else Vector2(r.size.x - 20, 0))
-		l.draw_line(a, b, color.darkened(0.10), 3)
+	# Losas grandes: menos líneas retenidas y ninguna pasada AA por junta.
+	for i in range(1, floori(largo / 720.0)):
+		var a := r.position + (Vector2(i * 720, 6) if horizontal else Vector2(6, i * 720))
+		var b := a + (Vector2(0, r.size.y - 12) if horizontal else Vector2(r.size.x - 12, 0))
+		l.draw_line(a, b, color.darkened(0.055), 1.5)
 
 
 static func _patio(l: CanvasItem, destino: String) -> void:
@@ -67,8 +68,8 @@ static func _parque_arqueologico(l: CanvasItem) -> void:
 	for i in 14:
 		var x := -1700.0 + i * 640.0
 		# Piedras a ras del suelo, no copias falsas de los arcos comestibles.
-		l.draw_rect(Rect2(x, -1300 + (i % 3) * 34, 210, 80), Color("b1a080"))
-		l.draw_rect(Rect2(x + 110, 5150 - (i % 4) * 30, 160, 70), Color("b9a584"))
+		l.draw_rect(Rect2(x, -1300 + (i % 3) * 34, 210, 80), Color("b9aa8e"))
+		l.draw_rect(Rect2(x + 110, 5150 - (i % 4) * 30, 160, 70), Color("c0af92"))
 
 
 static func _jardines(l: CanvasItem) -> void:
@@ -83,11 +84,12 @@ static func _jardines(l: CanvasItem) -> void:
 
 
 static func _cantero(l: CanvasItem, r: Rect2, color: Color) -> void:
-	DibujoCasa.caja(l, r, color.darkened(0.12), Color("b4b08d"), 55)
-	DibujoCasa.caja(l, r.grow(-22), color, Color.TRANSPARENT, 40)
-	for i in 5:
-		var pos := r.position + r.size * Vector2(0.12 + i * 0.19, 0.45 + (i % 2) * 0.16)
-		l.draw_circle(pos, minf(r.size.y * 0.09, 19), Color("bcab7e") if i % 2 == 0 else Color("9eab88"))
+	DibujoCasa.caja(l, r, color.darkened(0.08), Color("b8b498"), 44)
+	DibujoCasa.caja(l, r.grow(-15), color, Color.TRANSPARENT, 34)
+	# Tres matas del mismo follaje en lugar de puntos de alto contraste.
+	for i in 3:
+		var pos := r.position + r.size * Vector2(0.20 + i * 0.30, 0.50)
+		l.draw_circle(pos, minf(r.size.y * 0.10, 21), color.lightened(0.09))
 
 
 static func _borde_parcela(l: CanvasItem) -> void:
@@ -132,15 +134,16 @@ static func _techo(l: CanvasItem, r: Rect2, color: Color) -> void:
 	var horizontal := r.size.x > r.size.y
 	var a := r.position + (Vector2(30, r.size.y * 0.5) if horizontal else Vector2(r.size.x * 0.5, 30))
 	var b := r.end - (Vector2(30, r.size.y * 0.5) if horizontal else Vector2(r.size.x * 0.5, 30))
-	l.draw_line(a, b, color.lightened(0.15), 13)
-	for i in 3:
-		var caja := Rect2(r.position + r.size * Vector2(0.15 + i * 0.28, 0.16), r.size * Vector2(0.10, 0.16))
-		l.draw_rect(caja, color.darkened(0.20))
+	l.draw_line(a, b, color.lightened(0.09), 8)
+	for i in 2:
+		var caja := Rect2(r.position + r.size * Vector2(0.24 + i * 0.40, 0.16), r.size * Vector2(0.10, 0.16))
+		l.draw_rect(caja, color.darkened(0.12))
 
 
 static func _arbol(l: CanvasItem, pos: Vector2, radio: float, color: Color) -> void:
-	l.draw_circle(pos + Vector2(25, 35), radio, Color(0.20, 0.25, 0.15, 0.10))
-	for i in 5:
-		var centro := pos + Vector2.from_angle(i * TAU / 5) * radio * 0.35
-		l.draw_circle(centro, radio * 0.62, color.darkened(0.09 if i % 2 else 0.03))
-	l.draw_circle(pos - Vector2(radio * 0.12, radio * 0.13), radio * 0.47, color.lightened(0.045))
+	# Sólo contexto lejano: cinco primitivas agrupables, sin AA individual.
+	l.draw_circle(pos + Vector2(25, 35), radio, Color(0.20, 0.25, 0.15, 0.08))
+	for i in 3:
+		var centro := pos + Vector2.from_angle(i * TAU / 3) * radio * 0.28
+		l.draw_circle(centro, radio * 0.72, color.darkened(0.06 if i % 2 else 0.025))
+	l.draw_circle(pos - Vector2(radio * 0.12, radio * 0.13), radio * 0.47, color.lightened(0.035))

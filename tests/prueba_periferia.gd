@@ -9,6 +9,12 @@ class ComidasObservadas extends Comidas:
 	func _preparar_hallazgos() -> void:
 		pass # Aislar reparto exterior; los paquetes y su RNG se cubren aparte.
 
+	func _repartir_inicio() -> void:
+		pass # El reparto de seis migas se cubre en prueba_recorrido_casa.
+
+	func _preparar_atajo() -> void:
+		pass # La reserva del atajo no forma parte de la periferia histórica.
+
 	func _registrar_cambio(_comida: Comida) -> void:
 		pass # El reloj de Run no participa de esta prueba de plano y reparto.
 
@@ -33,7 +39,7 @@ func _ready() -> void:
 	for id in Mundos.ORDEN:
 		for m in Mundos.plano(id).muebles_interiores:
 			claves_anteriores[Graficos.clave_mueble(m)] = true
-	verificar(Mundos.VERSION_CONTENIDO == 9, "las tandas y los poderes separan sus récords de los recorridos anteriores")
+	verificar(Mundos.VERSION_CONTENIDO == 11, "el recorrido inicial y sus encuentros separan sus récords de las versiones anteriores")
 	for id in Mundos.ORDEN:
 		Juego.reiniciar_estado()
 		Juego.lugar_actual = id

@@ -5,13 +5,19 @@ varying vec2 posicion_mundo;
 uniform vec4 ambientes[7];
 uniform vec4 tonos[7];
 uniform int patrones[7];
-uniform sampler2D materiales : source_color, filter_linear_mipmap, repeat_disable;
 uniform bool exterior = false;
 uniform vec4 tono_exterior : source_color = vec4(0.55, 0.60, 0.46, 1.0);
 uniform int patron_exterior = 4;
 
 void vertex() {
 	posicion_mundo = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+}
+
+float tono_celda(vec2 celda) {
+	// Una variación por pieza, sin textura repetida ni ruido de alta frecuencia.
+	vec2 mezcla = fract(celda * vec2(0.1031, 0.11369));
+	mezcla += dot(mezcla, mezcla.yx + 19.19);
+	return fract((mezcla.x + mezcla.y) * mezcla.x);
 }
 
 void fragment() {
@@ -31,17 +37,6 @@ void fragment() {
 	}
 	vec3 color = base;
 	if (patron >= 0 && patron < 3) {
-		vec2 sector = patron == 1 ? vec2(1.0, 0.0) : (patron == 2 ? vec2(0.0, 1.0) : (exterior ? vec2(1.0) : vec2(0.0)));
-		vec2 repeticion = patron == 1 ? vec2(1600.0, 1100.0) : vec2(1200.0);
-		vec2 uv = posicion_mundo / repeticion;
-		// Derivadas anteriores a fract: el filtrado no salta en cada repetición.
-		vec2 margen = vec2(2.0 / 1254.0);
-		vec2 textura_uv = sector * 0.5 + margen + fract(uv) * (0.5 - margen * 2.0);
-		vec3 muestra = textureGrad(materiales, textura_uv, dFdx(uv) * 0.5, dFdy(uv) * 0.5).rgb;
-		// El ambiente conserva su paleta. Del atlas tomamos sólo un relieve leve:
-		// sus cambios de color y juntas ya no forman un segundo damero encima.
-		float relieve = clamp(dot(muestra, vec3(0.299, 0.587, 0.114)) - 0.62, -0.15, 0.15);
-		color += relieve * 0.12;
 		vec2 tamano = patron == 1 ? vec2(600.0, 140.0) : (patron == 2 ? vec2(160.0) : (exterior ? vec2(360.0, 240.0) : vec2(280.0)));
 		vec2 coordenada = posicion_mundo;
 		if (patron == 1 || exterior) {
@@ -52,17 +47,31 @@ void fragment() {
 		vec2 borde = min(interior, tamano - interior);
 		float distancia = min(borde.x, borde.y);
 		float pixel = max(max(fwidth(posicion_mundo.x), fwidth(posicion_mundo.y)), 0.5);
-		float junta = 1.0 - smoothstep(0.7, 0.7 + pixel, distancia);
-		// Variación acotada: las losas se leen como una sola superficie tranquila.
-		float variacion = fract(sin(dot(celda, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
-		color += variacion * (patron == 1 ? 0.025 : 0.009);
+		float junta = 1.0 - smoothstep(0.35, 0.35 + pixel, distancia);
+		float semilla = tono_celda(celda);
+		color += (semilla - 0.5) * (patron == 1 ? 0.022 : 0.006);
 		float detalle = smoothstep(5.0, 18.0, min(tamano.x, tamano.y) / pixel);
-		color *= 1.0 - junta * detalle * (patron == 1 ? 0.075 : 0.055);
+		// Juntas finas y filtradas: al alejarse se atenúan, no forman un damero.
+		color *= 1.0 - junta * detalle * (patron == 1 ? 0.055 : 0.034);
+		if (patron == 1) {
+			// Vetas amplias y suaves dentro de la tabla. La curva es analítica:
+			// no requiere muestras, mipmaps ni una imagen de baja definición.
+			vec2 local = interior / tamano;
+			float curva = local.y * 2.0 + (local.x - 0.5) * (local.x - 0.5) * (0.4 + semilla * 0.4) + semilla;
+			float veta = abs(fract(curva) - 0.5);
+			color -= (1.0 - smoothstep(0.025, 0.12, veta)) * 0.007 * detalle;
+		} else {
+			// Canto mate, apenas visible de cerca; la pieza conserva una cara lisa.
+			float canto = (1.0 - smoothstep(1.2, 2.6 + pixel, distancia)) - junta;
+			color += canto * 0.005 * detalle;
+		}
 	} else if (patron >= 3) {
-		color += sin(posicion_mundo.x * 0.005) * sin(posicion_mundo.y * 0.004) * 0.012;
+		// Arena y césped se leen como superficies amplias, sin punteado repetido.
+		float franja = sin(posicion_mundo.y * (patron == 4 ? 0.002 : 0.0008));
+		color += franja * (patron == 4 ? 0.006 : 0.003);
 	}
 	if (patron >= 0) {
-		color *= mix(exterior ? 0.98 : 0.94, 1.0, smoothstep(0.0, 110.0, borde_ambiente));
+		color *= mix(exterior ? 0.99 : 0.97, 1.0, smoothstep(0.0, 90.0, borde_ambiente));
 	}
 	COLOR = vec4(color, 1.0);
 }

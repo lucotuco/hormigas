@@ -92,7 +92,7 @@ func vaciar_componente(parte: PiezaCasa, componente: Dictionary) -> void:
 
 func probar_catalogo() -> void:
 	var todos := ComponentesProyecto.todos()
-	verificar(todos.size() == 12, "doce muebles concretos tienen componentes; no agrega muebles ni mapas")
+	verificar(todos.size() == 13, "trece muebles existentes tienen componentes; no agrega muebles ni mapas")
 	var cantidad := 0
 	for datos in todos:
 		var usadas: Dictionary = {}
@@ -107,9 +107,9 @@ func probar_catalogo() -> void:
 				verificar(celda >= 0 and celda < celdas and not usadas.has(celda), componente.id + ": material de celda exclusivo")
 				usadas[celda] = true
 		verificar(usadas.size() == celdas, datos.id + ": toda la silueta tiene dueño sin duplicarse")
-	verificar(cantidad == 35, "treinta y cinco componentes explícitos no son cuatro cuadrados genéricos por objeto")
+	verificar(cantidad == 37, "treinta y siete componentes explícitos conservan la autoría y las celdas exclusivas")
 	verificar(ComponentesProyecto.objetivo("eiffel/torre").is_empty()
-		and ComponentesProyecto.objetivo("casa/silla_inicial").is_empty(), "no persiste la primera silla ni altera la canónica Eiffel")
+		and ComponentesProyecto.objetivo("casa/silla_inicial").componentes.size() == 2, "la primera silla conserva dos partes sin alterar la canónica Eiffel")
 	var copia := ComponentesProyecto.objetivo("casa/carton_inicial")
 	copia.componentes.clear()
 	verificar(ComponentesProyecto.ids_objetivo("casa/carton_inicial").size() == 2, "el catálogo sólo entrega copias profundas")
@@ -444,9 +444,9 @@ func probar_casa_opcional() -> void:
 	for parte in run.comidas.partes:
 		if parte.pieza.get("perfil", "") == "silla_inicial":
 			silla = parte
-	verificar(is_instance_valid(silla) and not silla.pieza.has("componentes_id"),
-		"la primera silla sigue disponible como recurso normal para el primer retorno")
-	verificar(is_instance_valid(silla) and silla.resumen_componentes().is_empty(),
-		"un mueble sin componentes no muestra una línea vacía de cero sobre cero")
+	verificar(is_instance_valid(silla) and silla.pieza.get("componentes_id", "") == "casa/silla_inicial",
+		"la primera silla ofrece partes persistentes para abrir el atajo sin exigirlo para viajar")
+	verificar(is_instance_valid(silla) and silla.resumen_componentes().total == 2,
+		"la silla identifica respaldo/asiento y patas/base, no una barra de HP guardada")
 	run.queue_free()
 	await get_tree().process_frame

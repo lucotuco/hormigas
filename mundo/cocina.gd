@@ -12,6 +12,15 @@ var _preparada := false
 var _cache: Dictionary = {}
 var _fallidas: Dictionary = {}
 var _destinos: Dictionary = {}
+## Puentes locales entre un puesto fino y la rejilla compartida. Sólo se
+## guardan enlaces positivos de coordenadas exactas, nunca negativos por zona.
+var _enlaces_celda: Dictionary = {}
+var _radio_enlaces := -1.0
+const MAX_CACHE_ENLACES := 128
+const MAX_OBSTACULOS_ENLACE := 4
+const MAX_VERTICES_ENLACE := 16
+const MAX_PRUEBAS_ENLACE := 32
+const MAX_PRUEBAS_ANCLA := 4
 var version := 0
 var piezas: Array[Dictionary] = []
 var _obstaculos: Dictionary = {}
@@ -33,6 +42,10 @@ var _prioritarias_cuadro := 0
 var consultas_ruta := 0
 var busquedas_astar := 0
 var aciertos_cache := 0
+var consultas_enlace := 0
+var aciertos_cache_enlace := 0
+var pruebas_enlace_max := 0
+var _consulta_ocupacion := 0
 
 func _ready() -> void:
 	# Las alfombras conservan el detalle cercano sin vibrar en la vista del mapa.
@@ -46,6 +59,7 @@ func _ready() -> void:
 			formas = ComponentesProyecto.formas_restantes(pieza, formas, Juego.componentes_proyecto_devorados)
 		if formas.size() != 1 or formas[0] != pieza.rect:
 			pieza.recortes = formas
+		_cachear_limite_recortes(pieza)
 		_obstaculos[pieza.clave] = pieza
 		var r: Rect2 = pieza.rect
 		for x in range(floori(r.position.x / SECTOR), floori(r.end.x / SECTOR) + 1):
@@ -69,6 +83,12 @@ func _cercanos(rect: Rect2, volando: bool) -> Array[Rect2]:
 				var pieza: Dictionary = _obstaculos[clave]
 				if not volando or pieza.pared:
 					if pieza.has("recortes"):
+						if pieza.recortes.is_empty():
+							continue
+						if pieza.has("_limite_recortes"):
+							var limite: Rect2 = pieza._limite_recortes
+							if not limite.intersects(rect, true):
+								continue
 						for recorte in pieza.recortes:
 							if recorte.intersects(rect, true):
 								resultado.append(recorte)
@@ -84,11 +104,33 @@ func quitar_pieza(clave: String) -> void:
 	_obstaculos.erase(clave)
 	_encolar_cambio(rect)
 
+
+func registrar_material_vivo(clave: String, material: MordiscosMaterial) -> void:
+	if _obstaculos.has(clave) and material != null and material.configuracion_lista:
+		_obstaculos[clave].material_vivo = material
+
 func recortar_pieza(clave: String, rects: Array[Rect2], zona := Rect2()) -> void:
 	if not _obstaculos.has(clave):
 		return
 	_obstaculos[clave].recortes = rects
+	_cachear_limite_recortes(_obstaculos[clave])
 	_encolar_cambio(zona if zona.has_area() else _obstaculos[clave].rect)
+
+
+func _cachear_limite_recortes(pieza: Dictionary) -> void:
+	if not pieza.has("recortes"):
+		pieza.erase("_limite_recortes")
+		return
+	var recortes: Array = pieza.recortes
+	var limite := Rect2()
+	if not recortes.is_empty():
+		limite = recortes[0]
+		for i in range(1, recortes.size()):
+			limite = limite.merge(recortes[i])
+	# El caché vive con este descriptor; reemplazarlo por un fixture sin el
+	# campo conserva el recorrido anterior y no reutiliza límites de otra pieza.
+	pieza._limite_recortes = limite
+
 
 func _encolar_cambio(rect: Rect2) -> void:
 	version += 1
@@ -96,6 +138,7 @@ func _encolar_cambio(rect: Rect2) -> void:
 	# Las negativas sí pueden cambiar al abrir una puerta o romper una silla.
 	_fallidas.clear()
 	_destinos.clear()
+	_enlaces_celda.clear()
 	if not _preparada:
 		return
 	# Sólo las celdas afectadas; no reconstruir toda la casa por cada silla.
@@ -137,6 +180,7 @@ func libre(pos: Vector2, margen := 0.0, volando := false) -> bool:
 	# Consulta puntual sin construir listas ni diccionarios temporales.
 	var a := Vector2i(((pos - Vector2.ONE * margen) / SECTOR).floor())
 	var b := Vector2i(((pos + Vector2.ONE * margen) / SECTOR).floor())
+	_consulta_ocupacion += 1
 	for x in range(a.x, b.x + 1):
 		for y in range(a.y, b.y + 1):
 			for clave in _sectores.get(Vector2i(x, y), []):
@@ -145,7 +189,26 @@ func libre(pos: Vector2, margen := 0.0, volando := false) -> bool:
 				var pieza: Dictionary = _obstaculos[clave]
 				if volando and not pieza.pared:
 					continue
+				if pieza.get("_ultima_ocupacion", -1) == _consulta_ocupacion:
+					continue
+				pieza._ultima_ocupacion = _consulta_ocupacion
+				if pieza.has("material_vivo"):
+					# Un mismo objeto puede figurar en cuatro sectores. Podar y
+					# consultar su árbol sólo una vez, incluso cuando resulta libre.
+					var limite: Rect2 = pieza.get("_limite_recortes", pieza.rect)
+					if not limite.has_area() or pos.x + margen < limite.position.x - MordiscosMaterial.PASO_MAXIMO or pos.x - margen > limite.end.x + MordiscosMaterial.PASO_MAXIMO or pos.y + margen < limite.position.y - MordiscosMaterial.PASO_MAXIMO or pos.y - margen > limite.end.y + MordiscosMaterial.PASO_MAXIMO:
+						continue
+					var material: MordiscosMaterial = pieza.material_vivo
+					if material.intersecta_rect(Rect2(pos - Vector2.ONE * margen, Vector2.ONE * margen * 2.0)):
+						return false
+					continue
 				if pieza.has("recortes"):
+					if pieza.recortes.is_empty():
+						continue
+					if pieza.has("_limite_recortes"):
+						var limite: Rect2 = pieza._limite_recortes
+						if not limite.grow(margen).has_point(pos):
+							continue
 					for rect in pieza.recortes:
 						if rect.grow(margen).has_point(pos):
 							return false
@@ -178,9 +241,35 @@ func segmento_libre(a: Vector2, b: Vector2, volando := false) -> bool:
 	if not libre(a, MARGEN, volando) or not libre(b, MARGEN, volando):
 		return false
 	var area := Rect2(a.min(b), (b - a).abs()).grow(MARGEN)
-	for rect in _cercanos(area, volando):
-		if _corta_rect(a, b, rect.grow(MARGEN)):
-			return false
+	var desde := Vector2i((area.position / SECTOR).floor())
+	var hasta := Vector2i((area.end / SECTOR).floor())
+	var vistos: Dictionary = {}
+	for x in range(desde.x, hasta.x + 1):
+		for y in range(desde.y, hasta.y + 1):
+			for clave in _sectores.get(Vector2i(x, y), []):
+				if vistos.has(clave) or not _obstaculos.has(clave):
+					continue
+				vistos[clave] = true
+				var pieza: Dictionary = _obstaculos[clave]
+				if volando and not pieza.pared:
+					continue
+				var limite: Rect2 = pieza.get("_limite_recortes", pieza.rect)
+				if pieza.has("material_vivo"):
+					# Rasterizar cubre el último píxel entero del perfil. La poda
+					# también lo incluye; el árbol decide el contacto exacto.
+					limite = limite.grow(MordiscosMaterial.PASO_MAXIMO)
+				if not limite.has_area() or not limite.intersects(area, true):
+					continue
+				if pieza.has("material_vivo"):
+					var material: MordiscosMaterial = pieza.material_vivo
+					if material.intersecta_segmento(a, b, MARGEN):
+						return false
+				elif pieza.has("recortes"):
+					for rect: Rect2 in pieza.recortes:
+						if _corta_rect(a, b, rect.grow(MARGEN)):
+							return false
+				elif _corta_rect(a, b, pieza.rect.grow(MARGEN)):
+					return false
 	return true
 
 
@@ -231,6 +320,11 @@ func _preparar() -> void:
 
 func _actualizar_radio(radio: float) -> void:
 	_preparar()
+	# Un enlace no puede conservar esquinas fuera de un territorio reducido,
+	# aunque el cambio sea menor al umbral de reconstrucción de la rejilla.
+	if radio != _radio_enlaces:
+		_enlaces_celda.clear()
+		_radio_enlaces = radio
 	if absf(radio - _radio_grafo) < 20:
 		return
 	var previo := pow(maxf(0, _radio_grafo - 8), 2) if _radio_grafo > 0 else -1.0
@@ -267,10 +361,11 @@ func _actualizar_radio(radio: float) -> void:
 			_aire.set_point_solid(id, not _libres_aire.has(id))
 
 
-func _celda_cercana(pos: Vector2, grid: AStarGrid2D, volando: bool) -> Vector2i:
+func _celda_cercana(pos: Vector2, grid: AStarGrid2D, volando: bool, presupuesto: Dictionary = {}, limite_pruebas := 0) -> Vector2i:
 	var centro := Vector2i(floori(pos.x / CELDA), floori(pos.y / CELDA))
 	var mejor := Vector2i(100000, 100000)
 	var distancia := INF
+	var pruebas := 0
 	for anillo in range(0, 5):
 		for x in range(-anillo, anillo + 1):
 			for y in range(-anillo, anillo + 1):
@@ -281,12 +376,134 @@ func _celda_cercana(pos: Vector2, grid: AStarGrid2D, volando: bool) -> Vector2i:
 					continue
 				var p := grid.get_point_position(id)
 				var d := p.distance_squared_to(pos)
-				if d < distancia and segmento_libre(pos, p, volando):
-					mejor = id
-					distancia = d
+				if d < distancia:
+					if limite_pruebas > 0 and pruebas >= limite_pruebas:
+						return mejor
+					if not presupuesto.is_empty():
+						if presupuesto.restantes <= 0:
+							return mejor
+						presupuesto.restantes -= 1
+					pruebas += 1
+					if segmento_libre(pos, p, volando):
+						mejor = id
+						distancia = d
 		if mejor.x != 100000:
 			return mejor
 	return mejor
+
+
+## Un pasillo de 50–75 unidades puede ser transitable con margen 8, pero
+## no contener ningún centro de celda con el certificado conservador de 30,72.
+## Como máximo dos esquinas exteriores enlazan ese puesto con el mismo A*.
+## No mueve hormigas, no reduce el margen y no ejecuta otra búsqueda A*.
+func _enlazar_celda(pos: Vector2, grid: AStarGrid2D, volando: bool, radio: float) -> Dictionary:
+	consultas_enlace += 1
+	var clave := Vector3(pos.x, pos.y, 1.0 if volando else 0.0)
+	if _enlaces_celda.has(clave):
+		aciertos_cache_enlace += 1
+		return _enlaces_celda[clave]
+	if not libre(pos, MARGEN, volando):
+		return {}
+	var vertices := _esquinas_enlace(pos, radio, volando)
+	if vertices.is_empty():
+		return {}
+	var presupuesto := {"restantes": MAX_PRUEBAS_ENLACE}
+	var primeras: Array[Vector2] = []
+	var segundas: Array[Vector2] = []
+	# Primero se prefieren soluciones con una esquina. Las aristas se prueban
+	# al necesitarlas: no construir una matriz de dieciséis por dieciséis.
+	for vertice: Vector2 in vertices:
+		if presupuesto.restantes <= 0:
+			break
+		presupuesto.restantes -= 1
+		if not segmento_libre(pos, vertice, volando):
+			segundas.append(vertice)
+			continue
+		var celda := _celda_cercana(vertice, grid, volando, presupuesto, MAX_PRUEBAS_ANCLA)
+		if celda.x != 100000:
+			return _guardar_enlace(clave, celda, PackedVector2Array([pos, vertice, grid.get_point_position(celda)]), presupuesto)
+		primeras.append(vertice)
+	# Si una esquina ya visible no tiene anclaje no sirve volver a visitarla
+	# por otra. Sólo se ensayan las que estaban ocultas desde el puesto inicial.
+	var sin_ancla: Dictionary = {}
+	for primera: Vector2 in primeras:
+		for segunda: Vector2 in segundas:
+			if presupuesto.restantes <= 0:
+				break
+			if sin_ancla.has(segunda):
+				continue
+			presupuesto.restantes -= 1
+			if not segmento_libre(primera, segunda, volando):
+				continue
+			var celda := _celda_cercana(segunda, grid, volando, presupuesto, MAX_PRUEBAS_ANCLA)
+			if celda.x != 100000:
+				return _guardar_enlace(clave, celda, PackedVector2Array([pos, primera, segunda, grid.get_point_position(celda)]), presupuesto)
+			sin_ancla[segunda] = true
+	pruebas_enlace_max = maxi(pruebas_enlace_max, MAX_PRUEBAS_ENLACE - int(presupuesto.restantes))
+	return {}
+
+
+func _guardar_enlace(clave: Vector3, celda: Vector2i, puntos: PackedVector2Array, presupuesto: Dictionary) -> Dictionary:
+	pruebas_enlace_max = maxi(pruebas_enlace_max, MAX_PRUEBAS_ENLACE - int(presupuesto.restantes))
+	if _enlaces_celda.size() >= MAX_CACHE_ENLACES:
+		_enlaces_celda.clear()
+	var enlace := {"celda": celda, "puntos": puntos}
+	_enlaces_celda[clave] = enlace
+	return enlace
+
+
+## Hasta cuatro AABB próximos, no un recorrido de todos los muebles ni de
+## todos sus píxeles. Las esquinas sólo son candidatas; cada enlace conserva
+## la comprobación exacta contra las bandas vivas y las paredes vecinas.
+func _esquinas_enlace(pos: Vector2, radio: float, volando: bool) -> Array[Vector2]:
+	var alcance := MARGEN + CELDA * 2.0
+	var a := Vector2i(((pos - Vector2.ONE * alcance) / SECTOR).floor())
+	var b := Vector2i(((pos + Vector2.ONE * alcance) / SECTOR).floor())
+	var vistos: Dictionary = {}
+	var rectangulos: Array[Rect2] = []
+	var distancias: Array[float] = []
+	for x in range(a.x, b.x + 1):
+		for y in range(a.y, b.y + 1):
+			for clave in _sectores.get(Vector2i(x, y), []):
+				if vistos.has(clave) or not _obstaculos.has(clave):
+					continue
+				vistos[clave] = true
+				var pieza: Dictionary = _obstaculos[clave]
+				if volando and not pieza.pared:
+					continue
+				if pieza.has("recortes") and pieza.recortes.is_empty():
+					continue
+				var rect: Rect2 = pieza.get("_limite_recortes", pieza.rect)
+				var distancia := pos.distance_squared_to(pos.clamp(rect.position, rect.end))
+				if not rect.has_area() or distancia > alcance * alcance:
+					continue
+				var indice := 0
+				while indice < distancias.size() and distancias[indice] <= distancia:
+					indice += 1
+				if indice >= MAX_OBSTACULOS_ENLACE:
+					continue
+				rectangulos.insert(indice, rect)
+				distancias.insert(indice, distancia)
+				if rectangulos.size() > MAX_OBSTACULOS_ENLACE:
+					rectangulos.pop_back()
+					distancias.pop_back()
+	var vertices: Array[Vector2] = []
+	var distancias_vertices: Array[float] = []
+	var unicos: Dictionary = {}
+	var limite := pow(maxf(0.0, radio - 6.0), 2)
+	for rect: Rect2 in rectangulos:
+		var exterior := rect.grow(MARGEN + 1.0)
+		for punto: Vector2 in [exterior.position, Vector2(exterior.end.x, exterior.position.y), exterior.end, Vector2(exterior.position.x, exterior.end.y)]:
+			if unicos.has(punto) or punto.length_squared() >= limite or not libre(punto, MARGEN, volando):
+				continue
+			unicos[punto] = true
+			var distancia := pos.distance_squared_to(punto)
+			var indice := 0
+			while indice < distancias_vertices.size() and distancias_vertices[indice] <= distancia:
+				indice += 1
+			vertices.insert(indice, punto)
+			distancias_vertices.insert(indice, distancia)
+	return vertices
 
 
 func _reiniciar_presupuesto() -> void:
@@ -358,8 +575,20 @@ func _resolver_ruta(desde: Vector2, hasta: Vector2, radio: float, volando: bool)
 	var grid := _aire if volando else _suelo
 	var a := _celda_cercana(desde, grid, volando)
 	var b := _celda_cercana(hasta, grid, volando)
-	if a.x == 100000 or b.x == 100000:
-		return PackedVector2Array()
+	var prefijo := PackedVector2Array([desde])
+	var sufijo := PackedVector2Array([hasta])
+	if a.x == 100000:
+		var enlace := _enlazar_celda(desde, grid, volando, radio)
+		if enlace.is_empty():
+			return PackedVector2Array()
+		a = enlace.celda
+		prefijo = enlace.puntos
+	if b.x == 100000:
+		var enlace := _enlazar_celda(hasta, grid, volando, radio)
+		if enlace.is_empty():
+			return PackedVector2Array()
+		b = enlace.celda
+		sufijo = enlace.puntos
 	var clave := "%s:%s:%s" % [a, b, volando]
 	if _fallidas.has(clave):
 		aciertos_cache += 1
@@ -381,9 +610,10 @@ func _resolver_ruta(desde: Vector2, hasta: Vector2, radio: float, volando: bool)
 		_cache[clave] = base
 	if base.is_empty():
 		return PackedVector2Array()
-	var puntos := PackedVector2Array([desde])
+	var puntos := prefijo.duplicate()
 	puntos.append_array(base)
-	puntos.append(hasta)
+	for i in range(sufijo.size() - 1, -1, -1):
+		puntos.append(sufijo[i])
 	var resultado := PackedVector2Array()
 	var actual := 0
 	while actual < puntos.size() - 1:

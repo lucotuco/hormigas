@@ -5,7 +5,11 @@ class PiezaConPorciones extends PiezaCasa:
 	var emisiones := 0
 	var continuaciones := 0
 	var trabajo_emitido := 0.0
+	var posiciones_intentos: Array[Vector2] = []
+	var contactos_intentos: Array[Vector2] = []
 	func morder_local(dano: float, pos: Vector2, lado_max := 6.0) -> float:
+		posiciones_intentos.append(pos)
+		contactos_intentos.append(punto_contacto(pos))
 		emisiones += 1
 		trabajo_emitido += dano
 		var valor := super.morder_local(dano, pos, lado_max)
@@ -13,6 +17,10 @@ class PiezaConPorciones extends PiezaCasa:
 			porciones.append(_porcion_reciente)
 		return valor
 	func continuar_bocado(pos: Vector2, lado_max := 6.0) -> float:
+		# Capturar ANTES de retirar: la frontera posterior ya no demuestra
+		# que este intento estaba al alcance cuando comenzó.
+		posiciones_intentos.append(pos)
+		contactos_intentos.append(punto_contacto(pos))
 		continuaciones += 1
 		var valor := super.continuar_bocado(pos, lado_max)
 		if valor > 0:
@@ -183,16 +191,23 @@ func probar_cantera() -> void:
 			area_porciones += porcion.get_area()
 			porciones_validas = porciones_validas and porcion.has_area() and porcion.size.x <= 6.0001 and porcion.size.y <= 6.0001
 		verificar(porciones_validas and is_equal_approx(area - parte.mordiscos.area_total(), area_porciones), "Cantera conserva cada porción local sólida y la suma exacta del área retirada de %s" % tipo)
-		# El puesto nativo está a11 unidades del borde. Dos porciones dejan
-		# su nuevo contacto a15,89: una tercera violaría el alcance real de13.
-		verificar(h._porciones_ciclo == 3 and parte.porciones.size() == 2 and parte.emisiones == 1 and parte.continuaciones == 1,
-			"Cantera corta la tanda de %s tras dos porciones reales, sin emitir daño ni intentar una tercera a distancia" % tipo)
+		# El puesto nativo y la forma del recorte pueden permitir de una a
+		# tres porciones. Lo invariable es su alcance real ANTES de cada una,
+		# una sola emisión de daño y ninguna continuación improductiva/lejana.
+		var intentos_en_alcance := parte.posiciones_intentos.size() == parte.emisiones + parte.continuaciones
+		for i in parte.posiciones_intentos.size():
+			var contacto: Vector2 = parte.contactos_intentos[i]
+			intentos_en_alcance = intentos_en_alcance and contacto.is_finite() \
+				and parte.posiciones_intentos[i].distance_squared_to(contacto) <= pow(Cocina.MARGEN + 5, 2)
+		verificar(h._porciones_ciclo == 3 and parte.porciones.size() >= 1 and parte.porciones.size() <= 3 \
+			and parte.emisiones == 1 and parte.continuaciones == parte.porciones.size() - 1 and intentos_en_alcance,
+			"Cantera limita la tanda de %s a tres porciones reales en alcance exacto y una sola emisión de daño" % tipo)
 		var credito := 0.0
 		for pendiente in parte.mordiscos._credito:
 			credito += pendiente
-		verificar(not parte.alcanza_contacto(h.global_position) and credito > 0
+		verificar((not parte.alcanza_contacto(h.global_position) or parte.porciones.size() == 3) and credito > 0
 			and is_equal_approx(credito + vida - parte.vida, parte.trabajo_emitido * parte.factor_erosion()),
-			"el contacto perdido de %s conserva todo el trabajo pendiente sin gastarlo en una mordida fuera de alcance" % tipo)
+			"la tanda de %s termina al perder contacto o completar tres porciones, conservando todo el crédito pendiente" % tipo)
 		var resto: FragmentoCasa = run.comidas.fragmentos.back()
 		verificar(resto.material_id == parte.nivel_requerido and is_equal_approx(resto.recompensa, extraido), "el fragmento de %s conserva su material y recompensa" % tipo)
 		var cargadora := run.colonia._nacer("cargadora", resto.position)

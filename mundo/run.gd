@@ -1,5 +1,6 @@
 class_name Run
 extends Node2D
+signal entrega_real(cantidad: float, categoria: int)
 ## Una run: la colonia tiene un tiempo limitado para comer todo lo que pueda.
 ##
 ## Este nodo coordina las piezas de la escena (comida, hormigas, feromonas,
@@ -15,6 +16,8 @@ const PROPORCION_PISOTON := 0.5   # el pisotón da la mitad de migas que una mor
 const ALCANCE_PISADA_AUTO := 400.0  # el pisotón automático busca comida a esta distancia del cursor
 const MAX_PISADAS_POR_CUADRO := 4
 const INTERVALO_LIMPIEZA := 0.5
+## Acentos visuales, no multiplicadores ni recompensas nuevas.
+const HITOS_RACHA := [5, 10, 25, 50, 100, 250, 500, 1000]
 
 @onready var comidas: Comidas = $Comidas
 @onready var cocina: Cocina = $Cocina
@@ -38,6 +41,7 @@ var combo := 0
 var objetivo_mapa: PiezaCasa
 var objetivo_practica: PiezaCasa
 var recorrido: RecorridoDestino
+var casa: RecorridoCasa
 var cola_erosion: ColaErosion
 var preparador_mordiscos: PreparadorMordiscos
 ## Sólo los fixtures que comparan operaciones directas usan la referencia.
@@ -125,6 +129,9 @@ func _ready() -> void:
 	recorrido = RecorridoDestino.new()
 	add_child(recorrido)
 	recorrido.iniciar(self)
+	casa = RecorridoCasa.new()
+	add_child(casa)
+	casa.iniciar(self)
 	comidas.comida_destruida.connect(_on_comida_destruida)
 	niebla.radio = radio_actual
 	camara.ajustar_a_radio(radio_actual, true)
@@ -139,6 +146,7 @@ func _ready() -> void:
 		Sonido.tocar("crecer", 1.0, 0.0)
 
 	colonia.iniciar(self)
+	efectos.configurar_mejoras(Juego.niveles)
 	entradas = EntradasHormiguero.new()
 	add_child(entradas)
 	entradas.iniciar(self)
@@ -205,6 +213,8 @@ func _process(delta: float) -> void:
 	_reloj_limpieza -= delta
 	if _reloj_limpieza <= 0 or tiempo_restante <= 0:
 		_reloj_limpieza = INTERVALO_LIMPIEZA
+		if frenesi_restante > 0:
+			efectos.actualizar_frenesi(frenesi_restante, PackedVector2Array(entradas.puntos))
 		if _comprobar_limpieza():
 			return
 	var segundos := int(ceil(tiempo_restante))
@@ -289,32 +299,42 @@ func depositar(cantidad: float, origen := Vector2.ZERO, categoria := 0, desglose
 		for i in 3:
 			ingresos[i] += desglose[i]
 		Juego.sumar_migas_run(cantidad)
+		hud.registrar_ganancia(cantidad, categoria)
 	else:
 		registrar_ingreso(cantidad, categoria)
+	entrega_real.emit(cantidad, categoria)
 	# El frenesí aparece desde la segunda run (ver Juego.REVELABLES).
 	if activa and frenesi_restante <= 0 and _descanso_frenesi <= 0 and Juego.revelado("frenesi"):
 		frenesi = minf(100, frenesi + reglas.carga_frenesi())
 		if frenesi >= 100:
 			frenesi = 0
 			frenesi_restante = Juego.stat("frenesi_duracion")
+			efectos.actualizar_frenesi(frenesi_restante, PackedVector2Array(entradas.puntos))
 			_descanso_frenesi = 18
 			hud.mostrar_aviso(tr("¡FRENESÍ! La colonia trabaja más rápido"))
+			efectos.rafaga(origen, 60)
+			Sonido.tocar("poder", 1.15, 0.01)
 	if _reloj - _ultimo_deposito <= VENTANA_COMBO:
 		combo += 1
 	else:
 		combo = 1
 	_ultimo_deposito = _reloj
 	Juego.mejor_combo_run = maxi(Juego.mejor_combo_run, combo)
-	efectos.entrega(origen, cantidad, combo)
+	efectos.deposito(origen, cantidad, combo, categoria)
+	hud.mostrar_combo(combo)
 	Sonido.entrega(combo)
+	var hito := HITOS_RACHA.find(combo)
+	if activa and hito >= 0:
+		efectos.racha(origen, hito + 1)
+		hud.mostrar_racha(combo)
+		Sonido.tocar("racha", 1.0 + minf(hito, 4) * 0.05, 0.01)
 	var ahora := Time.get_ticks_msec()
 	if ahora - _ultimo_efecto_deposito < 45:
 		return
 	_ultimo_efecto_deposito = ahora
 
 	hormiguero.latir()
-	hud.migas_voladoras(a_pantalla(origen), 1)
-	hud.mostrar_combo(combo)
+	hud.migas_voladoras(a_pantalla(origen), 3 + mini(2, combo / 10))
 
 
 ## Objetivo sugerido del recorrido; no cambia la libertad de las hormigas.
@@ -353,7 +373,7 @@ func _on_comida_destruida(comida: Comida) -> void:
 	if comida is PiezaCasa:
 		efectos.epico(pos, comida.color, comida.radio)
 	efectos.explosion(pos, comida.color, comida.radio)
-	efectos.numero(pos, bonus, Color(1.0, 0.82, 0.3), clampf(0.9 + comida.radio / 30.0, 1.0, 2.4))
+	efectos.numero(pos, bonus, Color(1.0, 0.82, 0.3), clampf(0.9 + comida.radio / 30.0, 1.5, 2.4))
 	if comida.radio >= 12.0:
 		efectos.texto(pos + Vector2(0, -comida.radio - 10.0), tr("¡%s!") % comida.nombre, Color.WHITE, 1.1)
 	hud.migas_voladoras(a_pantalla(pos), int(clampf(comida.radio / 2.5, 2, 16)))
@@ -454,8 +474,8 @@ func multiplicador_ritmo_activo() -> float:
 func activar_rafaga() -> bool:
 	if not is_instance_valid(poderes) or not poderes.activar():
 		return false
-	efectos.epico(camara.position, Color("e0bd75"), 90)
-	Sonido.tocar("epico", 1.08)
+	efectos.rafaga(camara.position, 90)
+	Sonido.tocar("poder", 1.0, 0.01)
 	return true
 
 
@@ -480,6 +500,8 @@ func registrar_ingreso(cantidad: float, categoria := 0) -> void:
 		return
 	ingresos[clampi(categoria, 0, 2)] += cantidad
 	Juego.sumar_migas_run(cantidad)
+	if is_instance_valid(hud):
+		hud.registrar_ganancia(cantidad, categoria)
 
 func _iniciar_retirada() -> void:
 	if retirando or terminada:
@@ -525,6 +547,7 @@ func _cerrar() -> void:
 	preparador_mordiscos.cancelar()
 	Sonido.detener_mundo()
 	efectos.limpiar()
+	hud.limpiar_recompensas()
 	recorrido.queue_redraw()
 	colonia.detener()
 	progreso_objetivo = 1.0 if objetivo_completado else recorrido.progreso()
@@ -572,6 +595,7 @@ func _detener_extraccion() -> void:
 	_extraccion_cerrada = true
 	activa = false
 	cerrando_erosion = false
+	efectos.actualizar_frenesi(0.0, PackedVector2Array())
 	feromonas.soltar()
 	cola_erosion.cancelar()
 	preparador_mordiscos.conservar_propietarios([])

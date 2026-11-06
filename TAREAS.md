@@ -1,5 +1,104 @@
 # Tareas
 
+## Continuidad del apoyo y regreso — 5/11
+
+- [x] Reproducir cinco fallas de apoyo/llegada sobre la mesa real y una pausa cargada con la cola de rutas cerrada, sin inventar carga ni vaciar el reloj de trabajo.
+- [x] Llegar al puesto real antes de morder, con tolerancia de 0,25u; caras rectas a 9u, curvas/esquinas con margen seguro. Recordar e invalidar el contacto de los puestos cacheados.
+- [x] Detectar el contacto retirado al cambiar la vida del recurso, antes del refresco de geometría y del reloj de mordida; conservar los apoyos intactos con hasta cuatro lecturas R8.
+- [x] Mirar el contacto de alimentos con huecos y volver con la carga parcial o buscar otro apoyo, sin daño ni pagos nuevos desde la detección.
+- [x] Desandar el prefijo de ida comprobado mientras espera turno de regreso; guardas para rutas vacías, fallidas y posiciones ajenas al segmento, sin más A* ni otro presupuesto.
+- [x] Cerrar 74 suites, contacto continuo (75), regreso/ajustes de puesto (29), revisión GPU (153) y mesa real con/sin llamado (13). Perfil de 500 IA en ocho casos, incluida la casa; pools y presupuestos conservados, p95 de estrés todavía sobre 16,67ms.
+- [ ] Validar sensación de continuidad en una sesión humana y medir GPU integrada.
+
+## Lectura de la masticación — 5/11
+
+- [x] Cuatro poses propias para las nueve castas y sus tres evoluciones: mandíbulas, cabeza y patas apoyadas; alas plegadas al trabajar.
+- [x] Ciclo visual de 2 Hz independiente del intervalo económico, manteniendo el tick visible de 12 Hz y los dos sprites existentes.
+- [x] Apoyar la boca en el contacto ya calculado y reservar el tirón/carga para una porción real; limpiar el gesto al volver o detenerse.
+- [x] Compactar sólo aire de los cuadros al caminar, sin bajar tres texeles por unidad ni aumentar el tope: atlas publicado de 47,5 MiB frente a 48 MiB.
+- [x] Prueba lógica de 24 comprobaciones: trabajo duro, esperas, cuatro poses incluso con mordida rápida, 500 ticks sin alterar IA/daño/carga/RNG/nodos, primera mordida con capacidad uno y detención inmediata.
+- [x] Cerrar 72 suites lógicas y revisión GPU de 153 comprobaciones, con mesa/sofá reales, todas las castas/evoluciones y atlas único de 47,5 MiB. Corregir sombra de pared que invadía un cuadro vecino.
+- [x] Medir seis casos de 500 IA con mandíbulas efectivamente visibles, conservando pools y presupuestos; los p95 de estrés siguen superando 16,67 ms.
+- [ ] Validar legibilidad y cansancio durante una sesión humana; medir en GPU integrada.
+
+## Frentes vivos y portadoras detenidas — 5/11
+
+- [x] Compartir la ocupación fina de la máscara con la navegación: abrir cavidades conectadas aunque no cambie el AABB de la celda.
+- [x] Seguir el borde interior y repartir los puestos sobre su contorno vivo, con intentos locales acotados.
+- [x] Devolver la carga parcial al perder contacto y renovar las tres muestras visibles sin cambiar su valor o tamaño.
+- [x] Conservar la orden de feromonas sobre el mueble al quedar el cursor en un hueco; reemplazarla al salir, cambiar de recurso o soltar.
+- [x] Acotar el veneno a su mancha inicial, conservar el origen del contagio y cerrar manchas agotadas sin pagos ficticios; memoria FIFO de 64 contactos por recurso.
+- [x] Situar corrosión, restos y números en la zona real de extracción; comprobar cada recorte de la mesa con y sin llamado.
+- [x] Cerrar 71 suites y revisión geométrica final de 69 comprobaciones; revisar mesa en Full HD y medir 500 IA en seis escenarios más 500 regresos, sin errores ni escrituras de partida. Los p95 de estrés todavía superan 16,67 ms.
+- [ ] Validar esta interacción y el reparto en una sesión humana larga; medir en GPU integrada.
+
+## Combo sin placas y retorno desde muebles — 4/11
+
+- [x] Quitar placa negra del combo y oscurecimiento de pantalla; conservar impacto/viaje con contorno, sombra y resaltado de las letras, sin sumar nodos o partículas.
+- [x] Reproducir tres puestos realmente trabados: pisos de 50–75 unidades transitables que no lograban conectar con los centros de la rejilla.
+- [x] Enlazar ambos extremos mediante hasta dos esquinas seguras dentro del turno normal de rutas; sin atravesar muebles, entregar a distancia ni agrandar la rejilla.
+- [x] Probar 28 salidas tras mordidas reales, tres recorridos completos desde el nido, seis cargas parciales con llamado y 500 regresos concurrentes.
+- [x] Cerrar 68 suites lógicas, 88 comprobaciones de regresos y revisión de transparencia; medir 500 retornos reales con renderer sin crecimiento de nodos/pools ni escrituras de partida.
+- [ ] Observar los muebles parcialmente consumidos en una sesión humana larga; comprobar GPU integrada.
+
+## Combo de impacto central — 4/11
+
+- [x] Impacto enorme y temblor central, ondas/destellos y viaje al HUD con nueva paleta en cada etapa; 1,04 s, sin detener la simulación.
+- [x] Fuente fija de alta definición, un Label y 32 slots retenidos; sin tweens por entrega, sin reinicios/pilas al cruzar varios umbrales.
+- [x] Sacudida sin consumir RNG de IA; límites de cámara, protección de feromonas/arrastre y ventanas de pausa por encima del efecto.
+- [x] Regresión completa: 67 suites sin fallas; combo 67 comprobaciones, revisiones GPU 36 + 51 de entradas reales y estrés de 500 hormigas en seis casos.
+- [ ] Ajustar intensidad y fatiga a partir de una sesión humana; comprobar GPU integrada.
+
+## Combo y compras visibles — 4/11
+
+- [x] Combo con seis etapas de tamaño/color, pulso local, brillo y celebración de escalón; coalescido por cuadro y reinicio al perder racha, sin multiplicar ingresos.
+- [x] Tres mejoras opcionales de un nivel con efecto propio: recibos brillantes, cortes chispeantes y halo de frenesí en entradas; cámaras y túneles reales en el hormiguero.
+- [x] Mantener atlas y pools del mundo; 32 chispas fijas en el contador, sin tweens por entrega ni nodos por hormiga. Silbato, pausa, movimiento reducido y cierre terminal.
+- [x] Cerrar 67 suites, revisión gráfica de combo (19) y mejoras (10), compras/persistencia (102) y estrés de 500 hormigas en seis casos sin fallas.
+- [x] Ensayo aislado de 16 expediciones desde cero: ingresos reales, madera y primera silla, sin forzar compras ni escribir la partida personal. No valida duración humana ni el balance de las tres compras nuevas.
+- [ ] Observar intensidad/fatiga y utilidad de las compras en sesiones humanas; medir GPU integrada.
+
+## Pulido visual general con presupuesto fijo — 4/11
+
+- [x] Afinar contornos, biseles, sombras y detalles de muebles y comida; plantas, sanitarios y monumentos con dibujo nativo, sin ilustrar sus bandas simplificadas de colisión.
+- [x] Conservar el suavizado del atlas, eliminar costuras semitransparentes interiores y comprobar que el material comestible coincide con el dibujo completo.
+- [x] Suelo menos ruidoso, periferia con menos primitivas, paneles e información con jerarquía y bordes finos; altura del estado ajustada a sus filas visibles.
+- [x] Compactar el atlas con MaxRects: 48 MiB frente a 49,5 MiB, sin reducir resolución según zoom ni agregar texturas por instancia. Arte antiguo de monumentos con carga diferida.
+- [x] Descartar consultas fuera del límite exacto de los recortes antes de recorrer bandas; actualizar el caché al cambiar geometría y contrastar con el algoritmo anterior, incluidos huecos, vuelo y piezas vacías/eliminadas.
+- [x] Reexportar 59 materiales y 27 siluetas alimenticias; cerrar las 64 suites lógicas. Revisiones GPU: material 69, residuos 341, definición 17, recorrido 15; compras, hormiguero y sesión a dos tamaños sin fallas.
+- [ ] Validar acabado y rendimiento en GPU integrada y sesiones humanas largas; no extrapolar los resultados locales a todos los equipos.
+
+## Sillas de contornos limpios — 4/11
+
+- [x] Sustituir el contorno de colisiones por autoría nativa: respaldo, largueros, hueco real, marco biselado y asiento con costuras finas, en los siete acabados/orientaciones.
+- [x] Hornear las cuatro sillas verdes a tres texeles por unidad y compactar sus márgenes; atlas compartido de 49,5 MiB, sin redibujar con el zoom ni cambiar shaders de material.
+- [x] Reexportar las siete siluetas y comprobar zoom máximo, retazo a escala, 24 mordidas, material GPU y recorrido real con IA hasta abrir el atajo.
+- [x] Eliminar reducción silenciosa de resolución que podía dejar dibujo y RLE desalineados; presupuesto de autoría y tests lo controlan conjuntamente.
+
+## Casa legible y consecuencias físicas — 4/11, mapa 11
+
+- [x] Sugerir una segunda obrera y acercar seis migas existentes, conservando catálogo, masa y valor.
+- [x] Conectar paquete, silla/atajo y hoja de alacena con capacidades reales; sugerencias opcionales sin nuevas búsquedas por hormiga.
+- [x] Conservar dos partes completas de la primera silla y abrir un camino a una galletita nativa reservada, sin cobro al descubrirla ni repetición en casas históricas.
+- [x] Comparar compras antes/después con los valores reales de lotes y castas; avisar si el llamado ya alcanza a toda la colonia inicial.
+- [x] Marcar apoyo, tirón, levantado y entrega conservando tamaño físico del retazo y tick visual de 12 Hz; siete timbres con voces limitadas.
+- [x] Mejorar siete acabados compartidos con máximo de 4 MiB adicionales; reexportar sus siluetas y verificar que dibujo, mordida y carga coincidan.
+- [x] Cerrar 64 suites lógicas y repetir las diez afectadas por siluetas; revisiones GPU de material (68), residuos (341), recorrido (15), compras y gesto sin fallas. Estrés de 500 hormigas: seis casos sin fallas.
+- [x] Registrar por separado entregas, compras y consecuencias en el ensayo local F6, sin modificar la partida personal.
+- [x] Medir 24 expediciones desde cero: madera a 10,06 min y primera silla a 11,75 min de simulación, con ingresos reales; sin extrapolar duración humana o campaña completa.
+- [ ] Observar sesiones humanas del recorrido y ajustar lo que efectivamente no se entienda o no resulte satisfactorio; GPU integrada pendiente.
+
+## Estímulos y encuentros activos — 4/11
+
+- [x] Conectar las entregas a números reales: primera fracción visible, 24–26 px por depósito, bonus de 32 px, recibo del HUD, vuelos más notorios y anuncios de hitos. Sin alterar precios, carga ni daño.
+- [x] Agrupar números en ventanas finitas por entrada/categoría; formatear ganancia y combo una vez por cuadro. Mantener pools, descarte por cámara y cierre terminal.
+- [x] Diferenciar mordida, entrega, destrucción, racha, Ráfaga, aviso, impacto y rechazo con un solo lienzo limitado y pools reutilizados.
+- [x] Reemplazar tweens por depósito en contador/combo con relojes compartidos; aviso de poder listo y tres timbres propios con voces limitadas.
+- [x] Acercar encuentros al trabajo visible con piso seguro y avisos, tope de cuatro individuos, ritmo por CSV y escape acotado.
+- [x] Avispa sobre carga y rival sobre restos físicos; robo único, retazos coherentes, navegación normal y cierre terminal.
+- [x] Cerrar 60 suites lógicas sin fallas; revisión gráfica de efectos (15), enemigos (16) y controles reales (28), estrés Full HD de 500 hormigas × 600 cuadros y piloto aislado de ocho expediciones. Repetidas las suites de amenazas tras corregir aparición con llamado a 9004 unidades.
+- [ ] Playtest humano para ajustar intensidad, claridad de ataques y fatiga de sonido; GPU integrada pendiente.
+
 ## Entradas conservadas y fundación visible — 2/11
 
 - [x] Separar layout guardado y accesos activos: mover/quitar una posición no borra las históricas sin cupo, territorio o piso libre.

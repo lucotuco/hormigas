@@ -1,4 +1,6 @@
 objetivo,tipo,perfil,grilla_x,grilla_y,alias,nombre,celdas,tesoro
+casa/silla_inicial,silla,paso_cocina,3,4,asiento,Respaldo y asiento,0|1|2|3|4|5,0
+casa/silla_inicial,silla,paso_cocina,3,4,base,Patas y base,6|7|8|9|10|11,0
 casa/carton_inicial,silla,carton_plegado,4,3,solapa_izquierda,Solapa izquierda,0|1|4|5|8|9,0
 casa/carton_inicial,silla,carton_plegado,4,3,solapa_derecha,Solapa derecha,2|3|6|7|10|11,0
 casa/alacena_cocina,alacena,dos_hojas,4,3,hoja_izquierda,Hoja izquierda,0|1|4|5|8|9,1

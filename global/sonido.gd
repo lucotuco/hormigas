@@ -6,17 +6,20 @@ extends Node
 ## a la vez no saturen el audio. M silencia / activa el sonido (ver Ajustes).
 
 const SONIDOS := {
-	"mordida":   {"volumen": -24.0, "intervalo": 0.18},
-	"mordida_carton": {"volumen": -25.0, "intervalo": 0.18},
-	"mordida_madera": {"volumen": -25.0, "intervalo": 0.18},
-	"mordida_metal": {"volumen": -28.0, "intervalo": 0.18},
-	"mordida_piedra": {"volumen": -25.0, "intervalo": 0.18},
+	"mordida":   {"volumen": -23.0, "intervalo": 0.18},
+	"mordida_carton": {"volumen": -23.0, "intervalo": 0.18},
+	"mordida_madera": {"volumen": -23.0, "intervalo": 0.18},
+	"mordida_metal": {"volumen": -27.0, "intervalo": 0.18},
+	"mordida_piedra": {"volumen": -23.0, "intervalo": 0.18},
 	"levantar": {"volumen": -29.0, "intervalo": 0.18},
 	"clic":      {"volumen": -8.0,  "intervalo": 0.02},
 	"deposito":  {"volumen": -17.0, "intervalo": 0.11},
 	"epico": {"volumen": -10.0, "intervalo": 0.9},
 	"aviso": {"volumen": -16.0, "intervalo": 0.7},
 	"espantar": {"volumen": -19.0, "intervalo": 0.10},
+	"impacto": {"volumen": -19.0, "intervalo": 0.10},
+	"racha": {"volumen": -17.0, "intervalo": 0.55},
+	"poder": {"volumen": -13.0, "intervalo": 0.9},
 	"romper":    {"volumen": -13.0, "intervalo": 0.12},
 	"comprar":   {"volumen": -6.0,  "intervalo": 0.04},
 	"no":        {"volumen": -9.0,  "intervalo": 0.15},
@@ -101,11 +104,11 @@ func entrega(combo := 0, especial := false) -> void:
 
 
 func _es_mundo(nombre: String) -> bool:
-	return nombre.begins_with("mordida") or nombre in ["levantar", "deposito", "romper", "aviso", "espantar"]
+	return nombre.begins_with("mordida") or nombre in ["levantar", "deposito", "romper", "aviso", "espantar", "impacto", "racha", "poder"]
 
 
 func _prioridad(nombre: String) -> int:
-	if nombre in ["epico", "crecer", "fin"]:
+	if nombre in ["epico", "crecer", "fin", "poder"]:
 		return 3
 	if nombre in ["comprar", "no", "clic"]:
 		return 2
@@ -137,7 +140,7 @@ func detener_mundo() -> void:
 			_reproductores[i].stop()
 			_reproductores[i].stream = null
 			_voces[i].mundo = false
-	for canal in ["mordida", "deposito", "romper", "aviso", "espantar"]:
+	for canal in ["mordida", "deposito", "romper", "aviso", "espantar", "impacto", "racha", "poder"]:
 		_ultimo.erase(canal)
 
 

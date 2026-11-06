@@ -51,7 +51,7 @@ func probar_arranque() -> void:
 	verificar(Juego.migas == 0 and Juego.niveles.is_empty() and Juego.lugar_actual == "casa", "el ensayo empieza desde cero sin usar el progreso personal cargado")
 	var registro := nuevo_registro()
 	verificar(registro.get_parent() == self and registro.process_mode == Node.PROCESS_MODE_ALWAYS, "el observador es un nodo común persistible y funciona en pausa")
-	verificar(registro._dialogo == null and registro.eventos.size() <= 2, "arrancar no abre exportadores ni escribe un informe automáticamente")
+	verificar(registro._dialogo == null and registro.eventos.size() <= 3, "arrancar sólo observa inicio, pantalla y próxima meta, sin exportar ni escribir un informe")
 	registro.queue_free()
 	await get_tree().process_frame
 

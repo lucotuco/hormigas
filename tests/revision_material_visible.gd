@@ -1,6 +1,7 @@
 extends "res://tests/prueba_material_visible.gd"
 ## QA con renderer real: sólo esta revisión lee el atlas final una vez.
 var _atlas: Image
+var _parciales_contorno := 0
 
 class MuestraConIndicadores extends Node2D:
 	var datos: Dictionary
@@ -40,6 +41,7 @@ func _ready() -> void:
 	run.hud.hide()
 	run.niebla.hide()
 	await probar_retazos_visibles(run)
+	verificar(_parciales_contorno > 0, "el atlas conserva cobertura subpíxel en los contornos del dibujo")
 	await capturar_carton(run)
 	run.queue_free()
 	await get_tree().process_frame
@@ -72,8 +74,21 @@ func probar_retazos_visibles(run: Run) -> void:
 		var datos: Dictionary = catalogo[caso].duplicate(true)
 		datos.rect = rect_fixture(datos.rect)
 		var entera := Graficos.region_porcion_mueble(datos, datos.rect)
-		var cuerpo := contar_alpha(entera)
-		var cuerpo_valido: bool = entera.has_area() and Rect2(Vector2.ZERO, Vector2(_atlas.get_size())).grow(tolerancia_atlas(entera)).encloses(entera) and cuerpo.opacos > 0 and cuerpo.parciales == 0
+		var radio_aa := radio_contorno(datos)
+		var cuerpo := contar_alpha(entera, radio_aa)
+		_parciales_contorno += cuerpo.parciales
+		var cuerpo_valido: bool = entera.has_area() and Rect2(Vector2.ZERO, Vector2(_atlas.get_size())).grow(tolerancia_atlas(entera)).encloses(entera) and cuerpo.material > 0 and cuerpo.fuera_contorno == 0
+		cuerpo_valido = cuerpo_valido and coincide_cuerpo_completo(datos, entera)
+		if not cuerpo_valido:
+			print("  DIAG CUERPO ", caso, " radioAA=", radio_aa, " alpha=", cuerpo)
+			if cuerpo.primer_fuera.x >= 0:
+				var vecinos: Array = []
+				for y in range(cuerpo.primer_fuera.y - radio_aa, cuerpo.primer_fuera.y + radio_aa + 1):
+					var fila: Array = []
+					for x in range(cuerpo.primer_fuera.x - radio_aa, cuerpo.primer_fuera.x + radio_aa + 1):
+						fila.append(snappedf(_atlas.get_pixel(x, y).a, 0.001))
+					vecinos.append(fila)
+				print("  DIAG VECINOS ", vecinos)
 		var correctos := 0
 		for lado in 4:
 			var pieza := PiezaCasa.new()
@@ -87,8 +102,8 @@ func probar_retazos_visibles(run: Run) -> void:
 			var aire := aire_exterior(antes, pieza.mordiscos.tamano_mascara())
 			var valor := pieza.morder_local(1.0e6, boca, LADO)
 			var region := pieza.region_bocado()
-			var alfa := contar_alpha(region)
-			var valido: bool = valor > 0 and region.has_area() and entera.grow(tolerancia_atlas(entera)).encloses(region) and alfa.opacos > 0 and alfa.parciales == 0
+			var alfa := contar_alpha(region, radio_aa)
+			var valido: bool = valor > 0 and region.has_area() and entera.grow(tolerancia_atlas(entera)).encloses(region) and alfa.material > 0 and alfa.fuera_contorno == 0
 			# Una patita puede viajar con transparencia propia a su alrededor.
 			# Cada centro opaco/vacío debe coincidir con la RLE del cuerpo;
 			# nunca se acepta sombra ni material inventado en ese espacio.
@@ -98,7 +113,7 @@ func probar_retazos_visibles(run: Run) -> void:
 			if not valido:
 				print("  DIAG %s lado%d: boca=%s; porción=%s; región=%s; alpha=%s; valor=%.12f" % [caso, lado, boca, pieza._porcion_reciente, region, alfa, valor])
 			pieza.queue_free()
-		verificar(cuerpo_valido and correctos == 4, "%s: cuerpo binario dentro del atlas y cuatro bocados exteriores con material opaco, nunca sombra parcial" % caso)
+		verificar(cuerpo_valido and correctos == 4, "%s: material completo coincide con RLE; AA sólo en el contorno y cuatro bocados exteriores sin sombra" % caso)
 		await get_tree().process_frame
 
 
@@ -162,9 +177,9 @@ func capturar_carton(run: Run) -> void:
 	caja._process(0.13)
 	h._reloj_vida += 0.3
 	h._actualizar_sprite()
-	var alfa := contar_alpha(caja.region_bocado())
+	var alfa := contar_alpha(caja.region_bocado(), radio_contorno(caja.pieza.dibujo))
 	var cuerpo := Graficos.region_porcion_mueble(caja.pieza.dibujo, caja.rect_mundo)
-	verificar(h.carga > 0 and h._retazos.size() == 1 and alfa.opacos > 0 and alfa.parciales == 0 and coincide_con_material(caja.pieza.dibujo, cuerpo, caja.region_bocado()), "el primer retazo del cartón principal coincide con su cuerpo y transparencia propia, nunca con la sombra derecha")
+	verificar(h.carga > 0 and h._retazos.size() == 1 and alfa.material > 0 and alfa.fuera_contorno == 0 and coincide_con_material(caja.pieza.dibujo, cuerpo, caja.region_bocado()), "el primer retazo del cartón principal coincide con su cuerpo y transparencia propia, nunca con la sombra derecha")
 	verificar(h._tamanos_retazos.size() == 1 and h._tamanos_retazos[0].is_equal_approx(caja.tamano_bocado()), "la muestra transportada mantiene el tamaño del material que falta")
 	await captura("material_visible_carton_un_bocado")
 	var conectadas := true
@@ -179,9 +194,11 @@ func capturar_carton(run: Run) -> void:
 	await captura("material_visible_carton_32_bocados")
 
 
-func contar_alpha(region: Rect2) -> Dictionary:
-	var opacos := 0
+func contar_alpha(region: Rect2, radio_aa := 2) -> Dictionary:
+	var material := 0
 	var parciales := 0
+	var fuera_contorno := 0
+	var primer_fuera := Vector2i(-1, -1)
 	var cantidad := 0
 	var borde_fuera := 0
 	if region.has_area():
@@ -194,18 +211,67 @@ func contar_alpha(region: Rect2) -> Dictionary:
 					borde_fuera += 1
 					continue
 				var a := _atlas.get_pixel(x, y).a
-				opacos += int(a >= 0.999)
+				material += int(a > 0.5)
 				parciales += int(a > 0.001 and a < 0.999)
+				if a > 0.001 and a < 0.999 and not parcial_en_contorno(Vector2i(x, y), radio_aa):
+					fuera_contorno += 1
+					if primer_fuera.x < 0:
+						primer_fuera = Vector2i(x, y)
 				cantidad += 1
 		# Un trozo menor a un texel puede no contener ningún centro de la
 		# grilla. Se comprueba su propio centro, no un vecino de la región.
 		if cantidad == 0:
 			var p := Vector2i(region.get_center().floor()).clamp(Vector2i.ZERO, _atlas.get_size() - Vector2i.ONE)
 			var a := _atlas.get_pixelv(p).a
-			opacos = int(a >= 0.999)
+			material = int(a > 0.5)
 			parciales = int(a > 0.001 and a < 0.999)
+			fuera_contorno = int(parciales > 0 and not parcial_en_contorno(p, radio_aa))
 			cantidad = 1
-	return {"opacos": opacos, "parciales": parciales, "total": cantidad, "centros_fuera": borde_fuera}
+	return {"material": material, "parciales": parciales, "fuera_contorno": fuera_contorno, "primer_fuera": primer_fuera, "total": cantidad, "centros_fuera": borde_fuera}
+
+
+func radio_contorno(datos: Dictionary) -> int:
+	var clave: String = Graficos._mueble_claves[Graficos.clave_mueble(datos)]
+	var original: Rect2 = Graficos._rects_muebles_crudos[clave]
+	var region: Rect2 = Graficos._regiones_muebles_crudas[clave]
+	var escala := region.size / original.size
+	# AA de StyleBox/polyline: como máximo una unidad autorada más un texel
+	# por el raster. No depende del zoom ni de tolerancias de la máscara R8.
+	return ceili(maxf(escala.x, escala.y)) + 1
+
+
+func parcial_en_contorno(pixel: Vector2i, radio: int) -> bool:
+	var vacio := false
+	var solido := false
+	for y in range(maxi(0, pixel.y - radio), mini(_atlas.get_height(), pixel.y + radio + 1)):
+		for x in range(maxi(0, pixel.x - radio), mini(_atlas.get_width(), pixel.x + radio + 1)):
+			var a := _atlas.get_pixel(x, y).a
+			vacio = vacio or a <= 0.001
+			solido = solido or a > 0.5
+			if vacio and solido:
+				return true
+	return false
+
+
+func coincide_cuerpo_completo(datos: Dictionary, cuerpo: Rect2) -> bool:
+	# Raster de referencia nativo de QA: comparar cada texel del cuerpo,
+	# no sólo los cuatro retazos. El juego nunca ejecuta esta lectura GPU.
+	var zona := Rect2i(Vector2i(cuerpo.position.round()), Vector2i(cuerpo.size.round()))
+	if not zona.has_area():
+		return false
+	var referencia := Image.create(zona.size.x, zona.size.y, false, Image.FORMAT_R8)
+	referencia.fill(Color.BLACK)
+	for forma: Array in SiluetaMueble.datos_material(datos).formas:
+		var inicio := Vector2i((Vector2(forma[0], forma[1]) * Vector2(zona.size)).round())
+		var tam := Vector2i((Vector2(forma[2], forma[3]) * Vector2(zona.size)).round())
+		referencia.fill_rect(Rect2i(inicio, tam), Color.WHITE)
+	var declarado := referencia.get_data()
+	var dibujado := _atlas.get_region(zona).get_data()
+	for i in declarado.size():
+		if (declarado[i] != 0) != (dibujado[i * 4 + 3] > 127):
+			print("  DIAG RLE ", Graficos.clave_mueble(datos), " texel=", Vector2i(i % zona.size.x, i / zona.size.x as int))
+			return false
+	return true
 
 
 func tolerancia_atlas(region: Rect2) -> float:
@@ -242,9 +308,7 @@ func texel_coincide(punto: Vector2, cuerpo: Rect2, formas: Array) -> bool:
 			break
 	var pixel := Vector2i(punto.floor()).clamp(Vector2i.ZERO, _atlas.get_size() - Vector2i.ONE)
 	var alpha := _atlas.get_pixelv(pixel).a
-	var opaco := alpha >= 0.999
-	var vacio := alpha <= 0.001
-	return (opaco or vacio) and opaco == declarado
+	return (alpha > 0.5) == declarado
 
 
 func captura(nombre: String) -> void:

@@ -14,4 +14,9 @@ func _ready() -> void:
 			zonas.append([r.position.x, r.position.y, r.size.x, r.size.y])
 		datos[tipo.id] = zonas
 	print("SILUETAS_JSON=" + JSON.stringify(datos))
+	if "--guardar" in OS.get_cmdline_user_args():
+		var archivo := FileAccess.open("res://datos/siluetas_comidas.json", FileAccess.WRITE)
+		assert(archivo != null, "No se pudieron guardar las siluetas de comida")
+		archivo.store_string(JSON.stringify(datos, " ") + "\n")
+		archivo.close()
 	get_tree().quit()

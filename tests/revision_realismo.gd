@@ -52,7 +52,9 @@ func _ready() -> void:
 			seguras = seguras and caja.position.x >= 0 and caja.end.x <= indicador.size.x and caja.end.y + 12 < r.hud._panel_inferior.position.y
 		verificar(seguras, "las etiquetas y flechas no pisan la barra inferior a %d px" % tam.x)
 		var rects := r.efectos._rect_textos
-		verificar(not rects.is_empty() and rects.size() <= 6, "hay premios visibles pero no más de seis en vista alejada")
+		var presupuesto := 8 if r.efectos._zoom() < 0.25 else Efectos.MAX_TEXTOS_VISIBLES
+		verificar(not rects.is_empty() and rects.size() <= presupuesto,
+			"hay premios visibles dentro del presupuesto de %d textos a zoom%.2f" % [presupuesto, r.efectos._zoom()])
 		var separados := true
 		for i in rects.size():
 			for j in range(i + 1, rects.size()):
@@ -79,15 +81,43 @@ func _ready() -> void:
 	r.camara.force_update_scroll()
 	for p in r.comidas.partes:
 		if p.pieza.tipo == "mesa_comedor":
-			p.morder_en(p.vida_max * 0.15, p.rect_mundo.position)
-			p._process(0.1)
-			verificar(p.vivas.size() < p.celdas.size() and not p.muerta, "el mueble ilustrado pierde fragmentos, no desaparece entero")
+			var vida := p.vida
+			await extraer_fragmentos(r, p)
+			verificar(p.mordiscos != null and p.vida < vida and p.vivas.size() < p.celdas.size()
+				and not p.muerta and not r.cola_erosion.tiene_pendientes(),
+				"el mueble ilustrado pierde fragmentos reales preparados, no desaparece entero")
 	await captura("realismo_fragmentos")
 	r.queue_free()
 	await get_tree().process_frame
 	Juego.reiniciar_estado()
 	print("Realismo render: %d verificaciones; %d fallas." % [total, fallas])
 	get_tree().quit(0 if fallas == 0 else 1)
+
+
+func extraer_fragmentos(r: Run, pieza: PiezaCasa) -> void:
+	# La Run está detenida para capturar. Servir explícitamente los mismos
+	# presupuestos de preparación y erosión; una solicitud aún pendiente no es
+	# daño ni autoriza a editar vidas/vivas para que la fotografía parezca rota.
+	for i in 512:
+		if pieza.preparar_material():
+			break
+		r.preparador_mordiscos.procesar()
+		await get_tree().process_frame
+	if pieza.mordiscos == null:
+		return
+	var desde := pieza.rect_mundo.position - Vector2(8, 8)
+	if not r.cola_erosion.encolar(pieza, pieza.vida_max * 0.15, desde):
+		return
+	for i in 2048:
+		if not r.cola_erosion.tiene_pendientes():
+			break
+		r.preparador_mordiscos.procesar()
+		r.cola_erosion.procesar()
+		pieza._process(1.0 / 60.0)
+		r.cocina.procesar_cambios()
+		await get_tree().process_frame
+	pieza._process(0.1)
+
 
 func captura(nombre: String) -> void:
 	await get_tree().process_frame

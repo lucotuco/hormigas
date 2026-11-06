@@ -9,6 +9,8 @@ uniform ivec2 grilla = ivec2(3, 4);
 // Componentes terminados: como máximo dieciséis bits, sin reservar otra R8.
 uniform int celdas_omitidas = 0;
 uniform float corrosion = 0.0;
+uniform vec2 centro_corrosion = vec2(0.0);
+uniform float radio_corrosion = 16.0;
 uniform bool alimento_mordido = false;
 uniform bool sombra_activa = false;
 uniform vec4 region_cuerpo = vec4(0.0, 0.0, 1.0, 1.0);
@@ -37,6 +39,19 @@ float dentro_region(vec2 uv) {
 	return 1.0;
 }
 
+// El dibujo puede ocupar varios píxeles de pantalla por texel al acercarse.
+// Mantener el suavizado en un píxel de pantalla, sin difuminar todo el canto.
+// No se agregan muestras ni se modifica la máscara física de extracción.
+float cobertura(float alfa) {
+	float ancho = clamp(fwidth(alfa), 0.0001, 1.0);
+	return smoothstep(0.5 - ancho * 0.5, 0.5 + ancho * 0.5, alfa);
+}
+
+float mancha_corrosion() {
+	vec2 distancia = abs(local - centro_corrosion);
+	return 1.0 - smoothstep(radio_corrosion - 2.0, radio_corrosion, max(distancia.x, distancia.y));
+}
+
 void vertex() {
 	local = VERTEX;
 	// draw_rect usa UV 0..1 aunque sea una primitiva sin textura. Reconocer
@@ -53,16 +68,18 @@ void fragment() {
 		// sombra se vuelve a proyectar DESDE los píxeles que todavía existen.
 		// material_en devuelve cero fuera del cuerpo; no dejar pasar márgenes.
 		float alpha_cuerpo = texture(TEXTURE, UV).a;
-		float cuerpo = alpha_cuerpo * step(0.55, alpha_cuerpo) * dentro_region(UV) * material_en(local);
+		float ancho_cuerpo = max(fwidth(alpha_cuerpo), 0.0001);
+		float cuerpo = smoothstep(0.55, 0.55 + ancho_cuerpo, alpha_cuerpo) * dentro_region(UV) * material_en(local);
 		vec2 uv_sombra = UV - desplazamiento_sombra * uv_por_unidad;
-		float sombra = step(0.55, texture(TEXTURE, uv_sombra).a) * dentro_region(uv_sombra) * material_en(local - desplazamiento_sombra) * 0.14;
+		float alpha_sombra = texture(TEXTURE, uv_sombra).a;
+		float sombra = smoothstep(0.55, 0.55 + max(fwidth(alpha_sombra), 0.0001), alpha_sombra) * dentro_region(uv_sombra) * material_en(local - desplazamiento_sombra) * 0.14;
 		float alpha = cuerpo + sombra * (1.0 - cuerpo);
 		vec3 rgb = alpha > 0.0 ? (color.rgb * cuerpo + vec3(0.19, 0.16, 0.11) * sombra * (1.0 - cuerpo)) / alpha : vec3(0.0);
 		COLOR = vec4(rgb, alpha);
 	} else if (sombra_activa && es_cuerpo > 0.5) {
 		vec2 uv_sombra = UV - desplazamiento_sombra * uv_por_unidad;
-		float cuerpo = texture(TEXTURE, UV).a * dentro_region(UV) * material_en(local);
-		float sombra = texture(TEXTURE, uv_sombra).a * dentro_region(uv_sombra) * material_en(local - desplazamiento_sombra) * 0.14;
+		float cuerpo = cobertura(texture(TEXTURE, UV).a) * dentro_region(UV) * material_en(local);
+		float sombra = cobertura(texture(TEXTURE, uv_sombra).a) * dentro_region(uv_sombra) * material_en(local - desplazamiento_sombra) * 0.14;
 		float alpha = cuerpo + sombra * (1.0 - cuerpo);
 		vec3 rgb = alpha > 0.0 ? (color.rgb * cuerpo + vec3(0.19, 0.16, 0.11) * sombra * (1.0 - cuerpo)) / alpha : vec3(0.0);
 		// Esta pasada sólo dibuja el cuerpo y su sombra. Las barras se
@@ -71,7 +88,7 @@ void fragment() {
 			color = vec4(rgb, alpha);
 		}
 		if (corrosion > 0.0 && cuerpo > 0.0) {
-			color.rgb = mix(color.rgb, color.rgb * vec3(0.82, 1.025, 0.75), min(corrosion, 1.0) * 0.18);
+			color.rgb = mix(color.rgb, color.rgb * vec3(0.82, 1.025, 0.75), min(corrosion, 1.0) * mancha_corrosion() * 0.18);
 		}
 		COLOR = color;
 	} else {
@@ -91,7 +108,7 @@ void fragment() {
 					texture(mascara_bocados, uv - vec2(0.0, texel.y)).r));
 				residuo = max(residuo, 1.0 - vecino);
 			}
-			color.rgb = mix(color.rgb, color.rgb * vec3(0.82, 1.025, 0.75), min(corrosion, 1.0) * residuo * 0.5);
+			color.rgb = mix(color.rgb, color.rgb * vec3(0.82, 1.025, 0.75), min(corrosion, 1.0) * mancha_corrosion() * residuo * 0.5);
 		}
 	}
 	// Barras y detalles fuera del cuerpo no reciben el recorte.

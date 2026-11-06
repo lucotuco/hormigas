@@ -35,6 +35,17 @@ var _veneno_dps := 0.0
 var _veneno_acumulado := 0.0
 var _run_veneno: Run
 var _origen_veneno := Vector2.INF
+## El actor se conserva para trazabilidad; la erosión usa un contacto inicial
+## congelado. Renovar desde el mismo lugar no persigue material lejano.
+var _ancla_veneno := Vector2.INF
+const MAX_ANCLAS_VENENO := 64
+const ALCANCE_CONTAGIO := 55.0
+var _anclas_veneno: Dictionary = {} # actor exacto -> {ancla, agotada}
+var _orden_anclas_veneno: Array[Vector2] = []
+var _cursor_anclas_veneno := 0
+var _anclas_veneno_agotadas: Dictionary = {} # ancla -> referencias agotadas
+var _ultima_ancla_sintetica_agotada := Vector2.INF
+var _alcance_contacto_veneno := INF
 var _usar_cache := true
 ## Se crea recién al primer bocado, no para miles de alimentos intactos.
 var mordiscos: MordiscosMaterial
@@ -47,6 +58,7 @@ var _grilla_bocado := Vector2i.ONE
 var _cantidad_celdas_bocado := 1
 var trabajo_erosion_admitido := 0.0
 var erosion_continua := false
+var erosion_zona_agotada := false
 var _celda_erosion := -1
 var semilla_dibujo := 0
 ## Origen transitorio durante la señal síncrona de extracción/destrucción.
@@ -139,7 +151,12 @@ func alcanza_desde(pos: Vector2) -> bool:
 	if mordiscos != null:
 		var local := to_local(pos)
 		var limite := mordiscos.limites_celda(0)
-		return limite.has_area() and local.distance_squared_to(local.clamp(limite.position, limite.end)) <= 9.0
+		if not limite.has_area() or local.distance_squared_to(local.clamp(limite.position, limite.end)) > 9.0:
+			return false
+		# El AABB puede abarcar un hueco grande. Sólo al llegar a ese límite
+		# confirmar el material real, no detener la marcha sobre el hueco.
+		var contacto := punto_contacto(pos)
+		return contacto.is_finite() and pos.distance_squared_to(contacto) <= 9.0
 	return distancia_a(pos) <= 3
 
 func punto_mordida(desde: Vector2, territorio: float, _volando := false) -> Vector2:
@@ -289,9 +306,10 @@ func _extraer_alimento(dano: float, pos: Vector2, lado_max: float, por_pasos := 
 		var trabajo := retirado
 		if por_pasos:
 			retirado = mordiscos.recortar_frente_paso(elegida, trabajo, local)
+			erosion_zona_agotada = mordiscos.zona_erosion_agotada
 			trabajo = mordiscos.ultimo_trabajo_erosion
 			trabajo_erosion_admitido += trabajo
-			erosion_continua = retirado > 0 and mordiscos.erosion_pagable(elegida)
+			erosion_continua = retirado > 0 and not erosion_zona_agotada and mordiscos.erosion_pagable(elegida)
 			_celda_erosion = elegida if erosion_continua else -1
 		elif lado_max > 0:
 			var escala_mundo := maxf(0.0001, maxf(absf(global_scale.x), absf(global_scale.y)))
@@ -418,8 +436,19 @@ func tamano_bocado() -> Vector2:
 func aplicar_veneno(dano_por_segundo: float, duracion: float, run: Run, origen := Vector2.INF) -> void:
 	if muerta or not run.activa or dano_por_segundo <= 0:
 		return
+	var actor := origen if origen.is_finite() else global_position + Vector2.from_angle(rotation) * (radio + 2)
+	if _actor_veneno_agotado(actor):
+		return
 	if veneno_restante <= 0 or dano_por_segundo >= _veneno_dps:
-		_origen_veneno = origen if origen.is_finite() else global_position + Vector2.from_angle(rotation) * (radio + 2)
+		if _origen_veneno != actor:
+			_ancla_veneno = Vector2.INF
+		_origen_veneno = actor
+		# Las aplicaciones reales tienen actor explícito. Conservar el
+		# fallback sin origen de las referencias ambientales/sintéticas.
+		_alcance_contacto_veneno = ALCANCE_CONTAGIO if origen.is_finite() else INF
+		_preparar_ancla_veneno()
+		if _actor_veneno_agotado(actor):
+			return
 	_veneno_dps = maxf(_veneno_dps, dano_por_segundo)
 	veneno_restante = maxf(veneno_restante, duracion)
 	_run_veneno = run
@@ -452,16 +481,16 @@ func factor_erosion() -> float:
 func erosion_paso(dano: float, origen: Vector2) -> float:
 	trabajo_erosion_admitido = 0
 	erosion_continua = false
+	erosion_zona_agotada = false
 	if muerta:
 		return 0
 	if mordiscos == null:
 		_preparar_mordiscos()
 	if mordiscos == null:
 		return 0.0
-	var local := to_local(origen)
-	if not mordiscos.aire_exterior(local):
-		local = mordiscos.origen_exterior(0, local)
-	return _extraer_alimento(dano, to_global(local), -1.0, true)
+	# La ancla congelada no se proyecta a otra cara si quedó ocluida.
+	# Ese tramo espera un cambio de geometría; no busca comida lejana.
+	return _extraer_alimento(dano, origen, -1.0, true)
 
 
 func terminar_tramo_erosion() -> void:
@@ -469,10 +498,103 @@ func terminar_tramo_erosion() -> void:
 	erosion_continua = false
 
 
+## Hasta 64 actores exactos por recurso. Se consulta al aplicar/emitar, no
+## por hormiga ni por cuadro. A/B/A conserva el ancla inicial de cada uno.
+func erosion_origen_agotado(ancla: Vector2) -> bool:
+	return _anclas_veneno_agotadas.has(ancla) or ancla == _ultima_ancla_sintetica_agotada
+
+
+func _actor_veneno_agotado(actor: Vector2) -> bool:
+	return _anclas_veneno.has(actor) and bool(_anclas_veneno[actor].agotada)
+
+
+func cancelar_veneno_en(ancla: Vector2) -> void:
+	var encontrada := false
+	for actor: Vector2 in _anclas_veneno:
+		var dato: Dictionary = _anclas_veneno[actor]
+		if dato.ancla != ancla:
+			continue
+		encontrada = true
+		if not dato.agotada:
+			dato.agotada = true
+			_anclas_veneno_agotadas[ancla] = int(_anclas_veneno_agotadas.get(ancla, 0)) + 1
+	if not encontrada:
+		# La API de cola admite también transacciones ambientales explícitas
+		# sin aplicar_veneno. No convertirlas en un mapa sin techo.
+		_ultima_ancla_sintetica_agotada = ancla
+	if ancla != _ancla_veneno:
+		return
+	_detener_dps_veneno()
+
+
+func _detener_dps_veneno() -> void:
+	veneno_restante = 0.0
+	_veneno_acumulado = 0.0
+	_veneno_dps = 0.0
+	if is_instance_valid(_run_veneno) and is_instance_valid(_run_veneno.cola_erosion):
+		_run_veneno.cola_erosion.olvidar_fuente(self)
+	_run_veneno = null
+
+
+func _preparar_ancla_veneno() -> bool:
+	if _anclas_veneno.has(_origen_veneno):
+		var guardada: Dictionary = _anclas_veneno[_origen_veneno]
+		_ancla_veneno = guardada.ancla
+		return not guardada.agotada
+	if _ancla_veneno.is_finite():
+		return true
+	if not preparar_material():
+		return false
+	var contacto := punto_contacto(_origen_veneno)
+	if contacto == Vector2.INF:
+		# Un piso ocluido no es una zona agotada. Conservar el origen exterior
+		# permite que la cola lo aparque hasta un cambio real de geometría.
+		_ancla_veneno = _origen_veneno
+	else:
+		if _origen_veneno.distance_squared_to(contacto) > pow(_alcance_contacto_veneno + 0.001, 2):
+			# Una mancha nueva no puede saltar del borde vacío al centro de
+			# una mesa. El contagio real nunca alcanza más de 55 unidades.
+			_guardar_ancla_veneno(_origen_veneno, _origen_veneno, true)
+			_detener_dps_veneno()
+			return false
+		_ancla_veneno = contacto + (_origen_veneno - contacto).normalized()
+	_guardar_ancla_veneno(_origen_veneno, _ancla_veneno, false)
+	if _actor_veneno_agotado(_origen_veneno):
+		_detener_dps_veneno()
+		return false
+	return true
+
+
+func _guardar_ancla_veneno(actor: Vector2, ancla: Vector2, agotada: bool) -> void:
+	if _anclas_veneno.has(actor):
+		return
+	agotada = agotada or _anclas_veneno_agotadas.has(ancla)
+	if _anclas_veneno.size() >= MAX_ANCLAS_VENENO:
+		var anterior := _orden_anclas_veneno[_cursor_anclas_veneno]
+		var dato: Dictionary = _anclas_veneno[anterior]
+		if dato.agotada:
+			var referencias := int(_anclas_veneno_agotadas[dato.ancla]) - 1
+			if referencias <= 0:
+				_anclas_veneno_agotadas.erase(dato.ancla)
+			else:
+				_anclas_veneno_agotadas[dato.ancla] = referencias
+		_anclas_veneno.erase(anterior)
+		_orden_anclas_veneno[_cursor_anclas_veneno] = actor
+		_cursor_anclas_veneno = (_cursor_anclas_veneno + 1) % MAX_ANCLAS_VENENO
+	else:
+		_orden_anclas_veneno.append(actor)
+	_anclas_veneno[actor] = {"ancla": ancla, "agotada": agotada}
+	if agotada:
+		_anclas_veneno_agotadas[ancla] = int(_anclas_veneno_agotadas.get(ancla, 0)) + 1
+
+
 func _emitir_trabajo_veneno() -> void:
-	if _veneno_acumulado > 0 and is_instance_valid(_run_veneno) and is_instance_valid(_run_veneno.cola_erosion):
-		_run_veneno.cola_erosion.encolar(self, _veneno_dps * _veneno_acumulado, _origen_veneno)
-	_veneno_acumulado = 0
+	if _veneno_acumulado <= 0 or not is_instance_valid(_run_veneno) or not is_instance_valid(_run_veneno.cola_erosion):
+		return
+	if not _preparar_ancla_veneno():
+		return
+	_run_veneno.cola_erosion.encolar(self, _veneno_dps * _veneno_acumulado, _ancla_veneno)
+	_veneno_acumulado = 0.0
 
 
 func _process(delta: float) -> void:
@@ -489,7 +611,7 @@ func _process(delta: float) -> void:
 		_mascara_pendiente = false
 		if _mascara_comida != null:
 			mordiscos.actualizar_textura()
-	if _sacudida <= 0.0 and _destello <= 0.0 and veneno_restante <= 0 and not _mascara_pendiente:
+	if _sacudida <= 0.0 and _destello <= 0.0 and veneno_restante <= 0 and _veneno_acumulado <= 0 and not _mascara_pendiente:
 		set_process(false)
 	queue_redraw()
 
@@ -497,23 +619,24 @@ func _process(delta: float) -> void:
 ## El daño y su acreditación no dependen de cómo se dibuja el recurso.
 ## PiezaCasa usa el mismo reloj, pero actualiza su máscara a 12,5 Hz.
 func _procesar_veneno(delta: float) -> void:
-	if veneno_restante > 0:
-		if not is_instance_valid(_run_veneno) or not _run_veneno.activa:
-			veneno_restante = 0
-			_veneno_acumulado = 0
-			_veneno_dps = 0
-		else:
-			var tiempo := minf(delta, veneno_restante)
-			veneno_restante = maxf(0, veneno_restante - tiempo)
-			_veneno_acumulado += tiempo
-			if _veneno_acumulado >= 0.5 or veneno_restante <= 0:
-				_emitir_trabajo_veneno()
-				if veneno_restante <= 0:
-					_veneno_dps = 0
-					if is_instance_valid(_run_veneno.cola_erosion):
-						_run_veneno.cola_erosion.olvidar_fuente(self)
-				if muerta:
-					return
+	if veneno_restante <= 0 and _veneno_acumulado <= 0:
+		return
+	if not is_instance_valid(_run_veneno) or not _run_veneno.activa:
+		veneno_restante = 0.0
+		_veneno_acumulado = 0.0
+		_veneno_dps = 0.0
+		return
+	var tiempo := minf(delta, veneno_restante)
+	veneno_restante = maxf(0.0, veneno_restante - tiempo)
+	_veneno_acumulado += tiempo
+	if _veneno_acumulado >= 0.5 or veneno_restante <= 0:
+		_emitir_trabajo_veneno()
+		# La preparación asíncrona puede estar pendiente cuando vence el DPS.
+		# Conservar ese tiempo hasta emitirlo desde su contacto inicial real.
+		if veneno_restante <= 0 and _veneno_acumulado <= 0:
+			_veneno_dps = 0.0
+			if is_instance_valid(_run_veneno) and is_instance_valid(_run_veneno.cola_erosion):
+				_run_veneno.cola_erosion.olvidar_fuente(self)
 
 
 func _draw() -> void:
@@ -577,7 +700,7 @@ func _draw() -> void:
 				draw_circle(p * r, r * 0.15, Color("b85443"))
 		"miga":
 			draw_colored_polygon(_contorno, c)
-			draw_polyline(_contorno + PackedVector2Array([_contorno[0]]), COLOR_CONTORNO, 0.6)
+			draw_polyline(_contorno + PackedVector2Array([_contorno[0]]), COLOR_CONTORNO, 0.6, true)
 		"cuadrado":
 			var lado := r * 1.6
 			draw_rect(Rect2(-lado / 2, -lado / 2, lado, lado), c)
@@ -718,10 +841,11 @@ func _draw() -> void:
 ## Elipse como polígono: no usa draw_set_transform, que pisaría la sacudida.
 func _ovalo(centro: Vector2, radios: Vector2, tinta: Color, angulo := 0.0) -> void:
 	var puntos := PackedVector2Array()
-	for i in 20:
-		var a := i * TAU / 20
+	for i in 48:
+		var a := i * TAU / 48
 		puntos.append(centro + Vector2(cos(a) * radios.x, sin(a) * radios.y).rotated(angulo))
 	draw_colored_polygon(puntos, tinta)
+	draw_polyline(puntos + PackedVector2Array([puntos[0]]), tinta, 0.45, true)
 
 
 ## Medialuna (3 gajos) o croissant (5): una media luna abierta hacia la
@@ -729,7 +853,7 @@ func _ovalo(centro: Vector2, radios: Vector2, tinta: Color, angulo := 0.0) -> vo
 func _creciente(r: float, tinta: Color, oscuro: Color, gajos: int) -> void:
 	var exterior := PackedVector2Array()
 	var interior := PackedVector2Array()
-	var pasos := 24
+	var pasos := 40
 	for i in pasos + 1:
 		var phi := lerpf(-0.82, 0.82, float(i) / pasos) * PI
 		var dir := Vector2(-cos(phi), sin(phi))

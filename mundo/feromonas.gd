@@ -86,6 +86,7 @@ func _punto_permitido() -> bool:
 
 
 func _actualizar_cercanas() -> void:
+	var anterior := objetivo_comida
 	seleccionadas.clear()
 	objetivo_comida = null
 	_comidas_area.clear()
@@ -93,11 +94,19 @@ func _actualizar_cercanas() -> void:
 	if not activa or not run.activa or not _punto_permitido():
 		return
 	objetivo_comida = run.comidas.comida_en(posicion, run.radio_actual)
+	# Mantener sobre un mueble conserva ESA orden al abrirse un hueco bajo
+	# el cursor. No convertirla en "esperar acá" cuando el frente retrocede.
+	# Otro objeto explícito, salir de su huella o soltar sí reemplazan la orden.
+	if objetivo_comida == null and is_instance_valid(anterior) and anterior is PiezaCasa and anterior.disponible() and anterior.en_territorio(run.radio_actual) and anterior.rect_mundo.has_point(posicion):
+		objetivo_comida = anterior
 	var alcance := radio_visual()
 	for c in run.comidas._candidatas(posicion, alcance):
 		if c.disponible() and c.en_territorio(run.radio_actual) and c.distancia_a(posicion) <= alcance:
 			_comidas_area.append(c)
 			_ids_area[c.get_instance_id()] = true
+	if is_instance_valid(objetivo_comida) and not _ids_area.has(objetivo_comida.get_instance_id()):
+		_comidas_area.append(objetivo_comida)
+		_ids_area[objetivo_comida.get_instance_id()] = true
 	# Heap máximo de K elementos: no crear un Dictionary por hormiga ni ordenar
 	# toda la colonia diez veces por segundo. Memoria acotada a las elegidas.
 	_candidatas.clear()

@@ -11,6 +11,7 @@ const VELOCIDAD_TECLADO := 700.0
 
 var _zoom_objetivo := 1.0
 var _sacudida := 0.0
+var _fase_sacudida := 0.0
 var _zoom_auto := 1.0
 var _manual := false
 var arrastrando := false
@@ -203,6 +204,12 @@ func sacudir(intensidad: float) -> void:
 	_sacudida = minf(_sacudida + intensidad * Ajustes.temblor, 24.0)
 
 
+func detener_sacudida() -> void:
+	_sacudida = 0.0
+	offset = Vector2.ZERO
+	force_update_scroll()
+
+
 func _process(delta: float) -> void:
 	if run.activa or run.cerrando_erosion:
 		var direccion := Vector2(
@@ -224,11 +231,21 @@ func _process(delta: float) -> void:
 		_limitar_posicion()
 		force_update_scroll()
 		vista_cambiada.emit()
-	if _sacudida > 0.05:
-		offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _sacudida / z
+	avanzar_sacudida(delta)
+
+
+## Separado del teclado para medir el efecto real sin automatizar entradas.
+func avanzar_sacudida(delta: float) -> void:
+	# También si el jugador empieza a ordenar DESPUÉS del golpe central.
+	if arrastrando or (is_instance_valid(run) and is_instance_valid(run.feromonas) and run.feromonas.activa):
+		_sacudida = minf(_sacudida, 3.0 * Ajustes.temblor)
+	if _sacudida > 0.05 and Ajustes.temblor > 0.0:
+		# Sacudir no consume el azar de búsqueda de las hormigas/enemigos.
+		_fase_sacudida = fmod(_fase_sacudida + delta, TAU)
+		offset = Vector2(sin(_fase_sacudida * 97.0), cos(_fase_sacudida * 83.0)) * _sacudida / maxf(zoom.x, ZOOM_MINIMO)
 		_sacudida *= exp(-12.0 * delta)
 	else:
 		_sacudida = 0.0
 		offset = Vector2.ZERO
-	if cambio or _sacudida > 0.0:
+	if _sacudida > 0.0:
 		_limitar_sacudida()

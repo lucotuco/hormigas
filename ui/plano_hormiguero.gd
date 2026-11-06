@@ -37,6 +37,7 @@ const CAMARAS := {
 	"rastro_persistente": [1082, 908, 77, 77],
 	"antenas": [1197, 989, 64, 64],
 	"alarma": [1327, 835, 61, 61],
+	"pulso_colonia": [1442, 805, 72, 56],
 	"pisoton": [1327, 967, 67, 67],
 	"rastro_azucar": [1442, 963, 59, 59],
 	"curadora": [1439, 1072, 69, 69],
@@ -59,6 +60,7 @@ const CAMARAS := {
 	"cimientos_coliseo": [1299, 1604, 94, 35],
 	# Mandíbulas
 	"mandibulas": [850, 1132, 95, 60],
+	"mandibulas_destello": [950, 1248, 82, 54],
 	"mordida_rapida": [845, 1258, 96, 62],
 	"mandibulas_acero": [972, 1375, 90, 58],
 	"mordida_madera": [848, 1385, 87, 57],
@@ -76,6 +78,7 @@ const CAMARAS := {
 	"colmillos": [627, 1700, 66, 43],
 	# Recolección
 	"buche": [686, 1064, 112, 48],
+	"migas_brillantes": [555, 1145, 84, 45],
 	"recoleccion_eficiente": [522, 1270, 89, 39],
 	"huevos_dorados": [464, 1369, 87, 37],
 	"banquete": [381, 1290, 82, 35],
@@ -155,6 +158,7 @@ const TUNELES := [
 	# Feromonas
 	["rastro_persistente", "antenas", 15],
 	["senales_casta", "alarma", 13],
+	["alarma", "pulso_colonia", 11],
 	["antenas", "pisoton", 13],
 	["antenas", "olfato_explorador", 11],
 	["entradas", "olfato_explorador", 11],
@@ -193,6 +197,7 @@ const TUNELES := [
 	["cimientos_coliseo", "legion", 10, [[1196, 1674]]],
 	# Mandíbulas
 	["mandibulas", "mordida_rapida", 15],
+	["mandibulas", "mandibulas_destello", 11],
 	["mandibulas", "pisada", 11],
 	["buche", "pisada", 11],
 	["mordida_rapida", "mandibulas_acero", 13],
@@ -224,6 +229,7 @@ const TUNELES := [
 	["titanio", "corazon", 11],
 	["mordida_muros", "corazon", 11],
 	# Recolección
+	["buche", "migas_brillantes", 11],
 	["recoleccion_eficiente", "huevos_dorados", 11],
 	["recoleccion_eficiente", "banquete", 11],
 	["recoleccion_eficiente", "larvas_glotonas", 10],

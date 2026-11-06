@@ -1432,3 +1432,731 @@ Revisiones con renderer real: reina e interfaz sin fallas; controles de poderes,
 26 verificaciones a 1920×1080 y 1000×620. Logs de cierre
 `arreglos_final_*.log` en `.godot/qa/`; controles en
 `correcciones_revision_input_poderes.log`. El guardado personal no se escribe.
+
+## Estímulos y encuentros activos — 4/11/2026
+
+Godot 4.7.2, GL Compatibility, Windows, RTX 3060, 1920×1080, VSync desactivado.
+`perfil_estimulos.tscn`: semilla 827, paso 1/60 y tiempo ×1, 500 hormigas reales
+con castas mixtas, cinco entradas legales, visibilidad, IA, navegación,
+preparación y erosión activas. Fuerza/velocidad de estrés declaradas en el
+fixture: no representa un equipo comprado ni una duración de campaña.
+Cada caso tiene 40 cuadros de calentamiento y 600 medidos.
+
+Control mantiene los efectos naturales. Completo agrega demanda visual
+sintética mediante las APIs normales y cuatro amenazas reales, incluidas
+avispa/rival. Si no hubo restos naturales, una sola pila de seis migas habilita
+el encuentro de saqueo: se informa por separado y no se acredita al crearla.
+Las amenazas cambian el trabajo; no es un A/B causal puro ni una comparación
+con la versión anterior del juego. Audio silenciado; CPU aislada no medida.
+
+| Destino | Control: media / p95 / peor | Completo: media / p95 / peor | Cuadros completos >16,67 ms |
+|---|---|---|---|
+| Museo | 9,99 / 13,42 / 16,15 ms | 11,67 / 15,29 / 17,51 ms | 7/600 |
+| Coliseo | 9,12 / 14,14 / 19,00 ms | 11,37 / 16,78 / 22,02 ms | 31/600 |
+| Eiffel | 9,78 / 13,38 / 17,04 ms | 11,53 / 15,18 / 18,16 ms | 9/600 |
+
+Topes observados: seis consultas de ruta/cuadro, 128 unidades de preparación,
+hasta 32 operaciones de erosión, cuatro amenazas más una dorada, 154 partículas,
+11 ondas, siete textos y dos marcas. Cero nodos por efecto; mismos límites
+duros de pools. La prueba registra ataques/picados/robos/escapes reales y el
+botín observado, sin suponer que toda amenaza atacó. En particular, el gato
+permaneció dormido en esta ventana y el botín de avispa en Eiffel fue cero.
+No se valida toda conducta enemiga sólo con ese benchmark; la suite específica
+también verifica la pasada sobre una cargadora caminando y su cancelación.
+
+Los seis cierres cancelaron colas, enemigos y presentación, sin nodos huérfanos
+nuevos ni ingresos/extracción tardíos. Partida y ajustes conservaron existencia
+y SHA-256. Hubo picos de 22,02 ms: no garantiza 60 FPS constantes, GPU integrada,
+sesiones largas, agrado del audio ni satisfacción humana. La primera tanda
+de 180 cuadros era demasiado corta para observar ataques; se amplió a 600.
+Se descartó telemetría TIME_PROCESS no sincronizada con la muestra: no se
+presentan esos valores como CPU aislada.
+
+Informe: `.godot/qa/perfil_estimulos.json`; log válido:
+`.godot/qa/estimulos_perfil_600.log`. Revisiones gráficas: estímulos 15,
+enemigos 16 y controles reales 28 verificaciones sin fallas, en Full HD y
+1000×620 para los controles. Las capturas usan nodos/dibujo reales; los paneles
+comparativos de efectos no simulan ingresos ni consumo.
+
+Piloto `bot_balance` desde cero, ocho expediciones, tiempo ×1/paso 1/60,
+sin calibración ni guardado personal: 6,44 minutos simulados, segunda obrera
+comprada tras la tercera expedición y primera especialista tras la octava.
+No llegó a madera ni fundación. Las cinco amenazas vencidas y cinco doradas
+cobradas aumentan el ingreso activo: no es neutral para la economía aunque
+los precios no cambien. No se extrapola a duración humana o campaña completa.
+Registro válido `estimulos_piloto8_limpio_20261104.txt/.json` en `.godot/qa/`.
+La tanda anterior sin «limpio» activó calibración por una variable vacía y se
+descartó; la repetición verifica ausencia de esas opciones antes de lanzar.
+
+Cierre lógico: 60 suites sin fallas, errores de script ni advertencias, logs
+`estimulos_cierre_prueba_*.log`. Enemigos activos suma 46 verificaciones tras
+repetir las suites afectadas por la corrección final del radio de aparición:
+un llamado válido a 9004 unidades en la plaza mantiene el encuentro a no más
+de 280 unidades del trabajo, sin volver a proyectarlo hacia el 70% del territorio.
+La selección de objetivos de avispa usa intervalos de 0,5 s; el contacto de araña
+sin presas, 0,2 s en lugar de un barrido de la colonia por cuadro. No se infiere
+diversión de estas pruebas.
+
+### Ganancias visibles desde la primera obrera — segunda pasada, 4/11
+
+La presentación anterior no conectaba `Run.depositar` con los números y
+descartaba importes menores a 0,5. Ahora cada pago real produce su cuenta en
+la entrada y su recibo en el HUD. No hay una segunda acreditación ni cambios
+de precio, daño, carga o velocidad. Los decimales no se convierten en «+0».
+Ventanas finitas: 0,28 s en el mundo y 0,32 s en el HUD; entradas, categorías y
+bonus no comparten la misma cuenta del mundo. Un pago no prolonga la vida
+del número anterior. Ganancia y combo se formatean una vez por cuadro.
+
+Depósitos de 24–26 px y bonus de 32 px como mínimo, con pop inicial, contorno,
+sombra y reparto sin superposición; hasta 12 textos dibujados y ocho con zoom
+menor a 0,25. Entrega con aro mínimo de 30 px y estelas; vuelo de tres a cinco
+migas por emisión, dentro del mismo pool fijo de 40. Un solo lienzo conserva
+los topes de 600 partículas, 24 ondas, 40 textos y 16 marcas. Hormigas y carga
+física mantienen su escala nativa. El cierre también limpia el HUD y bloquea
+la reaparición de números o vuelos por callbacks tardíos.
+
+`revision_recompensas_juego`: 45 verificaciones sin fallas, Run real Full HD.
+Primera miga nativa mordida/transportada/entregada, tanda de seis obreras,
+racha y bonus de una segunda miga nativa. Sólo se controlan posiciones y se
+declaran las fuentes adicionales del fixture; el bonus usa un buche mayor
+declarado para vaciar la miga, no HP, daño ni valor inventados. Comprueba sumas
+reales y números efectivamente dibujados a zoom 0,85 y 0,30, no sólo objetos
+guardados en el pool. Capturas `recompensas_00…09.png`; log
+`numeros_final_revision_recompensas_juego.log` en `.godot/qa/`.
+
+La demostración comparativa de efectos pasa 17 verificaciones; no genera
+ingresos. La suite lógica de estímulos pasa 40 y la de feedback de colonia 21,
+incluidos mil pagos agrupados, decimales, combo diferido, origen mixto y cierre.
+Son comprobaciones técnicas; la intensidad y la satisfacción requieren jugarlo.
+
+Repetición final de `perfil_estimulos`, mismo equipo/resolución/500 hormigas,
+40 cuadros de calentamiento y 600 medidos. Ahora los números y vuelos vienen
+exclusivamente de descargas naturales: se eliminaron los «+12» sintéticos del
+perfil anterior. Completo conserva ráfagas/impactos cosméticos sintéticos y
+cuatro enemigos reales; no es un A/B causal ni mide CPU aislada. Audio silenciado.
+
+| Destino | Control: media / p95 / peor | Completo: media / p95 / peor | Completos >16,67 ms |
+|---|---|---|---|
+| Museo | 10,16 / 13,98 / 18,97 ms | 12,10 / 16,61 / 24,32 ms | 30/600 |
+| Coliseo | 9,07 / 14,11 / 21,58 ms | 11,97 / 18,35 / 24,08 ms | 69/600 |
+| Eiffel | 9,82 / 13,50 / 17,11 ms | 11,84 / 16,68 / 23,33 ms | 31/600 |
+
+Los seis casos terminaron sin fallas. Se observaron números de pago realmente
+dibujados, recibos del HUD y vuelos con sus pools activos+libres acotados;
+no se inyectaron fracciones para forzar cobertura (apareció una natural en
+Museo control). Se verificó limpieza terminal tras los seis cierres y callbacks
+tardíos, sin dinero nuevo ni daño posterior. Partida y ajustes conservaron
+existencia y SHA-256. Hubo picos de 24,32 ms: no garantiza 60 FPS constantes,
+otras GPU ni satisfacción humana. Datos en `.godot/qa/perfil_estimulos.json`,
+log `numeros_cierre_perfil_estimulos.log`.
+
+Cierre repetido: 60 suites lógicas sin fallas, errores de script ni advertencias
+(`numeros_cierre_prueba_*.log`, todas con su resumen final). Renderer real:
+recompensas 45, efectos 17, controles 28 y realismo 13 verificaciones sin fallas.
+Realismo sirve preparación y erosión de la mesa con sus colas normales:
+una solicitud pendiente no se toma por daño ni se falsean sus celdas para QA.
+
+### Recorrido inicial, gesto y definición — 4/11, mapa 11
+
+Seis migas existentes se acercan a la entrada. La primera silla conserva dos
+componentes completos y libera una galletita reservada al abrir el paso. Las
+fichas comparan capacidades reales con un dibujo retenido; no ejecutan IA ni
+rutas. RecorridoCasa sólo se consulta en el refresco existente del HUD.
+El gesto corporal usa el tick visual de 12 Hz y mantiene el descarte lejano.
+Siete texturas sonoras propias se generan al arrancar; crujidos y recogidas
+comparten hasta seis inicios por segundo y el pool global sigue en 16 voces.
+La gran mesa conserva timbre de madera aunque su requisito de dieta sea 3.
+
+El atlas pasa de 2048×5248 (41 MiB) a 2048×5760 (45 MiB), con siete acabados
+de mayor definición y preflight de 9,27 ms en esta medición. Queda un atlas
+retenido; durante la separación inicial conviven transitoriamente dos. El
+tope adicional de 4 MiB no incluye otras texturas o memoria del proceso.
+La revisión detectó ocho desacuerdos entre dibujo y máscara al usar las
+siluetas anteriores. Se reexportaron sólo los siete acabados afectados con
+`exportar_material_muebles`; los metadatos pasan de 3272 a 3404 rectángulos
+finos. No se leen píxeles GPU durante una mordida. Si cambia la resolución de
+autoría, sus siluetas se deben regenerar y comprobar conjuntamente.
+
+Cierre: 64 suites lógicas con resumen de éxito y sin errores de script ni
+advertencias. Se actualizaron las expectativas de segunda obrera, componentes
+de silla y mapa 11. La prueba de controles retiraba comida de la lista pero
+no del índice antes de `queue_free`; se corrigió su aislamiento. Se repitieron
+las diez suites afectadas por la reexportación de siluetas, todas sin fallas.
+Logs `casa_cierre_prueba_*` (usar `_v2` donde existe) y `casa_siluetas_prueba_*`.
+El primer resumen PowerShell confundía «0 fallas» con un error por usar una
+búsqueda sin distinguir mayúsculas; se corrigió el criterio y se revisaron
+los logs completos, no ese resumen incorrecto.
+
+Renderer real: material visible 68, residuos 341 y recorrido de casa 15
+verificaciones sin fallas; compras y sensación también terminan con cero
+fallas. Las capturas de recorrido separan una obrera desde cero de una colonia
+QA declarada de 24 obreras con mejoras existentes. Esta última desarma la
+silla mediante IA y porciones reales, abre el segmento transitable y transporta
+la galletita. No es una estimación de duración ni de la primera compra. El
+primer ensayo visual olvidaba procesar cambios de navegación al congelar el
+árbol; se corrigió el servicio manual y se repitió completo. Partida y ajustes
+conservaron existencia y SHA-256.
+
+Estrés Full HD, Godot 4.7.2 GL Compatibility, RTX 3060: 500 hormigas, 40 cuadros
+de calentamiento y 600 medidos por caso. Mismo protocolo de pagos naturales,
+amenazas reales y demanda cosmética sintética; no es un A/B causal. Audio
+silenciado y CPU aislada no medida.
+
+| Destino | Control: media / p95 / peor | Completo: media / p95 / peor | Completos >16,67 ms |
+|---|---|---|---|
+| Museo | 9,37 / 12,40 / 17,85 ms | 11,81 / 15,61 / 19,21 ms | 8/600 |
+| Coliseo | 8,85 / 14,12 / 19,60 ms | 11,15 / 16,78 / 22,54 ms | 33/600 |
+| Eiffel | 9,81 / 13,80 / 19,47 ms | 11,44 / 15,48 / 19,42 ms | 7/600 |
+
+Los seis casos finalizaron sin fallas, con colas y efectos cancelados al cerrar,
+sin nuevos ingresos o extracción tardíos y sin nuevos nodos huérfanos. Los
+picos impiden prometer 60 FPS constantes; GPU integrada, sesión humana larga
+y agrado del audio quedan sin medir. Informe `.godot/qa/perfil_estimulos.json`;
+logs gráficos finales `casa_pulida_*_final2.log`. Capturas de la escena real
+`casa_pulida_00…06.png`, fichas `compras_00…08.png` y detalle
+`definicion_casa_*.png`. El protocolo F6 de observación humana sigue pendiente.
+
+Piloto nuevo desde cero: 24 expediciones, 26,13 minutos simulados, paso 1/60 y
+tiempo ×1, política «materiales», sin calibración ni HP forzada. Segunda obrera
+comprada después de la tercera expedición (~2,3 min); primera casta a 5,48 min,
+madera a 10,06 min y primera silla a 11,75 min (expedición 14). El snapshot
+conserva ambos componentes de `casa/silla_inicial`; el cartón cae a 22,08 min.
+No llegó a resistentes, conquista ni fundación. Atiende doradas y amenazas,
+por lo que esos ingresos participan del resultado; no mide tiempo en tienda ni
+duración humana. Archivos aislados en
+`.godot/qa/casa_piloto_20261104_184422/` (`registro.txt`, `motor.log`, `estado.json`),
+sin errores de script ni advertencias. No se reutilizó ninguna partida personal.
+
+### Corrección de contornos de sillas — 4/11
+
+Las siete sillas normales ya no se dibujan con el perfil simplificado de
+navegación. Respaldo, largueros y asiento se hornean con curvas y biseles finos;
+el hueco entre respaldo/asiento pertenece al dibujo y a su material. Las cuatro
+verdes usan escala 3 y margen 4; las otras tres, hasta escala 2. Sin cambios en
+shaders, daño, carga, precios, tamaño físico ni cantidad de nodos por instancia.
+
+Atlas final 2048×6336 = 49,5 MiB, frente a 45 MiB antes de esta corrección. El
+baseline con márgenes compactos mide 40,5 MiB; el extra medido es 9 MiB y el
+presupuesto de autoría 12 MiB. Se retiró la reducción dinámica de escala porque
+desalineaba el dibujo con la RLE exportada. Sólo se reexportaron las siete
+sillas: catálogo de 59 claves/3771 rectángulos finos. No hay lecturas GPU por mordida.
+
+Pasaron 11 suites lógicas relevantes (dirección de material, material visible,
+materiales, componentes, recorrido, sensación, población, preparación de
+fundación, periferia, mordiscos y microbocados). Revisiones GPU: definición 12,
+material visible 68 y recorrido 15 verificaciones, todas sin fallas. Se revisaron
+capturas a zoom máximo 4, un retazo y 24 bocados; además la IA desarma la silla
+y transporta su descubrimiento en el recorrido real. Logs finales
+`.godot/qa/bordes_prueba_*.log` y `bordes_revision_*.log`. El intento inicial de
+invocar una suite inexistente `prueba_bocados` no cuenta como prueba ejecutada;
+se corrieron las suites reales `prueba_mordiscos` y `prueba_microbocados`.
+
+Perfil gráfico de Casa, Godot 4.7.2 GL/RTX 3060, 1920×1080, 60 cuadros de
+calentamiento y 300 de muestra por fase, audio silenciado. Fases consecutivas,
+no A/B causal ni medición aislada de CPU:
+
+| Fase | Media / p95 / peor |
+|---|---|
+| Casa, 5 hormigas | 2,04 / 2,29 / 3,09 ms |
+| Casa, 150 hormigas | 3,23 / 3,97 / 5,02 ms |
+| Casa, 500 hormigas | 5,05 / 6,47 / 8,13 ms |
+| Demolición, 500 | 8,00 / 13,26 / 16,44 ms |
+| Evoluciones, 500 | 15,66 / 18,88 / 36,64 ms |
+
+El escenario extremo de evoluciones sigue teniendo picos; no se prometen 60 FPS
+constantes ni se extrapola a GPU integrada. Informe textual
+`.godot/qa/bordes_perfil_rendimiento.log`. No se cerraron procesos del usuario.
+
+### Pulido general y contornos completos — 4/11
+
+Muebles: biseles y sombras más cortas, curvas nativas y detalle de esquina 20.
+Plantas y sanitarios ya no se dibujan con las bandas de navegación. Obelisco,
+arco y torre usan geometría ilustrada propia, horneada en el mismo atlas.
+Comida a escala 3 y elipses más subdivididas; interfaz con paneles retenidos y
+bordes finos. Suelo procedural más tranquilo, sin muestreo del mosaico antiguo;
+periferia simplificada, sin añadir antialiasing por primitiva del escenario.
+No cambian precios, HP, tamaño del bocado, población máxima ni IA.
+
+Las consultas de colisión descartan primero el AABB exacto de los recortes,
+cacheado en su descriptor al iniciar/cambiar material. Sólo si la consulta
+entra en ese límite se recorren las bandas de siempre. No se agranda ni
+simplifica el perfil; el array vacío sigue sin bloquear con cualquier margen.
+La regresión de movimiento contrasta resultados exactos contra las consultas
+anteriores: puntos, cinco márgenes, segmentos y bandas, suelo/vuelo y estados
+intacto, recortado, vacío, reemplazado sin caché y eliminado. Los 500 retornos
+siguen entregando sin atravesar objetos. Esa prueba lógica no mide FPS.
+Después del descarte se repitieron las 64 suites completas: todas incluyen
+resumen de éxito, sin errores de script ni advertencias. También se repitió
+el recorrido GPU real hasta abrir el paso y transportar la galletita: 15/0.
+Logs finales `pulido_aabb_prueba_*` y `pulido_aabb_revision_recorrido_casa.log`.
+
+El corte binario de alfa del horneado perdía la cobertura de los bordes. Ahora
+se conserva y se reparan costuras interiores/pequeños trazos sin material
+mediante una vecindad de nueve muestras **sólo al preparar el atlas**. La
+clasificación física sigue siendo alfa >0,5, equivalente al umbral anterior de
+0,75 en la fuente. El shader de juego adapta el suavizado al tamaño del píxel
+de pantalla sin muestras adicionales para ese suavizado. R8 nearest y paso
+máximo de extracción 2 no cambian; tampoco hay lecturas GPU al comer.
+
+MaxRects calcula dos planes al arrancar y reutiliza las posiciones al montar;
+sin rotación ni cálculo por cuadro. Catálogo 59 acabados, atlas final
+**2048×6144 / 48 MiB RGBA8**, frente a 49,5 MiB antes. El plan sin el detalle
+prioritario mide 40 MiB; adicional 8 MiB dentro del presupuesto de autoría
+de 12 MiB. Preflight local: 56,98 ms, frente a unos 9 ms del empaquetado
+anterior; es un coste único de arranque, no tiempo de cuadro. La separación
+inicial conserva dos atlas transitorios como antes, y después sólo uno.
+Estas cifras no representan toda la RAM/VRAM del proceso. Las hojas antiguas
+de monumentos pasan a carga diferida y el suelo ya no solicita su mosaico.
+
+Se regeneraron las 59 claves de material (5303 rectángulos finos) y las 27
+siluetas alimenticias. Los exportadores aceptan `-- --guardar` para actualizar
+sus JSON de autoría; sin ese argumento sólo imprimen los datos. No escriben
+partidas. La revisión GPU rasteriza cada RLE y compara **todo el cuerpo de
+cada acabado**, además de los recortes exteriores. Los píxeles parciales
+deben pertenecer al contorno, con material y aire próximos: no se aceptan
+costuras interiores como un borde suavizado válido.
+
+Cierre: 64 suites lógicas sin fallas. La prueba de erosión conserva la
+comparación exacta de tres lados sobre muebles reales; el estado de origen
+aparcado se comprueba ahora en una torre fresca, con precondiciones geométricas
+explícitas. El antiguo supuesto «27% desde la izquierda siempre queda
+aparcado» dejó de ser cierto con los calados de la nueva torre; no se cambió
+producción ni se quitó esa cobertura de estado. Logs `pulido_final_prueba_*`
+y `pulido_cierre_prueba_*` (estos últimos prevalecen).
+
+Renderer real: material visible 69, residuos 341, definición 17 y recorrido 15
+verificaciones sin fallas. Compras, sensación, hormiguero y sesión real
+(1920×1080 y 1000×620, 15 comprobaciones) también terminan sin fallas.
+Se ajustó la altura del estado cuando desaparecen filas y se separó el aviso
+local F6 de la barra de tiempo. No se añaden tweens, procesos ni polling para
+esos cambios. La sesión confirma SHA-256 de partida y ajustes intactos.
+Capturas `estetica_*.png`, `definicion_casa_*.png`, `sesion_casa_*_es.png`
+y `compras_*.png` dentro de `.godot/qa/`.
+
+Perfil real Full HD, Godot 4.7.2 GL Compatibility / RTX 3060, sin VSync ni
+límite de FPS, audio silenciado; 60 cuadros de calentamiento y 300 medidos por
+fase. Dos ejecuciones completas antes del descarte AABB, con fases consecutivas
+y delta real:
+
+| Fase | Primera: media / p95 / peor | Segunda: media / p95 / peor |
+|---|---|---|
+| Casa, 5 hormigas | 1,99 / 2,36 / 2,83 ms | 2,03 / 2,46 / 4,01 ms |
+| Casa, 150 | 3,22 / 3,96 / 4,96 ms | 3,20 / 3,88 / 4,71 ms |
+| Casa, 500 | 5,82 / 7,91 / 12,12 ms | 5,63 / 7,46 / 8,73 ms |
+| Demolición, 500 | 10,91 / 17,00 / 20,64 ms | 12,55 / 18,99 / 32,79 ms |
+| Evoluciones, 500 | 17,51 / 21,79 / 24,98 ms | 16,86 / 20,47 / 25,34 ms |
+
+La referencia tomada durante esta pasada marcaba 2,50 / 3,89 / 5,94 / 9,51 /
+17,19 ms de media, respectivamente. Incluía el primer cambio de suelo/UI y
+una versión intermedia de la periferia, por lo que **no es un A/B causal**.
+En las nuevas ejecuciones, Casa500 usa 709–721 drawcalls frente a 899 en esa
+referencia; las cargas de demolición/evolución no son estados idénticos,
+pues el delta real cambia el trabajo alcanzado. No se afirma una mejora
+uniforme: la demolición fue más lenta y el extremo sigue superando 16,67 ms.
+No se prometen 60 FPS constantes ni resultados de GPU integrada. Logs
+`pulido_base_rendimiento.log`, `pulido_final_perfil_rendimiento.log` y
+`pulido_cierre_perfil_rendimiento.log`. No se cerraron procesos del usuario.
+
+Medición final con el descarte AABB, mismo protocolo, en
+`pulido_aabb_perfil_rendimiento.log`:
+
+| Fase | Media / p95 / peor | Drawcalls medios |
+|---|---|---|
+| Casa, 5 hormigas | 1,88 / 2,18 / 2,55 ms | 551 |
+| Casa, 150 | 2,96 / 3,66 / 4,82 ms | 627 |
+| Casa, 500 | 5,53 / 6,93 / 8,31 ms | 723 |
+| Demolición, 500 | 8,18 / 12,15 / 17,63 ms | 1028 |
+| Evoluciones, 500 | 16,86 / 20,34 / 22,47 ms | 1834 |
+
+Este resultado no demuestra cuánto aporta aisladamente el AABB: las fases
+con delta real no mantienen estados físicos idénticos entre ejecuciones.
+Sí verifica la carga real de esta versión y mantiene las cotas: 19/64 restos,
+51/600 partículas y 23/40 textos. El escenario extremo todavía tiene picos
+por encima de 16,67 ms; siguen pendientes GPU integrada y sesiones humanas.
+
+### Combo por etapas y mejoras visibles — 4/11
+
+Un Control y un Label compartidos para el combo, seis StyleBox retenidos y
+32 partículas preasignadas. Los depósitos se coalescen una vez por cuadro;
+cambiar de 3 a 250 en ese cuadro celebra una sola vez. Fuente 24→36 por
+etapas, colores, brillo, pulso y sacudida local. Sólo se mide el ancho de
+texto al cambiar la cantidad de dígitos o etapa; no hay Tween por depósito.
+El reloj del HUD respeta pausa y el ajuste de temblor cero. Combo 1/2 reinicia
+la jerarquía anterior; cerrar es terminal. No cambia el ingreso por combo.
+
+Las tres compras cachean booleanos al iniciar la expedición. Migas brillantes
+agrega cuatro brillos y un aro de recibo; Mordida chispeante, dos chispas y
+un corte; Pulso de la colonia dibuja hasta ocho halos sólo durante frenesí
+real. Conservan las puertas de entrega/mordida y los pools de 600/24, sin nodos
+por hormiga. El estado de entradas se refresca en el reloj existente de 0,5 s
+y al activar/cerrar frenesí. Los halos vencen también localmente. Atlas sin
+cambios: 48 MiB; las insignias de las cámaras son dibujo retenido.
+
+Regresión: **67 suites completas**, con resumen de éxito, sin errores ni
+advertencias. Las nuevas cubren combo 38, efectos 24 y compras 102 comprobaciones.
+Guardado anterior sin los IDs, JSON, lotes 1/10/Máx, precio único y fundación
+están cubiertos. No se modificaron los archivos personales.
+Logs `combo_final_prueba_*`. Renderer: combo 19 y mejoras 10 sin fallas;
+la revisión detectó una superposición con el pulso/ganancia del contador,
+corregida reservando su altura máxima. Se revisaron 1920×1080 y 1000×620,
+seis etapas, 1000 descargas coalescidas, temblor cero y cámaras compradas.
+Capturas `combo_*.png` y `mejoras_visuales_*.png` en `.godot/qa/`.
+
+Estrés final: Godot 4.7.2 GL Compatibility, RTX 3060, Full HD, sin VSync/límite
+de render, audio silenciado, **--fixed-fps 60**. Son pasos de simulación
+de 1/60, no un cap gráfico: se mide tiempo real entre cuadros de GPU.
+500 hormigas, 40 cuadros de calentamiento y 600 medidos por caso. Frenesí revelado
+en ambos casos; completo compra las tres mejoras, agrega amenazas reales y
+la demanda cosmética sintética ya declarada por el perfil. Sus bonus y los
+enemigos alteran el trabajo: **no es un A/B causal del costo de los efectos**.
+
+| Destino | Control media / p95 / peor | Completo media / p95 / peor | Completos >16,67 ms |
+|---|---|---|---|
+| Museo | 9,51 / 12,84 / 17,61 ms | 12,99 / 19,59 / 32,29 ms | 96/600 |
+| Coliseo | 9,38 / 13,68 / 58,63 ms | 11,52 / 16,85 / 61,16 ms | 39/600 |
+| Eiffel | 9,73 / 14,37 / 19,20 ms | 12,62 / 18,18 / 25,69 ms | 76/600 |
+
+Seis casos / 0 fallas, con descargas naturales y cierre sin daño/ingresos tardíos,
+sin nodos huérfanos ni pools que crezcan. Máximos observados completos:
+165 partículas, 21 ondas, 32 slots de chispa y 2 halos dibujados; etapas de combo 4/5
+vinieron de descargas reales. El escalón 6 y el límite de 8 halos se verifican
+aparte, no se presentan como cobertura de este estrés. Persisten picos:
+no se prometen 60 FPS constantes ni resultados en GPU integrada.
+Informe `.godot/qa/perfil_estimulos.json`, log
+`combo_cierre_perfil_estimulos.log`. CPU aislada y mezcla de audio no medidas.
+
+El primer intento sin paso fijo rindió más cuadros por segundo pero sólo
+unos pocos segundos simulados: tres casos no llegaron a observar depósitos
+visibles dentro de 600 cuadros. No se retiró esa exigencia ni se inventaron
+pagos: se repitió con `--fixed-fps 60` y pasó. Una pasada intermedia fija no
+revelaba frenesí; la final sí lo activa y observó los halos. Los resultados
+anteriores sin ese protocolo no se comparan como mejora de esta versión.
+
+Piloto aislado desde cero, 16 expediciones, paso 1/60 y tiempo ×1, política
+materiales: 14,51 min simulados, madera a 12,28 min y primera silla a 14,21.
+No se prefijaron ingresos ni compras. En esa muestra el bot **no compró las
+tres hojas nuevas**: valida continuidad del recorrido, no su balance,
+beneficio comparativo ni duración humana. No alcanzó el primer rebirth.
+Archivos `.godot/qa/combo_piloto_20261104_211504/`, sin errores de script ni
+advertencias. La compra y activación reales se cubren por separado en las
+pruebas de 102/24 comprobaciones y la revisión GPU.
+
+### Combo central de impacto — 4/11
+
+Sustituye la celebración local anterior: 0,44 s enorme en el centro y viaje
+al HUD hasta 1,04 s, con la nueva paleta. Una fuente fija de 96 px conserva
+definición al escalar; siguen siendo un Control, un Label y 32 partículas
+retenidas. Dos ondas y doce rayos de geometría acotada, sin bloom, emisores
+ni Tween por depósito. Cruzar otra etapa durante el efecto actualiza el
+número/color sin reiniciar reloj ni encolar animaciones. No pausa la IA ni
+cambia pagos, ventana de combo, daño o precios.
+
+Temblor cero omite el centro/viaje y conserva el contador quieto. La pausa
+congela el mismo reloj; el modal queda encima del efecto. El cierre cancela
+texto y sacudida. Cámara con oscilación determinista, sin RNG global ni
+zoom/reencuadre; respeta los límites del escenario. Mantener feromonas o
+arrastrar limita la amplitud a 3 px por eje, incluso si se empieza después
+del golpe. En retirada no se inician nuevos impulsos.
+
+Unidad de combo: 67 comprobaciones sin fallas. Revisión GPU: 36, seis
+etapas con capturas de impacto/regreso/llegada, 1000 pagos coalescidos,
+ventanas de 1920×1080 y 1000×620, movimiento reducido y cierre.
+Regresión completa final: 67 suites sin fallas/errores/advertencias,
+logs `epico_total_prueba_*`. Entradas reales durante el efecto: 51 sin
+fallas, clic mantenido, rueda, arrastre, Esc/pausa/reanudación y cierre
+durante el regreso, en ambos tamaños. El observador independiente del
+despachador sigue el último MouseMotion real, también si el SO lo emite
+después de la entrada sintética; conserva la tolerancia de 7 px. Logs
+`epico_final_revision_input_combo` y `epico_final_revision_combo_visual`.
+
+Estrés con el mismo protocolo fijo de 500 hormigas, 40 warm + 600 muestras,
+RTX 3060/GL Compatibility, audio silenciado y sin VSync. Ahora avanza también
+la sacudida real, sin leer teclado/mouse. Temblor 1 sólo en memoria. Exige
+que un combo de depósitos naturales haya sido grande y regresado durante
+la ventana medida; cuenta chispas vivas, no sólo slots asignados.
+
+| Destino | Control media / p95 / peor | Completo media / p95 / peor |
+|---|---|---|
+| Museo | 9,80 / 13,51 / 15,89 ms | 12,89 / 17,17 / 20,43 ms |
+| Coliseo | 9,46 / 14,94 / 59,25 ms | 11,96 / 17,79 / 67,90 ms |
+| Eiffel | 9,93 / 15,84 / 21,28 ms | 12,36 / 17,12 / 20,51 ms |
+
+Seis casos / 0 fallas, ambos tramos visibles en todos: 78–130 cuadros de
+impacto y 108–148 de regreso por caso, 1158–1267 px de ancho central máximo.
+Las etapas naturales fueron 4/5; la 6 se cubre en la revisión dedicada.
+Máximo 28 chispas vivas de 32 slots. Sin crecimiento de nodos/pools ni daño
+o ingresos tras cerrar; SHA de archivos personales intactos.
+No es un A/B causal: compras/amenazas y ahora la eliminación del RNG de
+cámara cambian el trabajo recorrido. Persisten picos, sobre todo en Coliseo;
+esto no garantiza 60 FPS constantes, GPU integrada ni satisfacción humana.
+Log `epico_perfil_estimulos.log`, informe `.godot/qa/perfil_estimulos.json`.
+
+### Combo sin placas y regreso desde muebles — 4/11
+
+El combo ya no conserva seis StyleBox ni dibuja placa o cortina fullscreen.
+Contraste en el contorno de la letra y su sombra teñida, conservando el
+único Label de 96 px y los 32 slots. Se comprueba transparencia real en un
+SubViewport: HUD, impacto, regreso y aterrizaje, ocultando sólo la letra
+durante esa inspección. No se sustituye el recuadro por otra textura.
+
+Reproductor de navegación: tres puestos exactos de heladera/alacena, con
+carga obtenida por una mordida real, quedaban inmóviles durante 1600 pasos.
+El piso era libre con margen 8, pero los pasillos de 50/55/75 unidades no
+ofrecían centros de celda con el certificado conservador de 30,72. Por eso
+volver a elegir entrada no resolvía el fallo. Antes del cambio: 4 fallas,
+incluida la suma sin entregar, en `bordes_reproduccion.log`.
+
+La ruta conserva la rejilla 32, margen 8, A* y cola de seis pedidos/1200 µs.
+Sólo al faltar un anclaje se conecta origen/destino por hasta dos esquinas
+seguras: cuatro obstáculos adyacentes, 16 vértices, 32 pruebas de segmento
+por extremo. Caché positivo exacto de 128 enlaces como máximo, invalidado
+por colisiones y cualquier cambio de radio. No hay teletransporte, pago a
+distancia ni búsqueda por hormiga/cuadro cuando ya tiene una ruta.
+
+`prueba_regreso_bordes`: 88 comprobaciones sin fallas. Incluye 28 mordidas y
+regresos, tres recorridos naturales desde el nido con ida/retorno validados,
+seis cargas parciales tras varios recortes y con feromonas mantenidas, y
+500 cargadas desde orígenes distintos. Estas últimas son un fixture de
+transporte explícito: 62,5 migas entregadas exactamente, sin fingir un piloto
+de economía. Cota observada de 15 pruebas por enlace y 128 entradas cacheadas;
+ninguna atravesó muebles ni superó el cupo de rutas. Guardado personal intacto.
+Se exige que existan los 28 puestos y se certifican las aristas completas
+de las 500 rutas, además de sus posiciones por cuadro. Esta ejecución
+headless no mide FPS. Log `regreso_bordes_auditada.log`.
+
+Regresión completa: 68 suites sin fallas, errores ni advertencias, logs
+`regreso_total_prueba_*`; repetida la suite de bordes al endurecer esas dos
+comprobaciones. Revisión gráfica del combo: 42, incluida transparencia real.
+Entradas reales durante el efecto: 51 sin fallas en Full HD y ventana pequeña,
+logs `regreso_final_revision_combo_visual` y `regreso_final_revision_input_combo`.
+
+Perfil específico de esos pasillos: renderer real GL Compatibility / RTX 3060,
+Full HD, sin VSync, audio silenciado, `--fixed-fps 60`. Grilla precalentada,
+puentes fríos, 30 cuadros de calentamiento y 500 IA con callbacks normales.
+Orígenes distintos, carga sintética de 0,125 y velocidad de fixture de 1500;
+no es un piloto de extracción ni economía. Incluye entrega y combo normales,
+culling y el costo del observador de seguridad. Mide hasta que todas llegan:
+260 cuadros, **7,06 ms media / 10,14 p95 / 13,84 peor**, 0 sobre 16,67 ms.
+500 entregadas, 62,5 migas exactas, sin atravesar material. Caché máx 128,
+15 pruebas por enlace, hasta tres rutas por cuadro y 1,976 ms de navegación
+acumulada máxima. Los 1200 µs son admisión blanda: una operación puede
+terminar después, sin habilitar una búsqueda ilimitada adicional.
+11 comprobaciones sin fallas; nodos/pools y SHA personales conservados.
+Log `regreso_perfil_bordes.log`, JSON `.godot/qa/perfil_regreso_bordes.json`.
+No mide CPU aislada, audio, campaña ni GPU integrada, ni garantiza los mismos
+tiempos en todo el juego. Las cargas y velocidad del fixture están declaradas.
+
+### Frentes vivos, consumo local y orden retenida — 5/11
+
+La captura de la mesa tenía fallas distintas al antiguo puente de pasillos:
+la máscara abría cavidades, pero la navegación seguía usando el AABB de hasta
+dieciséis celdas. El veneno podía perseguir ese frente desde un origen fijo
+hasta otra región. Las portadoras buscaban otra orilla para llenar el buche;
+además, al vaciarse el píxel bajo el cursor las feromonas perdían el mueble y
+pasaban a ordenar espera. El arreglo anterior de puentes no cubría esos casos.
+
+Ahora Cocina consulta el mismo árbol de ocupación de la máscara para regiones
+y segmentos. Cada corte publica su zona, aunque no achique el AABB, con el
+reloj de geometría existente de 0,12 s. No reconstruye miles de rectángulos ni
+agrega cuerpos físicos por bocado. La poda conserva también el último píxel
+rasterizado exterior. Nearest global y por fila en una búsqueda, nodos llenos
+aceptados inmediatamente, semilla proyectada exacta y deduplicación por sello
+de los objetos presentes en varios sectores. Los puestos se proyectan sobre
+el frente cercano con hasta tres intentos, sin otro A*.
+
+Perder contacto con carga inicia su entrega parcial. Con contacto se conserva
+la capacidad normal. Las cinco listas visuales retienen las tres muestras más
+recientes, sin cambiar masa, tamaño, valor ni crear sprites. Mantener sobre un
+mueble conserva esa orden hasta salir de su huella, elegir otro objeto o
+soltar; la regresión incluye el cursor vacío y el frente fuera del radio visual.
+
+La corrosión queda en una zona fija alineada de hasta 32×32 unidades, porciones
+de hasta 16 por servicio, y nunca proyecta un origen ocluido a otra cara. Las
+fracciones admitidas se descartan al cambiar de ancla, no se trasladan ni se
+cobran. El contacto recordado es FIFO de 64 actores por recurso; alternar A/B/A
+no revive una zona agotada. La preparación asíncrona conserva el tiempo de DPS
+pendiente. Mancha, fragmentos y recibo numérico señalan la extracción real.
+
+Regresión lógica: **71 suites sin fallas/errores/advertencias**, logs
+`material_final_prueba_*`. Se repitieron geometría (69 comprobaciones, incluida
+la última poda raster) y movimiento después del cierre de esa revisión.
+`prueba_geometria_material` contrasta regiones, segmentos y nearest global/por
+fila contra referencias por píxel, una cavidad conectada de la mesa que no
+altera su AABB, puestos repartidos y la orden retenida. Su notch es preparación
+sintética declarada, no una mordida ni una medida de producción.
+
+`prueba_frente_mesa`: ocho hormigas, dos escenarios de 120 s simulados con/sin
+llamado. Todos los cortes se auditan inmediatamente después de cada boca:
+máximo 6u por porción, cercanía al material, recorrido libre, ingreso efectivo
+en material anteriormente ocupado y varios regresos de CADA hormiga. El acceso
+local, daño, velocidad y cadencia están acelerados y declarados como fixture;
+no estima duración humana ni economía. Revisión GPU Full HD: 13 comprobaciones,
+648/669 recortes; mínimo 48/50 entregas por unidad; inmovilidad con carga sin
+nuevo bocado como máximo 0,25 s. Capturas antes/mitad/después en
+`.godot/qa/mesa_*`, revisadas visualmente: distintos puestos, viajes y borde
+local continuo. No hay una orden de terminar la mesa desde el script del test.
+
+Veneno geométrico: 52 comprobaciones. Dos manchas fuertes sobre otra mesa
+limpia; comparación de TODOS los píxeles antes/después demuestra cero cambios
+fuera de sus zonas. Mil renovaciones alternadas no dañan ni pagan otra región.
+La prueba débil separada conserva el reloj/fracción sin agotar su mancha antes
+de vencer. Erosión presupuestada: 54 comprobaciones, con trabajo retirado,
+crédito, descarte y cancelación distinguidos; piso ocluido y otro frente real
+de Eiffel. Ciclo de carga: 14, incluida capacidad doce y entrega parcial exacta.
+Silla inicial con IA y mejoras reales: 23; desarme/transporte/materiales: 43.
+Los SHA de partida y preferencias permanecen intactos.
+
+Perfil final con renderer GL Compatibility / RTX 3060, Full HD, audio
+silenciado, VSync desactivado y paso fijo de 1/60. Los seis escenarios conservan
+500 IA, navegación/extracción reales y los presupuestos/pools existentes;
+40 cuadros de calentamiento y 600 muestras por caso. Completo agrega las
+amenazas y la demanda cosmética declaradas en el script; no es un A/B causal
+puro porque también cambian trabajo, compras e ingresos.
+
+| Destino | Control media / p95 / peor | Completo media / p95 / peor |
+|---|---|---|
+| Museo | 12,83 / 17,61 / 24,32 ms | 16,68 / 22,75 / 28,02 ms |
+| Coliseo | 11,17 / 17,27 / 26,44 ms | 14,14 / 20,96 / 27,71 ms |
+| Eiffel | 11,75 / 18,60 / 26,08 ms | 14,47 / 21,91 / 25,94 ms |
+
+Seis casos / 0 fallas. La geometría precisa tiene costo: estos resultados no
+demuestran ausencia de regresión frente a los perfiles antiguos con AABB ni
+60 FPS constantes; los p95 todavía exceden 16,67 ms. Sin crecimiento de nodos
+o pools, pagos/daño nuevos tras cerrar ni escrituras personales. Informe
+`.godot/qa/perfil_estimulos.json`, log `material_gpu_final_perfil_estimulos.log`.
+
+Regreso de 500 portadoras por pasillos, mismo protocolo sintético declarado:
+260 cuadros, 6,68 ms media / 9,49 p95 / 11,34 peor, ninguno sobre 16,67 ms;
+500 cargas entregadas, 62,5 migas exactas, tres rutas por cuadro como máximo,
+caché 128 y 15 pruebas de enlace. Once comprobaciones sin fallas, log
+`material_gpu_final_perfil_regreso_bordes.log`. No mide CPU aislada, mezcla de
+audio, GPU integrada, satisfacción ni duración de campaña.
+
+### Masticación legible sin otro proceso por hormiga — 5/11
+
+Cuatro poses propias de trabajo por casta/evolución (108 en total): patas
+apoyadas, cabeza y pinzas claras, alas plegadas. Se eligen en el tick visual
+existente de 12 Hz, con dos ciclos por segundo independientes de las mejoras
+económicas. No hay nodos, tweens, partículas ni consultas de geometría desde
+el renderer de la hormiga. El apoyo sólo desplaza su sprite: no toca posición,
+rotación física, daño, rutas ni RNG. El tirón y levantado siguen ligados a
+una porción realmente retirada, conservando su región, tamaño y valor.
+
+La pieza comparte el contacto ya calculado. El alimento confirma una vez
+su primer contacto al llegar, para mostrar esfuerzo también con capacidad
+uno; las mordidas normales lo renuevan. Esperar la máscara, perder contacto,
+volver y detenerse no muestran masticación. El detalle se omite fuera de
+cámara o bajo zoom 0,28, sin agrandar las hormigas.
+
+Caminar conserva sus ocho poses y tres texeles por unidad: se recortó sólo
+aire en castas sin alas (18u); voladoras mantienen 24u. Las bocas caben en
+18u. Atlas publicado **2048×6080 / 47,5 MiB**, frente a los 48 MiB anteriores;
+tope de 49,5 MiB sin aumentar. La revisión detectó una sombra de pared que
+desbordaba su reserva hacia una cargadora: el material transportable ahora
+se hornea sin esa sombra externa. No se agregaron contenedores por región.
+
+Lógica: 24 comprobaciones específicas, 36 de sensación de bocado y **72
+suites sin fallas/errores/advertencias**, logs `masticar_cierre_prueba_*`.
+Revisión GPU: **153 comprobaciones**; cuatro bocas distintas por píxel en las
+27 variantes y perímetros libres de las 324 poses de caminar/trabajar.
+Mesa y sofá reales, zoom1 y3,4, esfuerzo sin extracción y tirón con retazo
+real; capturas `.godot/qa/masticar_*`, revisadas visualmente. Repetidas
+definición (17), residuos (341) y recorrido de materiales sin errores.
+SHA de partida y ajustes conservados; no se valida duración humana.
+
+Perfil de cierre con GL Compatibility / RTX 3060, Full HD, audio silenciado,
+sin VSync, paso fijo de 1/60: 500 IA, 40 cuadros de calentamiento y 600 muestras
+por caso. Cuenta mandíbulas nuevas realmente visibles durante extracción
+y navegación normales. Completo agrega amenazas y cosméticos declarados;
+no es un A/B causal aislado. Valores en ms (media / p95 / peor):
+
+| Destino | Control | Completo |
+|---|---|---|
+| Museo | 12,69 / 17,57 / 23,08 | 15,55 / 21,59 / 28,07 |
+| Coliseo | 10,63 / 16,41 / 22,98 | 13,89 / 20,67 / 26,76 |
+| Eiffel | 11,36 / 17,88 / 24,15 | 14,14 / 21,68 / 27,14 |
+
+Seis casos / 0 fallas; máximos muestreados de 38–57 hormigas masticando
+visiblemente por caso. Sin crecimiento de pools/nodos ni actividad nueva
+tras cerrar. Log `masticar_validado_perfil_estimulos.log`, informe
+`.godot/qa/perfil_estimulos.json`. No demuestra costo cero de animación ni
+60 FPS constantes: p95 aún supera 16,67 ms. CPU aislada, audio y GPU
+integrada pendientes; la legibilidad/fatiga requiere una sesión humana.
+
+### Continuidad de apoyo, objetivo y regreso — 5/11
+
+Se reprodujeron cinco fallas antes del arreglo (`apoyo_antes.log`): una boca
+entraba a 13u aunque su puesto estuviera a 9u, y otras seguían MORDIENDO con
+1,5s pendientes después de que otra operación retirara su contacto real.
+No se agotó el reloj ni se publicó la geometría para fabricar la reacción.
+La prueba separada de regreso (`retorno_antes.log`) obtenía carga real y
+quedaba inmóvil al cerrar el presupuesto del cuadro: una falla antes del fix.
+
+La llegada a muebles ahora exige estar a 0,25u del puesto elegido, no sólo
+dentro del alcance geométrico máximo. Se conserva ese alcance de 13u: un
+margen cuadrado de 8u necesita más de 9u en algunas curvas y diagonales.
+Reducirlo globalmente dejaba partes de sillas y monumentos inaccesibles;
+no es el arreglo. La distancia del apoyo efectivamente alcanzado se retiene
+y un retroceso obliga a buscar puesto nuevo o entregar la carga parcial.
+
+El contacto se invalida por vida/material real además de geometría y posición.
+Hasta cuatro lecturas directas R8 verifican el punto; sólo al retirarlo se
+recalcula nearest. Tolerancia de borde 0,01u, no un radio de búsqueda. El
+caché de hasta 64 accesos guarda puesto/contacto: un contacto todavía vivo
+se valida por distancia, sin otro nearest. Su desaparición invalida también
+un puesto que aún estuviera dentro de los 13u. Los alimentos usan contacto
+real al llegar a su AABB y miran su mordida, no el centro de un objeto hueco.
+
+Ir a comida usa la misma precisión de 0,25u al renovar una ruta: ya no ignora
+un ajuste de 2u del objetivo. Llegar al extremo de una ruta anterior mientras
+espera turno tampoco abandona la comida. El regreso conserva el prefijo de
+ida en reversa, sólo si sigue sobre su último segmento realmente recorrido.
+Puede avanzar por él mientras espera, sin otra ruta ni chequeos de píxeles
+por cada paso; el material sólo desaparece en la run. Las rutas vacías,
+fallidas, reposicionamientos y prolongaciones del segmento no se reutilizan.
+La cola mantiene seis rutas y admisión blanda de 1200µs por cuadro.
+
+Regresión: **74 suites sin fallas/errores/advertencias**, logs
+`apoyo_final_prueba_*`; repetidas seis afectadas tras ajustar la precisión
+de rutas (`apoyo_cierre_prueba_*`). Contacto continuo: **75 comprobaciones**,
+mesa/galletita/torta reales, carga vacía/parcial, reloj pendiente, retroceso
+corto de 9–13u, caché renovado y reanudación estable. Incluye bordes R8 y
+un doble explícito de orientación lateral; este último no prueba geometría
+ni balance. Retorno continuo: **29 comprobaciones**, ida/mordida reales,
+varios cuadros de presupuesto cerrado con posiciones contrastadas contra
+la polilínea observada, esquinas, pago exacto y nueve guardas sintéticas.
+También cubre el objetivo desplazado 2u y su ticket único mientras espera.
+
+Autonomía mantiene 18 comprobaciones y cuenta la nueva consulta exacta:
+una en 120 ticks, otra por geometría/movimiento y al cambiar recurso,
+sin un segundo nearest redundante de alcance. Microbocados (40), consumo
+de materiales/silla completa (43), catálogo de material (130) y proyectos
+(816) conservan sus contratos. No se cambiaron precios, daño, intervalos,
+créditos ni masa de retazos. SHA de partida y ajustes intactos.
+
+Cierre GPU: 153 comprobaciones de las poses y 13 del ciclo real de mesa con
+y sin llamado. Ocho obreras, fixture acelerado declarado: 595/583 cortes,
+mínimo 55/50 entregas por obrera y 0,23/0,25s de inmovilidad cargada máxima.
+Las pausas que corresponden a trabajo real no se cuentan como congelamiento;
+estos valores no afirman cero espera de navegación en cualquier colonia.
+Capturas `.godot/qa/mesa_*`, log `apoyo_cierre_prueba_frente_mesa.log`.
+
+Se agregó la casa al perfil de estrés existente, manteniendo su protocolo:
+GL Compatibility / RTX 3060, Full HD, sin VSync, audio silenciado, 500 IA,
+40 cuadros de calentamiento + 600 muestras. Completo agrega amenazas al
+tope y demanda cosmética explícita; no es un A/B causal ni un piloto de
+balance. Milisegundos (media / p95 / peor):
+
+| Destino | Control | Completo |
+|---|---|---|
+| Casa | 12,68 / 16,89 / 24,69 | 17,19 / 24,38 / 34,55 |
+| Museo | 12,11 / 16,46 / 24,77 | 16,40 / 22,73 / 28,90 |
+| Coliseo | 12,02 / 18,61 / 26,78 | 15,73 / 22,90 / 32,22 |
+| Eiffel | 11,28 / 17,32 / 23,98 | 14,38 / 21,29 / 28,96 |
+
+**Ocho casos / 0 fallas**, sin crecimiento de pools/nodos ni trabajo/pagos
+nuevos tras cerrar; las bocas se dibujan durante extracción normal. Los p95
+de estrés todavía exceden 16,67ms: no garantiza 60 FPS constantes ni ausencia
+de costo de la IA. CPU aislada, audio, GPU integrada y sensación humana no
+medidos. Log `apoyo_cierre_perfil_estimulos.log`, informe
+`.godot/qa/perfil_estimulos.json`. El atlas permanece en 47,5MiB.

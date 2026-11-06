@@ -5,12 +5,17 @@ extends RefCounted
 # mobiliario cenital ya no obliga a subir esos dos atlas a la GPU al iniciar.
 static var _fuente_muebles: Texture2D
 static var _fuente_detalles: Texture2D
+static var _fuente_destinos: Texture2D
 static var MUEBLES: Texture2D:
 	get:
 		if _fuente_muebles == null:
 			_fuente_muebles = load("res://arte/realista/muebles.png")
 		return _fuente_muebles
-const DESTINOS := preload("res://arte/realista/destinos.png")
+static var DESTINOS: Texture2D:
+	get:
+		if _fuente_destinos == null:
+			_fuente_destinos = load("res://arte/realista/destinos.png")
+		return _fuente_destinos
 static var DETALLES: Texture2D:
 	get:
 		if _fuente_detalles == null:

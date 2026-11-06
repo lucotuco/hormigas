@@ -9,11 +9,13 @@ class MigaVista:
 	var control := Vector2.ZERO
 	var hasta := Vector2.ZERO
 	var pos := Vector2.ZERO
+	var anterior := Vector2.ZERO
 	var tiempo := 0.0
 	var duracion := 0.6
 	var radio := 3.0
 var migas: Array[MigaVista] = []
 var cantidad := 0
+var _cerrado := false
 var _azar := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -24,6 +26,8 @@ func _ready() -> void:
 	set_process(false)
 
 func emitir(desde: Vector2, hasta: Vector2, cuantas: int) -> void:
+	if _cerrado:
+		return
 	var faltan := mini(cuantas, MAXIMO - cantidad)
 	for m in migas:
 		if faltan <= 0:
@@ -35,9 +39,10 @@ func emitir(desde: Vector2, hasta: Vector2, cuantas: int) -> void:
 		m.hasta = hasta
 		m.control = m.desde.lerp(hasta, 0.35) + Vector2(_azar.randf_range(-80, 80), -80)
 		m.pos = m.desde
+		m.anterior = m.desde
 		m.tiempo = -_azar.randf() * 0.1
 		m.duracion = _azar.randf_range(0.45, 0.7)
-		m.radio = _azar.randf_range(2.5, 4.0)
+		m.radio = _azar.randf_range(5.0, 6.8)
 		cantidad += 1
 		faltan -= 1
 	set_process(cantidad > 0)
@@ -49,6 +54,7 @@ func _process(delta: float) -> void:
 		if not m.activa:
 			continue
 		m.tiempo += delta
+		m.anterior = m.pos
 		var t := clampf(m.tiempo / m.duracion, 0, 1)
 		t *= t
 		m.pos = m.desde.lerp(m.control, t).lerp(m.control.lerp(m.hasta, t), t)
@@ -64,10 +70,16 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	for m in migas:
 		if m.activa and m.tiempo >= 0:
-			draw_circle(m.pos, m.radio + 0.8, Color("725534"))
-			draw_circle(m.pos - Vector2(0.5, 0.5), m.radio, Color("ecc27d"))
+			var direccion := (m.pos - m.anterior).normalized()
+			var cola := m.pos - direccion * 24.0
+			draw_line(cola, m.pos, Color(0.5, 0.3, 0.12, 0.35), m.radio * 1.5, true)
+			draw_line(m.pos - direccion * 16.0, m.pos, Color(1.0, 0.81, 0.35, 0.65), m.radio * 0.8, true)
+			draw_circle(m.pos, m.radio + 1.3, Color("70512d"))
+			draw_circle(m.pos, m.radio, Color("f5c965"))
+			draw_circle(m.pos - Vector2(1.5, 1.5), m.radio * 0.35, Color("fff1b7"))
 
 func limpiar() -> void:
+	_cerrado = true
 	for m in migas:
 		m.activa = false
 	cantidad = 0

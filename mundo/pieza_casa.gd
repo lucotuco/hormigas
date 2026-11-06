@@ -26,6 +26,9 @@ var _geometria_pendiente := false
 var _zona_geometria := Rect2()
 var _reloj_geometria := 0.0
 const INTERVALO_GEOMETRIA := 0.12
+## Apoyo nominal en caras rectas. Las esquinas pueden necesitar hasta 13u
+## para conservar el margen cuadrado de navegación; hay que llegar al puesto.
+const DISTANCIA_TRABAJO := Cocina.MARGEN + 1.25
 var _version_material := 0
 var _version_contacto := -1
 var _pos_contacto := Vector2.INF
@@ -342,6 +345,8 @@ func _recibir_mordiscos(preparada: MordiscosMaterial) -> void:
 	if muerta or is_queued_for_deletion():
 		return
 	mordiscos = preparada
+	casa.registrar_material_vivo(pieza.clave, mordiscos)
+	_distancia_nido = distancia_a(Vector2.ZERO)
 	_version_contacto = -1
 	_accesos.clear()
 	_despertar_erosion()
@@ -353,6 +358,9 @@ func disponible() -> bool:
 	return not muerta and not derrumbando and Juego.stat("materiales") >= nivel_requerido
 
 func distancia_a(pos: Vector2) -> float:
+	if mordiscos != null:
+		var cercano := _material_vivo_mas_cercano(pos)
+		return pos.distance_to(cercano) if cercano != Vector2.INF else INF
 	if _rectangular and not _por_pisos and not _tiene_retroceso and vivas.size() == celdas.size():
 		return pos.distance_to(pos.clamp(rect_mundo.position, rect_mundo.end))
 	var menor := INF
@@ -361,10 +369,29 @@ func distancia_a(pos: Vector2) -> float:
 	return menor
 
 func contiene_punto(pos: Vector2, margen := 0.0) -> bool:
+	if mordiscos != null:
+		if margen <= 0.0:
+			return mordiscos.contiene(pos)
+		return mordiscos.intersecta_rect(Rect2(pos - Vector2.ONE * margen, Vector2.ONE * margen * 2.0))
 	for forma in _formas:
 		if forma.grow(margen).has_point(pos):
 			return true
 	return false
+
+
+## Distancia geométrica, no sólo contacto exterior: una cavidad visible no
+## pertenece al cuerpo aunque su celda lógica conserve material en otro lado.
+## Una sola consulta del árbol vivo, sin repetirla por cada celda lógica.
+func _material_vivo_mas_cercano(pos: Vector2) -> Vector2:
+	if not pos.is_finite():
+		return Vector2.INF
+	if not _por_pisos and mordiscos.contiene(pos):
+		return pos
+	var fila := -1
+	if _por_pisos:
+		for i in vivas:
+			fila = maxi(fila, i / grilla.x as int)
+	return mordiscos.punto_material(pos, fila)
 
 func dentro_silueta(pos: Vector2, margen := 0.0) -> bool:
 	# La selección usa el mismo contorno vivo que el contacto/navegación.
@@ -488,9 +515,25 @@ func punto_trabajo(desde: Vector2, territorio: float, volando: bool, puesto: int
 		return base
 	var normal := base - material_cercano(base)
 	var tangente := Vector2(0, 1) if absf(normal.x) > absf(normal.y) else Vector2(1, 0)
-	var distribuido := base + tangente * ((puesto % 7) - 3) * 16
+	var desplazamiento := ((puesto % 7) - 3) * 16.0
+	var distribuido := base + tangente * desplazamiento
 	if distribuido.length_squared() < pow(territorio - 6, 2) and alcanza_desde(distribuido) and casa.libre(distribuido, Cocina.MARGEN, volando) and (mordiscos == null or alcanza_contacto(distribuido)):
 		return distribuido
+	if mordiscos == null or not normal.is_finite() or normal.length_squared() < 0.000001:
+		return base
+	# Un frente mordido no es una línea recta: desplazar el puesto sin volver
+	# a proyectarlo dejaba a todas las obreras sobre la misma base. Consultar
+	# desde el aire cercano conserva el reparto siguiendo el contorno real.
+	# Tres intentos locales como máximo, sin rutas ni recorridos de píxeles.
+	normal = normal.normalized()
+	var distancia_maxima := pow(absf(desplazamiento) + 32.0, 2)
+	for intento in 3:
+		var consulta := distribuido + normal * (16.0 * (intento + 1))
+		var proyectado := _puesto_cercano_al_contacto(consulta, territorio, volando)
+		# El helper ya comprueba territorio, aire, margen y alcance de la boca.
+		# Este límite adicional impide saltar a otra cara lejana del mueble.
+		if proyectado != Vector2.INF and base.distance_squared_to(proyectado) <= distancia_maxima:
+			return proyectado
 	return base
 
 func nombre_etapa() -> String:
@@ -530,16 +573,28 @@ func punto_mordida(desde: Vector2, territorio: float, volando := false) -> Vecto
 		_version_accesos = casa.version
 	var clave := Vector3i(floori(desde.x / 64), floori(desde.y / 64), int(territorio / 20) * 2 + int(volando))
 	if _accesos.has(clave):
-		var anterior: Vector2 = _accesos[clave]
-		if anterior == Vector2.INF or mordiscos == null or alcanza_contacto(anterior):
+		var acceso: Dictionary = _accesos[clave]
+		var anterior: Vector2 = acceso.puesto
+		if anterior == Vector2.INF or mordiscos == null:
+			return anterior
+		# Un puesto viejo puede seguir dentro del alcance máximo aunque su
+		# apoyo haya desaparecido. No llevar otra obrera al aire de ese recorte.
+		if mordiscos.contacto_vigente(acceso.contacto) and anterior.distance_squared_to(acceso.contacto) <= pow(Cocina.MARGEN + 5, 2):
 			return anterior
 		_accesos.erase(clave)
+	# La boca puede estar adentro de un recorte que aún no vació su celda.
+	# En ese caso el frente cercano prima sobre las caras del AABB original.
+	if mordiscos != null:
+		var cercano := _puesto_cercano_al_contacto(desde, territorio, volando)
+		if cercano != Vector2.INF:
+			_guardar_acceso(clave, cercano)
+			return cercano
 	var mejor := Vector2.INF
 	var distancia := INF
 	for forma in _zonas_trabajo:
 		var r := forma.grow(Cocina.MARGEN + 3)
 		# Proyectar sobre el material real; expandir también los extremos dejaba
-		# un destino diagonal a 15.6 unidades de una mordida que alcanza 13.
+		# un destino diagonal alejado del apoyo real de la boca.
 		var p := desde.clamp(forma.position, forma.end)
 		for punto in [Vector2(r.position.x, p.y), Vector2(r.end.x, p.y), Vector2(p.x, r.position.y), Vector2(p.x, r.end.y)]:
 			var d := desde.distance_squared_to(punto)
@@ -548,12 +603,20 @@ func punto_mordida(desde: Vector2, territorio: float, volando := false) -> Vecto
 				distancia = d
 	if mordiscos != null and (mejor == Vector2.INF or not alcanza_contacto(mejor)):
 		mejor = _puesto_en_frontera(desde, territorio, volando)
-	if _accesos.size() >= 64:
-		_accesos.clear()
-	_accesos[clave] = mejor
+	_guardar_acceso(clave, mejor)
 	return mejor
 
+
+func _guardar_acceso(clave: Vector3i, puesto: Vector2) -> void:
+	if _accesos.size() >= 64:
+		_accesos.clear()
+	var contacto := punto_contacto(puesto) if puesto.is_finite() and mordiscos != null else Vector2.INF
+	_accesos[clave] = {"puesto": puesto, "contacto": contacto}
+
 func _puesto_en_frontera(desde: Vector2, territorio: float, volando: bool) -> Vector2:
+	var cercano := _puesto_cercano_al_contacto(desde, territorio, volando)
+	if cercano != Vector2.INF:
+		return cercano
 	var mejor := Vector2.INF
 	var distancia := INF
 	var paso := rect_mundo.size / Vector2(mordiscos.tamano_mascara())
@@ -618,6 +681,25 @@ func _puesto_en_frontera(desde: Vector2, territorio: float, volando: bool) -> Ve
 				distancia = d
 	return mejor
 
+
+func _puesto_cercano_al_contacto(desde: Vector2, territorio: float, volando: bool) -> Vector2:
+	if mordiscos == null:
+		return Vector2.INF
+	var contacto := punto_contacto(desde)
+	if contacto == Vector2.INF:
+		return Vector2.INF
+	var normal := desde - contacto
+	if normal.length_squared() < 0.000001:
+		return Vector2.INF
+	var punto := contacto + normal.normalized() * (Cocina.MARGEN + 1.0)
+	if punto.length_squared() >= pow(maxf(0.0, territorio - 6.0), 2):
+		return Vector2.INF
+	if punto.distance_squared_to(contacto) > pow(Cocina.MARGEN + 5.0, 2):
+		return Vector2.INF
+	if not mordiscos.aire_exterior(punto) or not casa.libre(punto, Cocina.MARGEN, volando):
+		return Vector2.INF
+	return punto
+
 func morder(dano: float) -> float:
 	var punto := punto_mordida(Vector2.ZERO, get_parent().get_parent().radio_actual)
 	return morder_en(dano, punto if punto != Vector2.INF else position)
@@ -654,6 +736,7 @@ func factor_erosion() -> float:
 func erosion_paso(dano: float, origen: Vector2) -> float:
 	trabajo_erosion_admitido = 0
 	erosion_continua = false
+	erosion_zona_agotada = false
 	return _extraer_pieza(dano, origen, -1.0, true)
 
 
@@ -670,8 +753,12 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := fal
 		return 0.0
 	if lado_max > 0 and not alcanza_contacto(pos):
 		return 0
-	if lado_max < 0 and not mordiscos.aire_exterior(pos):
+	if lado_max < 0 and not por_pasos and not mordiscos.aire_exterior(pos):
 		pos = mordiscos.origen_exterior(vivas[0], pos)
+	var zona_erosion := mordiscos.zona_erosion(pos) if por_pasos else Rect2()
+	if por_pasos and (not zona_erosion.has_area() or not mordiscos.intersecta_rect(zona_erosion, true)):
+		erosion_zona_agotada = true
+		return 0.0
 	_impacto = pos
 	_porcion_reciente = Rect2()
 	var antes := vida
@@ -684,8 +771,10 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := fal
 		var elegida := -1
 		var distancia := INF
 		var fila := 0
-		if por_pasos and _celda_erosion in vivas and mordiscos.erosion_pagable(_celda_erosion):
-			elegida = _celda_erosion
+		if por_pasos:
+			# El ancla permanece quieta; elegir otra celda sólo si toca la
+			# MISMA mancha de contacto. Un piso tapado no está agotado.
+			elegida = _celda_erosion_en_zona(pos, zona_erosion)
 		elif lado_max < 0:
 			# El mismo nearest exacto que la boca: primero el AABB vivo más
 			# cercano y sólo otras celdas que puedan mejorarlo. El veneno no
@@ -715,6 +804,9 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := fal
 		var trabajo := real
 		if por_pasos:
 			real = mordiscos.recortar_frente_paso(elegida, trabajo, pos)
+			# El resultado de Mordiscos es local a su celda. La cola sólo puede
+			# cancelar cuando no queda material en TODA la mancha del ancla.
+			erosion_zona_agotada = not mordiscos.intersecta_rect(zona_erosion, true)
 			trabajo = mordiscos.ultimo_trabajo_erosion
 			trabajo_erosion_admitido += trabajo
 			erosion_continua = real > 0 and mordiscos.erosion_pagable(elegida)
@@ -732,13 +824,16 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := fal
 		trabajo_recibido += trabajo
 		if real <= 0:
 			break
+		if mordiscos.ultima_porcion.has_area():
+			# El contacto del efecto pertenece a lo que realmente se desprendió,
+			# no a un ancla de corrosión que podía quedar varios pasos atrás.
+			_impacto = mordiscos.ultima_porcion.get_center()
 		if mordiscos.ultima_porcion.get_area() > _porcion_reciente.get_area():
 			_porcion_reciente = mordiscos.ultima_porcion
 		vidas[elegida] = mordiscos.vida_celda(elegida)
 		vida = maxf(0, vida - real)
 		_version_material += 1
-		if lado_max != 0:
-			_registrar_retroceso(elegida)
+		_registrar_retroceso(elegida, mordiscos.ultima_porcion)
 		var r := celdas[elegida]
 		if vidas[elegida] == 0.0:
 			mordiscos.limpiar_celda(elegida)
@@ -765,7 +860,7 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := fal
 		run.cola_erosion.despertar(self)
 	var valor := recompensa * extraido / vida_max * Juego.stat("multiplicador_migas")
 	if lado_max <= 0:
-		get_parent().soltar_fragmento(pos, valor * 0.35, nivel_requerido)
+		get_parent().soltar_fragmento(_impacto, valor * 0.35, nivel_requerido)
 	if agujero and lado_max <= 0:
 		_actualizar_colision(zona_rotura)
 	var umbral_tesoro := 0.8 if Juego.lugar_actual == "museo" and pieza.tipo == "vitrina" else 0.5
@@ -779,6 +874,33 @@ func _extraer_pieza(dano: float, pos: Vector2, lado_max: float, por_pasos := fal
 		derrumbando = true
 		run.registrar_derrumbe()
 	return valor if lado_max > 0 else valor * 0.65
+
+
+## Hasta dieciséis celdas, podadas por la zona fija de treinta y dos unidades.
+## Los contactos salen del árbol y conservan visibilidad/fila activa: encontrar
+## material detrás de un piso no autoriza proyectar el veneno a la otra cara.
+func _celda_erosion_en_zona(ancla: Vector2, zona: Rect2) -> int:
+	var fila := 0
+	if _por_pisos:
+		for i in vivas:
+			fila = maxi(fila, i / grilla.x as int)
+	var mejor := -1
+	var distancia := INF
+	for i in vivas:
+		if _por_pisos and (i / grilla.x as int) != fila:
+			continue
+		if not mordiscos.limites_celda(i).intersects(zona, true):
+			continue
+		var contacto := mordiscos.punto_frontera(i, ancla, zona, true)
+		if contacto == Vector2.INF:
+			continue
+		if i == _celda_erosion and mordiscos.erosion_pagable(i):
+			return i
+		var d := ancla.distance_squared_to(contacto)
+		if d < distancia:
+			mejor = i
+			distancia = d
+	return mejor
 
 func _pierde_soportes() -> bool:
 	# No barrer el último tercio del mueble sin que nadie lo coma. Sólo se
@@ -812,21 +934,24 @@ func tamano_bocado() -> Vector2:
 	return _porcion_reciente.size
 
 
-func _registrar_retroceso(celda: int) -> void:
+func _registrar_retroceso(celda: int, porcion := Rect2()) -> void:
 	var anterior := _limites_fisicos[celda]
 	var nuevo := mordiscos.limites_celda(celda).intersection(_limites_celda[celda])
-	if anterior == nuevo:
+	# La porción retirada importa incluso si quedan píxeles en los cuatro
+	# extremos del AABB. No reiniciar el reloj al sumar otra boca al frente.
+	var zona := porcion
+	if anterior == nuevo and not zona.has_area():
 		return
 	if not _geometria_pendiente:
 		_geometria_pendiente = true
 		_reloj_geometria = INTERVALO_GEOMETRIA
 	# Se actualiza sólo la franja que puede haberse vuelto transitable.
-	var zona := Rect2()
 	if not nuevo.has_area():
-		zona = anterior
+		zona = zona.merge(anterior) if zona.has_area() else anterior
 	else:
 		if nuevo.position.x > anterior.position.x:
-			zona = Rect2(anterior.position, Vector2(nuevo.position.x - anterior.position.x, anterior.size.y))
+			var tira := Rect2(anterior.position, Vector2(nuevo.position.x - anterior.position.x, anterior.size.y))
+			zona = zona.merge(tira) if zona.has_area() else tira
 		if nuevo.end.x < anterior.end.x:
 			var tira := Rect2(Vector2(nuevo.end.x, anterior.position.y), Vector2(anterior.end.x - nuevo.end.x, anterior.size.y))
 			zona = zona.merge(tira) if zona.has_area() else tira
@@ -841,15 +966,17 @@ func _registrar_retroceso(celda: int) -> void:
 	set_process(true)
 
 
-func _sincronizar_formas_vivas() -> void:
+func _sincronizar_formas_vivas() -> bool:
 	if mordiscos == null:
-		return
+		return false
+	var cambiaron := false
 	for i in celdas.size():
 		var limite := mordiscos.limites_celda(i).intersection(_limites_celda[i])
 		if limite == _limites_fisicos[i]:
 			continue
 		_limites_fisicos[i] = limite
 		_tiene_retroceso = true
+		cambiaron = true
 		var partes: Array[Rect2] = []
 		if limite.has_area():
 			for original: Rect2 in _formas_por_celda[i]:
@@ -857,11 +984,16 @@ func _sincronizar_formas_vivas() -> void:
 				if parte.has_area():
 					partes.append(parte)
 		_formas_activas_por_celda[i] = partes
+	return cambiaron
 
 
 func _actualizar_colision(zona := Rect2()) -> void:
-	_sincronizar_formas_vivas()
-	_reconstruir_formas()
+	if _sincronizar_formas_vivas():
+		_reconstruir_formas()
+	else:
+		# La geometría fina también cambió aunque el perfil grueso sea igual.
+		# Invalidar los puestos sin volver a recorrer sus bandas originales.
+		version_forma += 1
 	_accesos.clear()
 	_distancia_nido = distancia_a(Vector2.ZERO)
 	casa.recortar_pieza(pieza.clave, _formas.duplicate(), zona)
@@ -879,6 +1011,8 @@ func _actualizar_mascara() -> void:
 	if mordiscos != null:
 		mordiscos.actualizar_textura()
 	_mascara.set_shader_parameter("corrosion", minf(1, corrosion))
+	if _ancla_veneno.is_finite():
+		_mascara.set_shader_parameter("centro_corrosion", to_local(_ancla_veneno))
 	queue_redraw()
 
 
@@ -900,7 +1034,7 @@ func _process(delta: float) -> void:
 		_reloj_geometria -= delta
 		if _reloj_geometria <= 0:
 			_actualizar_colision(_zona_geometria)
-	if veneno_restante > 0:
+	if veneno_restante > 0 or _veneno_acumulado > 0:
 		corrosion = maxf(corrosion, 2)
 		_procesar_veneno(delta)
 		if muerta:
@@ -940,7 +1074,7 @@ func _process(delta: float) -> void:
 		_reloj_dibujo = 0.08
 		_sucio = false
 		_actualizar_mascara()
-	if not _sucio and not _geometria_pendiente and not derrumbando and veneno_restante <= 0 and corrosion <= 0:
+	if not _sucio and not _geometria_pendiente and not derrumbando and veneno_restante <= 0 and _veneno_acumulado <= 0 and corrosion <= 0:
 		set_process(false)
 
 func _finalizar() -> void:

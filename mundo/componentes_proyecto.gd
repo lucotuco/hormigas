@@ -4,7 +4,7 @@ extends RefCounted
 ## No reconstruye porcentajes, no paga recursos y no consulta la partida.
 const RUTA := "res://datos/componentes_proyecto.csv"
 const ENCABEZADO := "objetivo,tipo,perfil,grilla_x,grilla_y,alias,nombre,celdas,tesoro"
-const CASA := {"casa/carton_inicial": "silla", "casa/alacena_cocina": "alacena"}
+const CASA := {"casa/carton_inicial": "silla", "casa/alacena_cocina": "alacena", "casa/silla_inicial": "silla"}
 static var _cargado := false
 static var _objetivos: Dictionary = {}
 static var _componentes: Dictionary = {}
@@ -93,6 +93,8 @@ static func id_para_pieza(datos: Dictionary, destino: String) -> String:
 		return ""
 	if datos.get("practica", false):
 		return "casa/carton_inicial"
+	if datos.get("perfil", "") == "silla_inicial":
+		return "casa/silla_inicial"
 	if datos.tipo == "alacena" and datos.rect.position == Vector2(-850, 800):
 		return "casa/alacena_cocina"
 	return ""

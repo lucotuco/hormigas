@@ -86,6 +86,8 @@ func probar_plano() -> void:
 			if PlanoHormiguero.rect(ids[i]).grow(4).intersects(PlanoHormiguero.rect(ids[j]).grow(4)):
 				pisadas.append("%s/%s" % [ids[i], ids[j]])
 	verificar(pisadas.is_empty(), "ninguna cámara se pisa con otra (%s)" % ", ".join(pisadas))
+	for par in [["buche", "migas_brillantes"], ["mandibulas", "mandibulas_destello"], ["alarma", "pulso_colonia"]]:
+		verificar(_tunel(par[0], par[1]) >= 0 and not PlanoHormiguero.RAICES.has(par[1]) and PlanoHormiguero.rect(par[1]).size.x >= 70, "la mejora visual %s tiene una cámara propia y una rama opcional desde %s" % [par[1], par[0]])
 
 
 func probar_ficha_y_compra() -> void:

@@ -55,6 +55,15 @@ func probar_curvas() -> void:
 
 
 func probar_audio() -> void:
+	var hormiga := Hormiga.new()
+	var mesa := PiezaCasa.new()
+	mesa.pieza = {"tipo": "mesa_comedor"}
+	mesa.nivel_requerido = 3
+	hormiga._material_carga = 3
+	verificar(hormiga._sonido_bocado(mesa) == "mordida_madera" and hormiga._material_carga == 3,
+		"la mesa final suena a madera aunque su dieta sea 3, sin cambiar la categoría económica")
+	mesa.free()
+	hormiga.free()
 	var familias := ["mordida", "mordida_carton", "mordida_madera", "mordida_piedra", "levantar"]
 	var firmas := {}
 	for nombre: String in familias:
@@ -161,7 +170,7 @@ func probar_ciclo() -> void:
 	var rotacion := h.rotation
 	for i in 50:
 		h._actualizar_sprite()
-	verificar(not h._levantando_retazos, "el último redibujo asienta las muestras al terminar 0,18 s y después apaga su animación")
+	verificar(not h._levantando_retazos, "el último redibujo asienta las muestras al terminar el levantado y después apaga su animación")
 	verificar(h.position == posicion and h.rotation == rotacion and h._reloj_mordida == reloj_pose and h.carga == 6.25 and fuente.intentos == 5, "actualizar la pose no mueve la hormiga física, no cambia el reloj ni vuelve a extraer")
 	verificar(not h._cuerpo.position.is_zero_approx() and not h._cuerpo.scale.is_equal_approx(Vector2.ONE / 3), "sólo el sprite prepara el gesto, con el cuerpo físico intacto")
 	verificar(is_equal_approx(h._escala_retazo(h._retazos[0]).x * h._retazos[0].size.x * absf(h.global_scale.x), 4), "la pose del cuerpo no escala el material transportado")
@@ -191,7 +200,7 @@ func probar_ciclo() -> void:
 	verificar(h.carga == 0 and Juego.migas_run == 6.25 and h._retazos.is_empty() and h._origenes_retazos.is_empty() and h._tiempos_retazos.is_empty() and not h._carga_sprite.visible, "el regreso acredita una sola entrega real y limpia de inmediato todas las muestras, sin cargas fantasma")
 	var credito := Juego.migas_run
 	h._actualizar_sprite()
-	verificar(Juego.migas_run == credito and h._tiempo_descarga == h._reloj_vida and h._cuerpo.position.x > 0, "el asentado de entrega es sólo visual y no vuelve a cobrar el material")
+	verificar(Juego.migas_run == credito and h._tiempo_descarga == h._reloj_vida and h.estado == Hormiga.Estado.QUIETA and h._cuerpo.position.is_zero_approx() and not h._masticando_animacion, "terminar de entregar en retirada deja el cuerpo en reposo y no vuelve a cobrar el material")
 	run.queue_free()
 	await get_tree().process_frame
 

@@ -82,7 +82,8 @@ func probar_arana() -> void:
 	Juego._cache_stats.clear()
 	var run := await _run(2.5)
 	var arana: Evento = run.eventos.aparecer("arana")[0]
-	verificar(arana.position.length() > run.radio_actual, "la araña entra desde el borde del territorio")
+	verificar(arana.position.length() < run.radio_actual and run.cocina.libre(arana.position, 18.0)
+		and arana._aviso_restante > 0.0, "la araña entra cerca del trabajo, sobre piso libre y con aviso previo")
 	Engine.time_scale = 4.0
 	var hormigas := run.colonia.cantidad()
 	for i in 600:
@@ -238,7 +239,8 @@ func probar_aparicion_sola() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var amenazas := run.eventos.activos.filter(func(e: Evento) -> bool: return e.es_amenaza()).size()
-	verificar(amenazas == 1, "al principio del restaurante nunca hay dos amenazas a la vez")
+	verificar(amenazas == 2 and run.eventos.grupos_de_amenaza() <= Eventos.amenazas_simultaneas(),
+		"el restaurante puede sostener dos encuentros iniciales dentro de su cupo")
 	run.tiempo_restante = 0.0
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -248,7 +250,7 @@ func probar_aparicion_sola() -> void:
 
 func probar_presion() -> void:
 	Juego.reiniciar_estado()
-	verificar(Eventos.presion() == 0 and Eventos.amenazas_simultaneas() == 1, "en la casa, sin mejoras, hay una amenaza por vez")
+	verificar(Eventos.presion() == 0 and Eventos.amenazas_simultaneas() == 2, "en la casa hay hasta dos encuentros, sin adelantar su desbloqueo")
 	Juego.lugar_actual = "coliseo"
 	Juego.niveles = {"mas_obreras": 30, "mandibulas": 40, "buche": 10, "excavar": 36, "reservas": 12, "antenas": 10, "rastro_persistente": 10, "patas_largas": 15}
 	verificar(Eventos.presion() == 4 + Eventos.MAX_PRESION_MEJORAS and Eventos.amenazas_simultaneas() == Eventos.MAX_AMENAZAS, "más destino y más mejoras suben la presión hasta %d amenazas a la vez" % Eventos.MAX_AMENAZAS)
@@ -272,7 +274,7 @@ func probar_presion() -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame
 	var gatos := run.eventos.activos.filter(func(e: Evento) -> bool: return e.es_amenaza()).size()
-	verificar(gatos == Eventos.MAX_AMENAZAS, "con la colonia crecida se juntan %d gatos, no más (%d)" % [Eventos.MAX_AMENAZAS, gatos])
+	verificar(gatos == Eventos.MAX_AMENAZAS, "con la colonia crecida se juntan %d amenazas, no más (%d)" % [Eventos.MAX_AMENAZAS, gatos])
 	await _cerrar(run)
 
 

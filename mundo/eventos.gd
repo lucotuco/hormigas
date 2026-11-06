@@ -4,7 +4,7 @@ signal botin_terminado
 ## Decide cuándo aparece la amenaza de cada destino y la miga dorada, recibe
 ## los clics (antes que la comida) y reparte los premios.
 ##
-## - Amenazas: una por destino, para que cada lugar se juegue distinto. Desde
+## - Amenazas: propias de cada destino y oportunistas según la carga/restos. Desde
 ##   la sexta expedición (Juego.REVELABLES "amenazas").
 ## - Miga dorada: un premio al azar si la pisás antes de que desaparezca.
 ##   Desde la tercera expedición.
@@ -14,18 +14,17 @@ const AMENAZAS := {"casa": "arana", "restaurante": "mozo", "museo": "aspiradora"
 const VARIANTES := {"casa": "cucaracha", "restaurante": "cucaracha", "museo": "cucaracha", "obelisco": "escarabajo", "coliseo": "escarabajo", "eiffel": "escarabajo"}
 const CADENCIA_DESTINO := {"casa": 1.0, "restaurante": 0.96, "museo": 0.93, "obelisco": 0.9, "coliseo": 0.86, "eiffel": 0.83}
 const PALOMAS_POR_BANDADA := 3
-## Segundos hasta la primera aparición y entre apariciones (mínimo, máximo).
-const PRIMERA_AMENAZA := Vector2(12.0, 18.0)
-const ENTRE_AMENAZAS := Vector2(20.0, 22.0)
+## Cadencia de amenazas: datos/ritmo_amenazas.csv. Las doradas conservan su ritmo.
 const PRIMERA_DORADA := Vector2(18.0, 28.0)
 const ENTRE_DORADAS := Vector2(45.0, 70.0)
 ## Presión: cuánto avanzó la colonia. Cada destino suma 1 y cada
 ## NIVELES_POR_PRESION niveles de mejoras comprados en esta colonia suman 1
 ## (hasta MAX_PRESION_MEJORAS). Con más presión las amenazas vienen más
-## seguido y pueden juntarse varias a la vez. Son las mismas amenazas, más.
+## seguido y pueden juntarse varios grupos, con un techo de individuos real.
 const NIVELES_POR_PRESION := 40
 const MAX_PRESION_MEJORAS := 4
-const MAX_AMENAZAS := 3 # Individuos reales: una bandada usa los tres lugares.
+const MAX_AMENAZAS := 4 # Individuos reales; una bandada usa tres lugares.
+static var _parametros: Dictionary = {}
 ## Cada punto de presión acorta la espera entre amenazas un 12%.
 const ACORTA_POR_PRESION := 0.12
 ## Botín: la stat botin_eventos (parte de lo juntado en la expedición) con
@@ -42,6 +41,20 @@ var _grupo := 0
 var _limite_grupos := 1
 
 
+static func parametro(id: String) -> float:
+	if _parametros.is_empty():
+		var archivo := FileAccess.open("res://datos/ritmo_amenazas.csv", FileAccess.READ)
+		if archivo == null:
+			push_error("No se pudo leer datos/ritmo_amenazas.csv")
+			return 0.0
+		archivo.get_csv_line()
+		while not archivo.eof_reached():
+			var fila := archivo.get_csv_line()
+			if fila.size() >= 2 and not fila[0].is_empty():
+				_parametros[fila[0]] = fila[1].to_float()
+	return float(_parametros.get(id, 0.0))
+
+
 ## 0 en la casa al empezar; hasta 9 en la Torre Eiffel con la colonia crecida.
 static func presion() -> int:
 	var niveles := 0
@@ -52,19 +65,19 @@ static func presion() -> int:
 
 ## Cuántas amenazas puede haber a la vez (una bandada de palomas cuenta como una).
 static func amenazas_simultaneas() -> int:
-	return mini(MAX_AMENAZAS, 1 + presion() / 2)
+	return mini(MAX_AMENAZAS, int(parametro("simultaneas_base")) + presion() / maxi(1, int(parametro("presion_por_amenaza"))))
 
 
 static func espera_entre_amenazas() -> float:
 	var factor := float(CADENCIA_DESTINO.get(Juego.lugar_actual, 1.0))
-	return clampf(randf_range(ENTRE_AMENAZAS.x, ENTRE_AMENAZAS.y) * factor / (1.0 + ACORTA_POR_PRESION * presion()), 12.0, 22.0)
+	return clampf(randf_range(parametro("entre_min"), parametro("entre_max")) * factor / (1.0 + ACORTA_POR_PRESION * presion()), parametro("espera_min"), parametro("espera_max"))
 
 
 func iniciar(r: Run) -> void:
 	run = r
 	_cerrado = false
 	_limite_grupos = amenazas_simultaneas() # Las compras no cambian dentro de la expedición.
-	_reloj_amenaza = maxf(8.0, randf_range(PRIMERA_AMENAZA.x, PRIMERA_AMENAZA.y) / (1.0 + ACORTA_POR_PRESION * presion()))
+	_reloj_amenaza = randf_range(parametro("primera_min"), parametro("primera_max"))
 	_reloj_dorada = randf_range(PRIMERA_DORADA.x, PRIMERA_DORADA.y) * Juego.stat("intervalo_doradas")
 
 
@@ -107,6 +120,16 @@ func _proxima_amenaza() -> String:
 	var tipo: String = AMENAZAS.get(Juego.lugar_actual, "arana")
 	if _turno_amenaza % 2 == 1:
 		tipo = VARIANTES.get(Juego.lugar_actual, "cucaracha")
+	if _turno_amenaza % 4 == 2:
+		for h in run.colonia.hormigas:
+			if h.carga > 0:
+				tipo = "avispa"
+				break
+	elif _turno_amenaza % 4 == 3:
+		for resto in run.comidas.fragmentos:
+			if is_instance_valid(resto) and not resto.muerta and resto.en_territorio(run.radio_actual):
+				tipo = "rival"
+				break
 	_turno_amenaza += 1
 	return tipo
 
@@ -133,7 +156,7 @@ func hay_amenaza() -> bool:
 ## Hace aparecer un evento ya (lo usan las pruebas y el bot de balance).
 func aparecer(tipo: String) -> Array[Evento]:
 	var nuevos: Array[Evento] = []
-	if _cerrado or not is_instance_valid(run) or not run.activa or not Evento.DATOS.has(tipo):
+	if _cerrado or not is_instance_valid(run) or not run.activa or Evento.datos_tipo(tipo).is_empty():
 		return nuevos
 	var cantidad := PALOMAS_POR_BANDADA if tipo == "paloma" else 1
 	if tipo != "dorada":
@@ -144,13 +167,18 @@ func aparecer(tipo: String) -> Array[Evento]:
 				return nuevos
 	_grupo += 1
 	for i in cantidad:
+		var punto := _lugar_de_entrada(tipo)
+		if punto == Vector2.INF:
+			continue # No aparecer dentro de una pared ni junto a una obrera sin aviso.
 		var e := Evento.new()
 		e.grupo = _grupo
 		add_child(e)
-		e.iniciar(run, tipo, _lugar_de_entrada(tipo))
+		e.iniciar(run, tipo, punto)
 		e.terminado.connect(_terminado)
 		activos.append(e)
 		nuevos.append(e)
+		if tipo != "dorada":
+			run.efectos.amenaza(e.position, "aviso", e.radio() * 1.8, Vector2.ZERO, Evento.AVISO_ENTRADA)
 	if nuevos.is_empty():
 		return nuevos
 	if tipo == "dorada":
@@ -171,6 +199,8 @@ func _aviso(tipo: String) -> String:
 		"rata": return tr("¡Una rata! Quiere robarse lo más rico")
 		"cucaracha": return tr("¡Una cucaracha! Espantala mientras abre la comida")
 		"escarabajo": return tr("¡Un escarabajo! Espantalo antes de que cargue los restos")
+		"avispa": return tr("¡Una avispa! Espantala antes de que se lleve una carga")
+		"rival": return tr("¡Una hormiga rival! Quiere llevarse los restos")
 	return ""
 
 
@@ -181,9 +211,31 @@ func _lugar_de_entrada(tipo: String) -> Vector2:
 			var vista := run.camara.get_screen_center_position()
 			var p := vista + Vector2.from_angle(randf() * TAU) * randf_range(60.0, 260.0)
 			return p.limit_length(run.radio_actual * 0.85)
-		"mozo", "gato":
-			return Vector2.ZERO
-	return Vector2.from_angle(randf() * TAU) * (run.radio_actual + 40.0)
+	# Una frontera territorial puede quedar a9500 unidades: a55u/s, la
+	# amenaza vieja tardaba minutos en llegar. El encuentro nace cerca del
+	# trabajo visible, con piso válido, distancia de reacción y aviso de entrada.
+	var radio_entrada := maxf(0, run.radio_actual - 40.0)
+	var centro := run.camara.get_screen_center_position().limit_length(radio_entrada)
+	if run.feromonas.activa:
+		centro = run.feromonas.posicion.limit_length(radio_entrada)
+	else:
+		var distancia := INF
+		var referencia := centro
+		for h in run.colonia.hormigas:
+			if h.estado == Hormiga.Estado.QUIETA:
+				continue
+			var d := referencia.distance_squared_to(h.position)
+			if d < distancia and get_viewport_rect().has_point(run.a_pantalla(h.position)):
+				centro = h.position
+				distancia = d
+	var angulo := randf() * TAU
+	for i in 16:
+		var direccion := Vector2.from_angle(angulo + i * TAU / 16.0)
+		var radio := lerpf(parametro("radio_interes_min"), parametro("radio_interes_max"), float(i % 4) / 3.0)
+		var punto := (centro + direccion * radio).limit_length(radio_entrada)
+		if run.cocina.libre(punto, 18.0, tipo == "avispa") and run.colonia.hormigas_cerca(punto, parametro("distancia_segura"), 1).is_empty():
+			return punto
+	return Vector2.INF
 
 
 ## Recibe un clic del jugador. Devuelve true si le pegó a algo (la comida de
@@ -240,7 +292,9 @@ func premiar(e: Evento) -> float:
 				run.hud.mostrar_aviso(tr("¡Lluvia de migas! +%s") % Juego.formatear(premio))
 	else:
 		Juego.sumar_estadistica("amenazas_vencidas")
-		premio = base + e.botin * 1.5
+		# Los encuentros nuevos sólo restituyen su carga exacta. Los tipos
+		# anteriores conservan el bonus explícito de recuperación ya balanceado.
+		premio = base + e.botin * (1.0 if e.tipo in ["avispa", "rival"] else 1.5)
 		match e.tipo:
 			"mozo":
 				# Tropieza y se le cae la bandeja entera.

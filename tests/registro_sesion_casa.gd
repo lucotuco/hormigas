@@ -16,6 +16,12 @@ var _inicio_usec := 0
 var _reloj := 0.0
 var _fundaciones := 0
 var _hitos: Dictionary = {}
+var _componentes: Dictionary = {}
+var _hallazgos: Dictionary = {}
+var _tesoros: Dictionary = {}
+var _meta_observada := ""
+var _entregas_observadas := 0
+var _valor_entregado := 0.0
 var _casa := false
 var _escena_previa := ""
 var _run_actual: Run
@@ -35,6 +41,9 @@ func _ready() -> void:
 	_inicio_usec = Time.get_ticks_usec()
 	_fundaciones = Juego.fundaciones
 	_hitos = Juego.hitos.duplicate()
+	_componentes = Juego.componentes_proyecto_devorados.duplicate()
+	_hallazgos = Juego.hallazgos_casa_abiertos.duplicate()
+	_tesoros = Juego.tesoros_proyecto_abiertos.duplicate()
 	_casa = Juego.lugares_completados.has("casa")
 	Juego.mejora_comprada.connect(_al_comprar_mejora)
 	Juego.casta_comprada.connect(_al_comprar_casta)
@@ -77,14 +86,32 @@ func _crear_aviso() -> void:
 	_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_aviso.offset_left = -290
 	_aviso.offset_right = 290
-	_aviso.offset_top = 60
-	_aviso.offset_bottom = 78
+	_aviso.offset_top = 80
+	_aviso.offset_bottom = 98
 	_aviso.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_capa.add_child(_aviso)
 
 func _muestrear() -> void:
 	_observar_escena(get_tree().current_scene)
 	_observar_run()
+	_observar_descubrimientos()
+	_observar_meta()
+
+
+func _observar_meta() -> void:
+	var meta := Juego.proxima_meta()
+	if is_instance_valid(_run_actual) and is_instance_valid(_run_actual.casa):
+		var escena: Dictionary = _run_actual.casa.meta()
+		if not escena.is_empty():
+			meta = escena
+	# El importe/progreso cambia con cada ingreso, pero la intención sólo
+	# cambia por tipo + objetivo. No llenar el informe de ticks de dinero.
+	var clave := str(meta.get("tipo", "")) + ":" + str(meta.get("id", ""))
+	if clave == _meta_observada:
+		return
+	_meta_observada = clave
+	_agregar_evento("proxima_meta", {"tipo": meta.get("tipo", ""),
+		"id": meta.get("id", ""), "accion": meta.get("accion", "")})
 
 func _observar_run() -> void:
 	if is_instance_valid(_run_actual):
@@ -103,27 +130,37 @@ func _observar_escena(escena: Node) -> void:
 	if escena is Run and escena != _run_actual:
 		_run_actual = escena
 		_run_cerrada = false
+		_entregas_observadas = 0
+		_valor_entregado = 0.0
+		if escena.has_signal("entrega_real") and not escena.is_connected("entrega_real", _al_entrega_real):
+			escena.connect("entrega_real", _al_entrega_real)
+		if escena.comidas.has_signal("atajo_abierto") and not escena.comidas.is_connected("atajo_abierto", _al_atajo_abierto):
+			escena.comidas.connect("atajo_abierto", _al_atajo_abierto)
+		if is_instance_valid(escena.casa) and not escena.casa.etapa_cambio.is_connected(_al_etapa_cambio):
+			escena.casa.etapa_cambio.connect(_al_etapa_cambio)
 		expediciones_comenzadas += 1
 		_run_contexto = {"expedicion": expediciones_comenzadas, "destino": Juego.lugar_actual,
 			"colonia": Juego.fundaciones, "dieta": int(Juego.stat("materiales")),
 			"hormigas_iniciales": int(Juego.stat("hormigas_iniciales")),
-			"territorio": Juego.stat("radio_territorio"), "inicio_activo": _tiempo_activo}
+			"territorio": Juego.stat("radio_territorio"), "inicio_activo": _tiempo_activo,
+			"capacidades": _capacidades()}
 		_agregar_evento("inicio_expedicion", _run_contexto)
 		_marcar_primero("primera_expedicion", _run_contexto)
 	elif not escena is Run:
 		_run_actual = null
 
 func _al_comprar_mejora(id: String, nivel: int) -> void:
-	_agregar_evento("compra_mejora", {"id": id, "nivel": nivel})
+	_agregar_evento("compra_mejora", {"id": id, "nivel": nivel, "capacidades": _capacidades()})
 	_marcar_primero("primera_compra", {"id": id, "nivel": nivel})
 	if DIETAS.has(id):
 		_marcar_primero(DIETAS[id], {"nivel": nivel})
 
 func _al_comprar_casta(id: String, cantidad: int) -> void:
-	_agregar_evento("compra_casta", {"id": id, "cantidad": cantidad})
+	_agregar_evento("compra_casta", {"id": id, "cantidad": cantidad, "capacidades": _capacidades()})
 	_marcar_primero("primera_casta", {"id": id})
 
 func _al_progreso() -> void:
+	_observar_descubrimientos()
 	# Una memoria comprada al fundar puede enseñar una dieta sin que exista
 	# la compra normal. También se registra, con su procedencia explícita.
 	var material := int(Juego.stat("materiales"))
@@ -143,6 +180,58 @@ func _al_progreso() -> void:
 		_fundaciones = Juego.fundaciones
 		_agregar_evento("fundacion", {"colonia": _fundaciones, "jalea": Juego.jalea, "decreto": Juego.decreto})
 		_marcar_primero("primera_fundacion", {"jalea": Juego.jalea, "decreto": Juego.decreto})
+
+
+func _capacidades() -> Dictionary:
+	# Una muestra por compra/comienzo, nunca por hormiga o por cuadro.
+	return {"obreras": int(Juego.stat("hormigas_iniciales")),
+		"especialistas": Juego.total_especialistas(), "dano": Juego.stat("dano"),
+		"intervalo_mordida": Juego.stat("intervalo_mordida"),
+		"capacidad": Juego.stat("capacidad"), "velocidad": Juego.stat("velocidad"),
+		"materiales": int(Juego.stat("materiales")), "entradas": int(Juego.stat("entradas")),
+		"llamado": int(Juego.stat("feromona_cantidad"))}
+
+
+func _observar_descubrimientos() -> void:
+	for id: String in Juego.componentes_proyecto_devorados:
+		if not _componentes.has(id):
+			_componentes[id] = true
+			_agregar_evento("componente_completo", {"id": id})
+			_marcar_primero("primer_componente", {"id": id})
+	for id: String in Juego.hallazgos_casa_abiertos:
+		if not _hallazgos.has(id):
+			_hallazgos[id] = true
+			_agregar_evento("paquete_abierto", {"id": id})
+			_marcar_primero("primer_paquete", {"id": id})
+	for id: String in Juego.tesoros_proyecto_abiertos:
+		if not _tesoros.has(id):
+			_tesoros[id] = true
+			_agregar_evento("escondite_abierto", {"id": id})
+			_marcar_primero("primer_escondite", {"id": id})
+
+
+func _al_entrega_real(cantidad: float, categoria := 0) -> void:
+	if cantidad <= 0 or not is_finite(cantidad) or not is_instance_valid(_run_actual) or _run_actual.terminada:
+		return
+	_entregas_observadas += 1
+	_valor_entregado += cantidad
+	_marcar_primero("primera_entrega", {"migas": cantidad, "categoria": categoria})
+	# Totales por expedición, sólo tres hitos por señal: 500 hormigas no
+	# desplazan compras y descubrimientos con miles de eventos de entrega.
+	if _entregas_observadas in [5, 20, 100]:
+		_agregar_evento("tanda_entregas", {"cantidad": _entregas_observadas, "migas": _valor_entregado})
+
+
+func _al_atajo_abierto(comida: Comida) -> void:
+	if not is_instance_valid(_run_actual) or not _run_actual.activa or not is_instance_valid(comida):
+		return
+	_agregar_evento("atajo_abierto", {"comida": comida.id, "destino": Juego.lugar_actual})
+	_marcar_primero("primer_atajo", {"comida": comida.id})
+
+
+func _al_etapa_cambio(id: String) -> void:
+	if not id.is_empty() and is_instance_valid(_run_actual) and _run_actual.activa and not _run_actual.terminada:
+		_agregar_evento("etapa_casa", {"id": id})
 
 func _al_cambiar_migas(_saldo: float) -> void:
 	# terminar_run emite después de fijar terminada: conserva la última run
@@ -166,7 +255,8 @@ func _resumir_run() -> void:
 		"ingresos_por_material": _run_actual.ingresos.duplicate(),
 		"comidas": Juego.comidas_destruidas_run, "partes": Juego.partes_destruidas_run,
 		"objetivo": _run_actual.progreso_objetivo, "limpieza": _run_actual.limpieza_lograda,
-		"carga_pendiente": _run_actual.cargas_pendientes}, true)
+		"carga_pendiente": _run_actual.cargas_pendientes,
+		"entregas_observadas": _entregas_observadas, "valor_transportado": _valor_entregado}, true)
 	_guardar_resumen(resumen)
 	_agregar_evento("fin_expedicion", {"expedicion": expediciones_comenzadas, "migas": Juego.migas_run,
 		"duracion": _run_actual.tiempo_jugado + _run_actual.tiempo_retirada})
@@ -193,7 +283,7 @@ func tiempo_transcurrido() -> float:
 	return maxf(0, (Time.get_ticks_usec() - _inicio_usec) / 1000000.0)
 
 func informe() -> Dictionary:
-	return {"formato": "hormigas_sesion_casa", "version": 1, "version_mapa": Mundos.VERSION_CONTENIDO,
+	return {"formato": "hormigas_sesion_casa", "version": 2, "version_mapa": Mundos.VERSION_CONTENIDO,
 		"guardado_personal": false, "tiempo_activo": _tiempo_activo,
 		"tiempo_transcurrido": tiempo_transcurrido(), "primeros": primeros.duplicate(true),
 		"eventos": eventos.duplicate(true), "eventos_omitidos": eventos_omitidos,
@@ -232,6 +322,7 @@ func abrir_informe() -> void:
 	scroll.add_child(hitos)
 	hitos.add_child(Estilo.etiqueta(tr("Primeros hitos · tiempo activo"), 18, Estilo.TEXTO))
 	var nombres := {"primera_expedicion": tr("Primera expedición"), "primer_ingreso_observado": tr("Primer ingreso observado"),
+		"primera_entrega": tr("Primera entrega"),
 		"primera_compra": tr("Primera mejora comprada"), "primera_casta": tr("Primera casta comprada"),
 		"madera": tr("Madera y telas"), "resistentes": tr("Materiales resistentes"), "muros": tr("Paredes"),
 		"primera_silla": tr("Primera silla devorada"), "casa_conquistada": tr("Casa conquistada"),

@@ -2,22 +2,27 @@ extends Node
 ## Un atlas compartido: sprites preiluminados y arte procedural horneados una vez.
 signal preparado
 const CUADROS := 8
+const CUADROS_MASTICAR := 4
+const RESOLUCION_MUEBLE := 512.0
+const RESOLUCION_DETALLE_CASA := 560.0
+const MAX_BYTES_DETALLE_CASA := 12 * 1024 * 1024
+const MAX_BYTES_ATLAS := 51904512 # 49,5 MiB: no superar el atlas anterior.
+const EMPAQUETADO := preload("res://global/empaquetado_atlas.gd")
 var listo := false
 var textura: Texture2D
 var regiones: Dictionary = {}
 var tamanos: Dictionary = {}
 var _viewport: SubViewport
-var _x := 4
-var _y := 4
-var _alto_fila := 0
+var _posiciones_atlas: Dictionary = {}
 var _pendientes: Array[Dictionary] = []
 var _mueble_claves: Dictionary = {}
 var _mueble_medidas: Dictionary = {}
 var _regiones_muebles_crudas: Dictionary = {}
 var _rects_muebles_crudos: Dictionary = {}
-var _alturas := PackedInt32Array()
-var _alto_atlas := 4
 var _animaciones: Dictionary = {}
+## Sólo RGBA8 del atlas compartido, no toda la VRAM del renderer. El segundo
+## pase de recorte sigue siendo temporal y no duplica el recurso permanente.
+var presupuesto_atlas: Dictionary = {}
 ## Geometría del arte prehorneada: idéntica en juego y simulación headless.
 ## Nunca se lee la GPU para decidir cuánto material o dinero se extrae.
 var _formas_alimentos: Dictionary = {}
@@ -33,12 +38,13 @@ var pixeles_lectura_atlas := 0
 const GRILLA_SILUETA_ALIMENTO := 8
 const ALPHA_MATERIAL_ALIMENTO := 0.55
 
-func animacion(tipo: String, evolucion: int) -> Array[Rect2]:
-	var clave := "%s:%d" % [tipo, evolucion]
+func animacion(tipo: String, evolucion: int, masticando := false) -> Array[Rect2]:
+	var clave := "%s:%d:%s" % [tipo, evolucion, masticando]
 	if not _animaciones.has(clave):
 		var cuadros: Array[Rect2] = []
-		for i in CUADROS:
-			cuadros.append(regiones["hormiga:%s:%d:%d" % [tipo, evolucion, i]])
+		var familia := "masticar" if masticando else "hormiga"
+		for i in CUADROS_MASTICAR if masticando else CUADROS:
+			cuadros.append(regiones["%s:%s:%d:%d" % [familia, tipo, evolucion, i]])
 		_animaciones[clave] = cuadros
 	return _animaciones[clave]
 
@@ -47,13 +53,16 @@ class Pintura extends Node2D:
 	var datos: Dictionary
 	var fase := 0.0
 	var evolucion := 0
+	var masticando := false
 	func _draw() -> void:
 		if tipo == "hormiga":
-			AspectoHormiga.dibujar(self, datos.id, datos.color, fase, false, Color.WHITE, evolucion)
+			AspectoHormiga.dibujar(self, datos.id, datos.color, fase, false, Color.WHITE, evolucion, masticando)
 		elif tipo == "mueble":
 			DibujoCasa.mueble(self, datos)
 		elif tipo == "pared":
-			DibujoCasa.pared(self, Rect2(0, 0, 96, 64))
+			# Es material transportable, no el muro del mapa. Su sombra externa
+			# salía de la reserva y manchaba una hormiga vecina del atlas.
+			DibujoCasa.pared(self, Rect2(0, 0, 96, 64), false)
 		elif tipo == "reposteria":
 			_dulce()
 		elif tipo == "hallazgo":
@@ -110,7 +119,20 @@ func _ready() -> void:
 				p.datos = c
 				p.evolucion = evolucion
 				p.fase = TAU * cuadro / CUADROS
-				_agregar("hormiga:%s:%d:%d" % [c.id, evolucion, cuadro], p, Rect2(-12, -12, 24, 24), 3)
+				# Las no voladoras caben completas en 18u. Recortar sólo aire del
+				# marco libera espacio para comer, a los mismos tres texeles/u.
+				var encuadre := Rect2(-12, -12, 24, 24) if c.id == "voladora" else Rect2(-9, -9, 18, 18)
+				_agregar("hormiga:%s:%d:%d" % [c.id, evolucion, cuadro], p, encuadre, 3)
+			# Cuatro poses compactas de trabajo en el mismo atlas. No hay
+			# mandíbulas, materiales ni nodos nuevos por hormiga durante la run.
+			for cuadro in CUADROS_MASTICAR:
+				var p := Pintura.new()
+				p.tipo = "hormiga"
+				p.datos = c
+				p.evolucion = evolucion
+				p.masticando = true
+				p.fase = TAU * cuadro / CUADROS_MASTICAR
+				_agregar("masticar:%s:%d:%d" % [c.id, evolucion, cuadro], p, Rect2(-9, -9, 18, 18), 3)
 	for tipo in Juego.comidas:
 		var comida := Comida.new()
 		comida._usar_cache = false
@@ -126,10 +148,10 @@ func _ready() -> void:
 			var dulce := Pintura.new()
 			dulce.tipo = "reposteria"
 			dulce.datos = ilustracion
-			_agregar("comida:" + tipo.id, dulce, Rect2(-r, -r, r * 2, r * 2), 2)
+			_agregar("comida:" + tipo.id, dulce, Rect2(-r, -r, r * 2, r * 2), 3)
 			comida.free()
 		else:
-			_agregar("comida:" + tipo.id, comida, Rect2(-r, -r, r * 2, r * 2), 2)
+			_agregar("comida:" + tipo.id, comida, Rect2(-r, -r, r * 2, r * 2), 3)
 	# Tres envoltorios pequeños en el MISMO atlas. La misma autoría geométrica
 	# se carga en headless; no se lee la GPU ni se agrega otra comida aleatoria.
 	for hallazgo in CatalogoHallazgos.todos():
@@ -137,7 +159,7 @@ func _ready() -> void:
 		papel.tipo = "hallazgo"
 		papel.datos = hallazgo
 		var r: float = hallazgo.radio + 5.0
-		_agregar("comida:" + hallazgo.id_envoltorio, papel, Rect2(-r, -r, r * 2, r * 2), 2)
+		_agregar("comida:" + hallazgo.id_envoltorio, papel, Rect2(-r, -r, r * 2, r * 2), 3)
 	var catalogo := catalogo_muebles()
 	for i in catalogo.size():
 		var id := clave_mueble(catalogo[i])
@@ -148,11 +170,11 @@ func _ready() -> void:
 		p.datos = catalogo[i].duplicate()
 		var r: Rect2 = p.datos.rect
 		p.datos.rect = Rect2(Vector2.ZERO, r.size)
-		# El dibujo mate conserva líneas amplias a448px; los monumentos guardan
-		# su resolución anterior. Más tipos no implican otra textura por pieza.
-		var resolucion := 448.0 if p.datos.tipo in ArteCasa.ILUSTRADOS else 512.0
-		var escala := minf(0.8, resolucion / maxf(r.size.x + 75, r.size.y + 150))
-		_agregar("mueble:%d" % i, p, Rect2(-35, -100, r.size.x + 75, r.size.y + 150), escala)
+		# Los acabados comparten región entre instancias/destinos. Las sillas
+		# usan un encuadre compacto: resolución en el cuerpo, no en aire vacío.
+		var escala_base := escala_mueble(p.datos, false)
+		var escala := escala_mueble(p.datos)
+		_agregar("mueble:%d" % i, p, rect_horneado_mueble(p.datos), escala, escala_base)
 		_mueble_claves[id] = "mueble:%d" % i
 		_mueble_medidas[id] = r.size
 	for material_id in 4:
@@ -165,14 +187,12 @@ func _ready() -> void:
 	_agregar("material:pared", pared, Rect2(0, 0, 96, 64), 1)
 	var carga := Pintura.new()
 	_agregar("carga", carga, Rect2(-4, -4, 8, 8), 4)
-	# Orden por altura: las camas y bibliotecas no dejan filas casi vacías.
-	_pendientes.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.rect.size.y * a.escala > b.rect.size.y * b.escala)
-	_alturas.resize(127)
-	_alturas.fill(4)
+	_presupuestar_detalle()
 	for pendiente in _pendientes:
 		_montar(pendiente.clave, pendiente.dibujo, pendiente.rect, pendiente.escala)
 	_pendientes.clear()
-	_viewport.size = Vector2i(2048, ceili((_alto_atlas + 4) / 64.0) * 64)
+	_posiciones_atlas.clear()
+	_viewport.size = presupuesto_atlas.actual
 	textura = _viewport.get_texture()
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	await RenderingServer.frame_post_draw
@@ -314,35 +334,80 @@ func _preparar_material_alimento(id: String, radio: float) -> void:
 	_materiales_alimentos[id] = compartido
 	bytes_mascaras_alimentos += mascara.get_width() * mascara.get_height()
 
-func _agregar(clave: String, dibujo: Node2D, rect: Rect2, escala: float) -> void:
-	_pendientes.append({"clave": clave, "dibujo": dibujo, "rect": rect, "escala": escala})
+func _agregar(clave: String, dibujo: Node2D, rect: Rect2, escala: float, escala_base := -1.0) -> void:
+	_pendientes.append({"clave": clave, "dibujo": dibujo, "rect": rect,
+		"escala": escala, "escala_base": escala if escala_base < 0 else escala_base})
+
+
+static func rect_horneado_mueble(datos: Dictionary) -> Rect2:
+	var rect: Rect2 = datos.rect
+	if datos.tipo == "silla" and datos.get("acabado", "") != "carton":
+		return Rect2(Vector2.ZERO, rect.size).grow(4)
+	if datos.tipo in ArteCasa.ILUSTRADOS:
+		# El arte nativo está contenido en su rect físico; conservar sólo el
+		# margen del canto y del AA. Los monumentos raster mantienen su marco.
+		return Rect2(-4, -8, rect.size.x + 20, rect.size.y + 24)
+	return Rect2(-35, -100, rect.size.x + 75, rect.size.y + 150)
+
+
+## Resolución estable por acabado, independiente del zoom. Las curvas pequeñas
+## necesitan más texeles; no se regenera nada durante la expedición.
+static func escala_mueble(datos: Dictionary, con_detalle := true) -> float:
+	var rect: Rect2 = datos.rect
+	var ilustrado: bool = datos.tipo in ArteCasa.ILUSTRADOS
+	var resolucion := RESOLUCION_MUEBLE if ilustrado else 512.0
+	var maxima := 0.9 if ilustrado else 0.8
+	var color: Color = datos.color
+	if con_detalle and datos.tipo == "silla" and datos.get("acabado", "") != "carton":
+		var encuadre := rect_horneado_mueble(datos)
+		var cercana := color == Color("a6b194")
+		return minf(3.0 if cercana else 2.0, (768.0 if cercana else 560.0) / maxf(encuadre.size.x, encuadre.size.y))
+	var prioritario: bool = datos.get("acabado", "") == "carton"
+	prioritario = prioritario or (datos.tipo == "silla" and color == Color("a6b194"))
+	prioritario = prioritario or (datos.tipo == "mesada" and color in [Color("839e96"), Color("b8c0af")])
+	if con_detalle and prioritario:
+		resolucion = RESOLUCION_DETALLE_CASA
+		maxima = 1.4
+	var encuadre := rect_horneado_mueble(datos)
+	return minf(maxima, resolucion / maxf(encuadre.size.x, encuadre.size.y))
+
+
+## El mismo plan de montaje compara ambos tamaños antes de pedir VRAM.
+## No se usa una segunda textura ni readback GPU para calcular el límite.
+func _presupuestar_detalle() -> void:
+	var inicio := Time.get_ticks_usec()
+	var plan_base := EMPAQUETADO.calcular(_pendientes, false)
+	var plan := EMPAQUETADO.calcular(_pendientes, true)
+	assert(plan.exito and plan_base.exito, "No entra el catálogo completo en el atlas")
+	var base: Vector2i = plan_base.medidas
+	var objetivo: Vector2i = plan.medidas
+	_posiciones_atlas = plan.posiciones
+	var bytes_base := base.x * base.y * 4
+	var bytes_actual := objetivo.x * objetivo.y * 4
+	# La RLE está exportada para estas escalas. Bajarlas silenciosamente al
+	# sumar contenido desalinearía dibujo, mordida y carga. El presupuesto es
+	# un contrato de autoría, verificado también por la revisión GPU.
+	assert(bytes_actual <= bytes_base + MAX_BYTES_DETALLE_CASA, "El catálogo excede el presupuesto de detalle; ajustar autoría y reexportar siluetas")
+	assert(bytes_actual <= MAX_BYTES_ATLAS, "El catálogo excede la memoria del atlas anterior")
+	assert(objetivo.y < 8192, "El catálogo excede el alto máximo del atlas compartido")
+	var mejoradas := 0
+	for pendiente in _pendientes:
+		if pendiente.escala > pendiente.escala_base:
+			mejoradas += 1
+	presupuesto_atlas = {"base": base, "actual": objetivo, "bytes_base": bytes_base,
+		"bytes_actual": bytes_actual, "regiones_mejoradas": mejoradas,
+		"criterio": plan.criterio,
+		"tiempo_usec": Time.get_ticks_usec() - inicio}
+
 
 func _montar(clave: String, dibujo: Node2D, rect: Rect2, escala: float) -> void:
 	var tam := Vector2i((rect.size * escala).ceil())
-	# Skyline de 16 px: rellena huecos sin reservar filas enteras para piezas altas.
-	var columnas := ceili((tam.x + 8) / 16.0)
-	var mejor := 0
-	var nivel := 8192
-	for inicio in range(_alturas.size() - columnas + 1):
-		var altura := 4
-		for j in range(inicio, inicio + columnas):
-			altura = maxi(altura, _alturas[j])
-			if altura >= nivel:
-				break
-		if altura < nivel:
-			nivel = altura
-			mejor = inicio
-	_x = 4 + mejor * 16
-	_y = nivel
-	assert(_y + tam.y < 8192, "El atlas necesita más espacio")
-	regiones[clave] = Rect2(_x, _y, tam.x, tam.y)
+	var posicion: Vector2i = _posiciones_atlas[clave]
+	regiones[clave] = Rect2(posicion, tam)
 	tamanos[clave] = rect
-	dibujo.position = Vector2(_x, _y) - rect.position * escala
+	dibujo.position = Vector2(posicion) - rect.position * escala
 	dibujo.scale = Vector2.ONE * escala
 	_viewport.add_child(dibujo)
-	for j in range(mejor, mejor + columnas):
-		_alturas[j] = _y + tam.y + 8
-	_alto_atlas = maxi(_alto_atlas, _y + tam.y)
 
 func dibujar(lienzo: CanvasItem, clave: String, desplazamiento := Vector2.ZERO, color := Color.WHITE) -> void:
 	if regiones.has(clave):

@@ -7,6 +7,14 @@ const LIMITES := Rect2(-950, -1000, 7900, 5600)
 const LIMITES_JUGABLES := Rect2(-2150, -1900, 10300, 7400)
 const LIMITES_VISUALES := Rect2(-4800, -2800, 15600, 9200)
 const BANQUETE := Vector2(3900, 1040)
+## Dos grupos de migas nativas. Comidas traslada seis del mismo catálogo.
+const MIGAS_INICIO := [Vector2(-60, -28), Vector2(-86, -8), Vector2(-102, 24),
+	Vector2(-76, 62), Vector2(-38, 90), Vector2(14, 114), Vector2(54, 120),
+	Vector2(80, 148), Vector2(-132, -38), Vector2(-156, -12), Vector2(-148, 32),
+	Vector2(-124, 72), Vector2(-92, 106), Vector2(-56, 134), Vector2(-12, 154),
+	Vector2(32, 160), Vector2(80, 184), Vector2(-182, 54), Vector2(-174, 98),
+	Vector2(-144, 126), Vector2(-106, 152), Vector2(-68, 176), Vector2(-24, 192), Vector2(24, 204)]
+const PREMIO_ATAJO := Vector2(365, -10)
 const VENTANAS := [Rect2(-650, -1010, 840, 65), Rect2(5000, -1010, 1060, 65), Rect2(-400, 4530, 960, 65), Rect2(5700, 4530, 780, 65)]
 const AMBIENTES := [
 	{"id": "cocina", "nombre": "COCINA", "rect": Rect2(-900, -950, 2600, 2300), "color": Color("e5ddc9"), "patron": 0},

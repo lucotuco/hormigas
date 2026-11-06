@@ -1,7 +1,7 @@
 class_name MordiscosMaterial
 extends RefCounted
 ## Material rasterizado una vez por recurso, independiente del renderer.
-## La máscara R8 sólo pierde píxeles. La navegación conserva sus 16 celdas.
+## La máscara R8 sólo pierde píxeles. El árbol comparte su ocupación con navegación.
 ## Una mordida local retira un único rectángulo sólido, nunca una franja global.
 const MAX_CELDAS := 16
 const MAX_LADO_MASCARA := 2048
@@ -31,6 +31,9 @@ var _credito := PackedFloat64Array()
 var _credito_erosion := PackedFloat64Array()
 var ultimo_trabajo_erosion := 0.0
 var ultimo_trabajo_frente := 0.0
+var zona_erosion_agotada := false
+var trabajo_erosion_descartado := 0.0
+var _ancla_credito_erosion := Vector2.INF
 var _cursores_bulk := PackedInt32Array()
 var _aire_bloques := PackedByteArray()
 var _aire_bits := PackedInt64Array()
@@ -86,6 +89,9 @@ var _consulta_y1 := 0
 var _mejor_pixel := -1
 var _mejor_distancia := INF
 var _consulta_frontera := false
+var _segmento_desde := Vector2.ZERO
+var _segmento_hasta := Vector2.ZERO
+var _segmento_margen := 0.0
 
 var _imagen: Image
 var _textura: ImageTexture
@@ -161,6 +167,8 @@ func _reservar_configuracion(rect_mundo: Rect2, grilla: Vector2i) -> void:
 	_credito.fill(0)
 	_credito_erosion.resize(_cantidad_celdas)
 	_credito_erosion.fill(0)
+	_ancla_credito_erosion = Vector2.INF
+	trabajo_erosion_descartado = 0.0
 	_cursores_bulk.resize(_cantidad_celdas)
 	_cursores_bulk.fill(0)
 	_filas_vivas.resize(_cantidad_celdas * _alto_celda)
@@ -404,7 +412,7 @@ func recortar_local_acreditado(celda: int, pos: Vector2, lado_max: float) -> flo
 	return _extraer_frente(celda, pos, lado_max)
 
 
-func _extraer_frente(celda: int, pos: Vector2, lado_max: float, erosion := false) -> float:
+func _extraer_frente(celda: int, pos: Vector2, lado_max: float, erosion := false, zona := Rect2()) -> float:
 	var disponibles := _pixeles_pagables(celda, erosion)
 	if disponibles <= 0:
 		return 0.0
@@ -412,14 +420,14 @@ func _extraer_frente(celda: int, pos: Vector2, lado_max: float, erosion := false
 	var limite_y := mini(_alto_celda, floori(lado_max / _paso.y + 0.000001))
 	if limite_x <= 0 or limite_y <= 0:
 		return 0.0
-	var semilla := _buscar_pixel(celda, pos, Rect2(), true)
+	var semilla := _buscar_pixel(celda, pos, zona, true, erosion and zona.has_area())
 	if semilla < 0 or not _contacto_visible(semilla, pos):
 		return 0.0
 	var sx := semilla % _ancho
 	var sy := semilla / _ancho as int
 	var limite_vivo := _limites_pixels[celda]
 	var area_limite := limite_vivo.size.x * limite_vivo.size.y
-	if limite_vivo.size.x <= limite_x and limite_vivo.size.y <= limite_y and area_limite == _vivos[celda] and area_limite <= disponibles:
+	if (not zona.has_area() or zona.encloses(_rect_pixels(limite_vivo))) and limite_vivo.size.x <= limite_x and limite_vivo.size.y <= limite_y and area_limite == _vivos[celda] and area_limite <= disponibles:
 		# Una pieza chica completa no debe dividirse por elegir como semilla
 		# el centro de un borde. El conteo demuestra que el AABB es sólido.
 		_borrar_rectangulo(celda, limite_vivo, Vector2i(sx, sy))
@@ -431,6 +439,17 @@ func _extraer_frente(celda: int, pos: Vector2, lado_max: float, erosion := false
 	var cy0 := (celda / _grilla.x as int) * _alto_celda
 	var cx1 := cx0 + _ancho_celda
 	var cy1 := cy0 + _alto_celda
+	if zona.has_area():
+		# zona_erosion ya eligió índices enteros. Reconstruirlos con ceil/floor
+		# sobre Vector2 de precisión simple podía excluir la propia semilla.
+		var inicio := (zona.position - _rect_mundo.position) / _paso
+		var fin := (zona.end - _rect_mundo.position) / _paso
+		cx0 = maxi(cx0, roundi(inicio.x) if erosion else ceili(inicio.x - 0.000001))
+		cy0 = maxi(cy0, roundi(inicio.y) if erosion else ceili(inicio.y - 0.000001))
+		cx1 = mini(cx1, roundi(fin.x) if erosion else floori(fin.x + 0.000001))
+		cy1 = mini(cy1, roundi(fin.y) if erosion else floori(fin.y + 0.000001))
+		if sx < cx0 or sx >= cx1 or sy < cy0 or sy >= cy1:
+			return 0.0
 	var centro := _rect_pixel(sx, sy).get_center()
 	var preferido_x := 1 if pos.x <= centro.x else -1
 	var preferido_y := 1 if pos.y <= centro.y else -1
@@ -484,13 +503,44 @@ func _descontar_credito(celda: int, cantidad: float, erosion: bool) -> void:
 func recortar_frente_paso(celda: int, dano: float, pos: Vector2, lado_max := 16.0) -> float:
 	ultima_porcion = Rect2()
 	ultimo_trabajo_erosion = 0
+	zona_erosion_agotada = false
 	if not configuracion_lista or celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0 or dano < 0 or not is_finite(dano) or not pos.is_finite() or lado_max <= 0 or not is_finite(lado_max):
 		return 0
+	# La contaminación pertenece al contacto inicial, no a una frontera que
+	# puede seguir retrocediendo cientos de unidades sin ninguna hormiga.
+	var zona := zona_erosion(pos, lado_max)
+	if not zona.has_area():
+		zona_erosion_agotada = true
+		return 0.0
+	if pos != _ancla_credito_erosion:
+		# El crédito ambiental no viaja a otro frente. Una nueva mancha debe
+		# aportar su propio trabajo; las fracciones del mismo contacto persisten.
+		for pendiente in _credito_erosion:
+			trabajo_erosion_descartado += pendiente
+		_credito_erosion.fill(0.0)
+		_ancla_credito_erosion = pos
+	if _buscar_pixel(celda, pos, zona, false, true) < 0:
+		zona_erosion_agotada = true
+		return 0.0
 	var credito := minf(vida_celda(celda), _credito_erosion[celda] + dano)
 	ultimo_trabajo_erosion = maxf(0, credito - _credito_erosion[celda])
 	_credito_erosion[celda] = credito
-	var origen := pos if aire_exterior(pos) else origen_exterior(celda, pos)
-	return _extraer_frente(celda, origen, lado_max, true)
+	# Un ancla ocluida no se proyecta a la otra cara del objeto.
+	if not aire_exterior(pos):
+		return 0.0
+	var retirado := _extraer_frente(celda, pos, lado_max, true, zona)
+	zona_erosion_agotada = _buscar_pixel(celda, pos, zona, false, true) < 0
+	return retirado
+
+
+## Sólo píxeles enteros dentro de la mancha: buscar y extraer consultan
+## exactamente la misma región, sin un borde fraccionario imposible de pagar.
+func zona_erosion(pos: Vector2, lado_max := 16.0) -> Rect2:
+	var inicio := ((pos - Vector2.ONE * lado_max - _rect_mundo.position) / _paso).ceil().max(Vector2.ZERO)
+	var fin := ((pos + Vector2.ONE * lado_max - _rect_mundo.position) / _paso).floor().min(Vector2(_ancho, _alto))
+	if fin.x <= inicio.x or fin.y <= inicio.y:
+		return Rect2()
+	return Rect2(_rect_mundo.position + inicio * _paso, (fin - inicio) * _paso)
 
 
 func erosion_pagable(celda: int) -> bool:
@@ -575,7 +625,8 @@ func area_total() -> float:
 
 
 func limites_celda(celda: int) -> Rect2:
-	## Conservador: las cavidades siguen sólidas hasta vaciar una hilera.
+	## AABB conservador para podas: no representa las cavidades interiores.
+	## Ocupación y recorridos exactos usan intersecta_rect/intersecta_segmento.
 	## Consulta O(1); los contadores se mantienen solamente al retirar material.
 	if not configuracion_lista or celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0:
 		return Rect2()
@@ -591,6 +642,116 @@ func contiene(pos: Vector2) -> bool:
 	return _pixeles[y * _ancho + x] != 0
 
 
+## Un contacto puede caer justo sobre el extremo excluido de un píxel.
+## Cuatro lecturas R8 constantes comprueban ambos lados, sin buscar el
+## frente ni recorrer el árbol. No confundir un borde válido con aire.
+func contacto_vigente(pos: Vector2) -> bool:
+	return contiene(pos + Vector2(-0.01, -0.01)) or contiene(pos + Vector2(0.01, -0.01)) or contiene(pos + Vector2(-0.01, 0.01)) or contiene(pos + Vector2(0.01, 0.01))
+
+
+## Ocupación real del mismo material que muestra el shader. El árbol descarta
+## regiones vacías/completas; sólo los bloques de borde visitan hasta 64 píxeles.
+func intersecta_rect(zona: Rect2, zona_alineada := false) -> bool:
+	if not configuracion_lista or _cantidad_vivos <= 0 or not zona.position.is_finite() or not zona.size.is_finite():
+		return false
+	if not zona.has_area():
+		return contiene(zona.position)
+	var interseccion := zona.intersection(_rect_mundo)
+	if not interseccion.has_area():
+		return false
+	var inicio := (interseccion.position - _rect_mundo.position) / _paso
+	var fin := (interseccion.end - _rect_mundo.position) / _paso
+	_consulta_x0 = clampi(roundi(inicio.x) if zona_alineada else floori(inicio.x + 0.000001), 0, _ancho)
+	_consulta_y0 = clampi(roundi(inicio.y) if zona_alineada else floori(inicio.y + 0.000001), 0, _alto)
+	_consulta_x1 = clampi(roundi(fin.x) if zona_alineada else ceili(fin.x - 0.000001), 0, _ancho)
+	_consulta_y1 = clampi(roundi(fin.y) if zona_alineada else ceili(fin.y - 0.000001), 0, _alto)
+	return _region_tiene_material(0, 0, 0, _lado_arbol)
+
+
+func _region_tiene_material(nodo: int, bx: int, by: int, lado: int) -> bool:
+	if _arbol[nodo] <= 0:
+		return false
+	var nx := bx * LADO_BLOQUE
+	var ny := by * LADO_BLOQUE
+	var fin_x := (bx + lado) * LADO_BLOQUE
+	var fin_y := (by + lado) * LADO_BLOQUE
+	var x0 := maxi(nx, _consulta_x0)
+	var y0 := maxi(ny, _consulta_y0)
+	var x1 := mini(fin_x, _consulta_x1)
+	var y1 := mini(fin_y, _consulta_y1)
+	if x0 >= x1 or y0 >= y1:
+		return false
+	if x0 == nx and y0 == ny and x1 == fin_x and y1 == fin_y:
+		return true
+	if _arbol[nodo] == mini(lado * LADO_BLOQUE, _ancho - nx) * mini(lado * LADO_BLOQUE, _alto - ny):
+		return true
+	if lado == 1:
+		for y in range(y0, y1):
+			for x in range(x0, x1):
+				if _pixeles[y * _ancho + x] != 0:
+					return true
+		return false
+	var mitad := lado / 2 as int
+	for cuadrante in 4:
+		if _region_tiene_material(nodo * 4 + 1 + cuadrante, bx + (cuadrante % 2) * mitad, by + (cuadrante / 2 as int) * mitad, mitad):
+			return true
+	return false
+
+
+## Barrido del margen de la hormiga contra material vivo, sin reconstruir
+## miles de rectángulos al abrir cada bocado o perforación interior.
+func intersecta_segmento(desde: Vector2, hasta: Vector2, margen := 0.0) -> bool:
+	if not configuracion_lista or _cantidad_vivos <= 0:
+		return false
+	_segmento_desde = desde
+	_segmento_hasta = hasta
+	_segmento_margen = maxf(0.0, margen)
+	return _segmento_toca_nodo(0, 0, 0, _lado_arbol)
+
+
+func _segmento_toca_nodo(nodo: int, bx: int, by: int, lado: int) -> bool:
+	if _arbol[nodo] <= 0:
+		return false
+	var x0 := bx * LADO_BLOQUE
+	var y0 := by * LADO_BLOQUE
+	var ancho := mini(lado * LADO_BLOQUE, _ancho - x0)
+	var alto := mini(lado * LADO_BLOQUE, _alto - y0)
+	var rect := _rect_pixels(Rect2i(x0, y0, ancho, alto)).grow(_segmento_margen)
+	if not _corta_segmento(rect):
+		return false
+	if _arbol[nodo] == ancho * alto:
+		return true
+	if lado == 1:
+		for y in range(y0, y0 + alto):
+			for x in range(x0, x0 + ancho):
+				if _pixeles[y * _ancho + x] != 0 and _corta_segmento(_rect_pixel(x, y).grow(_segmento_margen)):
+					return true
+		return false
+	var mitad := lado / 2 as int
+	for cuadrante in 4:
+		if _segmento_toca_nodo(nodo * 4 + 1 + cuadrante, bx + (cuadrante % 2) * mitad, by + (cuadrante / 2 as int) * mitad, mitad):
+			return true
+	return false
+
+
+func _corta_segmento(rect: Rect2) -> bool:
+	var minimo := 0.0
+	var maximo := 1.0
+	var direccion := _segmento_hasta - _segmento_desde
+	for eje in 2:
+		if absf(direccion[eje]) < 0.00001:
+			if _segmento_desde[eje] < rect.position[eje] or _segmento_desde[eje] > rect.end[eje]:
+				return false
+		else:
+			var a: float = (rect.position[eje] - _segmento_desde[eje]) / direccion[eje]
+			var b: float = (rect.end[eje] - _segmento_desde[eje]) / direccion[eje]
+			minimo = maxf(minimo, minf(a, b))
+			maximo = minf(maximo, maxf(a, b))
+			if minimo > maximo:
+				return false
+	return true
+
+
 func punto_celda(celda: int, pos: Vector2) -> Vector2:
 	var pixel := _buscar_pixel(celda, pos)
 	if pixel < 0:
@@ -600,10 +761,32 @@ func punto_celda(celda: int, pos: Vector2) -> Vector2:
 	return pos.clamp(rect.position + _paso * 0.0001, rect.end - _paso * 0.0001)
 
 
-func punto_frontera(celda: int, pos: Vector2) -> Vector2:
+## Nearest global en una sola consulta al árbol. La fila opcional conserva
+## el orden de desmontaje de la torre sin repetir hasta dieciséis búsquedas.
+func punto_material(pos: Vector2, fila := -1) -> Vector2:
+	if not configuracion_lista or _cantidad_vivos <= 0 or not pos.is_finite() or fila >= _grilla.y:
+		return Vector2.INF
+	_consulta_desde = pos
+	_consulta_pixel = (pos - _rect_mundo.position) / _paso
+	_consulta_frontera = false
+	_consulta_x0 = 0
+	_consulta_x1 = _ancho
+	_consulta_y0 = 0 if fila < 0 else fila * _alto_celda
+	_consulta_y1 = _alto if fila < 0 else (fila + 1) * _alto_celda
+	_mejor_pixel = _pixel_proyectado()
+	if _mejor_pixel < 0:
+		_mejor_distancia = INF
+		_buscar_nodo(0, 0, 0, _lado_arbol)
+	if _mejor_pixel < 0:
+		return Vector2.INF
+	var rect := _rect_pixel(_mejor_pixel % _ancho, _mejor_pixel / _ancho as int)
+	return pos.clamp(rect.position + _paso * 0.0001, rect.end - _paso * 0.0001)
+
+
+func punto_frontera(celda: int, pos: Vector2, zona := Rect2(), zona_alineada := false) -> Vector2:
 	if not aire_exterior(pos):
 		return Vector2.INF
-	var pixel := _buscar_pixel(celda, pos, Rect2(), true)
+	var pixel := _buscar_pixel(celda, pos, zona, true, zona_alineada)
 	if pixel < 0 or not _contacto_visible(pixel, pos):
 		return Vector2.INF
 	var rect := _rect_pixel(pixel % _ancho, pixel / _ancho as int)
@@ -1192,7 +1375,7 @@ static func _preparar_codigos_morton() -> void:
 		_bits_por_byte[i] = _bits_por_byte[i >> 1] + (i & 1)
 
 
-func _buscar_pixel(celda: int, pos: Vector2, zona := Rect2(), solo_frontera := false) -> int:
+func _buscar_pixel(celda: int, pos: Vector2, zona := Rect2(), solo_frontera := false, zona_alineada := false) -> int:
 	if not configuracion_lista or celda < 0 or celda >= _cantidad_celdas or _vivos[celda] <= 0 or not pos.is_finite():
 		return -1
 	if solo_frontera and _frontera_celdas[celda] <= 0:
@@ -1205,16 +1388,35 @@ func _buscar_pixel(celda: int, pos: Vector2, zona := Rect2(), solo_frontera := f
 	_consulta_x1 = _consulta_x0 + _ancho_celda
 	_consulta_y1 = _consulta_y0 + _alto_celda
 	if zona.has_area():
-		_consulta_x0 = maxi(_consulta_x0, floori((zona.position.x - _rect_mundo.position.x) / _paso.x + 0.000001))
-		_consulta_y0 = maxi(_consulta_y0, floori((zona.position.y - _rect_mundo.position.y) / _paso.y + 0.000001))
-		_consulta_x1 = mini(_consulta_x1, ceili((zona.end.x - _rect_mundo.position.x) / _paso.x - 0.000001))
-		_consulta_y1 = mini(_consulta_y1, ceili((zona.end.y - _rect_mundo.position.y) / _paso.y - 0.000001))
+		var inicio := (zona.position - _rect_mundo.position) / _paso
+		var fin := (zona.end - _rect_mundo.position) / _paso
+		_consulta_x0 = maxi(_consulta_x0, roundi(inicio.x) if zona_alineada else floori(inicio.x + 0.000001))
+		_consulta_y0 = maxi(_consulta_y0, roundi(inicio.y) if zona_alineada else floori(inicio.y + 0.000001))
+		_consulta_x1 = mini(_consulta_x1, roundi(fin.x) if zona_alineada else ceili(fin.x - 0.000001))
+		_consulta_y1 = mini(_consulta_y1, roundi(fin.y) if zona_alineada else ceili(fin.y - 0.000001))
 		if _consulta_x0 >= _consulta_x1 or _consulta_y0 >= _consulta_y1:
 			return -1
-	_mejor_pixel = -1
+	_mejor_pixel = _pixel_proyectado()
+	if _mejor_pixel >= 0:
+		return _mejor_pixel
 	_mejor_distancia = INF
 	_buscar_nodo(0, 0, 0, _lado_arbol)
 	return _mejor_pixel
+
+
+## Si el píxel proyectado está vivo, alcanza el límite inferior de toda la
+## consulta rectangular. Es el nearest exacto; no hace falta bajar el árbol.
+func _pixel_proyectado() -> int:
+	var x := clampi(floori(_consulta_pixel.x), _consulta_x0, _consulta_x1 - 1)
+	var y := clampi(floori(_consulta_pixel.y), _consulta_y0, _consulta_y1 - 1)
+	var indice := y * _ancho + x
+	if _pixeles[indice] == 0:
+		return -1
+	if _consulta_frontera:
+		var bits := _frontera_bits[(y / LADO_BLOQUE as int) * _columnas_bloques + x / LADO_BLOQUE as int]
+		if (bits & (1 << ((y % LADO_BLOQUE) * LADO_BLOQUE + x % LADO_BLOQUE))) == 0:
+			return -1
+	return indice
 
 
 func _buscar_nodo(nodo: int, bx: int, by: int, lado: int) -> void:

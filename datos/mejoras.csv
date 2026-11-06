@@ -89,3 +89,7 @@ demolicion,Demolición,Territorio|Mandíbulas,+5% del valor al terminar comida o
 banquete_familiar,Banquete familiar,Recolección|Colonia,Migas ×1.08.,multiplicador_migas,multiplica,1.08,12500000,3.2,5,banquete:2|hermanas_mayores:1,,0,0,,
 acarreo_pesado,Acarreo pesado,Mandíbulas|Recolección,+1 bocado por viaje.,capacidad,suma,1,10000000000,4,3,mordida_incansable:1|bandeja:1,obelisco,0,0,,
 corazon,Corazón del hormiguero,Fondo,Migas ×1.4.,multiplicador_migas,multiplica,1.4,25000000000000,6,3,golpe_cimientos:1|titanio:1|mordida_muros:1,eiffel,0,0,,
+# Mejoras con una consecuencia visual propia; hojas opcionales de un nivel.
+migas_brillantes,Migas brillantes,Recolección,Migas +8%. Entregas con destellos.,multiplicador_migas,multiplica,1.08,120,1,1,buche:1,,0,0,,
+mandibulas_destello,Mordida chispeante,Mandíbulas,Daño +8%. Cortes con chispas.,dano,multiplica,1.08,180,1,1,mandibulas:2,,0,0,,
+pulso_colonia,Pulso de la colonia,Feromonas,+1 s de frenesí y un halo en las entradas.,frenesi_duracion,suma,1,1200,1,1,alarma:1,,0,0,,

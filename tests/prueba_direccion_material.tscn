@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/prueba_direccion_material.gd" id="1_direccion"]
+
+[node name="PruebaDireccionMaterial" type="Node"]
+script = ExtResource("1_direccion")

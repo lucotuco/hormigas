@@ -687,6 +687,13 @@ func _condicion_revelar(id: String) -> bool:
 ## tipo "migas": juntar migas para comprar una dieta; "nivel": subir la mejora
 ## que la habilita; "objetivo": comer el gran objetivo; "viaje": ir al próximo destino.
 func proxima_meta() -> Dictionary:
+	if lugar_actual == "casa" and not lugares_completados.has("casa") \
+		and fundaciones == 0 and nivel_de("mas_obreras") == 0 \
+		and nivel_de("mandibulas") == 0 and total_especialistas() == 0:
+		return {"tipo": "migas", "nombre": tr("Tu segunda obrera"),
+			"detalle": tr("Dos obreras: dos viajes al mismo tiempo."),
+			"actual": migas + (0.0 if _run_cobrada else migas_run), "objetivo": costo("mas_obreras"),
+			"id": "mas_obreras", "accion": "mejora", "seccion": "hogar"}
 	# Un proyecto ya trabajable ofrece contenido concreto antes de pedir la
 	# siguiente dieta. La casa no tiene proyectos y conserva su arranque.
 	if not coronas_cobradas.has(lugar_actual):
