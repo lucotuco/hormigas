@@ -1360,3 +1360,59 @@ rompe el ritmo.
   ejemplo, tres intentos por debajo del 60%).
 - **El techo del Coliseo varía mucho entre pasadas:** la tercera colonia le
   saca de 25T a 58T por run. Con 3,5e7 (23T) cae en 3–5 expediciones.
+
+### La casa trabada en ~85% y el tope del bocado (6/11)
+
+Después de #24 y #25 el bot quedaba trabado en la casa con todo comprado:
+cada run le sacaba ~85% de la mesa y nunca la terminaba, con cualquier
+`vida_meta`.
+
+**Diagnóstico.** Desde el mismo estado (casa con todo comprado, 16 obreras,
+sin límite de tiempo), daño a la mesa a los 100 s:
+
+| Variante | Daño a los 100 s |
+|---|---:|
+| A. `main` (tope ×4, bocado de hasta 24×24) | 542K de 1,04M |
+| B. Reubicarse al frente aunque lleve carga | 536K |
+| D. Cupos de la meta ×12 (hasta 192) | 680K |
+| C. Tope ×8 (bocado de hasta 48×48) | la mesa cae a los ~95 s |
+
+B descarta la vuelta con carga parcial (214b2b0) como causa. D ayuda poco. El
+techo es el tope: con el bocado al máximo, la vida que se saca por run es
+proporcional a `vida_max` (densidad × área). Bajar la vida de la meta no
+cambia la fracción del área que la colonia come, por eso se trababa en el
+mismo porcentaje con cualquier valor.
+
+**Cambios.**
+
+- `PiezaCasa.LADO_MAXIMO_POR_DANO` 4 → 8: el gran objetivo acepta bocados de
+  hasta 48×48. Los muebles comunes siguen en 6×6.
+- Resistentes 550K → 250K y Paredes 15M → 6M. Con el ingreso más bajo que
+  dejan los bocados de #24, el tramo madera → muros se había estirado unos
+  18 minutos.
+
+**Medición** (minutos de bot desde cero, cartas de mutación "mejor"):
+
+| Hito | Sólo tope ×8 | Tope ×8 + dietas baratas | Ídem + restaurante 500 |
+|---|---:|---:|---:|
+| Madera | 12,4 | 13,1 | 10,9 |
+| Resistentes | 50,5 | 46,7 | 42,8 |
+| Muros | 74,6 | 57,5 | 56,8 |
+| Casa | 83,4 | 69,1 | 65,3 |
+| Fundación 1 (en el restaurante) | 105,5 | 84,9 | 87,1 |
+| Restaurante | 124,4 | 103,7 | 99,5 |
+| Museo | 134,5 | 114,2 | 109,4 |
+| Obelisco (fundación 2 antes) | 157,5 | 137,5 | 139,3 |
+| Coliseo | 170,1 | 146,0 | 147,8 |
+| Torre Eiffel (fundación 3 antes) | 200,3 | 176,5 | 177,7 |
+| Expediciones | 82 | 75 | 74 |
+
+Con cartas al azar, sólo tope ×8: Torre Eiffel en 193,5 (80 runs).
+
+Bajar el restaurante a 500 no evita la primera fundación y casi no cambia el
+total, así que queda en 800. Con las dietas baratas la campaña vuelve a
+~3,9 h de bot más tienda, más unos 20 minutos de elegir cartas: ~4,2 h.
+
+**Pendiente.** El restaurante ahora pide fundar antes de caer (antes caía en
+la primera colonia). No parece malo, porque la primera fundación llega cerca
+del minuto 90, pero conviene mirarlo con una persona.
