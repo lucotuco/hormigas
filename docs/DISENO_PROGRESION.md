@@ -1407,7 +1407,10 @@ mismo porcentaje con cualquier valor.
 | Torre Eiffel (fundación 3 antes) | 200,3 | 176,5 | 177,7 |
 | Expediciones | 82 | 75 | 74 |
 
-Con cartas al azar, sólo tope ×8: Torre Eiffel en 193,5 (80 runs).
+Con cartas al azar: sólo tope ×8, Torre Eiffel en 193,5 (80 runs); con las
+dietas baratas, en 186,3 (78 runs, ~4,5 h). El azar funda en el museo y el
+Coliseo en vez del Obelisco y la Torre Eiffel, pero termina con las mismas
+tres fundaciones.
 
 Bajar el restaurante a 500 no evita la primera fundación y casi no cambia el
 total, así que queda en 800. Con las dietas baratas la campaña vuelve a
