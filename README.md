@@ -294,7 +294,7 @@ lee en el material ausente; tiempo, compras y frenesí conservan sus indicadores
 de interfaz. Cada operación recorta junto a la mordida **una porción sólida de
 hasta 6×6 unidades del mundo**, no una franja proporcional a todo el daño.
 Excepción: contra un **gran objetivo** (del destino o de un proyecto) el bocado
-crece con el daño que no entra en 6×6, hasta 24×24 (`PiezaCasa.lado_para_dano`).
+crece con el daño que no entra en 6×6, hasta 48×48 (`PiezaCasa.lado_para_dano`).
 Sin eso, mejorar las mandíbulas casi no servía para tirarlo.
 Cada ciclo admite hasta **1 porción al inicio, 2 al aprender madera y 3 al
 aprender resistentes o paredes**. Es un máximo, no una extracción garantizada:

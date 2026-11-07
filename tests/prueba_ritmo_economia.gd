@@ -37,7 +37,7 @@ func probar_arranque_y_compras() -> void:
 func probar_precios_y_roles() -> void:
 	Juego.reiniciar_estado()
 	verificar(Juego.costo("mordida_madera") == 700 and {"id": "mandibulas", "nivel": 3} in Juego.mejoras_por_id.mordida_madera.requisitos, "madera llega cerca del minuto 20–25: 700 migas y Mandíbulas 3")
-	verificar(Juego.costo("mordida_resistente") == 550000 and Juego.costo("mordida_muros") == 15000000, "las dietas posteriores acompañan la desaceleración sin agregar monedas")
+	verificar(Juego.costo("mordida_resistente") == 250000 and Juego.costo("mordida_muros") == 6000000, "las dietas posteriores acompañan la desaceleración sin agregar monedas")
 	verificar(Juego.mejoras_por_id.recoleccion_eficiente.crecimiento > 1.9 and Juego.mejoras_por_id.recoleccion_eficiente.valor == 1.12, "la bola de nieve se frena por precio, conservando la utilidad de cada multiplicador")
 	verificar(Juego.costo("patas_largas") == 18 and Juego.costo("antenas") == 25 and Juego.costo("rastro_persistente") == 12, "las ayudas de movimiento y llamado suben moderadamente de precio, no pierden eficacia")
 	for id in ["mas_obreras", "mandibulas", "pisada", "buche", "recoleccion_eficiente", "huevos_dorados"]:

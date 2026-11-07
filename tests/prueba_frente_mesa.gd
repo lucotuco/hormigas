@@ -67,7 +67,7 @@ func probar_mesa(llamado: bool) -> void:
 	run.entradas.queue_redraw()
 	# Calibrar UNA porción base para aislar circulación/contacto de la IA.
 	# Las metas ahora agrandan el bocado con el daño: usar vida_max forzaría
-	# 24u y dejaría de cubrir esta regresión de frentes pequeños de 6u.
+	# 48u y dejaría de cubrir esta regresión de frentes pequeños de 6u.
 	# Compensar los mismos factores que recibe lado_para_dano(), sin cambiar
 	# el tamaño real de la mesa ni los límites de localidad de las aserciones.
 	var lado_base := Juego.stat("tamano_bocado")
