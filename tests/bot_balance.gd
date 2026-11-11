@@ -107,6 +107,9 @@ var log_ruta := ""
 var minutos := 0.0
 var vistos := {}
 var orden_materiales := false
+## Lo ganado en la última expedición: sólo se ahorra para una dieta que se
+## alcanza en pocas runs (si no, la colonia queda congelada con el banco lleno).
+var ultimo_ganado := 0.0
 var runs_retorno := -1
 var fundar_en_casa := false
 var jalea_retorno := false
@@ -189,6 +192,7 @@ func _ready() -> void:
 		var metas_previas := Juego.metas_devoradas.size()
 		var donde := Juego.lugar_actual
 		var ganado: float = await jugar_run()
+		ultimo_ganado = ganado
 		if calibrar and donde != "casa" and not calibrado.has(donde):
 			max_dano_destino = maxf(max_dano_destino, _dano_meta)
 			runs_en_destino += 1
@@ -532,7 +536,7 @@ func comprar() -> void:
 				if Juego.nivel_de(id) == 0:
 					if Juego.comprar(id):
 						continue
-					if Juego.migas >= Juego.costo(id) * 0.5:
+					if Juego.migas >= Juego.costo(id) * 0.5 and Juego.costo(id) - Juego.migas <= ultimo_ganado * 3.0:
 						return
 					break
 		var mejor := ""
