@@ -493,6 +493,10 @@ func _actualizar_consejo_fin() -> void:
 	if not dieta_lista and meta.get("accion", "") not in ["legado", "viajes"] and run.cargas_pendientes >= maxf(1.0, extraido * 0.1):
 		_lbl_fin_consejo.text = tr("Quedó al menos un 10% de lo extraído en camino. Más velocidad o entradas secundarias ayudan a entregar antes.")
 		_lbl_fin_siguiente.text = tr("PROBÁ MEJORAR EL TRANSPORTE")
+	# Trabado: el consejo más útil es fundar, aunque falte transporte.
+	if Juego.conviene_fundar():
+		_lbl_fin_siguiente.text = tr("PROBÁ FUNDAR UNA COLONIA")
+		_lbl_fin_consejo.text = tr("Hace %d expediciones que no avanzás acá. Fundar da +%d de jalea real: la colonia nueva vuelve rápido y pega más fuerte.") % [Juego.runs_sin_avance(), Juego.jalea_por_fundar()]
 
 
 func _ajustar_resumen_fin() -> void:

@@ -129,6 +129,10 @@ var descubiertos: Dictionary = {}
 var evoluciones_desbloqueadas: Dictionary = {}
 var evoluciones_equipadas: Array[String] = []
 var records_destino: Dictionary = {}
+## Avance de esta colonia sobre el destino actual, para sugerir fundar cuando no
+## baja más: destino -> mejor progreso, y destino -> expediciones sin mejorarlo.
+var mejor_avance: Dictionary = {}
+var runs_sin_avance_destino: Dictionary = {}
 var archivo_expediciones: Array[Dictionary] = []
 var records_limpieza: Dictionary = {}
 var adaptaciones: Array[Dictionary] = []
@@ -139,6 +143,37 @@ func registrar_record(produccion: float, objetivo: float) -> void:
 		"produccion": maxf(float(anterior.get("produccion", 0)), produccion),
 		"objetivo": maxf(float(anterior.get("objetivo", 0)), objetivo),
 	}
+	_registrar_avance(objetivo)
+
+
+## Expediciones seguidas sin acercarse al gran objetivo (ni a sus proyectos).
+## Sólo cuentan con todas las dietas compradas: mientras falte una, la colonia
+## no está trabada, está ahorrando para el taller.
+const AVANCE_MINIMO := 0.02
+const RUNS_PARA_SUGERIR_FUNDAR := 3
+
+func _registrar_avance(objetivo: float) -> void:
+	if coronas_cobradas.has(lugar_actual):
+		mejor_avance.erase(lugar_actual)
+		runs_sin_avance_destino.erase(lugar_actual)
+		return
+	for id in DIETAS:
+		if nivel_de(id) < 1:
+			return
+	if objetivo > float(mejor_avance.get(lugar_actual, 0.0)) + AVANCE_MINIMO:
+		mejor_avance[lugar_actual] = objetivo
+		runs_sin_avance_destino[lugar_actual] = 0
+	else:
+		runs_sin_avance_destino[lugar_actual] = int(runs_sin_avance_destino.get(lugar_actual, 0)) + 1
+
+
+func runs_sin_avance() -> int:
+	return 0 if coronas_cobradas.has(lugar_actual) else int(runs_sin_avance_destino.get(lugar_actual, 0))
+
+
+## La colonia no puede más con este destino: fundar es lo que la hace avanzar.
+func conviene_fundar() -> bool:
+	return runs_sin_avance() >= RUNS_PARA_SUGERIR_FUNDAR and puede_fundar() and revelado("legado")
 
 
 ## Las marcas sólo compiten en el mismo mapa, dieta y alcance. El historial se
@@ -1066,6 +1101,8 @@ func fundar_colonia(decreto_nuevo := "", compras_jalea: Array[String] = []) -> b
 	coronas = 0
 	coronas_cobradas.clear()
 	metas_devoradas.clear()
+	mejor_avance.clear()
+	runs_sin_avance_destino.clear()
 	lugar_actual = "casa"
 	fundaciones += 1
 	migas = conservar_migas
@@ -1232,6 +1269,7 @@ func datos_partida() -> Dictionary:
 		"jalea": jalea, "niveles_jalea": niveles_jalea, "migas_colonia": migas_colonia,
 		"evoluciones": evoluciones_desbloqueadas, "equipadas": evoluciones_equipadas,
 		"records_destino": records_destino,
+		"mejor_avance": mejor_avance.duplicate(), "runs_sin_avance": runs_sin_avance_destino.duplicate(),
 		"archivo_expediciones": archivo_expediciones, "records_limpieza": records_limpieza,
 		"estadisticas": estadisticas, "decreto": decreto,
 	}
@@ -1260,6 +1298,15 @@ func restaurar_partida(datos: Dictionary) -> void:
 				var objetivo := float(records[id].get("objetivo", 0))
 				if is_finite(produccion) and is_finite(objetivo):
 					records_destino[id] = {"produccion": maxf(0, produccion), "objetivo": clampf(objetivo, 0, 1)}
+	mejor_avance = {}
+	runs_sin_avance_destino = {}
+	var avances = datos.get("mejor_avance", {})
+	var sin_avance = datos.get("runs_sin_avance", {})
+	if avances is Dictionary and sin_avance is Dictionary:
+		for id in avances:
+			if Mundos.INFO.has(id) and is_finite(float(avances[id])):
+				mejor_avance[id] = clampf(float(avances[id]), 0.0, 1.0)
+				runs_sin_avance_destino[id] = maxi(0, int(sin_avance.get(id, 0)))
 	migas = float(datos.get("migas", 0.0))
 	runs_jugadas = int(datos.get("runs_jugadas", 0))
 	mejor_run = float(datos.get("mejor_run", 0.0))
@@ -1443,6 +1490,8 @@ func reiniciar_estado() -> void:
 	_run_cobrada = false
 	migas_run = 0.0
 	records_destino.clear()
+	mejor_avance.clear()
+	runs_sin_avance_destino.clear()
 	archivo_expediciones.clear()
 	records_limpieza.clear()
 	migas = 0.0

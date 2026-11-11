@@ -225,6 +225,8 @@ func _resumen() -> Control:
 	derecha.add_child(_texto(tr("+%d jalea") % detalle.total, 24, Color("f0d277") if detalle.total > 0 else Estilo.TEXTO_SUAVE))
 	derecha.add_child(_texto(tr("%d coronas × %d = %d · migas de esta colonia (%s) = %d") % [Juego.coronas, Juego.JALEA_POR_CORONA, detalle.coronas, Juego.formatear(Juego.migas_colonia), detalle.migas], 12, Estilo.TEXTO_SUAVE))
 	derecha.add_child(_texto(Juego.oportunidades_jalea(), 13, Color("cde0a3")))
+	if Juego.conviene_fundar():
+		derecha.add_child(_texto(tr("Hace %d expediciones que la colonia no avanza: fundar es lo que más te hace progresar ahora.") % Juego.runs_sin_avance(), 13, Color("ffd27a")))
 	var fundar := Estilo.boton(tr("Fundar colonia…"), 17, Color("56613e"), Color("bbcb8a"))
 	fundar.disabled = not Juego.puede_fundar()
 	fundar.tooltip_text = tr("Conquistá un gran objetivo o juntá más migas para ganar jalea.") if fundar.disabled else tr("Reiniciar la colonia a cambio de jalea real")
