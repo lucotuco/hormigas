@@ -535,6 +535,18 @@ las de la tienda y nada se guarda.
   desde `EvolucionRun`; migas, botín, buche y cría van por `Juego.mods_run`.
 - Llegar al tope de 500 hormigas convierte la eclosión en "colonia
   desbordada": +5% de daño por cada nivel que ya no puede eclosionar.
+- **Mutaciones por descubrir:** seis empiezan bloqueadas y se descubren
+  jugando, para siempre (también al fundar). Columna `desbloqueo` de
+  `mutaciones.csv` con `estadística:valor`:
+  - Colmillos brutales: 150 críticas.
+  - Fuerza del enjambre: 150 hormigas en una run.
+  - Hermanas perdidas: nivel 4 en una run.
+  - Furia de la colmena: conquistar un gran objetivo.
+  - Corona de la reina: fundar una colonia.
+  - Marea negra: 400 hormigas en una run.
+
+  El final de la run anuncia las nuevas o muestra la próxima con su avance, y
+  las cartas muestran cuántas hay descubiertas.
 - La mitad de las **migas doradas** abren un **cofre**: una mutación extra,
   rara o mejor, sin gastar néctar.
 - Pasar 25, 50, 100… hormigas vivas en la run se festeja una vez (cartel,
