@@ -3131,3 +3131,27 @@ msgstr "You haven't made progress here in %d expeditions. Founding gives +%d roy
 
 msgid "Hace %d expediciones que la colonia no avanza: fundar es lo que más te hace progresar ahora."
 msgstr "The colony hasn't advanced in %d expeditions: founding is what will move you forward most right now."
+
+msgid "Hacé %d mordidas críticas"
+msgstr "Land %d critical bites"
+
+msgid "Llegá a %d hormigas en una expedición"
+msgstr "Reach %d ants in one expedition"
+
+msgid "Llegá al nivel %d en una expedición"
+msgstr "Reach level %d in one expedition"
+
+msgid "Conquistá un gran objetivo"
+msgstr "Conquer a big target"
+
+msgid "Fundá una colonia nueva"
+msgstr "Found a new colony"
+
+msgid "Mutaciones descubiertas: %d/%d"
+msgstr "Mutations discovered: %d/%d"
+
+msgid "¡Nueva mutación descubierta: %s!"
+msgstr "New mutation discovered: %s!"
+
+msgid "Próxima mutación: %s · %s (%s/%s)"
+msgstr "Next mutation: %s · %s (%s/%s)"

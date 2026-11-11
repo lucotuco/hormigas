@@ -445,6 +445,7 @@ func mostrar_fin() -> void:
 		Juego.comidas_destruidas_run, Juego.partes_destruidas_run, Juego.mejor_combo_run, Juego.formatear(Juego.migas)]
 	if is_instance_valid(run.evolucion) and run.evolucion.habilitada:
 		_lbl_fin_detalle.text += tr("\nNivel %d · %d mutaciones · %d hormigas al final") % [run.evolucion.nivel, run.evolucion.historial.size(), run.colonia.cantidad()]
+	_anunciar_mutaciones()
 	_lbl_fin_detalle.text += tr("\nAlimentos %s · Muebles %s · Estructuras %s") % [Juego.formatear_corto(run.ingresos[0]), Juego.formatear_corto(run.ingresos[1]), Juego.formatear_corto(run.ingresos[2])]
 	if run.limpieza_lograda:
 		_lbl_fin_detalle.text += tr("\nLimpieza: %.1f s · Total con entregas: %.1f s") % [run.tiempo_limpieza, run.tiempo_jugado + run.tiempo_retirada]
@@ -482,6 +483,22 @@ func mostrar_fin() -> void:
 
 ## No deduce un cuello de botella a partir del aspecto de la colonia. Sólo
 ## destaca carga realmente pendiente cuando supera un décimo de lo extraído.
+## Mutaciones descubiertas en esta run, o cuál es la próxima por descubrir.
+func _anunciar_mutaciones() -> void:
+	if not Juego.revelado("mutaciones"):
+		return
+	if not Juego.mutaciones_por_anunciar.is_empty():
+		for id in Juego.mutaciones_por_anunciar:
+			_lbl_fin_detalle.text += "\n" + tr("¡Nueva mutación descubierta: %s!") % tr(Juego.mutaciones_por_id[id].nombre)
+		Juego.mutaciones_por_anunciar.clear()
+		Sonido.tocar("legendaria", 1.0, 0.0)
+		return
+	var proxima := Juego.proxima_mutacion()
+	if not proxima.is_empty():
+		_lbl_fin_detalle.text += "\n" + tr("Próxima mutación: %s · %s (%s/%s)") % [tr(proxima.nombre), proxima.condicion,
+			Juego.formatear_corto(minf(proxima.actual, proxima.objetivo)), Juego.formatear_corto(proxima.objetivo)]
+
+
 func _actualizar_consejo_fin() -> void:
 	var meta := Juego.proxima_meta()
 	_lbl_fin_siguiente.text = tr("SIGUIENTE PASO · %s") % meta.nombre
