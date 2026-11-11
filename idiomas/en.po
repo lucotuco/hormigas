@@ -3122,3 +3122,12 @@ msgstr "Golden chest! A rare-or-better mutation"
 
 msgid "¡COFRE DORADO!"
 msgstr "GOLDEN CHEST!"
+
+msgid "PROBÁ FUNDAR UNA COLONIA"
+msgstr "TRY FOUNDING A COLONY"
+
+msgid "Hace %d expediciones que no avanzás acá. Fundar da +%d de jalea real: la colonia nueva vuelve rápido y pega más fuerte."
+msgstr "You haven't made progress here in %d expeditions. Founding gives +%d royal jelly: the new colony gets back fast and hits harder."
+
+msgid "Hace %d expediciones que la colonia no avanza: fundar es lo que más te hace progresar ahora."
+msgstr "The colony hasn't advanced in %d expeditions: founding is what will move you forward most right now."
