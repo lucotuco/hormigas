@@ -1120,9 +1120,9 @@ func pausado() -> bool:
 func pausar() -> void:
 	if not is_inside_tree() or not is_node_ready() or (not run.activa and not run.cerrando_erosion) or pausado():
 		return
-	# Elegir una mutación ya pausa la run y tiene sus propios controles.
-	if is_instance_valid(run.evolucion) and run.evolucion.eligiendo:
-		return
+	# Con cartas en pantalla la pausa se abre igual: se esconden y vuelven al seguir.
+	if is_instance_valid(run.evolucion):
+		run.evolucion.esconder_cartas()
 	run.feromonas.soltar()
 	run.cancelar_colocacion_entrada()
 	run.camara.arrastrando = false
@@ -1135,6 +1135,9 @@ func reanudar() -> void:
 	if is_instance_valid(_ventana):
 		_ventana.queue_free()
 	_ventana = null
+	if is_instance_valid(run.evolucion) and run.evolucion.eligiendo and run.activa and not run.terminada:
+		run.evolucion.volver_a_cartas()
+		return
 	get_tree().paused = false
 
 
@@ -1183,6 +1186,9 @@ func _abrir_configuracion() -> void:
 
 
 func _terminar_desde_pausa() -> void:
+	# Las cartas pendientes se pierden: si no, reanudar las volvería a abrir.
+	if is_instance_valid(run.evolucion):
+		run.evolucion.cerrar()
 	reanudar()
 	run.tiempo_restante = 0.0
 

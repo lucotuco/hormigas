@@ -11,6 +11,7 @@ var hormigas: Array[Hormiga] = []
 
 var _activa := false
 var _por_salir := 0
+var _eclosion_pendiente := 0
 var _pausa_salida := 0.05
 var _reloj_salida := 0.0
 var _reloj_cria := 0.0
@@ -87,18 +88,26 @@ func recalcular_cria() -> void:
 
 
 ## Una tanda de obreras que sale ya del nido (subir de nivel en la run).
-## Devuelve cuántas nacieron: el tope de la colonia puede dejar menos.
-func eclosionar(cantidad_solicitada: int, celebrar := true) -> int:
+## Devuelve cuántas nacen: el tope de la colonia puede dejar menos. Nacen de a
+## LOTE_ECLOSION por cuadro: cien instancias juntas eran un tirón de ~12 ms.
+const LOTE_ECLOSION := 25
+
+func eclosionar(cantidad_solicitada: int, _celebrar := true) -> int:
 	if not _activa or not run.activa:
 		return 0
-	var cantidad_real := mini(cantidad_solicitada, MAX_HORMIGAS - hormigas.size())
-	for i in cantidad_real:
-		var h := _nacer("obrera", Vector2.from_angle(randf() * TAU) * randf_range(3.0, 14.0))
-		if h != null and celebrar:
-			h.rotation = h.position.angle()
-	if cantidad_real > 0:
-		run.efectos.chispas(Vector2.ZERO, Color(1.0, 0.92, 0.6), mini(40, 6 + cantidad_real))
+	var cantidad_real := mini(cantidad_solicitada, MAX_HORMIGAS - hormigas.size() - _eclosion_pendiente)
+	if cantidad_real <= 0:
+		return 0
+	var ahora := mini(cantidad_real, LOTE_ECLOSION)
+	_eclosion_pendiente += cantidad_real - ahora
+	_eclosionar_lote(ahora)
+	run.efectos.chispas(Vector2.ZERO, Color(1.0, 0.92, 0.6), mini(40, 6 + cantidad_real))
 	return cantidad_real
+
+
+func _eclosionar_lote(cantidad_lote: int) -> void:
+	for i in cantidad_lote:
+		_nacer("obrera", Vector2.from_angle(randf() * TAU) * randf_range(3.0, 14.0))
 
 
 func detener() -> void:
@@ -125,6 +134,10 @@ func _process(delta: float) -> void:
 		_actualizar_visibilidad()
 	if not _activa:
 		return
+	if _eclosion_pendiente > 0:
+		var lote := mini(_eclosion_pendiente, LOTE_ECLOSION)
+		_eclosion_pendiente -= lote
+		_eclosionar_lote(lote)
 	if _por_salir > 0:
 		_reloj_salida -= delta
 		while _reloj_salida <= 0.0 and _por_salir > 0:

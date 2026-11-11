@@ -17,11 +17,18 @@ const CARTAS_POR_OFERTA := 3
 ## Néctar del nivel n = max(NECTAR_MINIMO, hormigas × NECTAR_POR_HORMIGA) × (1 + CRECE_POR_NIVEL × n).
 ## Atarlo a la colonia mantiene parecida la cantidad de niveles por run con
 ## una obrera o con quinientas; el tiempo entre niveles crece dentro de la run.
+## Apunta a 3–4 niveles por run: con 0,8 por nivel y 1,2 por hormiga salían
+## 7–13 y la run se cortaba cada pocos segundos para elegir.
 const NECTAR_MINIMO := 6.0
-const NECTAR_POR_HORMIGA := 1.2
-const CRECE_POR_NIVEL := 0.8
+const NECTAR_POR_HORMIGA := 2.5
+const CRECE_POR_NIVEL := 1.5
 ## Cada nivel eclosiona esta parte de la colonia (al menos una obrera).
-const ECLOSION := 0.15
+const ECLOSION := 0.2
+## Cuánto pesa cada nivel de la run en la rareza: menos niveles, cada uno vale más.
+const SUERTE_POR_NIVEL := 2
+## Con la colonia casi llena no se ofrecen mutaciones que sólo traen hormigas.
+const LLENA := 0.9
+const EFECTOS_DE_CRIA := ["eclosion", "marea", "hermanas", "cria"]
 const HORMIGAS_POR_ENJAMBRE := 50.0
 const DANO_POR_DESBORDE := 0.05
 const PROB_CRITICO_MAX := 0.75
@@ -223,7 +230,7 @@ func pesos_rareza(n: int) -> Dictionary:
 
 
 func _tirar_rareza(suerte := 0) -> String:
-	var pesos := pesos_rareza(nivel + suerte)
+	var pesos := pesos_rareza(nivel * SUERTE_POR_NIVEL + suerte)
 	var total := 0.0
 	for r in Juego.RAREZAS:
 		total += float(pesos[r])
@@ -236,7 +243,13 @@ func _tirar_rareza(suerte := 0) -> String:
 
 
 func disponible(m: Dictionary) -> bool:
+	if m.efecto in EFECTOS_DE_CRIA and colonia_llena():
+		return false
 	return m.max <= 0 or int(elegidas.get(m.id, 0)) < m.max
+
+
+func colonia_llena() -> bool:
+	return is_instance_valid(run) and run.colonia.cantidad() >= Colonia.MAX_HORMIGAS * LLENA
 
 
 ## Un cofre tira con más suerte y nunca trae comunes.
@@ -474,6 +487,19 @@ func _mostrar_ui() -> void:
 	run.feromonas.soltar()
 	run.cancelar_colocacion_entrada()
 	run.camara.arrastrando = false
+	get_tree().paused = true
+	_ui.mostrar(oferta)
+
+
+## La pausa (Esc) se abre encima de las cartas: se esconden y vuelven al seguir.
+func esconder_cartas() -> void:
+	if eligiendo and is_instance_valid(_ui):
+		_ui.visible = false
+
+
+func volver_a_cartas() -> void:
+	if not eligiendo or not is_instance_valid(_ui):
+		return
 	get_tree().paused = true
 	_ui.mostrar(oferta)
 
