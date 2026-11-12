@@ -19,6 +19,7 @@ func _ready() -> void:
 	await probar_efectos()
 	await probar_cofre_y_horda()
 	await probar_fin_de_run()
+	await probar_descubrimientos()
 	EvolucionRun.modo_automatico = "auto"
 	get_tree().paused = false
 	Juego.reiniciar_estado()
@@ -159,13 +160,13 @@ func probar_efectos() -> void:
 	var e := r.evolucion
 	var dano := r.multiplicador_dano_activo()
 	e.aplicar(e.carta(Juego.mutaciones_por_id["mandibulas_sierra"], "comun"))
-	verificar(is_equal_approx(r.multiplicador_dano_activo(), dano * 1.15), "Mandíbulas de sierra suma 15% de daño")
+	verificar(is_equal_approx(r.multiplicador_dano_activo(), dano * 1.20), "Mandíbulas de sierra suma 20% de daño")
 	var paso := r.factor_paso()
 	e.aplicar(e.carta(Juego.mutaciones_por_id["patas_de_grillo"], "comun"))
 	verificar(r.factor_paso() > paso, "la velocidad de la run acelera el paso")
 	var migas := Juego.stat("multiplicador_migas")
 	e.aplicar(e.carta(Juego.mutaciones_por_id["hocico_dorado"], "rara"))
-	verificar(is_equal_approx(Juego.stat("multiplicador_migas"), migas * 1.16), "Hocico dorado multiplica las migas sólo en esta run")
+	verificar(is_equal_approx(Juego.stat("multiplicador_migas"), migas * (1.0 + e.carta(Juego.mutaciones_por_id["hocico_dorado"], "rara").valor / 100.0)), "Hocico dorado multiplica las migas sólo en esta run")
 	var h := r.colonia._nacer()
 	var capacidad: int = h._capacidad
 	e.aplicar(e.carta(Juego.mutaciones_por_id["buche_elastico"], "rara"))
@@ -192,7 +193,7 @@ func probar_efectos() -> void:
 	e.aplicar(e.carta(Juego.mutaciones_por_id["fuerza_enjambre"], "rara"))
 	var con_enjambre := e.multiplicador_dano()
 	var enjambres := floorf(r.colonia.cantidad() / EvolucionRun.HORMIGAS_POR_ENJAMBRE)
-	verificar(enjambres >= 2 and is_equal_approx(con_enjambre, 1.15 + 0.04 * enjambres), "Fuerza del enjambre suma por cada 50 hormigas (%.3f con %d)" % [con_enjambre, r.colonia.cantidad()])
+	verificar(enjambres >= 2 and is_equal_approx(con_enjambre, 1.0 + Juego.mutaciones_por_id["mandibulas_sierra"].valor / 100.0 + 0.04 * enjambres), "Fuerza del enjambre suma por cada 50 hormigas (%.3f con %d)" % [con_enjambre, r.colonia.cantidad()])
 	await cerrar(r)
 
 
@@ -235,4 +236,38 @@ func probar_fin_de_run() -> void:
 	r._cerrar()
 	verificar(is_equal_approx(Juego.stat("multiplicador_migas"), base), "al cobrar la run las stats vuelven a las de la tienda")
 	verificar(Juego.estadistica("mayor_nivel") >= 0, "el mayor nivel queda en las estadísticas")
+	await cerrar(r)
+
+
+## Algunas mutaciones se descubren jugando y quedan para siempre.
+func probar_descubrimientos() -> void:
+	var r := crear()
+	var e := r.evolucion
+	var bloqueadas := []
+	for m in Juego.mutaciones:
+		if not m.desbloqueo.is_empty():
+			bloqueadas.append(m.id)
+	verificar(bloqueadas.size() >= 5 and not Juego.mutacion_disponible("marea_negra"), "una partida nueva arranca con %d mutaciones por descubrir" % bloqueadas.size())
+	var ofrecida := false
+	for i in 300:
+		for c in e.generar_oferta(true):
+			if c.id in bloqueadas:
+				ofrecida = true
+	verificar(not ofrecida, "las no descubiertas no aparecen en las ofertas")
+	var proxima := Juego.proxima_mutacion()
+	verificar(not proxima.is_empty() and not String(proxima.condicion).is_empty(), "el final de la run puede mostrar la próxima por descubrir")
+	Juego.registrar_maximo("mayor_colonia", 400)
+	var nuevas := Juego.revisar_mutaciones()
+	verificar("marea_negra" in nuevas and "fuerza_enjambre" in nuevas and Juego.mutacion_disponible("marea_negra"), "llegar a 400 hormigas descubre Fuerza del enjambre y Marea negra")
+	verificar("marea_negra" in Juego.mutaciones_por_anunciar, "quedan para anunciar al final de la run")
+	verificar(Juego.revisar_mutaciones().is_empty(), "no se descubren dos veces")
+	var datos := Juego.datos_partida()
+	Juego.coronas = 3
+	verificar(Juego.fundar_colonia(), "se puede fundar")
+	verificar(Juego.mutacion_disponible("marea_negra") and Juego.mutacion_disponible("corona_reina"), "fundar descubre la Corona de la reina y conserva el resto")
+	Juego.restaurar_partida(datos)
+	verificar(Juego.mutacion_disponible("marea_negra") and not Juego.mutacion_disponible("corona_reina"), "lo descubierto se guarda con la partida")
+	datos.erase("mutaciones_descubiertas")
+	Juego.restaurar_partida(datos)
+	verificar(Juego.mutacion_disponible("marea_negra") and Juego.mutaciones_por_anunciar.is_empty(), "una partida vieja descubre en silencio lo que ya logró")
 	await cerrar(r)

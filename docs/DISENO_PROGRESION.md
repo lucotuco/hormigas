@@ -1419,3 +1419,81 @@ total, así que queda en 800. Con las dietas baratas la campaña vuelve a
 **Pendiente.** El restaurante ahora pide fundar antes de caer (antes caía en
 la primera colonia). No parece malo, porque la primera fundación llega cerca
 del minuto 90, pero conviene mirarlo con una persona.
+
+## Cartas con peso y mutaciones por descubrir — 12/11
+
+**Por qué.** Con el néctar de #24 salían de 7 a 13 niveles por run: una pausa
+de cartas cada ~5 segundos. Elegir dejaba de ser una decisión y pasaba a ser
+un trámite. Además seis mutaciones estaban siempre disponibles, así que no
+había nada nuevo que esperar entre runs.
+
+**Cartas con peso (#28).**
+
+- Néctar del nivel n: `max(6, hormigas × 2,5) × (1 + 1,5 × n)`. Antes era
+  1,2 y 0,8.
+- Cada nivel pesa doble en la rareza (`SUERTE_POR_NIVEL = 2`).
+- Con la colonia al 90% del tope no salen cartas de cría.
+- La eclosión trae el 20% de la colonia, en tandas de 25 por cuadro.
+
+Niveles por run medidos desde partidas guardadas: 2–3 desde cero, 3–4 en la
+casa, 2–5 tras la primera fundación, 4–5 en el museo y 5–6 al final.
+
+**Mutaciones por descubrir (#29).** Seis mutaciones se ganan con logros que
+quedan para siempre, porque se guardan en la partida y no se borran al fundar:
+
+| Mutación | Se descubre con |
+|---|---|
+| Colmillos brutales | 150 críticos |
+| Fuerza del enjambre | una colonia de 150 hormigas |
+| Hermanas perdidas | llegar al nivel 4 en una run |
+| Furia de la colmena | conquistar un gran objetivo |
+| Corona de la reina | fundar una colonia |
+| Marea negra | una colonia de 400 hormigas |
+
+El fin de run anuncia la nueva mutación o la próxima, con su avance.
+
+**Balance.** Con menos cartas, cada run era más débil y la campaña se
+alargó. Se compensó en tres frentes:
+
+- Las ocho cartas comunes suben cerca de un tercio (por ejemplo, Mandíbulas
+  de sierra pasa de 15% a 20% y Hocico dorado de 10% a 14%). Cada carta se
+  nota más.
+- El Coliseo baja de 3,5e7 a 2,0e7. Era el punto de trabe más variable:
+  entre 8 y 36 minutos según la pasada.
+- El Museo baja de 1900 a 1100. Forzaba casi siempre una segunda fundación;
+  ahora cae en 2–3 expediciones tras la primera.
+
+Durante la medición apareció una trampa del bot: ahorraba para Muros
+(6M) con 3,8M en el banco y ganando 9K por run, y quedó 34 runs sin comprar.
+Ahora sólo ahorra si le faltan menos de tres runs.
+
+Minutos de bot con la mejor carta:
+
+| Hito | Antes (#26) | Cartas con peso | + néctar 2,0/1,2 | + comunes y Coliseo | + Museo 1100 |
+|---|---:|---:|---:|---:|---:|
+| Madera | 13,1 | 13,3 | 11,4 | 12,6 | 11,5 |
+| Muros | 57,5 | 65,2 | 57,9 | 58,3 | 61,6 |
+| Casa | 69,1 | 83,2 | 75,9 | 72,6 | 76,8 |
+| Restaurante | 103,7 | 117,5 | 117,1 | 107,7 | 111,1 |
+| Museo | 114,2 | 130,5 | 127,0 | 138,2 | 121,5 |
+| Obelisco | 137,5 | 153,3 | 150,2 | 148,9 | 145,0 |
+| Coliseo | 146,0 | 173,2 | 170,2 | 165,0 | 157,0 |
+| Torre Eiffel | 176,5 | 205,3 | 201,2 | 195,0 | 191,1 |
+| Expediciones | 75 | 85 | 82 | 80 | 79 |
+
+Con cartas al azar, la Torre Eiffel cae en el minuto 212,5 (89 runs) con las
+cartas con peso solas, en 218,7 (89 runs) con las comunes y el Coliseo, y en
+205,5 (86 runs) con el Museo en 1100.
+
+El néctar 2,0/1,2 apenas cambió el total, así que se dejó 2,5/1,5.
+
+**Lectura.**
+
+- **Duración:** con la mejor carta, unas 4,2 h de bot más tienda, más
+  ~15 minutos de cartas (unas cuatro por run). Total, ~4,5 h. Con cartas
+  al azar, ~4,8 h.
+- **Lo más largo** es el último tramo: tras la tercera fundación hay que
+  reconquistar cinco destinos antes de la Torre Eiffel (~26 minutos).
+- **Pendiente:** acortar ese tramo, por ejemplo con destinos ya conquistados
+  que se salteen, y probar con una persona si 2–6 cartas por run se sienten
+  como premio.

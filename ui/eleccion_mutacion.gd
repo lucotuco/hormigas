@@ -240,15 +240,16 @@ func _actualizar_revolver() -> void:
 
 
 func _actualizar_inventario() -> void:
+	var descubiertas := tr("Mutaciones descubiertas: %d/%d") % [Juego.cantidad_mutaciones_disponibles(), Juego.mutaciones.size()]
 	if evolucion.elegidas.is_empty():
-		_inventario.text = ""
+		_inventario.text = descubiertas
 		return
 	var partes := PackedStringArray()
 	for id in evolucion.elegidas:
 		var m: Dictionary = Juego.mutaciones_por_id.get(id, {})
 		if not m.is_empty():
 			partes.append("%s ×%d" % [tr(m.nombre), int(evolucion.elegidas[id])])
-	_inventario.text = tr("En esta expedición: %s") % "  ·  ".join(partes)
+	_inventario.text = tr("En esta expedición: %s") % "  ·  ".join(partes) + "\n" + descubiertas
 
 
 func _revolver() -> void:

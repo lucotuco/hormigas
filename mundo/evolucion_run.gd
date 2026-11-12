@@ -243,6 +243,8 @@ func _tirar_rareza(suerte := 0) -> String:
 
 
 func disponible(m: Dictionary) -> bool:
+	if not Juego.mutacion_disponible(m.id):
+		return false
 	if m.efecto in EFECTOS_DE_CRIA and colonia_llena():
 		return false
 	return m.max <= 0 or int(elegidas.get(m.id, 0)) < m.max
