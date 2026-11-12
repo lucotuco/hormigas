@@ -1483,7 +1483,7 @@ Minutos de bot con la mejor carta:
 
 Con cartas al azar, la Torre Eiffel cae en el minuto 212,5 (89 runs) con las
 cartas con peso solas, en 218,7 (89 runs) con las comunes y el Coliseo, y en
-EZ_RESULTADO con el Museo en 1100.
+205,5 (86 runs) con el Museo en 1100.
 
 El néctar 2,0/1,2 apenas cambió el total, así que se dejó 2,5/1,5.
 
