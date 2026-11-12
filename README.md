@@ -514,17 +514,22 @@ un monumento.
 ### Néctar, niveles y mutaciones (la run como roguelite)
 
 Cada entrega real llena la **barra de néctar** (bajo el reloj). Al llenarla la
-colonia **sube de nivel**: eclosiona de golpe un 15% de la colonia (al menos
-una obrera) y, medio segundo después, la run se pausa para elegir **una de tres
-mutaciones** con clic o `1` `2` `3`; `R` revuelve la oferta una vez por run.
+colonia **sube de nivel**: eclosiona un 20% de la colonia (al menos una obrera,
+de a 25 por cuadro) y, medio segundo después, la run se pausa para elegir **una
+de tres mutaciones** con clic o `1` `2` `3`; `R` revuelve la oferta una vez por
+run. `Esc` abre la pausa encima de las cartas y al seguir vuelven las mismas.
 Las mutaciones valen sólo en esa expedición: al cobrarla, las stats vuelven a
 las de la tienda y nada se guarda.
 
 - Rarezas: común, rara, épica y legendaria (gris, azul, violeta y dorado). La
   rareza multiplica el valor de la fila ×1 / ×1,6 / ×2,5 / ×4 respecto de su
-  rareza mínima, y con cada nivel de la run salen mejores rarezas.
-- Néctar del nivel *n* = máx(6, hormigas × 1,2) × (1 + 0,8 × *n*): atado a la
-  colonia, da 4–7 niveles por run con una obrera o con quinientas.
+  rareza mínima, y cada nivel de la run cuenta doble para salir mejores rarezas.
+- Néctar del nivel *n* = máx(6, hormigas × 2,5) × (1 + 1,5 × *n*): atado a la
+  colonia, da 2–4 niveles por run al principio y 4–6 en las runs largas del
+  final, una pausa cada 15–40 s. Con 1,2 y 0,8 salían 7–13 y la run se cortaba
+  cada pocos segundos.
+- Con la colonia al 90% del tope no se ofrecen las mutaciones que sólo traen
+  hormigas (Puesta masiva, Marea negra, Hermanas perdidas, Nodriza real).
 - Las mutaciones están en `datos/mutaciones.csv` (`efecto`, `valor`,
   `rareza_minima`, `max`). Daño, ritmo, paso y críticos se leen por mordida
   desde `EvolucionRun`; migas, botín, buche y cría van por `Juego.mods_run`.

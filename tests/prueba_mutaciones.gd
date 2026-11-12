@@ -110,6 +110,15 @@ func probar_niveles() -> void:
 	for c in oferta:
 		ids[c.id] = true
 	verificar(oferta.size() == EvolucionRun.CARTAS_POR_OFERTA and ids.size() == oferta.size(), "cada oferta trae tres cartas distintas")
+	# Con la colonia casi llena, las mutaciones que sólo traen hormigas no sirven.
+	while not e.colonia_llena():
+		r.colonia._nacer()
+	var de_cria := false
+	for i in 200:
+		for c in e.generar_oferta():
+			if c.efecto in EvolucionRun.EFECTOS_DE_CRIA:
+				de_cria = true
+	verificar(not de_cria, "con la colonia llena no se ofrecen eclosión, Marea negra, Hermanas ni Nodriza")
 	await cerrar(r)
 
 
@@ -125,13 +134,22 @@ func probar_eleccion_del_jugador() -> void:
 	var ui: EleccionMutacion = e._ui
 	verificar(is_instance_valid(ui) and ui.visible and ui._cartas.size() == 3, "se muestran tres cartas")
 	r.hud.pausar()
-	verificar(not is_instance_valid(r.hud._ventana), "la pausa no se abre encima de las cartas")
+	verificar(r.hud.pausado() and not ui.visible and e.eligiendo, "Esc abre la pausa encima de las cartas y las esconde")
+	r.hud.reanudar()
+	verificar(not r.hud.pausado() and ui.visible and get_tree().paused and e.eligiendo, "al seguir vuelven las mismas cartas, todavía en pausa")
 	var revolver := e.revolver_restante
 	ui._revolver()
 	verificar(e.revolver_restante == revolver - 1 and ui._cartas.size() == 3, "revolver cambia la oferta una vez")
 	verificar(not e.revolver(), "no se puede revolver más de lo permitido")
 	e.elegir(0)
 	verificar(not e.eligiendo and not get_tree().paused and e.historial.size() == 1, "elegir aplica la mutación y despausa")
+	# Terminar la expedición desde la pausa con cartas abiertas no deja la run trabada.
+	e.sumar_nectar(e.necesario)
+	e._demora_oferta = -1.0
+	e._ofrecer()
+	r.hud.pausar()
+	r.hud._terminar_desde_pausa()
+	verificar(not e.eligiendo and not get_tree().paused and r.tiempo_restante <= 0.0, "terminar desde la pausa descarta las cartas y despausa")
 	await cerrar(r)
 
 
@@ -161,12 +179,20 @@ func probar_efectos() -> void:
 	var cuantas := r.colonia.cantidad()
 	e.aplicar(e.carta(Juego.mutaciones_por_id["marea_negra"], "legendaria"))
 	verificar(r.colonia.cantidad() > cuantas, "Marea negra hace nacer hormigas al instante")
+	# Una eclosión grande sale de a tandas por cuadro, sin un tirón de golpe.
+	var antes_tanda := r.colonia.cantidad()
+	var prometidas := r.colonia.eclosionar(100)
+	verificar(prometidas == 100 and r.colonia.cantidad() == antes_tanda + Colonia.LOTE_ECLOSION, "una eclosión de 100 hace nacer la primera tanda en el acto")
+	for i in 4:
+		r.colonia._process(1.0 / 60.0)
+	verificar(r.colonia._eclosion_pendiente == 0 and r.colonia.cantidad() >= antes_tanda + 100, "las otras tandas nacen en los cuadros siguientes")
 	# Fuerza del enjambre: el daño crece con la colonia viva.
 	for i in 120:
 		r.colonia._nacer()
 	e.aplicar(e.carta(Juego.mutaciones_por_id["fuerza_enjambre"], "rara"))
 	var con_enjambre := e.multiplicador_dano()
-	verificar(is_equal_approx(con_enjambre, 1.15 + 0.04 * 2), "Fuerza del enjambre suma por cada 50 hormigas (%.3f con %d)" % [con_enjambre, r.colonia.cantidad()])
+	var enjambres := floorf(r.colonia.cantidad() / EvolucionRun.HORMIGAS_POR_ENJAMBRE)
+	verificar(enjambres >= 2 and is_equal_approx(con_enjambre, 1.15 + 0.04 * enjambres), "Fuerza del enjambre suma por cada 50 hormigas (%.3f con %d)" % [con_enjambre, r.colonia.cantidad()])
 	await cerrar(r)
 
 
