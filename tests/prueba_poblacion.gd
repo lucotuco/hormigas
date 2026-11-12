@@ -2,7 +2,7 @@ extends Node
 ## Contenido nuevo, circulación real y límites de costo de los seis escenarios.
 const ANTES := {"casa": 37, "restaurante": 25, "museo": 9, "obelisco": 14, "coliseo": 19, "eiffel": 17}
 const METAS := {"casa": "mesa_comedor", "restaurante": "mesada", "museo": "escultura", "obelisco": "obelisco", "coliseo": "arco", "eiffel": "torre"}
-const RESISTENCIAS := {"casa": 220.0, "restaurante": 800.0, "museo": 1900.0, "obelisco": 3.5e5, "coliseo": 3.5e7, "eiffel": 4.0e9}
+const RESISTENCIAS := {"casa": 220.0, "restaurante": 800.0, "museo": 1100.0, "obelisco": 3.5e5, "coliseo": 2.0e7, "eiffel": 4.0e9}
 const IDENTIDAD := {"casa": ["canasto", "carrito"], "restaurante": ["carrito", "mesa_comedor"], "museo": ["vitrina", "columna", "anfora"], "obelisco": ["colectivo", "taxi", "kiosco", "cartel"], "coliseo": ["columna", "anfora", "fuente"], "eiffel": ["kiosco", "farol", "banco", "fuente"]}
 const PASEOS := {
 	"casa": [Vector2(-200, 500), Vector2(2100, 1000), Vector2(4600, 600), Vector2(500, 1800), Vector2(1300, 3300), Vector2(2600, 3600), Vector2(5800, 4200)],

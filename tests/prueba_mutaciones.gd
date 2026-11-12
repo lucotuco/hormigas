@@ -160,13 +160,13 @@ func probar_efectos() -> void:
 	var e := r.evolucion
 	var dano := r.multiplicador_dano_activo()
 	e.aplicar(e.carta(Juego.mutaciones_por_id["mandibulas_sierra"], "comun"))
-	verificar(is_equal_approx(r.multiplicador_dano_activo(), dano * 1.15), "Mandíbulas de sierra suma 15% de daño")
+	verificar(is_equal_approx(r.multiplicador_dano_activo(), dano * 1.20), "Mandíbulas de sierra suma 20% de daño")
 	var paso := r.factor_paso()
 	e.aplicar(e.carta(Juego.mutaciones_por_id["patas_de_grillo"], "comun"))
 	verificar(r.factor_paso() > paso, "la velocidad de la run acelera el paso")
 	var migas := Juego.stat("multiplicador_migas")
 	e.aplicar(e.carta(Juego.mutaciones_por_id["hocico_dorado"], "rara"))
-	verificar(is_equal_approx(Juego.stat("multiplicador_migas"), migas * 1.16), "Hocico dorado multiplica las migas sólo en esta run")
+	verificar(is_equal_approx(Juego.stat("multiplicador_migas"), migas * (1.0 + e.carta(Juego.mutaciones_por_id["hocico_dorado"], "rara").valor / 100.0)), "Hocico dorado multiplica las migas sólo en esta run")
 	var h := r.colonia._nacer()
 	var capacidad: int = h._capacidad
 	e.aplicar(e.carta(Juego.mutaciones_por_id["buche_elastico"], "rara"))
@@ -193,7 +193,7 @@ func probar_efectos() -> void:
 	e.aplicar(e.carta(Juego.mutaciones_por_id["fuerza_enjambre"], "rara"))
 	var con_enjambre := e.multiplicador_dano()
 	var enjambres := floorf(r.colonia.cantidad() / EvolucionRun.HORMIGAS_POR_ENJAMBRE)
-	verificar(enjambres >= 2 and is_equal_approx(con_enjambre, 1.15 + 0.04 * enjambres), "Fuerza del enjambre suma por cada 50 hormigas (%.3f con %d)" % [con_enjambre, r.colonia.cantidad()])
+	verificar(enjambres >= 2 and is_equal_approx(con_enjambre, 1.0 + Juego.mutaciones_por_id["mandibulas_sierra"].valor / 100.0 + 0.04 * enjambres), "Fuerza del enjambre suma por cada 50 hormigas (%.3f con %d)" % [con_enjambre, r.colonia.cantidad()])
 	await cerrar(r)
 
 

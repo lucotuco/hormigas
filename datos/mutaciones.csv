@@ -1,12 +1,12 @@
 id,nombre,descripcion,efecto,valor,rareza_minima,max,desbloqueo
-mandibulas_sierra,Mandíbulas de sierra,+{v}% de daño,dano,15,comun,0,
-patas_de_grillo,Patas de grillo,Caminan {v}% más rápido,velocidad,12,comun,0,
-mordida_nerviosa,Mordida nerviosa,Muerden {v}% más rápido,ritmo,12,comun,0,
-ojo_certero,Ojo certero,+{v}% de mordidas críticas,critico,7,comun,0,
-hocico_dorado,Hocico dorado,+{v}% de migas,migas,10,comun,0,
-puesta_masiva,Puesta masiva,Las eclosiones traen {v}% más hormigas,eclosion,35,comun,0,
-nectar_espeso,Néctar espeso,+{v}% de néctar por entrega,nectar,20,comun,0,
-banquete,Banquete,Destruir algo paga +{v}% de su valor,botin,10,comun,0,
+mandibulas_sierra,Mandíbulas de sierra,+{v}% de daño,dano,20,comun,0,
+patas_de_grillo,Patas de grillo,Caminan {v}% más rápido,velocidad,16,comun,0,
+mordida_nerviosa,Mordida nerviosa,Muerden {v}% más rápido,ritmo,16,comun,0,
+ojo_certero,Ojo certero,+{v}% de mordidas críticas,critico,9,comun,0,
+hocico_dorado,Hocico dorado,+{v}% de migas,migas,14,comun,0,
+puesta_masiva,Puesta masiva,Las eclosiones traen {v}% más hormigas,eclosion,45,comun,0,
+nectar_espeso,Néctar espeso,+{v}% de néctar por entrega,nectar,25,comun,0,
+banquete,Banquete,Destruir algo paga +{v}% de su valor,botin,14,comun,0,
 colmillos_brutales,Colmillos brutales,Las críticas hacen +{v}× de daño,critico_mult,1,rara,0,criticos:150
 fuerza_enjambre,Fuerza del enjambre,+{v}% de daño por cada 50 hormigas,enjambre,4,rara,0,mayor_colonia:150
 buche_elastico,Buche elástico,+{v} bocado por viaje,capacidad,1,rara,3,
