@@ -1,5 +1,20 @@
 # Tareas
 
+## Mutaciones, horda y descubrimientos — 12/11
+
+- [x] Mutaciones dentro de la run: el néctar sube de nivel y cada nivel ofrece tres cartas con rareza (#24).
+- [x] Cofres dorados y festejos al cruzar 100/250/500 hormigas (#25).
+- [x] Techo del bocado contra el gran objetivo ×8 y dietas más baratas para volver a ~4 h (#26).
+- [x] Sugerir fundar tras tres expediciones sin avanzar en el destino (#27).
+- [x] Cartas con peso: menos niveles por run (2–6 en vez de 7–13), más suerte por nivel, sin cartas de cría con la colonia llena, Esc sobre las cartas y eclosión en tandas de 25 (#28).
+- [x] Seis mutaciones que se descubren jugando y quedan para siempre; el fin de run anuncia la nueva o la próxima con su avance (#29).
+- [x] Comunes un tercio más fuertes, Coliseo 2,0e7 y Museo 1100 para compensar las cartas con peso (#29).
+- [x] Bot: no ahorrar para una dieta que no alcanza en pocas runs (trababa al bot al azar 34 runs).
+- [ ] Probar con una persona si 2–6 cartas por run se sienten como premio y no como interrupción.
+- [ ] Medir en la GPU de Lucas la eclosión de 100 hormigas y la horda de 500.
+- [ ] Acortar la reconquista tras la tercera fundación (~26 min antes de la Torre Eiffel).
+- [ ] Ideas sin hacer: resumen de la build al terminar la run, evoluciones o combos de mutaciones.
+
 ## Continuidad del apoyo y regreso — 5/11
 
 - [x] Reproducir cinco fallas de apoyo/llegada sobre la mesa real y una pausa cargada con la cola de rutas cerrada, sin inventar carga ni vaciar el reloj de trabajo.
