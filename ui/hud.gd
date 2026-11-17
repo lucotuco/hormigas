@@ -395,17 +395,6 @@ func mostrar_racha(cantidad: int) -> void:
 
 
 
-## Hitos de la horda en la run (EvolucionRun): el mismo cartel que las rachas.
-func mostrar_horda(cantidad: int) -> void:
-	if not is_instance_valid(_lbl_racha) or not run.activa or run.terminada:
-		return
-	_lbl_racha.text = tr("¡%d HORMIGAS!") % cantidad
-	_lbl_racha.pivot_offset = Vector2(160, 20)
-	_lbl_racha.modulate.a = 1.0
-	_lbl_racha.show()
-	_racha_visible = 1.15
-
-
 func mostrar_combo(combo: int) -> void:
 	if run.terminada:
 		return
@@ -443,9 +432,6 @@ func mostrar_fin() -> void:
 	_lbl_fin_resumen.text = tr("%s migas/s · %s") % [Juego.formatear_corto(run.produccion_run), (tr("%+.0f%% frente al récord anterior") % run.mejora_produccion) if run.tenia_record else tr("primer registro en este destino")]
 	_lbl_fin_detalle.text = tr("Comidas: %d · Partes de la casa: %d\nMejor combo: x%d\nTotal en el hormiguero: %s") % [
 		Juego.comidas_destruidas_run, Juego.partes_destruidas_run, Juego.mejor_combo_run, Juego.formatear(Juego.migas)]
-	if is_instance_valid(run.evolucion) and run.evolucion.habilitada:
-		_lbl_fin_detalle.text += tr("\nNivel %d · %d mutaciones · %d hormigas al final") % [run.evolucion.nivel, run.evolucion.historial.size(), run.colonia.cantidad()]
-	_anunciar_mutaciones()
 	_lbl_fin_detalle.text += tr("\nAlimentos %s · Muebles %s · Estructuras %s") % [Juego.formatear_corto(run.ingresos[0]), Juego.formatear_corto(run.ingresos[1]), Juego.formatear_corto(run.ingresos[2])]
 	if run.limpieza_lograda:
 		_lbl_fin_detalle.text += tr("\nLimpieza: %.1f s · Total con entregas: %.1f s") % [run.tiempo_limpieza, run.tiempo_jugado + run.tiempo_retirada]
@@ -483,22 +469,6 @@ func mostrar_fin() -> void:
 
 ## No deduce un cuello de botella a partir del aspecto de la colonia. Sólo
 ## destaca carga realmente pendiente cuando supera un décimo de lo extraído.
-## Mutaciones descubiertas en esta run, o cuál es la próxima por descubrir.
-func _anunciar_mutaciones() -> void:
-	if not Juego.revelado("mutaciones"):
-		return
-	if not Juego.mutaciones_por_anunciar.is_empty():
-		for id in Juego.mutaciones_por_anunciar:
-			_lbl_fin_detalle.text += "\n" + tr("¡Nueva mutación descubierta: %s!") % tr(Juego.mutaciones_por_id[id].nombre)
-		Juego.mutaciones_por_anunciar.clear()
-		Sonido.tocar("legendaria", 1.0, 0.0)
-		return
-	var proxima := Juego.proxima_mutacion()
-	if not proxima.is_empty():
-		_lbl_fin_detalle.text += "\n" + tr("Próxima mutación: %s · %s (%s/%s)") % [tr(proxima.nombre), proxima.condicion,
-			Juego.formatear_corto(minf(proxima.actual, proxima.objetivo)), Juego.formatear_corto(proxima.objetivo)]
-
-
 func _actualizar_consejo_fin() -> void:
 	var meta := Juego.proxima_meta()
 	_lbl_fin_siguiente.text = tr("SIGUIENTE PASO · %s") % meta.nombre
@@ -575,7 +545,7 @@ func _crear_migas(raiz: Control) -> void:
 	_lbl_combo = _combo_visual.etiqueta
 	_lbl_racha = Estilo.etiqueta("", 32, Color("ffe39a"), 2)
 	_lbl_racha.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_lbl_racha.position = Vector2(-160, 104)
+	_lbl_racha.position = Vector2(-160, 70)
 	_lbl_racha.size = Vector2(320, 40)
 	_lbl_racha.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_lbl_racha.hide()
@@ -642,7 +612,7 @@ func _crear_avisos(raiz: Control) -> void:
 	_lbl_aviso.custom_minimum_size = Vector2(620, 0)
 	_lbl_aviso.size.x = 620
 	_lbl_aviso.add_theme_stylebox_override("normal", Estilo.panel(14, 10))
-	_lbl_aviso.position = Vector2(-310, 148)
+	_lbl_aviso.position = Vector2(-310, 116)
 	_lbl_aviso.visible = false
 	raiz.add_child(_lbl_aviso)
 
@@ -1137,9 +1107,6 @@ func pausado() -> bool:
 func pausar() -> void:
 	if not is_inside_tree() or not is_node_ready() or (not run.activa and not run.cerrando_erosion) or pausado():
 		return
-	# Con cartas en pantalla la pausa se abre igual: se esconden y vuelven al seguir.
-	if is_instance_valid(run.evolucion):
-		run.evolucion.esconder_cartas()
 	run.feromonas.soltar()
 	run.cancelar_colocacion_entrada()
 	run.camara.arrastrando = false
@@ -1152,9 +1119,6 @@ func reanudar() -> void:
 	if is_instance_valid(_ventana):
 		_ventana.queue_free()
 	_ventana = null
-	if is_instance_valid(run.evolucion) and run.evolucion.eligiendo and run.activa and not run.terminada:
-		run.evolucion.volver_a_cartas()
-		return
 	get_tree().paused = false
 
 
@@ -1203,9 +1167,6 @@ func _abrir_configuracion() -> void:
 
 
 func _terminar_desde_pausa() -> void:
-	# Las cartas pendientes se pierden: si no, reanudar las volvería a abrir.
-	if is_instance_valid(run.evolucion):
-		run.evolucion.cerrar()
 	reanudar()
 	run.tiempo_restante = 0.0
 

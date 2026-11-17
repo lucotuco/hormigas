@@ -231,7 +231,6 @@ reveladas quedan visibles para siempre, y lo nuevo se marca con "¡Nuevo!":
 
 | Mecánica | Aparece |
 |---|---|
-| Néctar, niveles y mutaciones | Después de la primera compra |
 | Compra ×10 / Máx y frenesí | Desde la segunda run |
 | Botón y texto del gran objetivo | Desde la tercera run |
 | Pestaña Castas | Desde la cuarta run (o al tener una especialista) |
@@ -510,52 +509,6 @@ y ritmo de mordida ×1.5, con descanso para no encadenarlo indefinidamente. Las
 mandíbulas crecen visualmente con sus mejoras; buche y legado cambian el abdomen
 y las marcas del cuerpo. La reina adquiere una corona especial al conquistar
 un monumento.
-
-### Néctar, niveles y mutaciones (la run como roguelite)
-
-Cada entrega real llena la **barra de néctar** (bajo el reloj). Al llenarla la
-colonia **sube de nivel**: eclosiona un 20% de la colonia (al menos una obrera,
-de a 25 por cuadro) y, medio segundo después, la run se pausa para elegir **una
-de tres mutaciones** con clic o `1` `2` `3`; `R` revuelve la oferta una vez por
-run. `Esc` abre la pausa encima de las cartas y al seguir vuelven las mismas.
-Las mutaciones valen sólo en esa expedición: al cobrarla, las stats vuelven a
-las de la tienda y nada se guarda.
-
-- Rarezas: común, rara, épica y legendaria (gris, azul, violeta y dorado). La
-  rareza multiplica el valor de la fila ×1 / ×1,6 / ×2,5 / ×4 respecto de su
-  rareza mínima, y cada nivel de la run cuenta doble para salir mejores rarezas.
-- Néctar del nivel *n* = máx(6, hormigas × 2,5) × (1 + 1,5 × *n*): atado a la
-  colonia, da 2–4 niveles por run al principio y 4–6 en las runs largas del
-  final, una pausa cada 15–40 s. Con 1,2 y 0,8 salían 7–13 y la run se cortaba
-  cada pocos segundos.
-- Con la colonia al 90% del tope no se ofrecen las mutaciones que sólo traen
-  hormigas (Puesta masiva, Marea negra, Hermanas perdidas, Nodriza real).
-- Las mutaciones están en `datos/mutaciones.csv` (`efecto`, `valor`,
-  `rareza_minima`, `max`). Daño, ritmo, paso y críticos se leen por mordida
-  desde `EvolucionRun`; migas, botín, buche y cría van por `Juego.mods_run`.
-- Llegar al tope de 500 hormigas convierte la eclosión en "colonia
-  desbordada": +5% de daño por cada nivel que ya no puede eclosionar.
-- **Mutaciones por descubrir:** seis empiezan bloqueadas y se descubren
-  jugando, para siempre (también al fundar). Columna `desbloqueo` de
-  `mutaciones.csv` con `estadística:valor`:
-  - Colmillos brutales: 150 críticas.
-  - Fuerza del enjambre: 150 hormigas en una run.
-  - Hermanas perdidas: nivel 4 en una run.
-  - Furia de la colmena: conquistar un gran objetivo.
-  - Corona de la reina: fundar una colonia.
-  - Marea negra: 400 hormigas en una run.
-
-  El final de la run anuncia las nuevas o muestra la próxima con su avance, y
-  las cartas muestran cuántas hay descubiertas.
-- La mitad de las **migas doradas** abren un **cofre**: una mutación extra,
-  rara o mejor, sin gastar néctar.
-- Pasar 25, 50, 100… hormigas vivas en la run se festeja una vez (cartel,
-  onda y temblor); sólo cuenta lo que creció en la expedición.
-- Aparece después de la primera compra: las primeras expediciones siguen
-  siendo la obrera sola. El bot elige con `BOT_CARTAS=mejor|azar`; sin
-  pantalla, las pruebas eligen solas (`EvolucionRun.modo_automatico`).
-
-Pruebas: `prueba_mutaciones`; capturas: `revision_mutaciones`.
 
 **Ráfaga es otro poder, manual y separado del frenesí.** Veinte entregas reales
 cargan el botón; `E` activa 8 segundos de daño ×1,75 y ritmo de mordida ×1,25,
@@ -894,8 +847,7 @@ lluvia de migas y un cartel con las coronas y el destino que se abre. Sin
 pantalla (pruebas y bot) no hay cámara lenta.
 
 Además, la **miga dorada** aparece cada tanto: pisala antes de que se apague y
-da migas, frenesí, +8 s o (con el néctar a la vista) un cofre de mutación.
-Las amenazas llegan desde la sexta expedición y las
+da migas, frenesí o +8 s. Las amenazas llegan desde la sexta expedición y las
 migas doradas desde la tercera; una flecha en el borde de la pantalla señala
 las que quedan fuera de la vista. Los pisotones automáticos no las resuelven:
 son el momento de clickear. Código en `mundo/eventos.gd` y `mundo/evento.gd`;

@@ -34,14 +34,6 @@ const RUTA_COMIDAS := "res://datos/comidas.csv"
 const RUTA_CASTAS := "res://datos/castas.csv"
 const RUTA_JALEA := "res://datos/jalea.csv"
 const RUTA_DECRETOS := "res://datos/decretos.csv"
-const RUTA_MUTACIONES := "res://datos/mutaciones.csv"
-## Mutaciones de la run (mundo/evolucion_run.gd). Las rarezas multiplican el
-## valor de la fila (relativo a su rareza mínima) y suben con el nivel.
-const RAREZAS := ["comun", "rara", "epica", "legendaria"]
-const FACTOR_RAREZA := {"comun": 1.0, "rara": 1.6, "epica": 2.5, "legendaria": 4.0}
-const EFECTOS_MUTACION := ["dano", "velocidad", "ritmo", "critico", "critico_mult", "migas",
-	"eclosion", "nectar", "botin", "enjambre", "capacidad", "tiempo", "cria", "hermanas",
-	"furia", "todo", "marea"]
 
 # --- Prestigio (ver docs/DISENO_PROGRESION.md) ---
 ## Jalea al fundar = JALEA_POR_CORONA × coronas + ⌊(migas de la colonia / DIVISOR_JALEA_MIGAS) ^ EXPONENTE_JALEA_MIGAS⌋
@@ -82,17 +74,6 @@ var jalea_por_id: Dictionary = {}
 ## Decretos de la reina: al fundar se elige uno, que rige toda la colonia nueva.
 var decretos: Array[Dictionary] = []
 var decretos_por_id: Dictionary = {}
-var mutaciones: Array[Dictionary] = []
-var mutaciones_por_id: Dictionary = {}
-## Mutaciones que se descubren jugando (columna `desbloqueo` de mutaciones.csv,
-## "estadística:valor"). Lo descubierto queda para siempre, también al fundar.
-const ESTADISTICAS_DESBLOQUEO := ["criticos", "mayor_colonia", "mayor_nivel", "objetivos_conquistados", "fundaciones"]
-var mutaciones_descubiertas: Dictionary = {}
-## Descubiertas que todavía no se le mostraron al jugador (final de la run).
-var mutaciones_por_anunciar: Array[String] = []
-## Modificadores que sólo valen durante la run en curso: stat -> [suma, multiplica].
-## Los escribe EvolucionRun; se vacían al empezar y al cobrar la run.
-var mods_run: Dictionary = {}
 
 # --- Partida guardada ---
 var migas: float = 0.0
@@ -331,7 +312,6 @@ const REVELABLES := {
 	"amenazas": "Amenazas: cada destino tiene la suya; pisalas para salvar a la colonia",
 	"rafaga": "Ráfaga: cada 20 entregas apretá E y la colonia muerde más fuerte",
 	"entradas": "Entradas: apretá N para colocarlas; quedan puestas en las próximas expediciones",
-	"mutaciones": "Néctar: cada entrega llena la barra; al subir de nivel eclosionan hormigas y elegís una mutación",
 }
 ## Desbloqueos clave que marcan la progresión; el HUD muestra el próximo.
 const DIETAS := ["mordida_madera", "mordida_resistente", "mordida_muros"]
@@ -352,8 +332,7 @@ const ESTADISTICAS := ["migas_totales", "migas_gastadas", "tiempo_total", "tiemp
 	"comidas_devoradas", "partes_devoradas", "pisotones", "derrumbes", "hormigas_nacidas",
 	"mayor_colonia", "mejor_combo", "objetivos_conquistados", "coronas_ganadas",
 	"niveles_comprados", "castas_reclutadas", "jalea_gastada",
-	"amenazas_vencidas", "hormigas_perdidas", "migas_doradas",
-	"mayor_nivel", "mutaciones_elegidas", "mutaciones_legendarias", "criticos"]
+	"amenazas_vencidas", "hormigas_perdidas", "migas_doradas"]
 var estadisticas: Dictionary = {}
 var _inicio_run := 0.0
 
@@ -428,26 +407,8 @@ func stat(nombre: String) -> float:
 		push_error("Stat desconocida: '%s'. Agregala en %s." % [nombre, RUTA_STATS])
 		return 0.0
 	var resultado := _calcular(nombre)
-	if mods_run.has(nombre):
-		resultado = (resultado + float(mods_run[nombre][0])) * float(mods_run[nombre][1])
 	_cache_stats[nombre] = resultado
 	return resultado
-
-
-## Fija cuánto se suma y por cuánto se multiplica una stat hasta que termine la run.
-func fijar_en_run(nombre: String, suma: float, multiplica := 1.0) -> void:
-	if not stats_base.has(nombre):
-		push_error("Stat desconocida en la run: '%s'" % nombre)
-		return
-	mods_run[nombre] = [suma, multiplica]
-	_cache_stats.erase(nombre)
-
-
-func limpiar_mods_run() -> void:
-	if mods_run.is_empty():
-		return
-	mods_run.clear()
-	_cache_stats.clear()
 
 
 ## El contexto permite mostrar otra colonia sin mutar la partida ni su caché.
@@ -742,9 +703,6 @@ func marcar_visto(id: String) -> void:
 
 func _condicion_revelar(id: String) -> bool:
 	match id:
-		"mutaciones":
-			# Después de la primera compra: hasta ahí, la obrera sola.
-			return runs_jugadas >= 1 and (estadistica("niveles_comprados") >= 1 or fundaciones > 0)
 		"compra_lote", "frenesi":
 			return runs_jugadas >= 2
 		"gran_objetivo":
@@ -1122,7 +1080,6 @@ func fundar_colonia(decreto_nuevo := "", compras_jalea: Array[String] = []) -> b
 		if quedan > 0:
 			reclutadas[id] = quedan
 	radio_visto = 0
-	revisar_mutaciones()
 	_cache_stats.clear()
 	guardar()
 	migas_cambiaron.emit(migas)
@@ -1193,66 +1150,6 @@ func estadistica(clave: String) -> float:
 	return float(estadisticas.get(clave, 0.0))
 
 
-func mutacion_disponible(id: String) -> bool:
-	var m: Dictionary = mutaciones_por_id.get(id, {})
-	return not m.is_empty() and (m.desbloqueo.is_empty() or mutaciones_descubiertas.has(id))
-
-
-func _avance_desbloqueo(m: Dictionary) -> float:
-	var clave: String = m.desbloqueo.estadistica
-	return float(fundaciones) if clave == "fundaciones" else estadistica(clave)
-
-
-## Marca las que ya cumplen su condición. Con `anunciar`, quedan para el final
-## de la run; al cargar una partida vieja se descubren en silencio.
-func revisar_mutaciones(anunciar := true) -> Array[String]:
-	var nuevas: Array[String] = []
-	for m in mutaciones:
-		if m.desbloqueo.is_empty() or mutaciones_descubiertas.has(m.id):
-			continue
-		if _avance_desbloqueo(m) >= float(m.desbloqueo.valor):
-			mutaciones_descubiertas[m.id] = true
-			nuevas.append(m.id)
-	if anunciar:
-		mutaciones_por_anunciar.append_array(nuevas)
-	return nuevas
-
-
-func cantidad_mutaciones_disponibles() -> int:
-	var n := 0
-	for m in mutaciones:
-		n += int(mutacion_disponible(m.id))
-	return n
-
-
-## La mutación por descubrir más cercana, para mostrarla como objetivo.
-func proxima_mutacion() -> Dictionary:
-	var mejor := {}
-	var mejor_avance := -1.0
-	for m in mutaciones:
-		if mutacion_disponible(m.id):
-			continue
-		var avance := _avance_desbloqueo(m) / maxf(1.0, float(m.desbloqueo.valor))
-		if avance > mejor_avance:
-			mejor_avance = avance
-			mejor = m
-	if mejor.is_empty():
-		return {}
-	return {"id": mejor.id, "nombre": mejor.nombre, "condicion": texto_desbloqueo(mejor),
-		"actual": _avance_desbloqueo(mejor), "objetivo": float(mejor.desbloqueo.valor)}
-
-
-func texto_desbloqueo(m: Dictionary) -> String:
-	var valor := int(m.desbloqueo.valor)
-	match String(m.desbloqueo.estadistica):
-		"criticos": return tr("Hacé %d mordidas críticas") % valor
-		"mayor_colonia": return tr("Llegá a %d hormigas en una expedición") % valor
-		"mayor_nivel": return tr("Llegá al nivel %d en una expedición") % valor
-		"objetivos_conquistados": return tr("Conquistá un gran objetivo")
-		"fundaciones": return tr("Fundá una colonia nueva")
-	return ""
-
-
 func sumar_estadistica(clave: String, cantidad: float = 1.0) -> void:
 	estadisticas[clave] = estadistica(clave) + cantidad
 
@@ -1266,7 +1163,6 @@ func registrar_maximo(clave: String, valor: float) -> void:
 # =====================================================================
 
 func iniciar_run() -> void:
-	limpiar_mods_run()
 	actualizar_evoluciones()
 	_run_cobrada = false
 	migas_run = 0.0
@@ -1282,7 +1178,6 @@ func sumar_migas_run(cantidad: float) -> void:
 
 
 func terminar_run() -> void:
-	limpiar_mods_run()
 	_run_cobrada = true
 	migas += migas_run
 	migas_colonia += migas_run
@@ -1295,7 +1190,6 @@ func terminar_run() -> void:
 	ultima_run_fue_record = runs_jugadas > 1 and migas_run > mejor_run
 	mejor_run = maxf(mejor_run, migas_run)
 	radio_visto = stat("radio_territorio")
-	revisar_mutaciones()
 	guardar()
 	migas_cambiaron.emit(migas)
 	print("[Juego] Run %d terminada: +%s migas (total %s)" % [runs_jugadas, formatear(migas_run), formatear(migas)])
@@ -1340,7 +1234,6 @@ func datos_partida() -> Dictionary:
 		"mejor_avance": mejor_avance.duplicate(), "runs_sin_avance": runs_sin_avance_destino.duplicate(),
 		"archivo_expediciones": archivo_expediciones, "records_limpieza": records_limpieza,
 		"estadisticas": estadisticas, "decreto": decreto,
-		"mutaciones_descubiertas": mutaciones_descubiertas.keys(),
 	}
 
 
@@ -1466,13 +1359,6 @@ func restaurar_partida(datos: Dictionary) -> void:
 	else:
 		# Partida anterior a las estadísticas: lo que se sabe de antes.
 		estadisticas.migas_totales = migas_colonia
-	mutaciones_descubiertas = {}
-	mutaciones_por_anunciar.clear()
-	var descubiertas = datos.get("mutaciones_descubiertas", [])
-	if descubiertas is Array:
-		for id in descubiertas:
-			if id is String and mutaciones_por_id.has(id):
-				mutaciones_descubiertas[id] = true
 	descubiertos = {}
 	evoluciones_desbloqueadas = {}
 	evoluciones_equipadas = []
@@ -1498,8 +1384,6 @@ func restaurar_partida(datos: Dictionary) -> void:
 		for id in REVELABLES:
 			if _condicion_revelar(id):
 				descubiertos[id] = true
-	# Partidas de antes de los descubrimientos: lo ya logrado queda descubierto.
-	revisar_mutaciones(false)
 
 
 func _restaurar_proyectos(datos: Dictionary) -> void:
@@ -1563,9 +1447,6 @@ func _restaurar_componentes(datos: Dictionary) -> void:
 
 
 func reiniciar_estado() -> void:
-	mods_run.clear()
-	mutaciones_descubiertas.clear()
-	mutaciones_por_anunciar.clear()
 	_guardado_proyectos_pendiente = false
 	_run_cobrada = false
 	migas_run = 0.0
@@ -1752,29 +1633,6 @@ func _cargar_datos() -> void:
 			d.efectos.append({"stat": partes[0], "tipo": partes[1], "valor": _num(partes[2])})
 		decretos.append(d)
 		decretos_por_id[d.id] = d
-
-	mutaciones.clear()
-	mutaciones_por_id.clear()
-	for fila in _leer_csv(RUTA_MUTACIONES):
-		var mu := {"id": fila.id, "nombre": fila.nombre, "descripcion": fila.descripcion,
-			"efecto": fila.efecto, "valor": _num(fila.valor), "rareza_minima": fila.rareza_minima,
-			"max": int(_num(fila.max))}
-		if mu.efecto not in EFECTOS_MUTACION:
-			push_error("Mutación '%s': efecto desconocido '%s'" % [mu.id, mu.efecto])
-			continue
-		if mu.rareza_minima not in RAREZAS:
-			push_error("Mutación '%s': rareza desconocida '%s'" % [mu.id, mu.rareza_minima])
-			continue
-		mu.desbloqueo = {}
-		var desbloqueo := String(fila.get("desbloqueo", "")).strip_edges()
-		if not desbloqueo.is_empty():
-			var partes := desbloqueo.split(":")
-			if partes.size() != 2 or partes[0] not in ESTADISTICAS_DESBLOQUEO or not partes[1].is_valid_float():
-				push_error("Mutación '%s': desbloqueo inválido '%s'" % [mu.id, desbloqueo])
-				continue
-			mu.desbloqueo = {"estadistica": partes[0], "valor": float(partes[1])}
-		mutaciones.append(mu)
-		mutaciones_por_id[mu.id] = mu
 
 	comidas.clear()
 	for fila in _leer_csv(RUTA_COMIDAS):
