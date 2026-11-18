@@ -1419,3 +1419,46 @@ total, así que queda en 800. Con las dietas baratas la campaña vuelve a
 **Pendiente.** El restaurante ahora pide fundar antes de caer (antes caía en
 la primera colonia). No parece malo, porque la primera fundación llega cerca
 del minuto 90, pero conviene mirarlo con una persona.
+
+## Sin cartas — 17/11
+
+**Decisión de Lucas:** las cartas de mutación "no tienen nada que ver" con el
+juego. Se sacó todo lo que agregaron #24, #25 y #28, y la parte de mutaciones
+de #29:
+
+- la barra de néctar, los niveles y las eclosiones;
+- las 17 mutaciones y sus descubrimientos;
+- los cofres dorados;
+- los festejos de la horda.
+
+La run vuelve a ser la de #23, con el bocado ×8 y las dietas de #26 y la
+sugerencia de fundar de #27.
+
+**Lo que apareció al medir.** Sin cartas, la colonia llega a la casa con todo
+comprado y le saca 97–99% de la mesa por run. Eso son diez expediciones
+seguidas (~28 minutos de bot) sin terminarla, y todavía no se puede fundar.
+Con cartas, la diferencia la cubría la suerte de la run. Con la mesa en 190
+(antes 220), cae en la primera expedición después de Muros.
+
+Museo (1100) y Coliseo (2,0e7) se quedan en los valores medidos el 12/11: sus
+trabes no dependían de las cartas.
+
+| Hito (minutos de bot) | #26 con cartas | Sin cartas, valores de #26 | Sin cartas, este balance |
+|---|---:|---:|---:|
+| Madera | 13,1 | 11,4 | 11,4 |
+| Muros | 57,5 | 63,7 | 63,3 |
+| Casa | 69,1 | > 100 (trabada al 97–99%) | 75,4 |
+| Restaurante | 103,7 | — | 110,3 |
+| Museo | 114,2 | — | 117,8 |
+| Obelisco | 137,5 | — | 145,7 |
+| Coliseo | 146,0 | — | 154,0 |
+| Torre Eiffel | 176,5 | — | 187,1 |
+| Expediciones | 75 | — | 79 |
+
+Una segunda pasada arrancó desde la colonia trabada de la columna del medio,
+con los valores nuevos. Descontando el trabe, la Torre Eiffel cayó cerca del
+minuto 181 con 77 runs.
+
+**Lectura.** (187 + 0,5 × 79) × 1,1 ≈ 249 minutos: ~4,1 h, sin tiempo de
+cartas. Lo más largo sigue siendo la reconquista después de la tercera
+fundación (~24 minutos).

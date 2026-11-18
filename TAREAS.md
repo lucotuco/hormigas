@@ -1,5 +1,13 @@
 # Tareas
 
+## Sin cartas — 17/11
+
+- [x] Sacar las cartas de mutación, el néctar, los niveles, las eclosiones, los cofres y los festejos de la horda (#24, #25, #28 y la parte de mutaciones de #29): no tenían nada que ver con el juego.
+- [x] Las partidas guardadas con cartas cargan sin rastros (`prueba_partida_con_cartas`).
+- [x] Casa 190 (la colonia sin cartas se trababa 10 runs al 97–99% de la mesa), Museo 1100 y Coliseo 2,0e7. Torre Eiffel en 187 minutos de bot y 79 runs: ~4,1 h.
+- [ ] Acortar la reconquista tras la tercera fundación (~24 min antes de la Torre Eiffel).
+- [ ] Probar con una persona el tramo previo a la casa: sin cartas, el poder deja de crecer antes de la mesa.
+
 ## Continuidad del apoyo y regreso — 5/11
 
 - [x] Reproducir cinco fallas de apoyo/llegada sobre la mesa real y una pausa cargada con la cola de rutas cerrada, sin inventar carga ni vaciar el reloj de trabajo.
