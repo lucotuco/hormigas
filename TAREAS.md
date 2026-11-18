@@ -1,19 +1,12 @@
 # Tareas
 
-## Mutaciones, horda y descubrimientos — 12/11
+## Sin cartas — 17/11
 
-- [x] Mutaciones dentro de la run: el néctar sube de nivel y cada nivel ofrece tres cartas con rareza (#24).
-- [x] Cofres dorados y festejos al cruzar 100/250/500 hormigas (#25).
-- [x] Techo del bocado contra el gran objetivo ×8 y dietas más baratas para volver a ~4 h (#26).
-- [x] Sugerir fundar tras tres expediciones sin avanzar en el destino (#27).
-- [x] Cartas con peso: menos niveles por run (2–6 en vez de 7–13), más suerte por nivel, sin cartas de cría con la colonia llena, Esc sobre las cartas y eclosión en tandas de 25 (#28).
-- [x] Seis mutaciones que se descubren jugando y quedan para siempre; el fin de run anuncia la nueva o la próxima con su avance (#29).
-- [x] Comunes un tercio más fuertes, Coliseo 2,0e7 y Museo 1100 para compensar las cartas con peso (#29).
-- [x] Bot: no ahorrar para una dieta que no alcanza en pocas runs (trababa al bot al azar 34 runs).
-- [ ] Probar con una persona si 2–6 cartas por run se sienten como premio y no como interrupción.
-- [ ] Medir en la GPU de Lucas la eclosión de 100 hormigas y la horda de 500.
-- [ ] Acortar la reconquista tras la tercera fundación (~26 min antes de la Torre Eiffel).
-- [ ] Ideas sin hacer: resumen de la build al terminar la run, evoluciones o combos de mutaciones.
+- [x] Sacar las cartas de mutación, el néctar, los niveles, las eclosiones, los cofres y los festejos de la horda (#24, #25, #28 y la parte de mutaciones de #29): no tenían nada que ver con el juego.
+- [x] Las partidas guardadas con cartas cargan sin rastros (`prueba_partida_con_cartas`).
+- [x] Casa 190 (la colonia sin cartas se trababa 10 runs al 97–99% de la mesa), Museo 1100 y Coliseo 2,0e7. Torre Eiffel en 187 minutos de bot y 79 runs: ~4,1 h.
+- [ ] Acortar la reconquista tras la tercera fundación (~24 min antes de la Torre Eiffel).
+- [ ] Probar con una persona el tramo previo a la casa: sin cartas, el poder deja de crecer antes de la mesa.
 
 ## Continuidad del apoyo y regreso — 5/11
 

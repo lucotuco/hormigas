@@ -4,7 +4,7 @@ extends RefCounted
 const ORDEN := ["casa", "restaurante", "museo", "obelisco", "coliseo", "eiffel"]
 const VERSION_CONTENIDO := 11
 const INFO := {
-	"casa": {"nombre": "La casa", "subtitulo": "De las migas a los muebles", "meta": "La gran mesa familiar", "factor": 1.0, "coronas": 1, "vida_meta": 220.0},
+	"casa": {"nombre": "La casa", "subtitulo": "De las migas a los muebles", "meta": "La gran mesa familiar", "factor": 1.0, "coronas": 1, "vida_meta": 190.0},
 	"restaurante": {"nombre": "El restaurante", "subtitulo": "Salón, barra y cocina industrial", "meta": "La barra del chef", "factor": 1.7, "coronas": 2, "vida_meta": 800.0},
 	"museo": {"nombre": "El museo", "subtitulo": "Galerías, vitrinas y una estatua monumental", "meta": "La gran escultura", "factor": 2.8, "coronas": 3, "vida_meta": 1100.0},
 	"obelisco": {"nombre": "Obelisco · Buenos Aires", "subtitulo": "La colonia conquista la avenida", "meta": "El Obelisco", "factor": 4.5, "coronas": 4, "vida_meta": 3.5e5},
